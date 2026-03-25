@@ -1,0 +1,1277 @@
+{
+  "pd_api": "paddle.index_sample",
+  "ms_api": "mindspore.ops.gather",
+  "timestamp": "2026-03-02T22:38:38.725118",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 9,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "mindspore.ops.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: gather() got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore gather不接受'index'参数名，需改为'input_indices'；且必须显式指定'axis=1'（因paddle.index_sample默认沿dim=1采样），并确保batch_dims=0以匹配语义。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int32"
+        },
+        "batch_dims": 0,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 10) vs MS=(10, 10, 10)",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "ms_shape": [
+          10,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": "Float64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's index_sample requires x and index to have same first dim (10), and outputs shape = index.shape. MindSpore's gather with axis=1 on (10,20) input and (10,10) indices yields (10,10,20) if batch_dims=0, but expected output shape is (10,10). To match index_sample semantics, gather must sample along axis=1 with batch_dims=1, requiring input_indices shape (10,) or aligning batch dims; correct fix is axis=1 and batch_dims=1, but input_indices must then be 1D of size 10 — so we reshape index to (10,) and adjust both frameworks to use consistent 1D indices for column sampling."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "input_indices": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "batch_dims": 1,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Inputs(Index) shape of IndexSample op should be 2-D, but got Index's shape [10, 20] , please check index shape.\n  [Hint: Expected index_dims.size() == 2, but received index_dims.size():1 != 2:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:2391)\n",
+        "ms_error": "RuntimeError: For 'Gather', the 'input_indices' should be in the range [0, 5), but got 6, error_code[58]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/gather_cpu_kernel.cc:119 mindspore::kernel::gather_cpu::GatherCpuKernelMod::LaunchKernel::<lambda_541ada1ce5fc6d5639c49565b5390b1f>::operator ()\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.index_sample requires 2-D index tensor, but input index has shape [10]; MindSpore gather with axis=1 and batch_dims=1 requires input_indices shape to match first batch_dims dims of input_params (i.e., [10]) and indices values must be in [0, 20); original index values likely exceed bounds. Repair: make index 2-D [10, 1], ensure valid indices < 20, and align semantics: paddle.index_sample samples along dim=1 using index[i,j] → x[i, index[i,j]], equivalent to gather(..., axis=1, batch_dims=1)."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 1,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "RuntimeError: For 'Gather', the 'input_indices' should be in the range [0, 5), but got 7, error_code[58]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/gather_cpu_kernel.cc:119 mindspore::kernel::gather_cpu::GatherCpuKernelMod::LaunchKernel::<lambda_541ada1ce5fc6d5639c49565b5390b1f>::operator ()\n",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "mindspore.ops.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 1, but got 8. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:8 >= value_length:1.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "ms_error": "TypeError: gather() got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.index_sample requires index values in [0, x.shape[1]), but x.shape[1] is 1, so index must be all 0; MindSpore gather uses 'input_indices' not 'index', and requires 'axis' parameter (default 0) and 'input_params' instead of 'x'. Also, dtype float64 not supported in MindSpore gather on some backends; use float32 for compatibility."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.gather",
+        "input_indices": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 1, but got 7. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:7 >= value_length:1.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          100,
+          100,
+          1
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.index_sample requires index values to be in [0, x.shape[1]), but x has shape [100,1] so valid indices are only 0; MindSpore gather with axis=1 on [100,1] tensor also requires indices in [0,1), so index values must be clamped to 0. Repair: ensure index tensor contains only valid values (e.g., all zeros) and align semantics — both ops sample along dim 1, so x must have >=2 cols or index must be within bounds."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.gather",
+        "input_indices": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 5, but got 7. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:7 >= value_length:5.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          100,
+          100,
+          1
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.index_sample requires index values to be in [0, x.shape[1]), but original index shape [100,1] may contain out-of-bound values (e.g., 7 >= 5). MindSpore gather with axis=1 expects input_indices to index along dim 1 of input_params (size 5), so index values must also be in [0,5). Repair: clamp index values to valid range by setting max_index = x.shape[1] - 1 = 4."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.gather",
+        "input_indices": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 5, but got 5. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:5 >= value_length:5.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          100,
+          100,
+          1
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "mindspore.ops.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: gather() got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore gather不接受'index'参数名，需改为'input_indices'；且必须显式指定'axis=1'（因paddle.index_sample默认按行采样，即对x的第1维索引），并添加batch_dims=0以匹配语义。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 0,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 10) vs MS=(10, 10, 10)",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "ms_shape": [
+          10,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": "Float64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.index_sample要求x为2-D且index第一维与x第一维相同，输出形状同index；MindSpore gather(axis=1)在input_params=(10,100), input_indices=(10,10)时输出应为(10,10)，但原用例未指定batch_dims=1来 align batch dim，导致实际输出为(10,10,10)。正确对应应设axis=1且batch_dims=1，使gather沿每行采样，输出(10,10)。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 1,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.41803220",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "ms_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": "Float64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample要求x为2-D且index第一维与x第一维相同，mindspore.ops.gather在axis=1、batch_dims=1时语义等价，但需确保index值在[0, x.shape[1])范围内；原始用例未约束index值范围，导致结果不一致；应显式生成合法索引（如全0）以保证行为一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 1,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.04996554",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "ms_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": "Float64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "mindspore.ops.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `index_sample` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: complex64, complex128, float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "ms_error": "TypeError: gather() got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持float16输入，需改为float32；MindSpore gather无'index'参数，需改为'input_indices'，且必须指定axis=1（因index.shape[1]对应x的第1维采样），并移除不支持的参数名"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.gather",
+        "input_indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs MS=(10, 10, 64)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "ms_shape": [
+          10,
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample要求x和index均为2-D且第一维相同，输出形状同index；mindspore.ops.gather在axis=1时，当input_params为(10,128)、input_indices为(10,64)，输出应为(10,64)，但当前MS用例未指定batch_dims，导致实际行为可能引入隐式广播或维度解释错误；需显式设batch_dims=0并确保语义对齐，但根据gather文档，axis=1+batch_dims=0时输出shape=(10,64)，与PD一致，原MS用例参数正确但可能因实现差异未对齐；根本原因是gather默认batch_dims=0，但需确认index值范围合法且无越界，故修复为显式batch_dims=0并保持axis=1"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "batch_dims": 0,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs MS=(10, 10, 64)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "ms_shape": [
+          10,
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample要求x和index均为2D且index第一维与x第一维相同，输出形状同index；mindspore.ops.gather(axis=1)在input_params为(10,128)、input_indices为(10,64)时输出为(10,64,128)，但paddle输出为(10,64)。应将gather的axis设为0并调整index语义：index应为(64,)或(10,64)但需匹配paddle的行内采样行为。正确对齐需使gather在axis=1时等效于按行索引，故input_params应为(128,10)转置，或更直接：paddle.index_sample是沿dim=1采样，对应gather(input_params, input_indices, axis=1)要求input_params.shape[1] >= max(index)+1，且输出shape=index.shape，因此MindSpore用例中axis=1正确，但当前输入params=(10,128)、indices=(10,64)导致gather输出(10,64,128)，而paddle输出(10,64)——说明paddle是取每个x[i]中index[i]位置的标量，即逐行gather标量，故MindSpore应使用axis=1且batch_dims=1，此时output.shape = params.shape[:1] + indices.shape[1:] = (10,) + (64,) = (10,64)，符合预期。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "batch_dims": 1,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.30406010",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "ms_shape": [
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "mindspore.ops.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": false,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `index_sample` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: complex64, complex128, float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "ms_error": "TypeError: gather() got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持float16输入，需改为float32；MindSpore的gather不接受'index'参数名，需改为'input_indices'并显式指定axis=1（因index_sample按行采样，对应axis=1），且batch_dims=0默认可省略。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.gather",
+        "input_indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs MS=(10, 10, 64)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "ms_shape": [
+          10,
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle.index_sample要求x和index均为2D且index第一维必须 equal x第一维，输出形状等于index；MindSpore.gather在axis=1时，input_params.shape[:1] + input_indices.shape[1:] = [10] + [64] = [10,64]，但当前MS用例未指定batch_dims，而input_indices是2D，需设batch_dims=1使语义对齐index_sample的逐行采样行为。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 1,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "RuntimeError: For 'Gather', the 'input_indices' should be in the range [0, 1), but got 8, error_code[58]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/gather_cpu_kernel.cc:119 mindspore::kernel::gather_cpu::GatherCpuKernelMod::LaunchKernel::<lambda_541ada1ce5fc6d5639c49565b5390b1f>::operator ()\n",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          64
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore gather 报错 'input_indices should be in range [0, 1), but got 8' indicates index values exceed valid range [0, input_params.shape[axis]). Here axis=1 and input_params.shape[1]=128, so indices must be in [0,128); the original test likely generated out-of-bound indices (e.g., 8 is fine, but error says 'got 8' while expecting [0,1) — implying axis was misinterpreted as 0 with shape[0]=10, but batch_dims=1 + axis=1 requires index values <128. However, error message inconsistency suggests axis/batch_dims mismatch: for paddle.index_sample (x: [10,128], index: [10,64]), it samples along dim=1 using indices in [0,128). So MindSpore must use axis=1, batch_dims=0 (not 1) to match — because batch_dims=1 would require input_params.ndim >= 2 and interpret first batch_dims dims as batch, but gather with batch_dims=1 and axis=1 expects input_params.shape[:1] == input_indices.shape[:1], and index values < input_params.shape[1]; yet error [0,1) implies axis=0 was effectively used. Fix: set batch_dims=0, axis=1 to align semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample",
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "input_params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "input_indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 0,
+        "api": "mindspore.ops.gather",
+        "axis": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "ms_api": "mindspore.ops.gather",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs MS=(10, 10, 64)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "ms_shape": [
+          10,
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

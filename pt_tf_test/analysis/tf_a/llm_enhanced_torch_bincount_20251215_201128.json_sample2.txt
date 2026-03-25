@@ -1,0 +1,49 @@
+来源文件: llm_enhanced_torch_bincount_20251215_201128.json
+样例编号: 2
+tensorflow_error 错误信息: {{function_node __wrapped__DenseBincount_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input arr must be non-negative! [Op:DenseBincount] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bincount",
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      -2,
+      -5,
+      -9,
+      6
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.bincount",
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      -2,
+      -5,
+      -9,
+      6
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.math.bincount` 要求输入张量中的所有值必须为非负整数（即 ≥ 0），而测试用例中输入包含负数（如 -7, -9），这直接触发了错误提示“Input arr must be non-negative!”。
+   - PyTorch 的 `torch.bincount` 虽然文档也说明“non-negative ints”，但在实际实现中对负数的处理行为更宽松（例如，会将负数视为超出范围的索引，不计入计数），但 TensorFlow 明确在 API 层面强制校验输入非负性，这是两框架在异常处理上的行为差异。
+
+3. 修复建议：
+   - 该问题属于框架间对输入合法性校验的严格程度不同所致，建议提交 issue 至 TensorFlow 官方仓库，指出其 `bincount` 在负数输入下缺乏容错性，与 PyTorch 行为不一致。

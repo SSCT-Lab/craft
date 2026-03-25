@@ -1,0 +1,89 @@
+来源文件: llm_enhanced_torch_take_20251215_233111.json
+样例编号: 3
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,0] = -3 is not in [0, 5) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.take",
+  "input": {
+    "shape": [
+      5,
+      5,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.8598279149618641,
+      -0.27885514465719663,
+      0.9025400731335516,
+      1.4293914322593249,
+      0.9652771442550581,
+      -0.325700150085135,
+      -0.2943178713228456,
+      0.8615423487788182,
+      -0.0964459205430645,
+      0.27029575134283257
+    ]
+  },
+  "index": {
+    "shape": [
+      2,
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      5,
+      -5,
+      -4
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.gather",
+  "input": {
+    "shape": [
+      5,
+      5,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.8598279149618641,
+      -0.27885514465719663,
+      0.9025400731335516,
+      1.4293914322593249,
+      0.9652771442550581,
+      -0.325700150085135,
+      -0.2943178713228456,
+      0.8615423487788182,
+      -0.0964459205430645,
+      0.27029575134283257
+    ]
+  },
+  "indices": {
+    "shape": [
+      2,
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      -1,
+      2,
+      4
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.gather` 要求 `indices` 中的值必须在 `[0, input.shape[axis])` 范围内，且不支持负索引（除非显式启用 `batch_dims` 且满足特定条件），而样例中 `indices` 包含 `-3` 和 `-1`，超出有效范围 `[0, 5)`。
+   - PyTorch 的 `torch.take` 则允许负索引，将其解释为从末尾开始计数（如 -1 表示最后一个元素），但 TensorFlow 未提供等效语义的直接支持，导致执行时报错。
+
+3. 修复建议：
+   - 该问题源于框架对负索引处理的语义差异，属于行为不一致，建议提交 issue 至 TensorFlow 官方，指出 `tf.gather` 在负索引处理上与 PyTorch `torch.take` 不兼容。

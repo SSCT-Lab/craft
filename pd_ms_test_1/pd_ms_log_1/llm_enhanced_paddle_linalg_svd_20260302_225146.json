@@ -1,0 +1,945 @@
+{
+  "pd_api": "paddle.linalg.svd",
+  "ms_api": "mindspore.ops.svd",
+  "timestamp": "2026-03-02T22:51:46.896684",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 15,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "full_matrices": false,
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "full_matrices": false,
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd要求compute_uv=True时才返回u,v，且其返回顺序为(s,u,v)，而Paddle返回(U,S,VH)；错误'inhomogeneous shape'源于MindSpore在full_matrices=False时v形状为(*,N,P)=(*,1,1)，但可能因内部实现对退化矩阵处理不一致导致序列化失败；需显式添加compute_uv=True并确保dtype兼容，MindSpore float64需确认支持，否则降为float32。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回v是右奇异向量（非共轭转置），而Paddle返回VH（共轭转置），导致形状和数值不一致；需在MindSpore侧显式取v.conj().t()或调整验证逻辑，但测试用例本身需保证语义等价——当前用例中MindSpore未启用compute_uv=true时默认返回(s,u,v)，但v是V（非VH），而Paddle返回VH，因此必须统一为比较VH。修复方式：MindSpore需额外计算v_h = v.conj().transpose(-2,-1)以对齐Paddle的VH输出，但测试框架仅支持输入参数调整。故应禁用compute_uv=false不可行（会少输出），唯一合规修复是确保full_matrices=False时MindSpore的v形状为(*, N, P)=(*,1,1)，而Paddle的VH形状为(*, M, K)=(*,1,1)，二者shape一致但内容为共轭关系；float64下无复数，conj无影响，但transpose必要。然而测试报错'inhomogeneous shape'表明v实际返回了(*,1)而非(*,1,1)，说明MindSpore在M!=N且full_matrices=False时v的shape可能为(*,P)而非(*,N,P)——查文档：MindSpore v shape is (*,N,P)，但实测当N=1,P=1时可能退化为(*,1)。因此需强制v保持2D：将input shape改为[1,100]使N=100,P=1，v shape为(*,100,1)，避免降维。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 1) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回v为右奇异向量（非共轭转置），而Paddle返回VH（共轭转置），导致形状不匹配；且MindSpore要求compute_uv=true时必须显式接收3元组，但原始用例未对齐输出解析逻辑；需统一使用full_matrices=false并确保U/S/VH与U/S/V语义可比，故将MindSpore的v改为v.T以匹配VH，同时修正输入shape为[100, 1]使M>=N，避免单行矩阵导致V维度异常。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "complex64"
+        },
+        "full_matrices": false,
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "complex64"
+        },
+        "full_matrices": false,
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd要求compute_uv=True时才返回u,v，且其返回顺序为(s,u,v)，而Paddle返回(U,S,VH)；错误'inhomogeneous shape'源于MindSpore未显式设置compute_uv=True导致返回单个tensor与Paddle三元组不匹配，需补全compute_uv=True参数以保证语义一致。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "complex64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "complex64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回v是右奇异向量（非共轭转置），而Paddle返回VH（共轭转置），导致形状和数值不一致；需在MindSpore侧显式取v.conj().T或调整验证逻辑，但测试用例本身需保证语义等价——当前用例未提供具体数值，仅shape/dtype，而错误'inhomogeneous shape'表明实际执行时生成了结构不一致的输出（如v形状为[3,3]但元素嵌套不均），根源是MindSpore complex64 svd在full_matrices=False时对v的形状处理与文档不符（应为[3,3]或[3,3]？），修复为显式设置compute_uv=True且确保v被正确解析，同时统一使用实数输入避免复数共轭歧义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回(u, s, v)，而Paddle返回(u, s, vh)，其中vh是v的共轭转置；且MindSpore默认v是右奇异向量（非共轭转置），导致数值比较时形状或值不匹配；需统一使用full_matrices=True确保U/V维度可比，并显式要求compute_uv=True；同时MindSpore的v与Paddle的vh不等价，必须在比较前对MindSpore的v做转置（但测试框架无法干预后处理），故修复为使用full_matrices=True + 同样shape输入，并确保两者都输出兼容格式。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "complex64"
+        },
+        "full_matrices": false,
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "complex64"
+        },
+        "full_matrices": false,
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd要求compute_uv=True时才返回u,v，且其返回顺序为(s,u,v)，而Paddle返回(U,S,VH)；错误信息显示数组形状不一致，源于MindSpore默认返回实部/虚部分离结构或V未共轭转置；需显式添加compute_uv=True并注意V与VH差异，同时MindSpore不支持complex64的svd（文档仅列float32/float64），应降级为float32"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore svd返回u,v形状与Paddle不一致：MindSpore默认返回V（非VH），而Paddle返回VH（共轭转置）。需在MindSpore侧显式转置v得v_h，且原始报错'inhomogeneous shape'源于U/V维度不匹配——因Paddle当full_matrices=False时U∈[3,3], V∈[30,3]→VH∈[3,30]，但MindSpore v∈[30,3]未转置。修复：MindSpore保持compute_uv=True, full_matrices=False，但需确保比较时对v做转置；同时为对齐Paddle的VH输出，MindSpore测试应取v.T而非v。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回v是右奇异向量（非共轭转置），而Paddle返回VH（共轭转置），导致形状不匹配；MindSpore需设置compute_uv=True且接收(u,v)后手动取v.conj().T以对齐VH语义，但当前测试直接比较原始v与Paddle的VH引发形状异常（如3x30输入时V应为30xK，VH为Kx30，而MindSpore v默认为30xK）；修复：统一使用full_matrices=False，MindSpore需确保v被正确转置并共轭（复数场景），但当前dtype=float32且报错为'inhomogeneous shape after 2 dimensions'，表明v和VH维度解释不一致；根本原因是MindSpore v形状为(*, N, P)，Paddle VH形状为(*, P, N)，需在测试中对MindSpore v做transpose(-2,-1)以对齐VH。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "full_matrices": false,
+        "x": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": false,
+        "input": {
+          "shape": [
+            3,
+            30
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "full_matrices": true,
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "full_matrices": true,
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd要求compute_uv参数显式指定（默认True），且返回顺序为(s, u, v)，而Paddle返回(U, S, VH)；错误'inhomogeneous shape'源于MindSpore在full_matrices=True时v形状为(*, N, N)，但原始用例未提供compute_uv且可能因版本差异导致返回结构解析异常；需显式添加compute_uv=True并确保三元组解包一致。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回(u, s, v)顺序，而PaddlePaddle返回(u, s, vh)，且vh是v的共轭转置；比较时因形状不一致（如v为[3,3]但vh应为[3,3]）导致'inhomogeneous shape'错误；需确保输入为非奇异矩阵并显式生成可比数值张量，避免随机初始化导致维度解析异常。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回(u, s, v)顺序，而PaddlePaddle返回(u, s, vh)，且vh是v的共轭转置；比较时因形状不一致（如v为[3,3]但vh应为[3,3]）导致'inhomogeneous shape'错误；需确保输入为非奇异矩阵并显式生成可比数值张量，避免随机初始化导致维度解析异常。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "full_matrices": true,
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "full_matrices": true,
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd要求compute_uv=True时才返回u,v，且其返回顺序为(s,u,v)，而Paddle返回(U,S,VH)；原始用例未指定compute_uv，MindSpore默认True但V形状为(*,N,P)即(3,2)，而Paddle的VH是(*,M,K)即(3,2)的共轭转置，需显式设compute_uv=True并调整参数名匹配；此外MindSpore不支持complex64/128时float64输入需确保平台支持，但核心问题是返回结构解析异常：'setting an array element with a sequence'源于V张量shape不一致导致numpy堆叠失败，应添加compute_uv=True并确保三元组解包正确。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回(u, s, v)顺序，而PaddlePaddle返回(u, s, vh)，且vh是v的共轭转置；但更关键的是：MindSpore要求input.shape[-2] >= input.shape[-1]才能保证full_matrices=True时u和v形状兼容，而[2,3]中M=2,N=3导致M<N，此时full_matrices=True在MindSpore中会生成u.shape=[2,2], v.shape=[3,3]，但Paddle中U.shape=[2,2], VH.shape=[3,3]，二者V与VH不等价；需统一为M>=N（如[3,2]）以确保分解维度一致且可比。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的svd返回v是右奇异向量（非共轭转置），而Paddle返回VH（共轭转置），导致形状不匹配和比较异常；需在MindSpore侧显式计算v.conj().T以对齐VH语义，但当前测试用例未提供数值数据无法直接验证；且MindSpore float64 svd在某些版本存在精度/形状稳定性问题，应改用float32并确保compute_uv=True、full_matrices=True下u/v形状与Paddle的U/VH可比。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "full_matrices": true,
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.linalg.svd"
+      },
+      "ms_test_case": {
+        "compute_uv": true,
+        "full_matrices": true,
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.svd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.linalg.svd",
+        "ms_api": "mindspore.ops.svd",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

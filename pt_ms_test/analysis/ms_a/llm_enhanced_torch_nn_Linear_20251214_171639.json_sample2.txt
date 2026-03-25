@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_nn_Linear_20251214_171639.json
+样例编号: 2
+mindspore_error 错误信息: Dense shape error, got x_col: 3, w_row: 128. In Dense x_col and w_row should be equal. if the dim of w is 2.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//dense.cc:199 mindspore::ops::DenseFuncImpl::InferShape
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.0819791555404663,
+      -1.0282044410705566,
+      0.3201043903827667,
+      -0.316255658864975,
+      -0.9821815490722656,
+      2.183682680130005
+    ]
+  },
+  "in_features": 128,
+  "out_features": 1,
+  "bias": false,
+  "api": "torch.nn.Linear"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.0819791555404663,
+      -1.0282044410705566,
+      0.3201043903827667,
+      -0.316255658864975,
+      -0.9821815490722656,
+      2.183682680130005
+    ]
+  },
+  "in_features": 128,
+  "out_features": 1,
+  "bias": false,
+  "api": "torch.nn.Linear"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `Dense` 算子要求输入张量的特征维度（x_col）与权重矩阵的行数（w_row）必须相等，而当前输入 shape 为 `[2, 3]`，即 x_col = 3，但 `in_features=128` 导致权重矩阵为 `[128, 1]`，故 w_row = 128，二者不匹配。  
+   - 尽管 PyTorch `Linear` 在输入维度为 `[2, 3]` 且 `in_features=128` 时会自动将输入视为每个样本有 3 个特征，通过线性变换映射到 128 维输出，但 MindSpore 的 `torch.nn.Linear` 实现中，其内部逻辑可能未正确处理这种“输入特征数 < in_features”场景，导致形状校验失败。
+
+3. 修复建议：  
+   - 建议提交 issue 至 MindSpore 官方仓库，指出 `torch.nn.Linear` 在输入特征数小于 `in_features` 时的 shape 校验过于严格，与 PyTorch 行为不一致，属于框架行为差异问题。

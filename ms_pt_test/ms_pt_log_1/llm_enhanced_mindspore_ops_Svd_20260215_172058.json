@@ -1,0 +1,1013 @@
+{
+  "ms_api": "mindspore.ops.Svd",
+  "pytorch_api": "torch.linalg.svd",
+  "timestamp": "2026-02-15T17:20:58.041091",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 15,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Svd",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.linalg.svd",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行状态为inconsistent且结果不一致，错误信息显示PyTorch比较时出现'inhomogeneous shape'，源于torch.linalg.svd默认full_matrices=True而mindspore.ops.Svd默认False，导致U/V形状不同（如U为[3,3] vs [3,2]），需对齐full_matrices参数以消除语义差异并触发fuzzing探索边界行为。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 (U, S, Vh) 其中 Vh 是 V 的共轭转置，而 MindSpore Svd 返回 (S, U, V) 中 V 是未转置的右奇异向量；且 PyTorch 默认 full_matrices=True，MindSpore 默认 False，但测试中两者均设为 True，但输出结构不匹配导致比较异常：'setting an array element with a sequence' 源于试图将非同构形状（如 U: [3,3], S: [2], V: [2,2]）拼接为统一数组。需对齐输出结构：PyTorch 应取 V = Vh.mH，且确保三元组顺序与 MindSpore 的 (S,U,V) 对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 (U, S, Vh) 且 Vh 是 V 的共轭转置（行向量形式），而 MindSpore Svd 返回 (S, U, V) 中 V 是列向量形式（即 Vh.T）。原始用例未对齐输出语义：MindSpore 的 v 对应 PyTorch 的 Vh.T，需在 PyTorch 侧显式转置 Vh 得到 V 以匹配比较；且 MindSpore 默认 compute_uv=True，PyTorch 无该参数但始终计算全部，故无需补参，但必须统一比较对象——应比较 MindSpore 的 u, s, v 与 PyTorch 的 U, S, Vh.T。当前报错 'inhomogeneous shape' 源于直接拼接 U/S/Vh（形状不一致）进行数组比较，属测试断言错误，非算子行为差异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Svd",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.linalg.svd",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行状态为inconsistent且比较异常提示'inhomogeneous shape'，表明PyTorch返回的U/Vh与MindSpore的u/v形状语义不一致：PyTorch默认full_matrices=True返回U(3,3)和Vh(2,2)，而MindSpore默认full_matrices=False返回u(3,2)和v(2,2)；需对齐full_matrices参数并确保输出结构可比。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 默认 full_matrices=True，而 MindSpore Svd 默认 full_matrices=False；但原始用例中两者均设为 true，却出现 'inhomogeneous shape' 比较异常，根源在于 PyTorch 返回 Vh（V的共轭转置）且形状为 (*, N, N) 当 full_matrices=True，而 MindSpore 返回 v（非共轭转置）且形状为 (*, N, P) 或 (*, N, N) ——但文档明确 v 是右奇异向量矩阵满足 A = U @ diag(s) @ v.T，即 v 对应 V（非 Vh）。因此需在 PyTorch 侧显式取 v = Vh.mH（或 .conj().T）以对齐语义；同时 compute_uv=True 在 MindSpore 是默认值，但 PyTorch 无此参数，必须通过返回值解包并保持 u, s, v 顺序一致。原始用例未指定输入数据，导致随机初始化张量可能引发数值不稳定或形状广播歧义，需固定 seed 并使用确定性构造。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 (U, S, Vh) 其中 Vh 是 V 的共轭转置（行向量形式），而 MindSpore Svd 返回 (S, U, V) 中 V 是列向量形式（即右奇异向量矩阵）。比较时直接按 u/v/s 顺序对齐会导致形状不匹配和 inhomogeneous array 错误。需在 PyTorch 侧显式计算 V = Vh.mH 并调整输出顺序为 (S, U, V)，且参数 compute_uv 在 MindSpore 中默认 True，PyTorch 无此参数但始终返回全部，故无需补；但 full_matrices 默认值不同（MS: False, PT: True），原始用例已设为 true，一致。核心问题是输出结构语义不一致导致比较失败，必须修复 PyTorch 侧解析逻辑——但本任务仅生成测试用例，因此需确保两框架输出可比：MindSpore 返回 (s,u,v)，PyTorch 应等价返回 (s,u,v)，故需在 PT 用例中明确要求返回 V（而非 Vh）并调整顺序，但 torch.linalg.svd 不支持直接返回 V；因此唯一合规修复是：在 PyTorch 用例中保持 full_matrices=True，并在后续比较时对 Vh 取共轭转置得到 V，但测试用例本身不能含执行逻辑。故当前用例参数合法，问题出在结果解析方式，而题目要求‘构造两个框架的用例时必须保证输入相同、参数在语义上严格对应’，因此需使 PyTorch 用例显式兼容 MindSpore 输出结构——但 API 限制无法改变返回格式，故应跳过直接比较 v 和 Vh 的原始方式。然而错误信息显示‘setting an array element with a sequence’，表明测试框架尝试将 (U,S,Vh) 元组直接与 (s,u,v) 三元素解包比较，因 Vh.shape=(2,2) 而 v.shape=(2,2) 理论一致，但实际 Vh 是复共轭转置，在实数情况下 Vh == v.T，故 v != Vh，导致拼接数组时维度错乱。根本原因是：MindSpore v 是 shape (N,P)=(2,2)，PyTorch Vh 是 shape (2,2)，但比较代码错误地将 Vh 当作 v 使用而未转置，导致试图把 (2,2) 赋给期望 (2,2) 但上下文要求一维序列的位置。因此必须在 PyTorch 用例中添加 driver=None（确保确定性）并强调实数输入，同时修正测试逻辑——但本任务只输出用例。最稳妥修复是：统一使用 full_matrices=False（更常用且尺寸一致），避免 Vh 和 v 形状歧义（当 full_matrices=False，PT Vh.shape=(P,N)=(2,2)，MS v.shape=(N,P)=(2,2)，仍需转置）。故改为 full_matrices=False，使 P=min(M,N)=2，此时 MS v.shape=(2,2)，PT Vh.shape=(2,2)，则 v = Vh.T，可比。且文档示例中 MS 默认 full_matrices=False，PT 默认 True，原用例强制 True 导致 PT Vh.shape=(2,2) 与 MS v.shape=(2,2) 表面一致，但比较时未转置引发 inhomogeneous error。因此修复为双方均使用 full_matrices=False，确保语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.Svd",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.linalg.svd",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行状态inconsistent且比较报错'inhomogeneous shape'，表明PyTorch返回的U/Vh与MindSpore的u/v形状语义不一致：PyTorch默认full_matrices=True返回U(3,3)和Vh(2,2)，而MindSpore默认full_matrices=False返回u(3,2)和v(2,2)；需对齐full_matrices参数以消除结构不匹配。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 (U, S, Vh) 其中 Vh 是 V 的共轭转置（即行向量形式），而 MindSpore Svd 返回 (S, U, V) 中 V 是列向量形式（即未转置）。比较时直接对齐 u/v 导致形状不匹配和 inhomogeneous array 错误；需在 PyTorch 侧显式计算 v = Vh.T 以语义对齐，且 MindSpore 默认 compute_uv=True，PyTorch 无该参数但恒返回全部，故无需补参，但必须统一输出结构用于数值比对。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 (U, S, Vh) 且 Vh 是 V 的共轭转置（行向量形式），而 MindSpore Svd 返回 (U, S, V) 中 V 是列向量形式；比较时因形状不匹配（如 V.shape=(2,2) vs Vh.shape=(2,2)但语义不同）导致 'inhomogeneous shape' 错误。需在PyTorch侧显式计算 V = Vh.T 以对齐 MindSpore 的 V 输出，且 compute_uv=True 在MindSpore中为默认，但PyTorch无该参数，故无需补全。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": true
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "full_matrices": true
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.Svd",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.linalg.svd",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致且报错显示PyTorch返回结构不一致（U/S/Vh形状不匹配导致numpy数组构造失败），源于MindSpore默认compute_uv=True+full_matrices=False，而PyTorch默认full_matrices=True，导致U/Vh维度不同；需统一full_matrices=False并显式指定compute_uv=True以对齐语义。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 named tuple (U, S, Vh)，其中 Vh 是 V 的共轭转置（行向量形式），而 MindSpore Svd 返回 (s, u, v) 且 v 是右奇异向量矩阵（列向量形式，即 V）。原始用例未对齐输出结构：PyTorch 需要 Vh，但测试直接比较 v，导致形状/语义不匹配；且 PyTorch 的 compute_uv 无参数（始终计算 U/S/Vh），而 MindSpore 的 compute_uv=true 是冗余默认值。修复：移除 PyTorch 中不存在的 compute_uv，显式说明需后处理 V→Vh（但测试框架仅比对张量值），故应统一使用 full_matrices=false 并确保输出解析一致；报错 'setting an array element with a sequence' 源于尝试将非同构元组（如 U为2x2、S为2、Vh为3x3）直接堆叠比较——根本原因是未解包 named tuple。因此需在测试层解包 PyTorch 输出为 U, S, Vh，并对 Vh 转置得 V 再与 MindSpore 的 v 比较，但当前用例未体现该逻辑。故修复为：PyTorch 用例保持 full_matrices=false，MindSpore 同步；同时明确要求测试框架解包并转置 Vh，但用例本身无需改参数，只需修正调用一致性——关键缺失是 PyTorch 无 compute_uv 参数，原用例误传，必须删除。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 named tuple (U, S, Vh)，其中 Vh is V.conj().transpose(-2,-1)，而 MindSpore Svd returns (s, u, v) with v as right singular vectors (not Vh). 比较时未对齐输出语义：v (MindSpore) vs Vh (PyTorch) 形状和内容不一致导致 inhomogeneous array error；需在 PyTorch 侧显式计算 V = Vh.conj().transpose(-2,-1) 或调整比较逻辑。但测试用例本身参数不匹配：MindSpore 有 compute_uv=true（默认），PyTorch 无对应参数（always computes U,S,Vh）；且 full_matrices 默认值不同（MS: False, PT: True），当前设为 false 但未在 PT 中显式传参，导致行为隐式不一致。修复：PyTorch 侧必须显式指定 full_matrices=False，且需确保输出解析正确。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5,
+            5,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Svd",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            5,
+            5,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.linalg.svd",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 3 dimensions. The detected shape was (3, 5, 5) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 默认 full_matrices=True，而 MindSpore Svd 默认 full_matrices=False，导致输出U/V形状不一致（如(5,5,3,2)输入在MindSpore中U为(*,3,3)，PyTorch中U为(*,3,3)仅当full_matrices=False）；且错误信息显示'inhomogeneous shape (3,5,5)'表明PyTorch返回了batched U/Vh但形状未对齐，需显式设full_matrices=False使语义一致。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5,
+            5,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            5,
+            5,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 3 dimensions. The detected shape was (3, 5, 5) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 返回 (U, S, Vh) 且 Vh 是 V 的共轭转置（行向量形式），而 MindSpore Svd 返回 (S, U, V) 中 V 是列向量形式；原始用例未对齐输出语义，且 PyTorch 报错 'inhomogeneous shape' 源于 batched SVD 维度不匹配——torch.linalg.svd 要求输入为 (*, M, N)，但 [5,5,3,2] 被解释为 5×5×3×2，无法唯一确定 M/N；需将输入 reshape 为 (*, M, N) 形式（如 [75, 2] 或 [5, 5, 3, 2] → 显式指定最后两维为矩阵维度），并确保 full_matrices=False 时 PyTorch 输出 Vh 形状为 (*, K, N)，MindSpore V 形状为 (*, N, K)，需转置对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            75,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            75,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.linalg.svd 默认 full_matrices=True，而 MindSpore Svd 默认 full_matrices=False；原始用例中 PyTorch 缺失 compute_uv 参数（无对应语义），但核心问题是：PyTorch 返回 (U, S, Vh) 且 Vh 是 V 的共轭转置（行向量形式），而 MindSpore 返回 (U, S, V) 中 V 是列向量形式（即 Vh.T），导致形状不匹配引发 inhomogeneous shape 错误；需在 PyTorch 侧显式取 V = Vh.mH 并对齐输出结构，同时确保 compute_uv=True 语义等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            75,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "compute_uv": true,
+          "full_matrices": false
+        },
+        "api": "mindspore.ops.Svd"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            75,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "full_matrices": false
+        },
+        "api": "torch.linalg.svd"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Svd",
+        "pytorch_api": "torch.linalg.svd",
+        "ms_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,804 @@
+{
+  "operator": "torch.logdet",
+  "timestamp": "2026-01-25T00:19:33.504139",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 8,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.16504486306342034
+          ]
+        },
+        "api": "torch.logdet"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.16504486306342034
+          ]
+        },
+        "api": "paddle.linalg.slogdet"
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch () vs PaddlePaddle (2,)",
+        "torch_shape": [],
+        "paddle_shape": [
+          2
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log determinant (shape: ()), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, *batch_dims) containing (sign, logabsdet). They are fundamentally incompatible in return structure: logdet is a direct scalar output, whereas slogdet is a decomposition. To compare meaningfully, we must extract logabsdet from slogdet's output and handle sign/logdet semantics correctly — but for zero/negative determinant cases, their behaviors diverge (e.g., torch.logdet returns -inf for det=0, NaN for det<0; paddle.linalg.slogdet returns (0, -inf) for det=0, and (sign, logabsdet) with sign=-1 for det<0). Since the APIs serve different purposes (one is log(det), the other is (sign, log|det|)), direct comparison is invalid. However, the test attempts to compare raw outputs — shape mismatch (()->(2,)) confirms functional non-equivalence. Per task requirement: when 'two cross-framework operators are not fully equivalent', operation must be 'skip'. But note: the error is not due to misuse — it's inherent API design difference. Therefore, correct action is 'skip', as no repair can make slogdet output match logdet's scalar semantics without post-processing (which isn't part of the tested API)."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.546992162032745
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.546992162032745
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch () vs PaddlePaddle (2,)",
+        "torch_shape": [],
+        "paddle_shape": [
+          2
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar (shape ()) representing the log determinant, while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, *batch_dims) containing (sign, logabsdet). They are fundamentally different APIs: logdet computes only the log determinant (with -inf/NaN semantics for singular/negative-determinant matrices), whereas slogdet computes both sign and log-abs-det. To compare equivalent outputs, we must extract logabsdet from slogdet and handle sign/logdet semantics correctly — but more critically, for positive-definite 1x1 matrices, logdet(x) == logabsdet when sign > 0. However, the current test compares raw outputs with incompatible shapes (() vs (2,)), so the Paddle test case must be repaired to extract the logabsdet component (second element of output) and match scalar semantics. Also, per docs: torch.logdet returns -inf for zero det, NaN for negative det; paddle.linalg.slogdet returns (0, -inf) for zero det — so direct comparison requires logic. But since the task is to make test cases comparable, we repair Paddle case to compute logdet-equivalent: use paddle.linalg.slogdet and then compute 'where(sign != 0, sign * exp(logabsdet), -inf)' is not feasible in static test; instead, the minimal repair is to acknowledge functional mismatch and adjust Paddle test to extract logabsdet *only when sign is positive*, but test framework expects direct output comparison. Therefore, correct repair is to replace paddle.linalg.slogdet with paddle.linalg.logdet if available — however, paddle does NOT have paddle.linalg.logdet (as per official docs and API listing). Hence, the only sound repair is to transform Paddle test to mimic torch.logdet behavior via post-processing: but test case format only allows input spec, not custom logic. So the proper fix is to recognize that these APIs are not drop-in replacements: torch.logdet ≠ paddle.linalg.slogdet. Per documentation and shape mismatch, this is a functional non-equivalence — but the instruction says 'if functionally equivalent but test misconstructed, repair'. Since no paddle.linalg.logdet exists, and slogdet’s output shape is inherently (2, ...), the test case must be repaired to use a valid equivalence: for invertible positive-determinant inputs, torch.logdet(input) should equal paddle.linalg.slogdet(input)[1] (the logabsdet part), *provided sign is 1*. So we must ensure input has positive determinant (e.g., [[2.0]]) and then extract index 1. However, test case format doesn’t support indexing — so the repair is to change Paddle test to use a wrapper or accept that raw outputs differ, thus the test must be restructured. But per task constraints, we can only modify the test case JSON. Since paddle lacks logdet, and slogdet always returns (2, ...) while logdet returns (...), they are incompatible at the API level. Therefore, the correct operation is 'skip' — wait: re-read task requirement #3: 'if ... two算子功能也等价,那就是测试用例构造问题，请修复'. But here, functionality is *not* equivalent: torch.logdet returns log(det), paddle.linalg.slogdet returns (sign, log|det|). They serve different purposes. The PyTorch doc says it returns -inf for zero det, NaN for negative det; Paddle returns (0, -inf) for zero det, and (sign, logabsdet) for nonzero — so for negative det, paddle gives (-1, logabsdet), torch gives NaN. Thus outputs are semantically incompatible. Therefore, this is a case of 'functionally not equivalent', so per instruction #3(2): '结合算子文档分析后，认为这两个跨框架算子的功能不完全等价时选择 skip'. So operation must be 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.525711494785567
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.525711494785567
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch () vs PaddlePaddle (2,)",
+        "torch_shape": [],
+        "paddle_shape": [
+          2
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log determinant (shape: ()), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, *) containing (sign, logabsdet). They are fundamentally different APIs: logdet computes log|det| with sign handling via -inf/NaN for singular/negative-determinant cases, whereas slogdet explicitly separates sign and log|det|. To make outputs comparable, we must extract logabsdet from paddle.linalg.slogdet and handle sign/logdet semantics correctly — but since torch.logdet does not return sign, direct comparison is invalid. However, the documented behavior shows torch.logdet returns -inf for zero det and NaN for negative det, while paddle.linalg.slogdet returns (0, -inf) for zero det. Thus, they are not drop-in replacements; the correct repair is to use paddle.linalg.det + torch.log pattern or adjust expectation — but per task, we must align output semantics. Since the user expects comparable outputs and the shape mismatch (()->(2,)) proves functional non-equivalence, the only valid repair is to replace paddle.linalg.slogdet with a composition that mimics torch.logdet's scalar output: i.e., compute paddle.linalg.det then paddle.log, with proper handling of zero/negative. However, paddle.linalg.det exists and supports same input shape, and paddle.log(det) yields scalar when det is scalar. So repaired Paddle test case should use paddle.linalg.det + paddle.log instead of paddle.linalg.slogdet to match torch.logdet's contract."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -1.2701926793642468
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.log",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -1.2701926793642468
+          ]
+        },
+        "args": {
+          "x": {
+            "api": "paddle.linalg.det",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float64"
+            }
+          }
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "slogdet() got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": null,
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: slogdet() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.7440882501234516,
+            0.11422223489226145,
+            -0.36515079271101,
+            0.1633625091252497,
+            -0.4416972217147995,
+            0.23037126220841866,
+            -1.3382442113377149,
+            -0.1143175045906072,
+            -0.3332642926870817
+          ]
+        },
+        "api": "torch.logdet"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.7440882501234516,
+            0.11422223489226145,
+            -0.36515079271101,
+            0.1633625091252497,
+            -0.4416972217147995,
+            0.23037126220841866,
+            -1.3382442113377149,
+            -0.1143175045906072,
+            -0.3332642926870817
+          ]
+        },
+        "api": "paddle.linalg.slogdet"
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3, 3) vs PaddlePaddle (2, 3, 3)",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log-determinant (shape matches batch dimensions, i.e., for input shape [3,3,1,1], it outputs [3,1,1]), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, *batch_dims) containing (sign, logabsdet). The original test compares raw outputs directly, but they are fundamentally incompatible in structure: torch.logdet yields a single value per matrix (log det), whereas paddle.linalg.slogdet yields two values per matrix (sign and log|det|). To compare equivalent semantics, we must extract logabsdet from paddle's output and handle sign=0 (zero det) → -inf, and negative sign → NaN per PyTorch's behavior. However, the immediate shape mismatch (PyTorch output shape vs Paddle's (2,3,3,1,1)) arises because the input [3,3,1,1] is interpreted as batch of matrices with last two dims as square — but torch.logdet expects (*,n,n), so [3,3,1,1] has innermost dims [1,1], i.e., 1x1 matrices; thus torch.logdet outputs shape [3,3,1]. Meanwhile paddle.linalg.slogdet on [3,3,1,1] treats it as batch shape [3,3] and matrix shape [1,1], returning shape (2,3,3,1). The root issue is input shape misalignment for square matrix interpretation. To enable valid comparison, input must have last two dimensions equal and square, and batch dims must be consistent. Fix: reshape input to have explicit square matrix dims at the end, e.g., [3, 1, 1] → valid 1x1 matrices, yielding torch.logdet output [3] and paddle.linalg.slogdet output (2,3); then extract logabsdet and map sign=0→-inf, sign<0→NaN to match torch.logdet's return semantics."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.06579671315210965,
+            -2.268318658836668,
+            0.9487452793897582
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.06579671315210965,
+            -2.268318658836668,
+            0.9487452793897582
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3,) vs PaddlePaddle (2, 3)",
+        "torch_shape": [
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns only the log determinant scalar (or batch of scalars) with shape (3,), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, 3) containing (sign, logabsdet). They are fundamentally different return structures: logdet is a direct scalar-valued log-determinant (with -inf/NaN semantics for singular/negative-determinant cases), whereas slogdet decomposes det = sign * exp(logabsdet) and always returns both components. Therefore, they are not drop-in replacements — comparing their raw outputs is invalid. To make them comparable, we must extract logabsdet from Paddle's output (second row) and handle sign-aware cases: when sign <= 0, torch.logdet returns -inf (if sign==0) or NaN (if sign<0), but paddle.linalg.slogdet returns (-inf for zero det, finite logabsdet with sign=0/-1). Since the input shape [3,1,1] implies 3 scalar matrices [[a],[b],[c]], their determinants are just a,b,c. For correctness and comparability, we must post-process paddle's output to emulate torch.logdet: for each batch element, if sign == 0 → -inf; if sign < 0 → NaN; else → logabsdet. However, the test framework compares raw tensors, so direct comparison fails due to shape mismatch (3 vs 2x3). The correct repair is to use paddle.linalg.det + torch.log for positive determinants, but that’s not equivalent for edge cases. Per documentation and functional mismatch, the only valid repair is to align semantics: use paddle.linalg.slogdet and manually compute logdet-equivalent output — but since the test harness expects direct API output comparison, and the APIs have incompatible return signatures by design, this comparison is inherently invalid. Hence, the test case must be repaired to reflect that paddle.linalg.slogdet cannot be directly compared to torch.logdet; instead, we should extract the logabsdet part *only when sign is positive*, but the test infrastructure doesn’t support post-processing. Therefore, the minimal repair is to adjust the Paddle test case to match the *intended semantic output* — however, no Paddle API directly mirrors torch.logdet. Since paddle doesn't provide a native logdet (only slogdet), and torch doesn't provide slogdet, the two APIs are not equivalent in interface — thus the comparison failure is expected and structural, not numerical. So the correct action is to repair the Paddle test case to extract logabsdet *where valid*, but the test format only allows raw API calls. Given constraints, the only sound repair is to acknowledge the API mismatch and adjust Paddle's usage to mimic logdet behavior via conditional logic — but that’s not expressible in static test case. Therefore, per task requirement #2 and #3(3): 'if test case construction problem → repair according to doc', and doc confirms return shapes are intentionally different, the test case must be repaired to use a shape-compatible and semantically aligned setup: use a single matrix (not batch) to simplify, and manually validate equivalence logic. However, the error is shape mismatch due to fundamental design difference, not bug — so repair means adapting Paddle call to produce same-shape output as PyTorch. Since paddle.linalg.slogdet always returns (2, *batch), we cannot make it return (*batch) without post-processing, which isn't allowed in this test format. Thus, the only compliant repair is to skip direct comparison and instead use a derived Paddle expression — but the test format forbids code. Therefore, per strict interpretation: this is a functional non-equivalence (torch.logdet ≠ paddle.linalg.slogdet in return type), so the correct operation is 'repair' by replacing Paddle's API call with an equivalent computation — but no such direct API exists. Hence, official Paddle docs confirm no paddle.linalg.logdet exists; users must use slogdet + conditional logic. Since the test requires comparable outputs and no Paddle equivalent exists, the test case is invalid for direct comparison. But task says: if execution succeeds but results inconsistent due to design mismatch → 'skip' only if 'functionally not equivalent'. And docs confirm: torch.logdet returns scalar log|det| with special values for zero/neg det; paddle.linalg.slogdet returns (sign, log|det|) always. So they are functionally related but not equivalent APIs. Therefore, operation should be 'skip'. Wait — re-read task requirement #3(2): 'if you think the two cross-framework operators are not fully equivalent, choose skip'. Yes — they are not equivalent: one returns scalar logdet (with inf/NaN), the other returns structured (sign, logabsdet). So skip is appropriate. But earlier I said 'repair' — contradiction. Let's re-evaluate: the error is shape mismatch, not value mismatch. That is caused by inherent API difference, not bug. So per task: 'if you think these two cross-framework operators' functions are not fully equivalent → skip'. Yes — they serve related but distinct purposes (logdet vs slogdet). PyTorch has no slogdet; Paddle has no logdet. So they are not equivalent operators. Therefore, operation must be 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.37643753536924807,
+            -1.1433467807967574,
+            -0.13484542770556643
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.37643753536924807,
+            -1.1433467807967574,
+            -0.13484542770556643
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3,) vs PaddlePaddle (2, 3)",
+        "torch_shape": [
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log-determinant per batch element (shape [3] for input [3,1,1]), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, 3) containing (sign, logabsdet). They are fundamentally incompatible in output structure: logdet is a direct scalar-valued log|det| with sign handling via -inf/NaN semantics, whereas slogdet explicitly separates sign and log|det|. Per docs: torch.logdet returns -inf for zero det, NaN for negative det; paddle.linalg.slogdet returns (0, -inf) for zero det and never returns NaN. Thus, they are not drop-in equivalents — the correct Paddle equivalent for torch.logdet is to compute logabsdet where sign > 0, else -inf or NaN as needed. However, since no native 'logdet' exists in Paddle and slogdet is the only related API, we must post-process its output to match torch.logdet's semantics. But the test case compares raw outputs — shape mismatch (3 vs 2,3) is structural, not numerical. Therefore, the Paddle test case must be repaired to extract logabsdet *only when sign > 0*, and map sign <= 0 to -inf/NaN accordingly. However, since the test harness expects direct API output comparison and no post-processing is allowed in the test case definition, and given the APIs serve different purposes (one is scalar logdet, one is decomposed slogdet), this is a functional non-equivalence. But wait — official Paddle docs state 'slogdet' is the counterpart to NumPy's slogdet and PyTorch has *no* direct slogdet; torch.logdet is closer to a restricted version. Crucially: torch.logdet does NOT return log|det| for negative-determinant matrices — it returns NaN, making it unsafe for real-valued gradients. Paddle's slogdet is always defined and differentiable. Hence, these APIs are not semantically equivalent; comparing their raw outputs is invalid. The correct repair is to acknowledge that paddle.linalg.slogdet cannot be directly compared to torch.logdet — instead, one must emulate torch.logdet using paddle.linalg.slogdet + conditional logic. Since the test framework requires direct API output comparison and no custom logic is permitted in the test case, and the shape mismatch is inherent and intentional per design, the only sound resolution is to skip this cross-API comparison."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.6560052421179875,
+            0.19476943979842767,
+            0.42160267491686315
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            3,
+            1,
+            1
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.6560052421179875,
+            0.19476943979842767,
+            0.42160267491686315
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3,) vs PaddlePaddle (2, 3)",
+        "torch_shape": [
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.2511253230404097,
+            -0.44056878643549696,
+            -0.1834568919337465,
+            -0.6528774916272563,
+            -1.1851075990475295,
+            0.11762954513226768,
+            0.2317557285202932,
+            -1.108402186223962,
+            -0.7438295194902905,
+            -2.6538762111019643
+          ]
+        },
+        "api": "torch.logdet"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.2511253230404097,
+            -0.44056878643549696,
+            -0.1834568919337465,
+            -0.6528774916272563,
+            -1.1851075990475295,
+            0.11762954513226768,
+            0.2317557285202932,
+            -1.108402186223962,
+            -0.7438295194902905,
+            -2.6538762111019643
+          ]
+        },
+        "api": "paddle.linalg.slogdet"
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3, 3) vs PaddlePaddle (2, 3, 3)",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log-determinant per batch matrix (output shape: [3, 3]), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape [2, 3, 3] containing (sign, logabsdet). They are fundamentally incompatible in return structure: logdet computes only the log determinant (with -inf/NaN semantics for singular/negative-det matrices), whereas slogdet computes *both* sign and log|det|. To compare equivalent semantics, we must extract logabsdet from slogdet *only when determinant is positive*, but more critically — the test must align on *what is being computed*. Since torch.logdet has no sign output and returns -inf for zero det (not (0,-inf)), and NaN for negative det (while slogdet returns valid (sign, -inf) for zero det and real (±1, logabsdet) for negative det), they are not drop-in replacements. However, the core mismatch here is structural: torch.logdet output shape is (*), same as batch dims (here [3,3]), while paddle.linalg.slogdet outputs [2, *]. Therefore, to obtain comparable scalar log-determinant values (where defined), we must post-process paddle's result: use logabsdet = output[1], but only where sign > 0; however, the test framework expects direct tensor comparison. Per docs and behavior, this is a functional mismatch — torch.logdet does NOT return sign, and cannot represent negative determinants meaningfully (returns NaN), whereas paddle.linalg.slogdet always returns two well-defined components. Hence, direct comparison is invalid. The correct repair is to replace paddle.linalg.slogdet with paddle.linalg.logdet (if available) — but paddle.linalg.logdet *does exist* since PaddlePaddle 2.5+ and matches torch.logdet semantics (returns scalar logdet, -inf for zero det, NaN for negative det). Using paddle.linalg.logdet instead resolves shape and semantic mismatch."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.5358605423807435,
+            -0.951301134606244,
+            -1.1194580028154584,
+            -1.6451781739981224,
+            0.1830079168360095,
+            0.8795788639592521,
+            -1.8851427837920243,
+            0.050399724885859296,
+            -0.2473923246693007,
+            -0.05141283166100634
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.logdet",
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.5358605423807435,
+            -0.951301134606244,
+            -1.1194580028154584,
+            -1.6451781739981224,
+            0.1830079168360095,
+            0.8795788639592521,
+            -1.8851427837920243,
+            0.050399724885859296,
+            -0.2473923246693007,
+            -0.05141283166100634
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3, 3) vs PaddlePaddle (2, 3, 3)",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log-determinant per batch matrix (shape (*,)), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape (2, *), containing (sign, logabsdet). The original Paddle test case incorrectly uses 'paddle.linalg.logdet' which does not exist — the correct API is 'paddle.linalg.slogdet'. Moreover, the output shapes are inherently incompatible: torch.logdet([3,3,5,5]) → [3,3], but paddle.linalg.slogdet([3,3,5,5]) → [2,3,3]. To compare meaningfully, we must extract logabsdet from Paddle's output (second element along axis 0) and handle zero/negative determinant cases consistently. However, since torch.logdet returns -inf for zero det and NaN for negative det, while paddle.linalg.slogdet returns (0, -inf) for zero det and (sign, logabsdet) for nonzero (including negative), direct numerical comparison requires aligning semantics: only logabsdet component should be compared where determinant is nonzero and positive; but the fundamental API mismatch (scalar logdet vs split sign+logabsdet) makes pointwise equality impossible. Per documentation, these APIs are *not functionally equivalent*: torch.logdet computes log(det), undefined for non-positive det; paddle.linalg.slogdet always returns defined (sign, log|det|). Thus, they serve different purposes and cannot be directly compared — the test case is invalid due to conceptual incompatibility, not bug. But the error shows 'compared' with shape mismatch, not crash, so repair must fix API name and align intent: use paddle.linalg.slogdet correctly and extract comparable component (logabsdet) only when det > 0; however, test framework expects same-shape outputs. Since no Paddle equivalent returns pure logdet (with -inf/NaN semantics), and torch has no slogdet, the APIs are not drop-in replacements. Therefore, the correct action is to skip this cross-framework comparison as the operators are semantically divergent."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.16331058109923988,
+            -0.3909891204272329,
+            0.8773855007684548,
+            1.4766712714220722,
+            1.7259867918644587,
+            -0.30498759819515925,
+            0.42777295452595065,
+            1.474225708574947,
+            -0.17003048308899774,
+            -0.8783595955789094
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.16331058109923988,
+            -0.3909891204272329,
+            0.8773855007684548,
+            1.4766712714220722,
+            1.7259867918644587,
+            -0.30498759819515925,
+            0.42777295452595065,
+            1.474225708574947,
+            -0.17003048308899774,
+            -0.8783595955789094
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3, 3) vs PaddlePaddle (2, 3, 3)",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.logdet returns a scalar log-determinant per batch matrix (output shape same as batch dims, i.e., [3, 3] for input [3, 3, 5, 5]), while Paddle's paddle.linalg.slogdet returns a tuple-like tensor of shape [2, 3, 3] containing (sign, logabsdet). They are fundamentally incompatible in output structure: logdet is a single value (log|det| with implicit sign handling via -inf/NaN), whereas slogdet explicitly returns both sign and log|det|. Per docs: torch.logdet returns -inf for zero det and NaN for negative det; paddle.linalg.slogdet returns (0, -inf) for zero det and (sign, logabsdet) otherwise — but crucially, it *always* returns two components. Thus, direct comparison is invalid. To align semantics, we must extract logabsdet from paddle's output (second element along dim 0) and compare only that part, but the test framework expects same-shape outputs. Since the APIs are not drop-in replacements (different return arity and semantics), the correct fix is to use paddle.linalg.det + torch.log for equivalence — however, that's numerically unstable. Instead, per best practice and doc alignment, we should skip direct comparison and acknowledge functional non-equivalence: torch.logdet computes log(det(A)) with domain-aware special values (-inf/NaN), while paddle.linalg.slogdet computes stable (sign, log|det|) — they serve different purposes. But the error shows shape mismatch due to API design difference, not bug. Hence, repair is impossible without changing assertion logic; therefore, operation must be 'skip' — however, wait: the task says 'if functionally not equivalent → skip'. And indeed: torch.logdet ≠ paddle.linalg.slogdet — they return different things (one scalar per matrix, one 2-tuple per matrix). So comparing their raw outputs is invalid. Thus, skip is correct."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.logdet",
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.13053717645935836,
+            -0.5356654143146479,
+            -1.4887910633554098,
+            -0.8122008239018469,
+            1.617445964537301,
+            0.6407130520644325,
+            1.6951215206655657,
+            -1.5977546438710224,
+            -0.18851524903215425,
+            0.8186921348506802
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.slogdet",
+        "input": {
+          "shape": [
+            3,
+            3,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.13053717645935836,
+            -0.5356654143146479,
+            -1.4887910633554098,
+            -0.8122008239018469,
+            1.617445964537301,
+            0.6407130520644325,
+            1.6951215206655657,
+            -1.5977546438710224,
+            -0.18851524903215425,
+            0.8186921348506802
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.logdet",
+        "paddle_api": "paddle.linalg.slogdet",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3, 3) vs PaddlePaddle (2, 3, 3)",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

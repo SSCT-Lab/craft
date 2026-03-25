@@ -1,0 +1,447 @@
+{
+  "operator": "torch_nn_ReLU6",
+  "torch_api": "torch.nn.ReLU6",
+  "tensorflow_api": "tf.keras.layers.ReLU",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T13:51:56.302359",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_ReLU6_20260123_195206.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.ReLU6",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9166333675384521,
+            -0.25499770045280457,
+            1.2875933647155762,
+            0.6666958332061768,
+            1.2361711263656616,
+            0.7352175712585449
+          ]
+        },
+        "inplace": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.keras.layers.ReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9166333675384521,
+            -0.25499770045280457,
+            1.2875933647155762,
+            0.6666958332061768,
+            1.2361711263656616,
+            0.7352175712585449
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "ReLU6和ReLU在边界值（如inf/nan/-0.0）处的处理可能因框架底层实现差异（如NaN propagation规则、浮点异常处理）产生不一致，暴露潜在bug。",
+          "torch_test_case": {
+            "api": "torch.nn.ReLU6",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.9166333675384521,
+                -0.25499770045280457,
+                1.2875933647155762,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "inplace": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.keras.layers.ReLU",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.9166333675384521,
+                -0.25499770045280457,
+                1.2875933647155762,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "Inf 位置不一致",
+            "torch_shape": [
+              2,
+              3
+            ],
+            "tensorflow_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用空张量（shape=[0, 3]）和含NaN/inf的边界值",
+          "mutation_reason": "空张量易触发框架底层内存访问逻辑差异；NaN/inf在ReLU6（clamp[0,6]）与ReLU（无上界）本不等价，但此处仅测试ReLU6 vs ReLU——二者在数学上不等价！故必须修正：ReLU6 ≠ ReLU。因此本变异严格限定输入全在[0,6]内，并加入-0.0、1e-38等亚正常数，暴露浮点处理差异。",
+          "torch_test_case": {
+            "api": "torch.nn.ReLU6",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "inplace": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.keras.layers.ReLU",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              3
+            ],
+            "tensorflow_shape": [
+              0,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16数据类型及边界特殊值",
+          "mutation_reason": "ReLU6和ReLU在低精度下对inf/nan/-0.0的处理可能存在实现差异，float16更易暴露舍入、溢出或特殊值传播bug",
+          "torch_test_case": {
+            "api": "torch.nn.ReLU6",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.9166333675384521,
+                -0.25499770045280457,
+                1.2875933647155762,
+                0.6666958332061768,
+                1.2361711263656616,
+                0.7352175712585449
+              ]
+            },
+            "inplace": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.keras.layers.ReLU",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.9166333675384521,
+                -0.25499770045280457,
+                1.2875933647155762,
+                0.6666958332061768,
+                1.2361711263656616,
+                0.7352175712585449
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3
+            ],
+            "tensorflow_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_ReLU6_20260123_195206.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.ReLU6",
+        "input": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0875306129455566,
+            -0.7309964299201965,
+            1.9405550956726074,
+            0.6627233624458313
+          ]
+        },
+        "inplace": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.keras.layers.ReLU",
+        "input": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0875306129455566,
+            -0.7309964299201965,
+            1.9405550956726074,
+            0.6627233624458313
+          ]
+        },
+        "max_value": 6.0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "ReLU6和ReLU(max_value=6)在数学上均应将输入裁剪到[0,6]，但对NaN/inf/-inf的传播行为、负零处理及浮点边界可能有实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.ReLU6",
+            "input": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                6.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.0
+              ]
+            },
+            "inplace": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.keras.layers.ReLU",
+            "input": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                6.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.0
+              ]
+            },
+            "max_value": 6.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "Inf 位置不一致",
+            "torch_shape": [
+              1,
+              4
+            ],
+            "tensorflow_shape": [
+              1,
+              4
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）",
+          "mutation_reason": "标量是张量的退化情形，易暴露框架对零维张量的ReLU6/ReLU(max_value=6)实现差异，如广播、inplace语义或边界检查bug。",
+          "torch_test_case": {
+            "api": "torch.nn.ReLU6",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0875306129455566
+              ]
+            },
+            "inplace": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.keras.layers.ReLU",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0875306129455566
+              ]
+            },
+            "max_value": 6.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将输入 dtype 变异为 float16，并在 sample_values 中加入边界特殊值",
+          "mutation_reason": "float16 精度较低，易暴露框架对 inf/nan/-0.0 的处理差异；ReLU6 和 ReLU(max_value=6) 数学等价，但低精度下舍入和边界行为可能不一致",
+          "torch_test_case": {
+            "api": "torch.nn.ReLU6",
+            "input": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0875306129455566,
+                -0.7309964299201965,
+                "inf",
+                "nan"
+              ]
+            },
+            "inplace": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.keras.layers.ReLU",
+            "input": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0875306129455566,
+                -0.7309964299201965,
+                "inf",
+                "nan"
+              ]
+            },
+            "max_value": 6.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "Inf 位置不一致",
+            "torch_shape": [
+              1,
+              4
+            ],
+            "tensorflow_shape": [
+              1,
+              4
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+来源文件: llm_enhanced_torch_bitwise_and_20251215_231604.json
+样例编号: 3
+tensorflow_error 错误信息: {{function_node __wrapped__BitwiseAnd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Incompatible shapes: [0,3,1] vs. [2,1,4] [Op:BitwiseAnd] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bitwise_and",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      1,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      2,
+      9,
+      7,
+      7,
+      7,
+      -9,
+      -7,
+      8
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.bitwise.bitwise_and",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      1,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      2,
+      9,
+      7,
+      7,
+      7,
+      -9,
+      -7,
+      8
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.bitwise.bitwise_and` 在执行时要求输入张量的 shape 可以广播（broadcastable），但本例中输入 shape 为 `[0,3,1]` 和 `[2,1,4]`，其中第一个维度分别为 0 和 2，无法进行有效广播；且 `0` 维度在 TensorFlow 中表示空张量，而 `tf.bitwise.bitwise_and` 对于包含 0 的 shape 无明确支持，导致形状不兼容错误。
+   - 虽然 PyTorch 的 `torch.bitwise_and` 在某些情况下可处理含 0 的 shape（如 `torch.empty(0,3,1)`），但 TensorFlow 严格要求所有维度必须满足广播规则，而 `[0,3,1]` 与 `[2,1,4]` 在第一维上无法广播（0 和 2 不能匹配），因此触发“Incompatible shapes”错误。
+
+3. 修复建议：
+   - 该问题反映 TensorFlow 在处理含 0 维度的张量时的广播逻辑与 PyTorch 存在不一致，建议提交 issue 至 TensorFlow 官方仓库，指出 `bitwise_and` 在零维度张量上的广播行为与 PyTorch 不一致。

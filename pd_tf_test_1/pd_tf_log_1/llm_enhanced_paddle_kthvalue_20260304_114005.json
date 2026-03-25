@@ -1,0 +1,1106 @@
+{
+  "pd_api": "paddle.kthvalue",
+  "tensorflow_api": "tf.math.top_k",
+  "timestamp": "2026-03-04T11:40:05.201789",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 14,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 5,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 5,
+        "axis": -1,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.math.top_k does not accept 'axis' parameter; it only operates on the last dimension (axis=-1) by design. To align semantics, remove 'axis' from TF test case since paddle.kthvalue with axis=-1 matches tf.math.top_k's fixed behavior. Also ensure input dtype is supported: tf.math.top_k supports float32/float64/int32/int64, so float64 is valid."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 2, 4) vs TF=(2, 2, 1, 2, 4, 5)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest along axis, while tf.math.top_k finds k largest along last dimension only; to align semantics, TF must use negative k via tf.math.top_k with sorted=True and then invert order, but more directly: for k-th smallest, use tf.math.top_k on negated input or adjust axis handling. However, tf.math.top_k has no 'axis' param — it only operates on last dim. So for axis=-1, it's compatible, but output shape mismatch (PD=(2,2,1,2,4) vs TF=(2,2,1,2,4,5)) indicates TF test case incorrectly expects 6D output — top_k on 5D input with k=5 returns same rank with last dim replaced by k, i.e., (2,1,2,4,5), not (2,2,1,2,4,5). The TF shape in error suggests wrong input shape usage or broadcasting artifact; repair by ensuring TF input matches Paddle's shape and removing spurious dims. Also, TF top_k returns largest, so for kth smallest we need to negate input or use tf.nn.top_k with manual inversion — but per doc, top_k is largest-only; thus to match kthvalue (smallest), we must simulate via negation. However, the shape mismatch is primary: TF output should be (2,1,2,4,5), not (2,2,1,2,4,5). So repair TF test case to use correct input shape and apply negation for semantic equivalence."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 5,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 2, 4, 1) vs TF=(2, 2, 1, 2, 4, 5)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest, tf.math.top_k finds k-th largest; to align semantics, we need k' = x.shape[axis] - k + 1 for smallest. Also, tf.math.top_k only supports last dimension by default, but paddle allows arbitrary axis; here axis=-1 matches, so we keep axis=-1 but must invert k logic. Shape mismatch (PD: ...1 vs TF: ...5) arises because paddle returns k-th value (scalar per slice), while tf.top_k returns top-k values — they are fundamentally different outputs. To compare k-th smallest, we must use tf.nn.top_k with k=1 on sorted tensor or use tf.sort + tf.gather, but per doc constraint, we repair by using tf.sort + tf.gather_nd to emulate kthvalue behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "direction": "ASCENDING",
+        "axis": -1,
+        "api": "tf.sort"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.sort",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 2, 4, 1) vs TF=(2, 1, 2, 4, 10)",
+        "pd_shape": null,
+        "tensorflow_shape": [
+          2,
+          1,
+          2,
+          4,
+          10
+        ],
+        "pd_dtype": null,
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 2,
+        "axis": 1,
+        "keepdim": true,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 2,
+        "axis": 1,
+        "keepdim": true,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'keepdim'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k does not have 'keepdim' parameter; equivalent behavior is achieved via 'sorted=True' and post-processing with tf.expand_dims if needed, but the correct alignment requires removing 'keepdim' and using axis=-1 (since top_k only supports last dimension), while kthvalue supports arbitrary axis. To make semantics equivalent, we must move k-th smallest logic to last dimension and drop keepdim."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "k": 2,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 2,
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 1, 3, 2, 4, 1) vs TF=(2, 1, 3, 2, 4, 2)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest, tf.math.top_k finds k-th largest; to align semantics, TF must compute (n-k+1)-th smallest via top_k on negated input. Also, axis mismatch: paddle supports arbitrary axis, TF only supports last dim; so input must be reshaped to move target axis to end, then restore. Shape mismatch in output arises because TF outputs k elements per last dim, while paddle with keepdim=True and axis=-1 matches, but original TF test used default axis=-1 correctly — the error shows TF output has last dim size 2 (correct), but PD output has last dim size 1 — indicating k=2 was misinterpreted as k-th *smallest* vs TF's *largest*. Fix: use negative input for TF to simulate smallest, and ensure axis alignment."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "k": 2,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 2,
+        "negate_input_for_kth_smallest": true,
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'negate_input_for_kth_smallest'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.math.top_k does not support 'negate_input_for_kth_smallest' parameter — it's not in official API. To emulate k-th smallest, we must manually negate input before top_k and negate output values. Also, axis must be aligned: paddle.kthvalue(axis=-1) corresponds to tf.math.top_k operating on last dim (default behavior), but 'axis' param doesn't exist in top_k — it always acts on last dim. So remove invalid param and adjust input/output logic."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "k": 2,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 2,
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 1, 3, 2, 4, 1) vs TF=(2, 1, 3, 2, 4, 2)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "k": 5,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "k": 5,
+        "axis": -1,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `kthvalue` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.kthvalue does not support float16, only float32/float64/int32/int64; TensorFlow tf.math.top_k has no 'axis' parameter — it only operates on the last dimension (axis=-1 implied), and 'axis' is invalid. Both errors must be fixed: change dtype to float32 for Paddle, and remove 'axis' for TF since it's unsupported."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 2, 4) vs TF=(2, 2, 1, 2, 4, 5)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue returns k-th smallest values along axis, while tf.math.top_k returns k-th largest; to align semantics, TensorFlow must compute (n-k+1)-th smallest via top_k on negated input or use tf.nn.top_k with adjusted logic. Also, tf.math.top_k always operates on last axis by default but paddle supports arbitrary axis; here axis=-1 matches, but output shape mismatch indicates missing axis handling in TF case — TF requires explicit axis reduction or transpose to match Paddle's behavior on non-last axis. However, since axis=-1 is last dimension, the shape mismatch (PD=(2,2,1,2,4) vs TF=(2,2,1,2,4,5)) reveals TF top_k preserves all leading dims and appends k-dim, whereas paddle.kthvalue squeezes the axis dim when keepdim=False (default). To fix: add keepdim=True in Paddle and ensure TF output is sliced/reshaped to match, but per doc, paddle's default keepdim=False → output rank = input_rank-1, while TF's top_k always outputs same leading dims + k-dim → rank = input_rank. So for shape [2,1,2,4,10], axis=-1, k=5: Paddle (keepdim=False) → [2,1,2,4], TF → [2,1,2,4,5]. To align, we must set keepdim=True in Paddle to get [2,1,2,4,1], then expand or broadcast? No — better: TF has no direct 'kth smallest' — so repair by using tf.math.top_k on negative input to simulate kth smallest, and adjust k to n-k+1 only if needed, but here k=5 on size=10 → 5th smallest = (10-5+1)=6th largest → use k=6 on -x. However, error says shapes differ in final dim: PD=(2,2,1,2,4) suggests axis was misinterpreted — likely axis=-1 on [2,1,2,4,10] should yield output shape [2,1,2,4] for values/indices when keepdim=False, but reported PD shape (2,2,1,2,4) implies axis was -2 or misaligned. Given inconsistency stems from axis interpretation and lack of kth-smallest support in TF, safest repair is to use axis=-1, keepdim=True in Paddle ([2,1,2,4,1]) and in TF use tf.math.top_k with k=5 on -x and then negate values, and reshape indices to match — but TF indices will be same shape [2,1,2,4,5]. So to make shapes comparable, we must enforce keepdim=True in Paddle and accept TF's [*,5] shape, then compare only the k=5 slice — but task requires shape alignment. Therefore, correct repair: set keepdim=True in Paddle to get [2,1,2,4,1], and in TF use tf.math.top_k on -x with k=5 → values shape [2,1,2,4,5], then take mean/min over last dim? No — not equivalent. Actually, the fundamental issue is semantic: paddle.kthvalue(x,k,axis) gives single value per slice; tf.math.top_k gives k values per slice. So they are not direct equivalents unless k=1. Since k=5 > 1, and user expects 'kth value' (scalar per slice), but TF returns top-k list. Therefore, the test case is invalid: comparing kthvalue (single index) to top_k (k indices) is malformed. Repair: change k=1 to make both return one value per slice, ensuring shape compatibility and semantic equivalence."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "k": 1,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "k": 1,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 8.00000000",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest, tf.math.top_k finds k-th largest; to align semantics, TensorFlow must compute (n-k+1)-th smallest via top_k on negated input or use kthvalue equivalent. Since no direct k-th smallest in TF, we negate input and take top_k, then negate values back. Also, axis=-1 is default in top_k but must match kthvalue's axis=-1 behavior; keepdim=true requires manual reshaping in TF as top_k always keeps last dim."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "k": 1,
+        "x": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 1,
+        "input": {
+          "shape": [
+            2,
+            1,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 8.00000000",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "k": 2,
+        "axis": 1,
+        "keepdim": true,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "k": 2,
+        "axis": 1,
+        "keepdim": true,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `kthvalue` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'keepdim'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持float16输入，需改为float32；TensorFlow的tf.math.top_k无keepdim参数，对应功能由sorted=True和axis指定，且不支持axis=1（仅支持last dim），需将axis归一化为-1并调整输入shape使目标 dim 为最后维；k必须<=该维大小。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "k": 2,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 2,
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 1, 3, 2, 4, 1) vs TF=(2, 1, 3, 2, 4, 2)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest, tf.math.top_k finds k-th largest; to align semantics, we need k' = x.shape[axis] - k + 1 for smallest. Also, tf.math.top_k always operates on last axis (axis=-1), while paddle supports arbitrary axis — but here axis=-1 is used, so shape mismatch arises because top_k returns k values per last-dim slice (output shape ends with k), whereas kthvalue with keepdim=True preserves axis with size 1. To match output shapes: for kthvalue, k=2 on axis=-1 of shape [...,10] gives output shape [...,1], but top_k gives [...,2]. So we must set k=1 in TF to match kthvalue's '2nd smallest' vs '1st largest' is not equivalent — correct alignment requires using tf.nn.top_k with k=2 but interpreting as largest, then manually computing smallest via negation or reordering. However, simplest functional equivalence is: paddle.kthvalue(x, k, axis=-1, keepdim=True) ≡ tf.math.top_k(-x, k, sorted=True) then negate values. But output shape mismatch (PD=(...,1) vs TF=(...,2)) reveals fundamental semantic misalignment in the original test: keepdim=True + k=2 should yield shape [...,2] in Paddle too — but docs and behavior confirm kthvalue *always* returns scalar per k-slice, i.e., shape reduces to [...,k] only if axis is specified and keepdim=False? Wait — no: official example shows kthvalue(x,2,1) on (2,3,2) → (2,2), i.e., keeps dim count but reduces axis size to 1 (not k). Actually, kthvalue returns *one value per k-th position*, not k values — it's the k-th smallest, singular. So k is a rank index, not number of top elements. Whereas top_k returns top-k values. They are fundamentally different: kthvalue is 'k-th order statistic', top_k is 'top-k selection'. Thus they are not functionally equivalent APIs — skip is required."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "k": 2,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 2,
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 1, 3, 2, 4, 1) vs TF=(2, 1, 3, 2, 4, 2)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest, tf.math.top_k finds k-th largest; to align semantics, we need k-th smallest in TF via (n-k+1)-th largest. Also, TF top_k always operates on last axis, while paddle supports arbitrary axis; here axis=-1 matches, but output shape mismatch arises because paddle with keepdim=True preserves axis dim (size 1), while TF's top_k outputs size k on last dim. To fix: use k=2 for smallest → TF needs n-k+1 = 10-2+1 = 9-th largest, and ensure both produce same shape: paddle (1,3,2,4,1) vs TF (1,3,2,4,9) — still mismatch. Correct alignment is to compute k-th smallest via TF by negating input and using top_k, so values match. Thus repair: TF input = -x, k=2, then negate values back; but test case only defines shape/dtype, not data. So instead, adjust TF to simulate kth smallest by using k=2 on negated input — but test harness requires static shape/dtype only. Therefore, the fundamental issue is semantic misalignment: paddle.kthvalue(x,k,axis=-1,keepdim=True) → shape (1,3,2,4,1), while tf.math.top_k(input,x,k=2) → shape (1,3,2,4,2). To make shapes match, TF must output only 1 value per slice, i.e., k=1. But original k=2 is required. Hence, the only valid repair is to set k=2 in paddle and use k=2 in TF *but interpret as largest*, then manually invert logic — however, test case comparison expects same k meaning. Since docs confirm paddle=k-th smallest, TF=top-k largest, they are inverse operations. So to compare same k-th smallest, TF must use k=2 on -x and negate values. But test case doesn't support preprocessing. Therefore, repair is to change TF k to match smallest: use k=2 on -input, and accept that raw TF output shape is (...,2), while paddle is (...,1) — no, wait: original error says PD=(2,1,3,2,4,1) vs TF=(2,1,3,2,4,2). That suggests batch dim was added — likely test injected batch. But given shape [1,3,2,4,10], axis=-1, keepdim=True → output shape should be [1,3,2,4,1]. TF top_k with k=2 → [1,3,2,4,2]. So shape mismatch is inherent due to different semantics: one returns single k-th element (scalar per slice), other returns top-k elements. Thus they are not directly comparable for same k. Therefore, correct repair is to set paddle k=2 (k-th smallest) and TF k=2 (top-2 largest) → but outputs are different concepts. To get k-th smallest in TF, we need the 2nd smallest = the (10-2+1)=9th largest → so TF k=9. Then TF shape becomes [1,3,2,4,9], still mismatch. Only way to get shape [...,1] in TF is k=1. So the test case is invalid for direct comparison. Per task requirement: when operators are functionally not equivalent (one returns k-th element, other returns top-k elements), operation = skip. But wait — paddle.kthvalue *does* return a single value per slice (the k-th smallest), while tf.math.top_k returns k values per slice. So they are fundamentally incompatible for same k unless k=1. Therefore, the frameworks implement different operations: kthvalue ≠ top_k. Hence, skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "k": 2,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "sorted": true,
+        "k": 2,
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            4,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 1, 3, 2, 4, 1) vs TF=(2, 1, 3, 2, 4, 2)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            1,
+            0,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 5,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            1,
+            0,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "k": 5,
+        "axis": -1,
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k does not accept 'axis' parameter; it only operates on the last dimension. To align semantics with paddle.kthvalue(axis=-1), we must reshape input to move target axis to last position before top_k, then revert indices. But for minimal repair, remove 'axis' and ensure input shape makes last dim valid (non-zero). Original shape [2,1,0,4,10] has size-0 dim, causing undefined behavior; fix by replacing 0 with 1 to make tensor valid."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            1,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            1,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 1, 4) vs TF=(2, 2, 1, 1, 4, 5)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k always operates on the last dimension (axis=-1) and does not support explicit axis parameter; Paddle's paddle.kthvalue with axis=-1 is correct, but TF output shape is [2,1,1,4,5] while PD outputs [2,1,1,4,5] for values and indices — the reported shape mismatch (PD=(2,2,1,1,4) vs TF=(2,2,1,1,4,5)) suggests incorrect axis handling or test harness bug. To ensure semantic equivalence, we must remove 'axis' from TF case (not supported) and confirm both operate on last dim; also, TF returns values/indices of shape input_shape[:-1] + [k], so for input [2,1,1,4,10], output must be [2,1,1,4,5]. The original TF test case lacks axis specification (correct), but the reported shape error implies the test runner incorrectly reshaped or misinterpreted outputs. Repair: keep axis=-1 in Paddle, omit axis in TF (as required), and ensure k=5 matches last-dim reduction."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            1,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": true,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            1,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 1, 4, 1) vs TF=(2, 2, 1, 1, 4, 5)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.kthvalue finds k-th smallest, tf.math.top_k finds k-th largest; they are inverse operations. To align semantics, TensorFlow must compute (n-k+1)-th smallest via top_k on negated input or use tf.math.top_k with k and then invert logic. But shape mismatch (PD=(2,2,1,1,4,1) vs TF=(2,2,1,1,4,5)) indicates axis handling differs: paddle.kthvalue with axis=-1 + keepdim=True outputs same rank with size-1 dim, while tf.math.top_k always reduces last dim to k and keeps rank — so TF output shape is [2,1,1,4,5], but paddle's is [2,1,1,4,1] due to k=5 on dim=10 with keepdim=True. To fix: remove keepdim in paddle or add equivalent dimension expansion in TF; but per doc, tf.math.top_k has no keepdims — so paddle must set keepdim=False to match TF's default squeezing behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            1,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "keepdim": false,
+        "axis": -1,
+        "api": "paddle.kthvalue"
+      },
+      "tensorflow_test_case": {
+        "k": 5,
+        "x": {
+          "shape": [
+            2,
+            1,
+            1,
+            4,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.math.top_k"
+      },
+      "execution_result": {
+        "pd_api": "paddle.kthvalue",
+        "tensorflow_api": "tf.math.top_k",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 2, 1, 1, 4) vs TF=(2, 2, 1, 1, 4, 5)",
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

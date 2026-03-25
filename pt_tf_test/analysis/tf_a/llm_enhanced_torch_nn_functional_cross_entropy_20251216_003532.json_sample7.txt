@@ -1,0 +1,100 @@
+来源文件: llm_enhanced_torch_nn_functional_cross_entropy_20251216_003532.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__SparseSoftmaxCrossEntropyWithLogits_device_/job:localhost/replica:0/task:0/device:CPU:0}} Received a label value of -10 which is outside the valid range of [0, 10).  Label values: 7 6 -8 2 -9 -2 -6 3 4 8 0 -2 1 5 -9 8 -4 2 3 0 5 -7 4 0 -8 3 -9 8 -6 -2 8 -8 8 0 -5 -8 6 4 -2 -6 -4 5 6 6 9 4 -2 6 6 -7 -10 2 -8 7 -1 2 -9 7 6 9 8 9 -8 -4 0 -1 3 -1 -3 1 -3 8 4 0 -6 9 -3 -3 5 -5 -8 -6 1 9 6 -3 9 -9 -2 -8 -1 0 1 -3 5 6 7 -5 7 1 -1 -5 2 -3 -4 0 8 -5 7 -1 -8 -2 4 2 8 4 6 6 6 -9 7 -6 -9 -9 -2 -5 -1 6 [Op:SparseSoftmaxCrossEntropyWithLogits] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.cross_entropy",
+  "input": {
+    "shape": [
+      128,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.6197406053543091,
+      0.30256834626197815,
+      -0.6350473165512085,
+      2.84942626953125,
+      0.22404254972934723,
+      -0.7306361794471741,
+      2.3433480262756348,
+      -0.5875567197799683,
+      0.6620488166809082,
+      -0.324149489402771
+    ]
+  },
+  "target": {
+    "shape": [
+      128
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -9,
+      8,
+      -3,
+      3,
+      3,
+      1,
+      -2,
+      -10,
+      -7,
+      -10
+    ]
+  },
+  "weight": null,
+  "ignore_index": -100,
+  "reduction": "sum"
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.sparse_softmax_cross_entropy_with_logits",
+  "logits": {
+    "shape": [
+      128,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.43479952216148376,
+      0.35366174578666687,
+      1.131703495979309,
+      -0.9626497626304626,
+      -0.8138042688369751,
+      0.6143796443939209,
+      -1.0071463584899902,
+      1.0277501344680786,
+      -0.5966697931289673,
+      0.046066515147686005
+    ]
+  },
+  "labels": {
+    "shape": [
+      128
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      6,
+      -8,
+      2,
+      -9,
+      -2,
+      -6,
+      3,
+      4,
+      8
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.sparse_softmax_cross_entropy_with_logits` 要求标签值（labels）必须在范围 [0, num_classes) 内，而错误信息显示存在多个非法标签值如 `-10`, `-9`, `-8`, `-7` 等，均小于 0，超出有效范围。
+   - 尽管 PyTorch 的 `torch.nn.functional.cross_entropy` 支持通过 `ignore_index` 参数忽略特定值（如 -100），但 TensorFlow 该 API 并无等效的“忽略索引”机制；它直接要求标签为合法类别索引，任何越界值都会触发运行时错误。
+
+3. 修复建议：
+   - 此为框架设计层面的行为差异，非映射或参数问题，值得提交 issue 至 TensorFlow 官方以建议增强对无效标签的容错处理（如支持类似 ignore_index 的功能）。

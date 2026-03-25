@@ -1,0 +1,663 @@
+{
+  "operator": "torch.max",
+  "timestamp": "2026-01-23T18:05:53.863959",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 4,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4875846207141876,
+            1.4068560600280762,
+            -0.2786979377269745
+          ]
+        },
+        "api": "torch.max"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            3,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4875846207141876,
+            1.4068560600280762,
+            -0.2786979377269745
+          ]
+        },
+        "api": "tf.reduce_max"
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": [],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明基础功能等价；为提升测试覆盖率和发现潜在边界问题，需对输入进行变异：将原2D张量[3,1]扩展为高维张量[2,3,1,4]，并引入int64 dtype以验证跨类型一致性，同时覆盖tf.reduce_max和torch.max对多维输入的默认行为（全局max）"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            2,
+            3,
+            1,
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -1,
+            6,
+            9,
+            -7,
+            -7,
+            1,
+            5,
+            8,
+            -2,
+            0
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            2,
+            3,
+            1,
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -1,
+            6,
+            9,
+            -7,
+            -7,
+            1,
+            5,
+            8,
+            -2,
+            0
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": [],
+        "torch_dtype": "torch.int64",
+        "tensorflow_dtype": "<dtype: 'int64'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和TensorFlow中执行成功且结果一致，说明当前输入下两个API行为等价。为了提高测试覆盖率并探索潜在边界情况，应对测试用例进行变异。考虑tf.reduce_max和torch.max都支持全局最大值计算，但可能存在对空张量、降维处理或极端形状的差异，因此将输入张量变更为包含0维度的极端情况（如形状为[2, 0, 4]）以测试空reduce行为，并尝试高维稀疏场景。此外，增加数据类型覆盖，使用float32替代int64。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            2,
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            2,
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": false,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": "max(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.",
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": [],
+        "torch_dtype": null,
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: max(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.max requires explicit 'dim' argument when input tensor has zero elements (numel() == 0), as stated in the error: 'Expected reduction dim to be specified for input.numel() == 0'. In contrast, tf.reduce_max handles empty tensors without requiring axis specification. To make PyTorch behavior compatible, we must specify a valid reduction dimension. Since the input shape is [2, 0, 4], any dimension (0, 1, or 2) is technically valid, but dim=1 (the zero-sized dimension) is most semantically aligned with reducing over the empty dimension — however, PyTorch allows dim=0 or dim=2 too. Per doc, torch.max supports 'dim' and 'keepdim' kwargs; we add 'dim=0' to satisfy the requirement. TensorFlow's tf.reduce_max also accepts 'axis' parameter, so we add 'axis=0' for consistency and equivalence."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            2,
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dim": 0
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            2,
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "max() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, Tensor out = None)\n * (Tensor input, Tensor other, *, Tensor out = None)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n",
+        "tensorflow_error": "Got an unexpected keyword argument 'kwargs'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: max() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, Tensor out = None)\n * (Tensor input, Tensor other, *, Tensor out = None)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 88, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'kwargs'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.258617103099823,
+            0.3814997971057892
+          ]
+        },
+        "api": "torch.max"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.258617103099823,
+            0.3814997971057892
+          ]
+        },
+        "api": "tf.reduce_max"
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": [],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始测试用例仅覆盖最基础的2D float32张量场景，未覆盖边界情况和参数变体；根据任务要求需进行fuzzing以提升测试强度，包括：1) 添加空维度（scalar/0D tensor）验证标量最大值行为；2) 使用int64 dtype验证整数类型一致性；3) 引入含零维的shape=[0, 2]测试空张量边界；4) 增加高维case（5D）验证多轴约简鲁棒性；5) 补充bool dtype验证类型支持差异。此处选择最具代表性的变异：将shape改为[0, 2]（空batch）以检验两框架对空张量的max/reduce_max处理是否一致且符合文档定义。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            0,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            0,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": false,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": "max(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.",
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": [],
+        "torch_dtype": null,
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: max(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.max requires explicit 'dim' argument when input tensor has zero elements (numel() == 0), as stated in the error: 'Expected reduction dim to be specified for input.numel() == 0'. In contrast, tf.reduce_max handles empty tensors without requiring axis specification and returns -inf for float dtypes by default. To make PyTorch behavior compatible, we must specify 'dim' (and optionally 'keepdim') to match TensorFlow's scalar reduction semantics. However, note that torch.max with dim returns both values and indices, while tf.reduce_max returns only the reduced value. Since the original test expects scalar max (no dim), but PyTorch fails on empty tensor without dim, the correct repair is to add 'dim=0' (or another valid dim) and extract .values, or use torch.amax (which matches tf.reduce_max semantics). But per API constraint, we must use torch.max — so we fix by specifying dim and adjusting output extraction logic implicitly via test harness; thus the test case must provide dim. Also, torch.max with dim=0 on shape [0,2] is valid and returns tensor of shape [2] (max along dim 0), but that doesn't match tf.reduce_max's default (reduce all dims → scalar). Therefore, to get scalar output like tf.reduce_max, we need dim=None equivalent — but torch.max doesn't accept dim=None; instead, it requires dim to be int for reduction. The only way to get scalar from torch.max on empty tensor is to use dim with keepdim=False and then squeeze, but torch.max(input, dim) on empty tensor with dim=0 yields size [2], not scalar. Actually, the minimal fix is to use torch.max with dim=0 and keepdim=False, but that gives shape [2], whereas tf.reduce_max with no axis gives scalar (-inf). So true semantic equivalence for scalar reduction on empty tensor requires torch.amax (introduced in 1.7+), but the API is torch.max. Given torch.max's documented behavior and error, the correct repair is to specify dim=0 and accept non-scalar output — however, the original intent was likely 'global max', which fails. Hence, per documentation and error, the only valid repair is to add 'dim' parameter to torch.max call. Since the TF version has no axis arg, to preserve functional equivalence *for non-empty cases*, but here tensor is empty, the robust repair is to use dim=0 and keepdim=False, matching reduction along first dimension — but that changes output shape. Alternatively, the official workaround is to handle empty tensors separately, but test case must be self-contained. Therefore, the minimal compliant repair is to add 'dim=0' to PyTorch test case, and for TF, add 'axis=0' to match — ensuring both reduce along same dimension. This makes behavior comparable and avoids the numel==0 error."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            0,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 0
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            0,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": false,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": "max(): Expected reduction dim 0 to have non-zero size.",
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": [
+          2
+        ],
+        "torch_dtype": null,
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nIndexError: max(): Expected reduction dim 0 to have non-zero size.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.max does not support reduction over a dimension of size 0 (e.g., dim=0 for shape [0,2]), raising 'Expected reduction dim 0 to have non-zero size'. TensorFlow's tf.reduce_max allows this and returns an empty tensor of shape [2]. To make the test valid and cross-framework comparable, we must avoid reducing over an empty dimension. Per PyTorch docs, torch.max(input) without dim works for scalar/global max, but for empty tensors it still fails — so the minimal repair is to use a non-empty shape. We choose shape [1, 2] (smallest non-empty along dim 0) to preserve dim=0 reduction semantics while ensuring both frameworks succeed."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            1,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.5766613483428955,
+            0.024083364754915237
+          ]
+        },
+        "dim": 0
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            1,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.5766613483428955,
+            0.024083364754915237
+          ]
+        },
+        "axis": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2) vs TensorFlow (2,)",
+        "torch_shape": null,
+        "tensorflow_shape": [
+          2
+        ],
+        "torch_dtype": null,
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9068564176559448,
+            0.11201796680688858,
+            -0.24532586336135864,
+            0.7764286398887634
+          ]
+        },
+        "api": "torch.max"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9068564176559448,
+            0.11201796680688858,
+            -0.24532586336135864,
+            0.7764286398887634
+          ]
+        },
+        "api": "tf.reduce_max"
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": [],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明基础功能等价；为提升测试覆盖率和发现潜在边界问题，需对输入进行变异：将原2D张量[4,1]扩展为高维张量[2,3,4,1]，并增加dtype多样性（int64），同时覆盖空维度场景（shape=[0,5]）以检验框架对退化情况的处理一致性。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            1
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -3,
+            -8,
+            -2,
+            -7,
+            2,
+            -10,
+            2,
+            -10,
+            -4,
+            5
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            1
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -3,
+            -8,
+            -2,
+            -7,
+            2,
+            -10,
+            2,
+            -10,
+            -4,
+            5
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": [],
+        "torch_dtype": "torch.int64",
+        "tensorflow_dtype": "<dtype: 'int64'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行状态为compared且结果一致，说明基础功能等价；根据任务要求，需进行fuzzing以提升测试覆盖率。原始用例使用int64四维张量[2,3,4,1]，可变异为边界场景：空张量（含0维）、标量（空shape）、布尔类型、float32高精度浮点、单元素张量及负维度极端形状，同时保持两框架参数结构一致。此处选择变异为标量张量（shape=[]）和bool dtype，覆盖dtype和shape的边界组合，符合文档中torch.max和tf.reduce_max均支持标量输入且无dtype限制的要求。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [],
+          "dtype": "bool",
+          "sample_values": [
+            true
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [],
+          "dtype": "bool",
+          "sample_values": [
+            true
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Value for attr 'T' of bool is not in the list of allowed values: float, double, int32, uint8, int16, int8, int64, bfloat16, uint16, half, uint32, uint64, qint8, quint8, qint32, qint16, quint16\n\t; NodeDef: {{node Max}}; Op<name=Max; signature=input:T, reduction_indices:Tidx -> output:T; attr=keep_dims:bool,default=false; attr=T:type,allowed=[DT_FLOAT, DT_DOUBLE, DT_INT32, DT_UINT8, DT_INT16, DT_INT8, DT_INT64, DT_BFLOAT16, DT_UINT16, DT_HALF, DT_UINT32, DT_UINT64, DT_QINT8, DT_QUINT8, DT_QINT32, DT_QINT16, DT_QUINT16]; attr=Tidx:type,default=DT_INT32,allowed=[DT_INT32, DT_INT64]> [Op:Max] name: ",
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.bool",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 88, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\ops.py\", line 6006, in raise_from_not_ok_status\n    raise core._status_to_exception(e) from None  # pylint: disable=protected-access\ntensorflow.python.framework.errors_impl.InvalidArgumentError: Value for attr 'T' of bool is not in the list of allowed values: float, double, int32, uint8, int16, int8, int64, bfloat16, uint16, half, uint32, uint64, qint8, quint8, qint32, qint16, quint16\n\t; NodeDef: {{node Max}}; Op<name=Max; signature=input:T, reduction_indices:Tidx -> output:T; attr=keep_dims:bool,default=false; attr=T:type,allowed=[DT_FLOAT, DT_DOUBLE, DT_INT32, DT_UINT8, DT_INT16, DT_INT8, DT_INT64, DT_BFLOAT16, DT_UINT16, DT_HALF, DT_UINT32, DT_UINT64, DT_QINT8, DT_QUINT8, DT_QINT32, DT_QINT16, DT_QUINT16]; attr=Tidx:type,default=DT_INT32,allowed=[DT_INT32, DT_INT64]> [Op:Max] name: \n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.reduce_max不支持bool类型作为输入，根据错误信息，'T'的允许值列表中不包含bool类型。而PyTorch的torch.max支持bool类型输入。为了使测试用例在两个框架中均可执行，需将输入dtype从bool改为两个框架都支持的类型，如int32。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.max",
+        "input": {
+          "shape": [],
+          "dtype": "int32",
+          "sample_values": [
+            1
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.reduce_max",
+        "input": {
+          "shape": [],
+          "dtype": "int32",
+          "sample_values": [
+            1
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.max",
+        "tensorflow_api": "tf.reduce_max",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": [],
+        "torch_dtype": "torch.int32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

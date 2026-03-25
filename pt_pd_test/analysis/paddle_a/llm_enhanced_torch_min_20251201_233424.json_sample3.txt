@@ -1,0 +1,41 @@
+来源文件: llm_enhanced_torch_min_20251201_233424.json
+样例编号: 3
+paddle_error 错误信息: (InvalidArgument) Cannot perform reduction along an axis (0) that has a size of 0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.min",
+  "input": {
+    "shape": [
+      0,
+      5,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.min",
+  "input": {
+    "shape": [
+      0,
+      5,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.min` 在执行沿某个轴的最小值计算时，若该轴对应的维度大小为 0（如本例中 shape 为 [0, 5, 5]，沿 axis=0 进行 reduction），会直接报错“Cannot perform reduction along an axis (0) that has a size of 0”，这是其明确的运行时限制。
+   - 而 PyTorch 的 `torch.min` 对于空张量（shape 包含 0）在某些情况下仍可正常处理（尤其当所有元素被忽略时），例如在全局 `min` 情况下返回一个默认值或允许操作，但具体行为可能依赖于上下文。然而，当指定 axis 且该 axis 维度为 0 时，PyTorch 也存在类似语义边界问题，但实际测试中常表现更宽松。
+
+3. 修复建议：
+   - 该行为差异属于框架底层实现不一致，建议提交 issue 至 PaddlePaddle 官方仓库，说明在空张量（含 0 维度）上进行 reduction 时应与 PyTorch 保持对齐，提升兼容性。

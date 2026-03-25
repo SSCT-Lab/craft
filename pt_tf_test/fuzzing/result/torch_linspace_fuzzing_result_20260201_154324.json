@@ -1,0 +1,386 @@
+{
+  "operator": "torch_linspace",
+  "torch_api": "torch.linspace",
+  "tensorflow_api": "tf.linspace",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T15:43:24.186256",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_linspace_20260123_202600.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10,
+        "end": 10,
+        "steps": 100,
+        "requires_grad": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linspace",
+        "start": -10,
+        "stop": 10,
+        "num": 100
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf、-inf、nan、-0.0、1e-38、1e38等边界值",
+          "mutation_reason": "这些特殊浮点值易触发框架底层数值处理差异（如NaN传播规则、无穷大区间划分、次正规数舍入），暴露linspace实现中边界条件处理不一致的bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": "nan",
+            "end": "inf",
+            "steps": 5,
+            "requires_grad": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": "nan",
+            "stop": "inf",
+            "num": 5
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "tensorflow_error": "UnimplementedError: {{function_node __wrapped__Cast_device_/job:localhost/replica:0/task:0/device:CPU:0}} Cast int32 to string is not supported [Op:Cast] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（0维张量）与单元素steps",
+          "mutation_reason": "标量start/end在两框架中可能触发不同广播或 degenerate case 处理路径，且steps=1是数学边界（仅含start），易暴露端点包含逻辑差异",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -5.0,
+            "end": 3.0,
+            "steps": 1,
+            "requires_grad": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": -5.0,
+            "stop": 3.0,
+            "num": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float16 和 float64 边界精度及特殊浮点值（inf/nan/-0.0）",
+          "mutation_reason": "float16 易出现舍入误差，float64 暴露高精度实现差异；inf/nan/-0.0 是常见数值稳定性盲区，两框架对边界值的处理逻辑可能不一致。",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 100,
+            "requires_grad": true,
+            "dtype": "torch.float16"
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 100,
+            "dtype": "tf.float16"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'dtype'",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_linspace_20260123_202600.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0,
+        "end": 1,
+        "steps": 1,
+        "requires_grad": false
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linspace",
+        "start": 0,
+        "stop": 1,
+        "num": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理差异，如NaN传播规则、无穷大边界处理、次正规数舍入等，可能暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": "nan",
+            "end": "inf",
+            "steps": 1,
+            "requires_grad": false
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": "nan",
+            "stop": "inf",
+            "num": 1
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "tensorflow_error": "UnimplementedError: {{function_node __wrapped__Cast_device_/job:localhost/replica:0/task:0/device:CPU:0}} Cast int32 to string is not supported [Op:Cast] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素标量输入（shape=[]）配合极端浮点值",
+          "mutation_reason": "标量输入是linspace的边界情况，框架对0维张量的广播和数值稳定性处理可能不同；结合inf/nan/-0.0可暴露精度或特殊值传播差异。",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": 0.0,
+            "end": 1.0,
+            "steps": 1,
+            "requires_grad": false
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": 0.0,
+            "stop": 1.0,
+            "num": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16/float32/float64/int32/int64/bool/complex64/complex128等全类型覆盖",
+          "mutation_reason": "不同框架对边界类型（如bool、complex）、极值（inf/nan）和低精度（float16）的linspace实现可能存在数值稳定性或类型提升规则差异，易暴露隐式转换bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": 0,
+            "end": 1,
+            "steps": 1,
+            "requires_grad": false,
+            "dtype": "torch.float32"
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": 0,
+            "stop": 1,
+            "num": 1,
+            "dtype": "tf.float32"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=int, end=int, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'dtype'",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_linspace_20260123_202600.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10,
+        "end": 10,
+        "steps": 5,
+        "requires_grad": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linspace",
+        "start": -10,
+        "stop": 10,
+        "num": 5
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊浮点值易触发框架底层数值处理差异，如无穷大区间步长计算、NaN传播规则、负零符号保持等，可能暴露实现不一致的bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": "inf",
+            "end": "-inf",
+            "steps": 3,
+            "requires_grad": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": "inf",
+            "stop": "-inf",
+            "num": 3
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "tensorflow_error": "UnimplementedError: {{function_node __wrapped__Cast_device_/job:localhost/replica:0/task:0/device:CPU:0}} Cast int32 to string is not supported [Op:Cast] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）输入，保持数学等价",
+          "mutation_reason": "标量输入是linspace的边界情况，两框架对标量start/end的广播行为可能不一致，易暴露实现差异或类型推导bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 1,
+            "requires_grad": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float16 精度下边界值（inf, -inf, nan）的 linspace 行为",
+          "mutation_reason": "float16 动态范围小，易触发溢出或静默截断；inf/-inf/nan 在 linspace 起止点可能引发框架间不同处理逻辑（如是否传播 NaN、如何插值无穷）",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -0.0,
+            "end": "inf",
+            "steps": 3,
+            "dtype": "torch.float16",
+            "requires_grad": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linspace",
+            "start": -0.0,
+            "stop": "inf",
+            "num": 3,
+            "dtype": "tf.float16"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=str, steps=int, dtype=str, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'dtype'",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

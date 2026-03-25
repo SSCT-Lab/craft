@@ -1,0 +1,59 @@
+来源文件: llm_enhanced_torch_nn_Embedding_20251215_173743.json
+样例编号: 8
+tensorflow_error 错误信息: Exception encountered when calling Embedding.call().
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.Embedding",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      2,
+      -8,
+      -5,
+      7,
+      -2
+    ]
+  },
+  "num_embeddings": 5,
+  "embedding_dim": 768,
+  "padding_idx": 0
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.keras.layers.Embedding",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      2,
+      -8,
+      -5,
+      7,
+      -2
+    ]
+  },
+  "input_dim": 5,
+  "output_dim": 768,
+  "mask_zero": false
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.keras.layers.Embedding` 要求输入索引值必须在 `[0, input_dim)` 范围内，而测试用例中输入包含 `-8`, `-5`, `-2` 等负数索引，这会触发运行时错误（如 `InvalidArgumentError: indices must be >= 0`），尽管 PyTorch 允许负索引（会自动映射到 `padding_idx` 处理或报错，但此处 `padding_idx=0` 且负索引不合法）。  
+   - 该行为差异属于框架底层实现限制：TensorFlow 不支持负索引，而 PyTorch 在 `padding_idx` 非零时仍可处理部分负索引，但在此例中 `padding_idx=0` 且负索引无法合法映射。
+
+3. 修复建议：  
+   - 此问题为框架行为差异，建议提交 issue 至 TensorFlow 官方仓库，指出 `Embedding` 层对负索引的严格校验与 PyTorch 行为不一致，可能影响模型迁移兼容性。

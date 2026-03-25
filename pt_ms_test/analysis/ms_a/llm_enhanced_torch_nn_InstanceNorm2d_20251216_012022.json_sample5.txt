@@ -1,0 +1,73 @@
+来源文件: llm_enhanced_torch_nn_InstanceNorm2d_20251216_012022.json
+样例编号: 5
+mindspore_error 错误信息: For primitive[InstanceNorm], the gamma shape must be equal to (C, ) which is 3 , but got 64.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\core\include\utils/check_convert_utils.h:250 mindspore::CheckAndConvertUtils::CheckValue
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -2.0269863605499268,
+      -0.0907740369439125,
+      -0.538404107093811,
+      -0.15120355784893036,
+      2.1036970615386963,
+      0.7901393175125122,
+      1.1517974138259888,
+      -0.2932419776916504,
+      0.3642418384552002,
+      1.4062342643737793
+    ]
+  },
+  "num_features": 64,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm2d"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -2.0269863605499268,
+      -0.0907740369439125,
+      -0.538404107093811,
+      -0.15120355784893036,
+      2.1036970615386963,
+      0.7901393175125122,
+      1.1517974138259888,
+      -0.2932419776916504,
+      0.3642418384552002,
+      1.4062342643737793
+    ]
+  },
+  "num_features": 64,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm2d"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `InstanceNorm2d` 要求 `gamma`（即 affine 参数中的缩放系数）的 shape 必须为 `(C,)`，其中 `C` 是通道数；但当前测试用例中 `num_features=64`，意味着输入张量应有 64 个通道，而实际输入 shape 为 `[2, 3, 4, 4]`，即 `C=3`。  
+   - 因此，MindSpore 在运行时检测到 `gamma` 应为 `(3,)`，但根据 `num_features=64` 推断期望是 `(64,)`，导致形状不匹配错误，说明框架在处理 `num_features` 与输入通道数一致性方面存在严格校验，而 PyTorch 的实现允许 `num_features` 与实际输入通道数不一致（通常用于模型结构设计，如可变通道），或默认以输入维度为准。
+
+3. 修复建议：  
+   - 此为框架间行为差异，建议提交 issue 至 MindSpore 官方仓库，指出其 `InstanceNorm2d` 对 `num_features` 与输入 channel 维度的一致性校验过于严格，与 PyTorch 行为不符，影响模型移植兼容性。

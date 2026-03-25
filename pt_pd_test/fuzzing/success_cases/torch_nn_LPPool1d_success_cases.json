@@ -1,0 +1,169 @@
+{
+  "operator": "torch_nn_LPPool1d",
+  "export_time": "2026-01-27T00:52:00.580714",
+  "total_success_cases": 2,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_nn_LPPool1d_20260125_012117.json",
+      "operator": "torch.nn.LPPool1d",
+      "iteration": 1,
+      "case_number": 1,
+      "is_llm_generated": false,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.46277448534965515,
+            1.0652990341186523,
+            -0.8799677491188049,
+            1.1149286031723022,
+            1.8294672966003418,
+            1.0505564212799072,
+            -0.3482024669647217,
+            -1.2734777927398682,
+            -0.6723641157150269,
+            0.8659772872924805
+          ]
+        },
+        "norm_type": 2,
+        "kernel_size": 3,
+        "stride": 2,
+        "api": "torch.nn.LPPool1d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.46277448534965515,
+            1.0652990341186523,
+            -0.8799677491188049,
+            1.1149286031723022,
+            1.8294672966003418,
+            1.0505564212799072,
+            -0.3482024669647217,
+            -1.2734777927398682,
+            -0.6723641157150269,
+            0.8659772872924805
+          ]
+        },
+        "norm_type": 2,
+        "kernel_size": 3,
+        "stride": 2,
+        "api": "paddle.nn.LPPool1D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.LPPool1d",
+        "paddle_api": "paddle.nn.LPPool1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          4
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明基础功能对齐；但PaddlePaddle的LPPool1D文档明确支持padding、data_format、ceil_mode等参数，而PyTorch的LPPool1d虽也支持ceil_mode，但不支持padding和data_format（仅NCL格式）。为增强鲁棒性测试和边界覆盖，需变异测试用例：引入padding=1（验证填充行为差异）、ceil_mode=True（验证上取整逻辑一致性）、并尝试norm_type=1（L1 pooling）和norm_type=float('inf')（max pooling极限情况），同时保持输入shape在合法范围内。此外，PyTorch LPPool1d要求kernel_size和stride为int或tuple[int]，Paddle支持int/list/tuple，故统一使用int确保兼容性；新增极端case：小尺寸输入（shape=[1,1,3]）以触发边界计算。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_nn_LPPool1d_20260125_012117.json",
+      "operator": "torch.nn.LPPool1d",
+      "iteration": 2,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.nn.LPPool1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.2922823429107666,
+            0.09888359904289246,
+            -0.5060549378395081
+          ]
+        },
+        "norm_type": 1,
+        "kernel_size": 2,
+        "stride": 1,
+        "ceil_mode": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.LPPool1D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.2922823429107666,
+            0.09888359904289246,
+            -0.5060549378395081
+          ]
+        },
+        "norm_type": 1,
+        "kernel_size": 2,
+        "stride": 1,
+        "padding": 0,
+        "ceil_mode": true,
+        "data_format": "NCL"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.LPPool1d",
+        "paddle_api": "paddle.nn.LPPool1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1,
+          2
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          2
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明当前用例通过基础功能验证；为提升测试覆盖率和发现潜在边界问题，需进行fuzzing变异。根据API文档，PyTorch LPPool1d不支持padding参数，而Paddle LPPool1D支持且默认为0，但padding=0是安全等价的；可变异为更严格的边界场景：输入长度等于kernel_size（触发单窗口计算）、stride > kernel_size（可能产生空输出）、norm_type为浮点数（如2.0，符合文档中norm_type支持float的描述）、以及增加batch/channel维度变化（如shape=[2,3,5]）以验证多维鲁棒性。此处选择最简有效变异：增大输入长度使ceil_mode影响更显著，并将norm_type设为2.0（PyTorch和Paddle均支持float norm_type），同时保持其他参数合法且对齐。"
+      }
+    }
+  ]
+}

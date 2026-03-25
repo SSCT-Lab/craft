@@ -1,0 +1,405 @@
+{
+  "operator": "torch_linspace",
+  "torch_api": "torch.linspace",
+  "mindspore_api": "mindspore.numpy.linspace",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 4,
+  "timestamp": "2026-02-01T19:46:40.819391",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_linspace_20260126_131315.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10,
+        "end": 10,
+        "steps": 100,
+        "requires_grad": true
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": -10,
+        "stop": 10,
+        "num": 100,
+        "dtype": "float32"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在边界情况下的数值稳定性差异或NaN传播逻辑不一致，如inf-inf、0*inf处理、subnormal数舍入等。",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": "inf",
+            "end": "-inf",
+            "steps": 5,
+            "requires_grad": false,
+            "dtype": "float32"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": "inf",
+            "stop": "-inf",
+            "num": 5,
+            "endpoint": true,
+            "dtype": "float32"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: start should be int, float, bool, list, tuple, Tensor, but got<class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）输入，保持数学等价",
+          "mutation_reason": "标量输入是linspace最基础边界情况，两框架对标量start/end的广播、dtype推导和梯度传播实现可能不一致，易暴露数值或autograd bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 1,
+            "requires_grad": true,
+            "dtype": "float32"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 1,
+            "endpoint": true,
+            "dtype": "float32"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": true,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "mindspore_shape": [
+              1
+            ],
+            "torch_dtype": null,
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下高精度数值一致性",
+          "mutation_reason": "float64 可暴露浮点累积误差差异，两框架在步长计算和边界舍入策略上可能有细微实现差异，导致末尾元素不等",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 100,
+            "dtype": "torch.float64",
+            "requires_grad": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 100,
+            "dtype": "float64",
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": true,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, dtype=str, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "mindspore_shape": [
+              100
+            ],
+            "torch_dtype": null,
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_linspace_20260126_131315.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10,
+        "end": 10,
+        "steps": 5,
+        "requires_grad": true
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": -10,
+        "stop": 10,
+        "num": 5,
+        "endpoint": true,
+        "dtype": "float32"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf、-inf、nan、-0.0、1e-38、1e38等边界浮点值",
+          "mutation_reason": "特殊浮点值易触发框架底层数值稳定性差异或NaN传播逻辑不一致，暴露linspace在无穷/非数区间插值的实现bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": "inf",
+            "end": "-inf",
+            "steps": 5,
+            "requires_grad": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": "inf",
+            "stop": "-inf",
+            "num": 5,
+            "endpoint": true,
+            "dtype": "float32"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: start should be int, float, bool, list, tuple, Tensor, but got<class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）作为start/end输入",
+          "mutation_reason": "标量输入是合法且数学等价的边界情况；两框架对标量张量的广播、dtype推导及端点闭合逻辑可能存在实现差异，易暴露数值计算或边界处理bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 5,
+            "requires_grad": true,
+            "dtype": "float32"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 5,
+            "endpoint": true,
+            "dtype": "float32"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": true,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "mindspore_shape": [
+              5
+            ],
+            "torch_dtype": null,
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下无穷大和 NaN 边界值行为",
+          "mutation_reason": "float64 提供更高精度，暴露数值稳定性差异；inf/-inf/NaN 是边界场景，易触发框架对特殊浮点值处理不一致的 bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 5,
+            "requires_grad": true,
+            "dtype": "torch.float64"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 5,
+            "endpoint": true,
+            "dtype": "float64"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": true,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "mindspore_shape": [
+              5
+            ],
+            "torch_dtype": null,
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_linspace_20260126_131315.json",
+        "iteration": 2,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0,
+        "end": 0.998046875,
+        "steps": 5,
+        "requires_grad": true
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": 0,
+        "stop": 0.998046875,
+        "num": 5
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊浮点值易触发框架底层数值处理差异，如NaN传播规则、无穷大算术行为、次正规数舍入策略不一致，可能暴露linspace步长计算或边界处理bug",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": "nan",
+            "end": "inf",
+            "steps": 5,
+            "requires_grad": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": "nan",
+            "stop": "inf",
+            "num": 5,
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: start should be int, float, bool, list, tuple, Tensor, but got<class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）输入，保持数学等价性",
+          "mutation_reason": "标量输入是linspace的合法边界情况（start/end为0维Tensor），易暴露框架对标量广播、梯度传播或dtype推导的不一致实现",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": 0.0,
+            "end": 0.998046875,
+            "steps": 5,
+            "requires_grad": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": 0.0,
+            "stop": 0.998046875,
+            "num": 5,
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5
+            ],
+            "mindspore_shape": [
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从默认 float32 变异为 float64，验证高精度下端点计算一致性",
+          "mutation_reason": "float64 下浮点舍入误差模式不同，易暴露 linspace 端点闭合逻辑（inclusive end）在两框架中实现差异，如 step 累加 vs 公式直接计算",
+          "torch_test_case": {
+            "api": "torch.linspace",
+            "start": 0.0,
+            "end": 0.998046875,
+            "steps": 5,
+            "dtype": "torch.float64",
+            "requires_grad": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.linspace",
+            "start": 0.0,
+            "stop": 0.998046875,
+            "num": 5,
+            "dtype": "mindspore.float64",
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, dtype=str, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

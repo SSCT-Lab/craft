@@ -1,0 +1,1075 @@
+{
+  "pd_api": "paddle.index_sample",
+  "tensorflow_api": "tf.gather_nd",
+  "timestamp": "2026-03-04T11:38:16.865351",
+  "total_iterations": 17,
+  "llm_generated_test_cases": 12,
+  "successful_test_cases": 9,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "paddle.index_sample 和 tf.gather_nd 功能不等价：前者是沿第1维对2D输入按行索引采样（类似tf.gather(x, index, axis=1)），后者需indices指定完整坐标（如[[i,j]]），且输入index形状[10,10]无法直接作为tf.gather_nd的indices（应为[10*10, 2]或[10, 10, 2]）。二者语义和参数结构根本不同，无直接映射关系。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 1, but got 5. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:5 >= value_length:1.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample requires index values to be in [0, x.shape[1]), but default random index with shape [100,1] likely contains out-of-bound values like 5; tf.gather_nd expects 'indices' not 'index', and indices must be rank-2 with last dim size equal to rank of params (here 2 for 2D x), so we fix index->indices, reshape indices to [100, 2], and constrain values to valid range [0,100) for first dim and [0,1) for second dim."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "x": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "params": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            100,
+            2
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 1, but got 2. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:2 >= value_length:1.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherNd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[99] = [4, 6] does not index into param shape [100,1], node name: GatherNd [Op:GatherNd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample requires index values to be in [0, x.shape[1]), but original index shape [100,1] implies indexing along dim=1 of x=[100,1], so valid indices must be in [0,1); tf.gather_nd expects indices with rank matching params' rank (2D params → indices.shape[-1]==2), but given [100,2] indices require params rank >=2, while params is [100,1]. Repair: align semantics — index_sample samples along last dim of x, so x should be [N,D], index [N,1] with values in [0,D); for gather_nd equivalence, use tf.gather (not gather_nd) with axis=1 and indices [N,1]."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "batch_dims": 1,
+        "indices": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "params": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 5, but got 8. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:8 >= value_length:5.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[2,0] = 7 is not in [0, 5) [Op:GatherV2] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.index_sample requires index values to be in [0, x.shape[1]), and TF's tf.gather with axis=1 and batch_dims=1 has same constraint on indices. Original indices shape matches but values exceed valid range (max index 8 or 7 vs x dim=5). Repair by constraining index values to [0, 5) via shape-compatible valid indices."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "batch_dims": 1,
+        "indices": {
+          "shape": [
+            100,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "params": {
+          "shape": [
+            100,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: (InvalidArgument) Variable value (index) of OP(index_sample) expected >= 0 and < 5, but got 8. Please check input value.\n  [Hint: Expected index_vec[i] < value_length, but received index_vec[i]:8 >= value_length:5.] (at ..\\paddle\\phi\\kernels\\cpu\\index_sample_kernel.cc:70)\n",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,0] = 6 is not in [0, 5) [Op:GatherV2] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "tf.gather_nd does not accept 'index' as a keyword argument; it requires 'params' and 'indices' with indices having shape [N, rank_of_params]. paddle.index_sample expects 2D x and 2D index where index[i] selects column indices for x[i]. To align semantics, we must reshape index to [10*10, 1] and use tf.gather_nd on flattened x with proper indexing, but simplest repair is using tf.gather (not gather_nd) with axis=1 and batch_dims=1 to match index_sample's row-wise column selection."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "batch_dims": 1,
+        "indices": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.49047143",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample和tf.gather语义不等价：前者是batch-wise 2D index sampling (x[i][index[i][j]]), 后者tf.gather(axis=1)沿axis=1 gather，但默认不支持batch-dim对齐索引；应改用tf.gather_nd或调整tf.gather参数。正确对齐需将index转为[10,10,2]坐标+tf.gather_nd，或确保tf.gather在axis=1且indices形状匹配；当前tf.gather(axis=1)与index_sample行为不一致导致结果差异达3.49。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "params": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            10,
+            10,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.07029338",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample和tf.gather_nd语义不等价：前者是沿axis=1对2D输入x按index采样（index[i]指定x[i]中列索引），后者需indices.shape[-1]==rank(params)即2D params需2D indices最后一维为2；当前TF用例indices shape[10,10,2]对应采样100个2D坐标，而Paddle用例采样100个标量列索引。应将TF改为tf.gather（axis=1）以语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "axis": 1,
+        "params": {
+          "shape": [
+            10,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 10) vs TF=(10, 10, 10)",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          10,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `index_sample` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: complex64, complex128, float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.index_sample不支持float16输入，需改为float32；TensorFlow tf.gather_nd参数名应为params和indices而非x和index，且indices需为2D但语义是索引坐标，需将index reshape为[10*64, 1]并适配gather_nd的坐标格式，而index_sample是按行采样，二者语义不等价，故改用tf.gather（1D索引）更匹配。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs TF=(10, 64, 128)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "tensorflow_shape": [
+          10,
+          64,
+          128
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample和tf.gather语义不等价：前者是2D张量按行索引采样（x.shape=[N,D], index.shape=[N,K]→output.shape=[N,K]），后者tf.gather默认在axis=0 gather，需指定axis=1才能等价；且tf.gather不支持直接2D索引，应改用tf.gather_nd或调整tf.gather参数。正确对齐需用tf.gather(params, indices, axis=1)。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "axis": 1,
+        "params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs TF=(10, 10, 64)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "tensorflow_shape": [
+          10,
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample和tf.gather语义不等价：前者是2D张量按行索引采样（x[i][index[i][j]]），后者tf.gather(axis=1)是沿axis=1 gather，但输出形状应为[10,64]而非[10,10,64]；错误源于误用tf.gather而非tf.gather_nd或tf.batch_gather；正确对齐需用tf.gather(params, indices, axis=1)且indices必须是2D int32，但TF要求indices shape匹配gather维度，实际应确保indices值在[0,127]且params为2D；当前TF用例未指定batch_dims，导致隐式解释为tf.gather_nd行为；修复为使用tf.gather(params, indices, axis=1)并确保输入一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "batch_dims": 1,
+        "indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int32"
+        },
+        "params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 5.06310892",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "tensorflow_shape": [
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `index_sample` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: complex64, complex128, float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持float16输入，需改为float32；TensorFlow tf.gather_nd不接受'index'参数名，需改为'indices'且其形状需适配：原index[10,64]应转为indices[10*64,1]或[10,64,1]以匹配2D gather；同时params需与x一致，dtype统一为float32。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            10,
+            64,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs TF=(10, 64, 128)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "tensorflow_shape": [
+          10,
+          64,
+          128
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample和tf.gather_nd语义不等价：前者是2D张量按行索引采样（x.shape=[N,D], index.shape=[N,M]→out.shape=[N,M]），后者tf.gather_nd需indices最后一维为坐标维度，此处应使用tf.gather而非tf.gather_nd；正确对齐需将tf.gather_nd替换为tf.gather，且indices应为1D索引（shape=[10,64]）并调整axis=1。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "axis": 1,
+        "params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(10, 64) vs TF=(10, 10, 64)",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "tensorflow_shape": [
+          10,
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.index_sample和tf.gather语义不等价：前者是2D张量按行索引采样（x[i][index[i][j]]），后者tf.gather(axis=1)是沿axis=1 gather，但输出形状应为[10,64,128]或需reshape；实际期望行为匹配需用tf.gather_nd或调整tf.gather用法。正确对齐应使用tf.gather(params, indices, axis=1)但其输出shape为[10,64,128]，而paddle.index_sample输出为[10,64]；因此必须将tf.gather改为tf.gather_nd配合合适indices结构，或改用tf.batch_gather。但tf.batch_gather已弃用，故采用tf.gather_nd：构造indices shape=[10,64,2]，其中每个indices[i,j]=[i, index[i,j]]，使gather_nd从params[10,128]中取(10*64)个标量再reshape为[10,64]。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "index": {
+          "shape": [
+            10,
+            64
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.index_sample"
+      },
+      "tensorflow_test_case": {
+        "params": {
+          "shape": [
+            10,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            10,
+            64,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.index_sample",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.72372961",
+        "pd_shape": [
+          10,
+          64
+        ],
+        "tensorflow_shape": [
+          10,
+          64
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,646 @@
+{
+  "operator": "torch_xlogy",
+  "torch_api": "torch.xlogy",
+  "tensorflow_api": "tf.math.xlogy",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T13:58:47.873355",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_xlogy_20260123_191216.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.289848368947851,
+            1.6831245483530028,
+            -0.6308906770567692,
+            0.1523816894955326
+          ]
+        },
+        "other": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.581008168174391,
+            0.11069597091102787,
+            0.5358001077986211,
+            0.0533939331158351
+          ]
+        },
+        "api": "torch.xlogy"
+      },
+      "original_tensorflow_test_case": {
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.289848368947851,
+            1.6831245483530028,
+            -0.6308906770567692,
+            0.1523816894955326
+          ]
+        },
+        "other": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.581008168174391,
+            0.11069597091102787,
+            0.5358001077986211,
+            0.0533939331158351
+          ]
+        },
+        "api": "tf.math.xlogy"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "xlogy在x=0时定义为0，x<0时依赖log(y)实部，但框架对inf/-inf/nan/-0.0的边界处理可能不一致，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.xlogy",
+            "input": {
+              "shape": [
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "-inf",
+                "nan",
+                -0.0,
+                "inf"
+              ]
+            },
+            "other": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.0,
+                "inf",
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.xlogy",
+            "input": {
+              "shape": [
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "-inf",
+                "nan",
+                -0.0,
+                "inf"
+              ]
+            },
+            "other": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.0,
+                "inf",
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              4
+            ],
+            "tensorflow_shape": [
+              1,
+              4
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用空张量（shape=[0]）和标量（shape=[]）",
+          "mutation_reason": "空张量和标量是易触发框架广播逻辑/边界检查差异的场景，可能暴露xlogy在零维或零长输入下的实现不一致",
+          "torch_test_case": {
+            "api": "torch.xlogy",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "other": {
+              "shape": [
+                0
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.xlogy",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "other": {
+              "shape": [
+                0
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0
+            ],
+            "tensorflow_shape": [
+              0
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "混合精度与特殊浮点值组合：float32输入 + float64 other，含inf/-inf/nan/-0.0",
+          "mutation_reason": "不同精度下边界值（如0×log(0)、inf×log(0)）的舍入和NaN传播行为易在框架间不一致；tf.math.xlogy和torch.xlogy对混合精度广播+特殊值处理未强制标准化。",
+          "torch_test_case": {
+            "api": "torch.xlogy",
+            "input": {
+              "shape": [
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.289848368947851,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "other": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "inf",
+                -0.0,
+                0.0,
+                "nan"
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.xlogy",
+            "input": {
+              "shape": [
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.289848368947851,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "other": {
+              "shape": [
+                1,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "inf",
+                -0.0,
+                0.0,
+                "nan"
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "InvalidArgumentError: cannot compute Xlogy as input #1(zero-based) was expected to be a float tensor but is a double tensor [Op:Xlogy] name: ",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              1,
+              4
+            ],
+            "tensorflow_shape": null,
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_xlogy_20260123_191216.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.xlogy",
+        "input": {
+          "shape": [
+            2,
+            1,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.631582021713257,
+            0.530537486076355,
+            -0.5185876488685608,
+            -2.7737863063812256,
+            0.3190980553627014,
+            0.013353725895285606
+          ]
+        },
+        "other": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.6049548387527466,
+            -0.6294854879379272,
+            1.0906420946121216,
+            1.1358850002288818,
+            -0.8490076661109924,
+            -1.048591136932373,
+            0.32214221358299255,
+            -0.09971870481967926,
+            -0.591754674911499,
+            -0.6309283375740051
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.xlogy",
+        "input": {
+          "shape": [
+            2,
+            1,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.631582021713257,
+            0.530537486076355,
+            -0.5185876488685608,
+            -2.7737863063812256,
+            0.3190980553627014,
+            0.013353725895285606
+          ]
+        },
+        "other": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.6049548387527466,
+            -0.6294854879379272,
+            1.0906420946121216,
+            1.1358850002288818,
+            -0.8490076661109924,
+            -1.048591136932373,
+            0.32214221358299255,
+            -0.09971870481967926,
+            -0.591754674911499,
+            -0.6309283375740051
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "xlogy has well-defined IEEE 754 edge-case semantics (e.g., xlogy(0,0)=0, xlogy(0,inf)=0, xlogy(nan,y)=nan); frameworks may diverge on these.",
+          "torch_test_case": {
+            "api": "torch.xlogy",
+            "input": {
+              "shape": [
+                2,
+                1,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "other": {
+              "shape": [
+                2,
+                4,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.xlogy",
+            "input": {
+              "shape": [
+                2,
+                1,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "other": {
+              "shape": [
+                2,
+                4,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              4,
+              3
+            ],
+            "tensorflow_shape": [
+              2,
+              4,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用空张量（shape=[0,2,3]）和标量other",
+          "mutation_reason": "空张量触发广播边界逻辑，标量other强制框架处理0-dim广播；二者易暴露广播实现不一致或空tensor处理bug",
+          "torch_test_case": {
+            "api": "torch.xlogy",
+            "input": {
+              "shape": [
+                0,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "other": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.xlogy",
+            "input": {
+              "shape": [
+                0,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "other": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              2,
+              3
+            ],
+            "tensorflow_shape": [
+              0,
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "混合精度与边界值变异：float16输入+含inf/-inf/nan/-0.0的other",
+          "mutation_reason": "float16精度更低，易暴露舍入差异；inf/-inf/nan/-0.0是xlogy定义的关键边界点，两框架对未定义/极限情况的处理可能不一致（如0*log(0)→0 vs NaN）。",
+          "torch_test_case": {
+            "api": "torch.xlogy",
+            "input": {
+              "shape": [
+                2,
+                1,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                2.631582,
+                0.5305375,
+                -0.5185876
+              ]
+            },
+            "other": {
+              "shape": [
+                2,
+                4,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.604955,
+                -0.6294855,
+                "inf",
+                "nan",
+                -0.0,
+                -1.048591,
+                0.3221422,
+                -0.0997187,
+                -0.5917547,
+                -0.6309283
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.xlogy",
+            "input": {
+              "shape": [
+                2,
+                1,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                2.631582,
+                0.5305375,
+                -0.5185876
+              ]
+            },
+            "other": {
+              "shape": [
+                2,
+                4,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.604955,
+                -0.6294855,
+                "inf",
+                "nan",
+                -0.0,
+                -1.048591,
+                0.3221422,
+                -0.0997187,
+                -0.5917547,
+                -0.6309283
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              4,
+              3
+            ],
+            "tensorflow_shape": [
+              2,
+              4,
+              3
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

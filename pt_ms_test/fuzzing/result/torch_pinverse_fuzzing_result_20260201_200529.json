@@ -1,0 +1,648 @@
+{
+  "operator": "torch_pinverse",
+  "torch_api": "torch.pinverse",
+  "mindspore_api": "mindspore.ops.pinv",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T20:05:29.949141",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260125_220536.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.0228416919708252,
+            1.3500826358795166,
+            -1.7295329570770264,
+            -1.0003490447998047,
+            -1.3779168128967285,
+            -0.20552167296409607,
+            -0.20664158463478088,
+            1.6577259302139282,
+            -0.752888560295105,
+            0.013487881980836391
+          ]
+        },
+        "api": "torch.pinverse"
+      },
+      "original_mindspore_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.0228416919708252,
+            1.3500826358795166,
+            -1.7295329570770264,
+            -1.0003490447998047,
+            -1.3779168128967285,
+            -0.20552167296409607,
+            -0.20664158463478088,
+            1.6577259302139282,
+            -0.752888560295105,
+            0.013487881980836391
+          ]
+        },
+        "api": "mindspore.ops.pinv"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "伪逆对奇异值截断敏感，极端值易暴露SVD容错差异、NaN传播逻辑不一致或tolerance计算bug",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.0228416919708252,
+                1.3500826358795166,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.7295329570770264,
+                -1.0003490447998047
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.0228416919708252,
+                1.3500826358795166,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.7295329570770264,
+                -1.0003490447998047
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": true,
+            "torch_error": "_LinAlgError: linalg.svd: The algorithm failed to converge because the input matrix contained non-finite values.",
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "mindspore_shape": [
+              5,
+              3
+            ],
+            "torch_dtype": null,
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素矩阵 [1, 1] 以触发最小非空奇异值判定边界",
+          "mutation_reason": "单元素矩阵的伪逆数学定义明确（1/x，x≠0；0⁺=0），且SVD截断阈值计算在M=N=1时最敏感，易暴露两框架 atol/rtol默认策略或零值处理差异",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "mindspore_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持形状和sample_values数值精度一致",
+          "mutation_reason": "float64下SVD容差计算更敏感，可能暴露两框架在rcond/rtol默认推导、奇异值截断阈值或零值处理上的细微实现差异",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.0228416919708252,
+                1.3500826358795166,
+                -1.7295329570770264,
+                -1.0003490447998047,
+                -1.3779168128967285,
+                -0.20552167296409607,
+                -0.20664158463478088,
+                1.6577259302139282,
+                -0.752888560295105,
+                0.013487881980836391
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.0228416919708252,
+                1.3500826358795166,
+                -1.7295329570770264,
+                -1.0003490447998047,
+                -1.3779168128967285,
+                -0.20552167296409607,
+                -0.20664158463478088,
+                1.6577259302139282,
+                -0.752888560295105,
+                0.013487881980836391
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              3
+            ],
+            "mindspore_shape": [
+              5,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260125_220536.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.pinverse",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1484006643295288
+          ]
+        }
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.pinv",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1484006643295288
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值易触发SVD分解中的数值不稳定、条件判断分支差异或tolerance阈值计算bug，尤其在pinv的奇异值截断逻辑中。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              1,
+              1
+            ],
+            "mindspore_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素标量输入（shape=[]）",
+          "mutation_reason": "标量是矩阵伪逆的退化情形（1x1矩阵的特例），但框架对零维张量的支持可能存在实现差异，尤其在SVD路径调用和维度广播逻辑中。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.1484006643295288
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.1484006643295288
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "RuntimeError: linalg.pinv(Float{[]}): expected a tensor with 2 or more dimensions of float, double, cfloat or cdouble types",
+            "mindspore_error": "TypeError: For pinv, the 0-D input is not supported",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64高精度下数值稳定性差异",
+          "mutation_reason": "float64比float32具有更高精度和更小机器误差，可能暴露SVD截断容差计算或伪逆实现中浮点累积误差处理的框架差异",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.1484006643295288
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.1484006643295288
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "mindspore_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260125_220536.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.pinverse",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.05098224559939329,
+            0.8253720849761924,
+            -1.8413165753154488,
+            -2.627889722793274,
+            0.2366052901929392,
+            -0.8274949165007348
+          ]
+        }
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.pinv",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.05098224559939329,
+            0.8253720849761924,
+            -1.8413165753154488,
+            -2.627889722793274,
+            0.2366052901929392,
+            -0.8274949165007348
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf,-inf,nan,-0.0,1e-38,1e38",
+          "mutation_reason": "特殊浮点值易暴露SVD实现中对奇异值阈值判断、零处理、无穷传播的框架差异，尤其影响pinv的数值稳定性逻辑。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                2
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                3,
+                2
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": true,
+            "torch_error": "_LinAlgError: linalg.svd: The algorithm failed to converge because the input matrix contained non-finite values.",
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": null,
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试单元素矩阵（1x1）及含零维度（3x0）",
+          "mutation_reason": "单元素矩阵伪逆应为标量倒数，3x0矩阵是退化情形（M>N但N=0），SVD处理边界时框架可能对零维奇异值截断逻辑不一致，易暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "mindspore_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float64变异为float32，并注入边界浮点值（inf/nan/-0.0）以暴露数值稳定性差异",
+          "mutation_reason": "float32精度更低，更易暴露SVD截断容差计算、NaN传播或无穷大处理的框架差异；pinv对数值鲁棒性敏感，且两框架默认rtol/atol推导逻辑不同（PyTorch: rcond=1e-15；MindSpore: rtol=max(M,N)*eps）",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                2
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.050982244312763214,
+                0.8253720998764038,
+                -1.8413165807724,
+                -2.62788987159729,
+                0.23660528659820557,
+                -0.8274949193000793
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.pinv",
+            "input": {
+              "shape": [
+                3,
+                2
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.050982244312763214,
+                0.8253720998764038,
+                -1.8413165807724,
+                -2.62788987159729,
+                0.23660528659820557,
+                -0.8274949193000793
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3
+            ],
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

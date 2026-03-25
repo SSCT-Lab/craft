@@ -1,0 +1,43 @@
+来源文件: llm_enhanced_torch_det_20251215_233232.json
+样例编号: 1
+tensorflow_error 错误信息: {{function_node __wrapped__MatrixDeterminant_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input matrix must be square. [Op:MatrixDeterminant] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.det",
+  "input": {
+    "shape": [
+      3,
+      3,
+      4,
+      0
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.linalg.det",
+  "input": {
+    "shape": [
+      3,
+      3,
+      4,
+      0
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 错误信息明确指出 `Input matrix must be square`，而输入 shape 为 `[3, 3, 4, 0]`，最后一维为 0，构成一个非空但维度为 0 的张量，其实际矩阵维度不满足“方阵”要求（即行列数必须相等）。
+   - 虽然在 PyTorch 中 `torch.det` 允许对形状为 `[..., n, 0]` 的张量执行操作（如处理空矩阵），但 TensorFlow 的 `tf.linalg.det` 在实现中严格检查输入是否为方阵，且对形状中包含 0 的“非零维度但值为 0”的情况会触发运行时校验失败，这是框架间对空张量或退化矩阵处理的不一致。
+
+3. 修复建议：
+   - 建议提交 issue 给 TensorFlow 官方，反映其对 `tf.linalg.det` 输入中含 0 维度的方阵（如 `[n, 0]`）的严格校验与 PyTorch 行为不一致的问题。

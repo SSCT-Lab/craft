@@ -1,0 +1,71 @@
+来源文件: llm_enhanced_torch_nn_InstanceNorm1d_20251215_185017.json
+样例编号: 1
+mindspore_error 错误信息: For primitive[InstanceNorm], the gamma shape must be equal to (C, ) which is 3 , but got 100.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\core\include\utils/check_convert_utils.h:250 mindspore::CheckAndConvertUtils::CheckValue
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.7915799617767334,
+      -0.2846211791038513,
+      0.1533464938402176,
+      0.1349802166223526,
+      -0.01890108734369278,
+      -0.030636172741651535,
+      -0.1898340880870819,
+      1.0000149011611938,
+      1.9790476560592651,
+      -0.39424020051956177
+    ]
+  },
+  "num_features": 100,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm1d"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.7915799617767334,
+      -0.2846211791038513,
+      0.1533464938402176,
+      0.1349802166223526,
+      -0.01890108734369278,
+      -0.030636172741651535,
+      -0.1898340880870819,
+      1.0000149011611938,
+      1.9790476560592651,
+      -0.39424020051956177
+    ]
+  },
+  "num_features": 100,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm1d"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 错误信息明确指出：`gamma shape must be equal to (C, ) which is 3, but got 100`，说明 MindSpore 的 `InstanceNorm1d` 要求缩放参数（gamma）的形状为 `(C,)`，即通道数 C，而当前输入的 `num_features=100` 与实际输入张量的通道数 `3` 不匹配。
+   - 根据 PyTorch 官方文档，`num_features` 应表示输入特征维度（即通道数），但此处 `input.shape = [2, 3, 10]` 表明通道数是 3，而测试用例中却设置了 `num_features=100`，明显不一致。然而，错误发生在 MindSpore 侧，说明其对 `num_features` 的解释与 PyTorch 不同：**MindSpore 可能将 `num_features` 当作 gamma/weight 的长度，且必须等于输入的实际通道数（C=3），而非任意值**，这与 PyTorch 的语义不符——在 PyTorch 中，`num_features` 是通道数，允许与输入通道数一致即可，即使设置为 100 也应被接受（只要输入是 100 通道）。因此，该错误反映出两个框架在 `num_features` 的语义理解或校验逻辑上存在根本差异。
+
+3. 修复建议：
+   - 该问题本质是框架间对 `num_features` 的语义处理不一致，建议提交 issue 给 MindSpore 官方，反馈其 `InstanceNorm1d` 在 `affine=True` 时强制要求 `num_features` 等于输入通道数（C=3），而未遵循 PyTorch 兼容性设计，导致与原始 PyTorch 语义冲突。

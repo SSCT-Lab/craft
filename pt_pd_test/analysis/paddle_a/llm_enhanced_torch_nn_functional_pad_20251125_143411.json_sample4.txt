@@ -1,0 +1,83 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251125_143411.json
+样例编号: 4
+paddle_error 错误信息: (InvalidArgument) Size of paddings should be equal to 6, but received 10.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      32,
+      64,
+      8
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.5841447710990906,
+      -0.9820072054862976,
+      -0.10607913136482239,
+      -0.4167889654636383,
+      1.1128298044204712,
+      1.5521866083145142,
+      0.1249946728348732,
+      1.489935278892517,
+      -1.277281641960144,
+      -1.5632765293121338
+    ]
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0,
+    1,
+    1
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.pad",
+  "input": {
+    "shape": [
+      32,
+      64,
+      8
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.5841447710990906,
+      -0.9820072054862976,
+      -0.10607913136482239,
+      -0.4167889654636383,
+      1.1128298044204712,
+      1.5521866083145142,
+      0.1249946728348732,
+      1.489935278892517,
+      -1.277281641960144,
+      -1.5632765293121338
+    ]
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0,
+    1,
+    1
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.functional.pad` 在 `mode='reflect'` 时，要求 `pad` 的长度必须为 `2 * (x.ndim - 2)`，且仅对非 batch/channel 维度（即 [D, H, W]）进行填充。当前输入为 3D Tensor（shape=[32,64,8]），其 `ndim=3`，因此应只对最后一个维度（即第 2 维）进行填充，`pad` 长度应为 2，但实际传入的是 6 个值（[1,1,0,0,1,1]），违反了该限制。
+   - 虽然 PyTorch 的 `torch.nn.functional.pad` 允许对任意维度进行填充（只要 `pad` 长度为 `2 * input.dim()`），但 PaddlePaddle 在 `reflect` 模式下强制要求 `pad` 长度为 `2*(ndim-2)`，导致参数长度校验失败，抛出“Size of paddings should be equal to 6, but received 10”错误（注：此处原文错误信息中“received 10”应为笔误，实际是收到 6，但期望是 2；不过错误提示本身已表明与预期长度不符）。
+
+3. 修复建议：  
+   - 此为框架行为不一致，属于 PaddlePaddle 在 `reflect` 模式下对 `pad` 长度的严格限制与 PyTorch 不同，建议提交 issue 给 PaddlePaddle 官方，反馈该行为与 PyTorch 不兼容的问题。

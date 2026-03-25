@@ -1,0 +1,75 @@
+来源文件: llm_enhanced_torch_nn_InstanceNorm3d_20251215_192916.json
+样例编号: 1
+mindspore_error 错误信息: For primitive[InstanceNorm], the gamma shape must be equal to (C, ) which is 3 , but got 100.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\core\include\utils/check_convert_utils.h:250 mindspore::CheckAndConvertUtils::CheckValue
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.29146263003349304,
+      0.33600810170173645,
+      -1.1525273323059082,
+      1.2535507678985596,
+      0.7960233092308044,
+      0.9108499884605408,
+      1.2989784479141235,
+      0.864193320274353,
+      -1.0735729932785034,
+      0.06261183321475983
+    ]
+  },
+  "num_features": 100,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm3d"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.29146263003349304,
+      0.33600810170173645,
+      -1.1525273323059082,
+      1.2535507678985596,
+      0.7960233092308044,
+      0.9108499884605408,
+      1.2989784479141235,
+      0.864193320274353,
+      -1.0735729932785034,
+      0.06261183321475983
+    ]
+  },
+  "num_features": 100,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm3d"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `InstanceNorm3d` 要求 `gamma`（即 affine 参数中的缩放因子）的形状必须为 `(C,)`，其中 `C` 是通道数；而测试用例中 `num_features=100` 表明该层期望处理 100 个通道，但输入张量的 shape 为 `[2, 3, 4, 4, 4]`，即实际通道数为 3。这导致 MindSpore 在初始化参数时要求 gamma 形状为 (3,)，但传入的 `num_features=100` 与实际输入通道数不一致，引发校验失败。
+   - 该错误本质是框架对 `num_features` 的语义理解与输入数据的实际通道维度不匹配，属于框架在参数一致性校验上的严格性差异，与 PyTorch 的行为不一致（PyTorch 允许 `num_features` 与输入通道数不同，仅用于定义参数规模，而 MindSpore 在构造阶段强制校验其与实际 C 一致）。
+
+3. 修复建议：  
+   - 应调整测试用例中的 `num_features` 为实际通道数 3，以与输入 tensor 的 channel 维度对齐；该问题反映 MindSpore 对 `num_features` 的校验过于严格，建议提交 issue 反馈此行为与 PyTorch 不一致。

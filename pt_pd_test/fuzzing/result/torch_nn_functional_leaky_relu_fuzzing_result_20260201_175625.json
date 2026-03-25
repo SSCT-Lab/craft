@@ -1,0 +1,790 @@
+{
+  "operator": "torch_nn_functional_leaky_relu",
+  "torch_api": "torch.nn.functional.leaky_relu",
+  "paddle_api": "paddle.nn.functional.leaky_relu",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T17:56:25.309505",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_leaky_relu_20260124_192236.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.leaky_relu",
+        "input": {
+          "shape": [
+            64,
+            64,
+            14,
+            14
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4429798722267151,
+            0.7977184653282166,
+            1.134990930557251,
+            -1.339053988456726,
+            1.0128991603851318,
+            -0.3412012755870819,
+            -0.9293521642684937,
+            -0.36543160676956177,
+            -0.6890527606010437,
+            -1.0053112506866455
+          ]
+        },
+        "negative_slope": 0.2,
+        "inplace": false
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.functional.leaky_relu",
+        "input": {
+          "shape": [
+            64,
+            64,
+            14,
+            14
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4429798722267151,
+            0.7977184653282166,
+            1.134990930557251,
+            -1.339053988456726,
+            1.0128991603851318,
+            -0.3412012755870819,
+            -0.9293521642684937,
+            -0.36543160676956177,
+            -0.6890527606010437,
+            -1.0053112506866455
+          ]
+        },
+        "negative_slope": 0.2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发框架底层数学库分支差异、NaN传播逻辑不一致或边界条件处理bug，而LeakyReLU数学定义在这些点上明确（如nan->nan, inf->inf, -inf->-inf, -0.0->-0.0*negative_slope）",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                64,
+                64,
+                14,
+                14
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                64,
+                64,
+                14,
+                14
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              64,
+              64,
+              14,
+              14
+            ],
+            "paddle_shape": [
+              64,
+              64,
+              14,
+              14
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试空张量（shape=[0]）和标量（shape=[]）",
+          "mutation_reason": "空张量和标量是LeakyReLU的边界情况，框架可能在形状处理、广播或梯adients上存在不一致实现，易暴露底层tensor调度bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -1.0,
+                0.0,
+                1.0,
+                -0.0,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "negative_slope": 0.2,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -1.0,
+                0.0,
+                1.0,
+                -0.0,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "negative_slope": 0.2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64及边界值（inf, -inf, nan, -0.0）在LeakyReLU中的数值一致性",
+          "mutation_reason": "float64可暴露精度差异；inf/-inf/nan/-0.0是LeakyReLU数学定义的边界情况，框架对特殊浮点值的处理易存在不一致bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                64,
+                64,
+                14,
+                14
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                64,
+                64,
+                14,
+                14
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              64,
+              64,
+              14,
+              14
+            ],
+            "paddle_shape": [
+              64,
+              64,
+              14,
+              14
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_leaky_relu_20260124_192236.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.leaky_relu",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "negative_slope": 0.0,
+        "inplace": false
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.functional.leaky_relu",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "negative_slope": 0.0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架对边界条件处理差异，如NaN传播规则、负零符号保留、溢出行为等数学不一致bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.0,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              64
+            ],
+            "paddle_shape": [
+              0,
+              64
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）配合极端浮点值",
+          "mutation_reason": "标量是LeakyReLU最简输入，易暴露框架对标量广播、inf/nan/-0.0等特殊值处理的不一致；空张量已测过，标量是下一个关键边界。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "negative_slope": 0.0,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "negative_slope": 0.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型及边界值（inf, -inf, nan, -0.0）在 leaky_relu 中的等价性",
+          "mutation_reason": "float64 提升数值精度，暴露浮点边界处理差异；inf/-inf/nan/-0.0 是 LeakyReLU 数学定义的临界点，框架对这些值的符号传播或特殊值处理可能不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.0,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3
+            ],
+            "paddle_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_leaky_relu_20260124_192236.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.leaky_relu",
+        "input": {
+          "shape": [
+            3,
+            4,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.4227002851218621,
+            0.5905699038333738,
+            0.37592225382850264,
+            1.3346331143283818,
+            1.02628870888738,
+            1.6575991821399767,
+            0.1165207832993528,
+            0.45229012763602794,
+            1.7163954254506404,
+            -2.1328923754695666
+          ]
+        },
+        "negative_slope": 0.2,
+        "inplace": false
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.functional.leaky_relu",
+        "input": {
+          "shape": [
+            3,
+            4,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.4227002851218621,
+            0.5905699038333738,
+            0.37592225382850264,
+            1.3346331143283818,
+            1.02628870888738,
+            1.6575991821399767,
+            0.1165207832993528,
+            0.45229012763602794,
+            1.7163954254506404,
+            -2.1328923754695666
+          ]
+        },
+        "negative_slope": 0.2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架对边界条件处理差异，如NaN传播规则、无穷大符号处理、次正规数精度、负零恒等性等数学一致性bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.4227002851218621,
+                0.5905699038333738,
+                0.37592225382850264,
+                1.3346331143283818,
+                1.02628870888738,
+                1.6575991821399767,
+                0.1165207832993528,
+                0.45229012763602794,
+                1.7163954254506404,
+                -2.1328923754695666,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.4227002851218621,
+                0.5905699038333738,
+                0.37592225382850264,
+                1.3346331143283818,
+                1.02628870888738,
+                1.6575991821399767,
+                0.1165207832993528,
+                0.45229012763602794,
+                1.7163954254506404,
+                -2.1328923754695666,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              4,
+              5
+            ],
+            "paddle_shape": [
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用空张量（shape=[0, 3, 4]）和含特殊浮点值的样本",
+          "mutation_reason": "空张量易触发框架边界处理逻辑差异；结合inf/-inf/nan可暴露NaN传播规则或符号零处理不一致等底层实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                0,
+                3,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            },
+            "negative_slope": 0.2,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                0,
+                3,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            },
+            "negative_slope": 0.2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              3,
+              4
+            ],
+            "paddle_shape": [
+              0,
+              3,
+              4
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float64 变异为 float32，并注入边界特殊值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float32 更易暴露精度处理差异和特殊值（如 NaN 传播、inf 符号运算）的框架实现不一致；LeakyReLU 对负无穷和 NaN 的行为在文档中未明确定义，易触发未对齐的底层 kernel 实现。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                3,
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.4227002851218621,
+                0.5905699038333738,
+                0.37592225382850264,
+                1.3346331143283818,
+                1.02628870888738,
+                1.6575991821399767,
+                0.1165207832993528,
+                0.45229012763602794,
+                1.7163954254506404,
+                -2.1328923754695666,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2,
+            "inplace": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.leaky_relu",
+            "input": {
+              "shape": [
+                3,
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.4227002851218621,
+                0.5905699038333738,
+                0.37592225382850264,
+                1.3346331143283818,
+                1.02628870888738,
+                1.6575991821399767,
+                0.1165207832993528,
+                0.45229012763602794,
+                1.7163954254506404,
+                -2.1328923754695666,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "negative_slope": 0.2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              4,
+              5
+            ],
+            "paddle_shape": [
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

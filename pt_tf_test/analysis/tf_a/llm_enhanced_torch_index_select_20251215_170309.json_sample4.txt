@@ -1,0 +1,83 @@
+来源文件: llm_enhanced_torch_index_select_20251215_170309.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0] = 3 is not in [0, 3) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.index_select",
+  "input": {
+    "shape": [
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.03999081999063492,
+      0.4918587803840637,
+      0.673335075378418,
+      -1.8061574697494507,
+      -0.17338959872722626,
+      0.15458106994628906,
+      1.3518290519714355,
+      -0.9670862555503845,
+      -0.10414745658636093,
+      -1.0725611448287964
+    ]
+  },
+  "dim": 0,
+  "index": {
+    "shape": [
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      -9
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.gather",
+  "input": {
+    "shape": [
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.03999081999063492,
+      0.4918587803840637,
+      0.673335075378418,
+      -1.8061574697494507,
+      -0.17338959872722626,
+      0.15458106994628906,
+      1.3518290519714355,
+      -0.9670862555503845,
+      -0.10414745658636093,
+      -1.0725611448287964
+    ]
+  },
+  "axis": 0,
+  "indices": {
+    "shape": [
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      3,
+      0
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.gather` 要求 `indices` 中的每个值必须在有效索引范围内（即 `[0, input.shape[axis])`），而错误信息显示 `indices[0] = 3`，但输入张量 `input` 在 `axis=0` 上的大小为 3（shape=[3,4]），因此有效索引范围是 `[0, 3)`，即 0、1、2，而 3 是越界值。
+   - 尽管 PyTorch 的 `torch.index_select` 允许越界索引（如 `7` 或 `-9`）并会根据其处理规则（如负数索引或超出范围时的行为）进行处理，但 TensorFlow 的 `tf.gather` 严格检查索引有效性，不支持越界访问。
+
+3. 修复建议：
+   - 该问题源于两个框架对索引越界的处理策略不同，属于底层行为差异；由于 TensorFlow 明确要求索引在有效范围内，而 PyTorch 更宽松，因此应视为框架行为差异，可考虑提交 issue 至 TensorFlow 官方以探讨是否需增强容错性。

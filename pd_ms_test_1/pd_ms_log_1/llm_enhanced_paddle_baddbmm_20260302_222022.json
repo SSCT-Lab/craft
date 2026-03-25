@@ -1,0 +1,1692 @@
+{
+  "pd_api": "paddle.baddbmm",
+  "ms_api": "mindspore.ops.baddbmm",
+  "timestamp": "2026-03-02T22:20:22.626722",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "mindspore.ops.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 10, 5].",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          2,
+          10,
+          5
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'x's width must equal y's height'，即x.shape[-1]必须等于y.shape[-2]。原始用例中x=[2,10,10], y=[2,10,5]，x.width=10 ≠ y.height=10? 实际y.shape[-2]=10，y.shape[-1]=5，所以x @ y要求x.shape[-1]==y.shape[-2] → 10==10，合法；但错误信息显示y's shape=[2,10,5]被误判，说明Paddle版本可能对batch维度解析异常。修复：确保矩阵乘法维度兼容，将y改为[2,10,5]→保持，但input需匹配输出形状[2,10,5]，而x@y是[2,10,10]@[2,10,5]→不合法！正确应为x=[2,10,10], y=[2,10,5]不满足matmul（需x[B,M,K] @ y[B,K,N]），故y应为[2,10,5]→K=10，y需是[2,10,5]则K=y.shape[-2]=10，N=5，因此x必须是[2,M,10]，故x.shape=[2,10,10]合法（M=10,K=10）。但x@y结果是[2,10,5]，input=[2,10,5]匹配。错误根源是Paddle严格校验而MindSpore更宽松，但文档明确要求x和y为3D且x.shape[-1]==y.shape[-2]。原始x=[2,10,10], y=[2,10,5] → x.shape[-1]=10, y.shape[-2]=10，符合。然而报错表明实际传入y可能是[2,10,5]但被误读，最稳妥修复是显式满足：x=[2,10,10], y=[2,10,5] → 正确；但Paddle报错说明其内部检查失败，常见于旧版Paddle对baddbmm的batch matmul维度解析bug。标准修复：将y改为[2,10,5]不变，但确保x最后一维等于y倒数第二维——已满足；因此问题在input形状未广播？不，input=[2,10,5]与输出[2,10,5]一致。唯一可能是Paddle文档要求x和y的batch size相同（满足），且x.dim==3,y.dim==3（满足）。经查，Paddle baddbmm实际要求x为[batch, m, k], y为[batch, k, n]，当前x=[2,10,10]→k=10, y=[2,10,5]→k应为y.shape[-2]=10，n=5，完全合法。报错信息显示'y's shape = [2, 10, 5]'，但提示'x's width must be equal with y's height'，width=x.shape[-1]=10, height=y.shape[-2]=10，应相等。此为Paddle已知校验bug，修复方式：微调形状避免触发校验误报，将x改为[2,10,10]不变，y改为[2,10,5]不变，但input改为[1,10,5]触发广播，或更可靠：统一使用标准兼容形状x=[2,10,8], y=[2,8,5], input=[2,10,5]。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "x": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 8, 5].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [2, 10, 8] and other.shape = [2, 10, 5]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（10x8 * 8x5要求y为[2,8,5]合法，但input为[2,10,5]与输出维度[2,10,5]不匹配；MindSpore要求input可广播到[2,10,5]，但当前input为[2,10,8]。修复：统一input shape为[2,10,5]以匹配bmm输出维度，且满足Paddle的beta*input + alpha*x@y中x@y为[2,10,5]。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "beta": 1.0,
+        "y": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "x": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 8, 5].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [2, 10, 8] and other.shape = [2, 10, 5]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle要求x.shape[-1] == y.shape[-2]（即x的width等于y的height），当前x=[2,10,8], y=[2,8,5]满足；但input必须与输出形状[2,10,5]广播一致，而input=[2,10,5]合法。MindSpore中input需匹配batch1@batch2结果[2,10,5]，但其test case中input=[2,10,8]错误。应统一input为[2,10,5]以满足两框架广播和矩阵乘法维度约束。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "x": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 8, 5].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [2, 10, 8] and other.shape = [2, 10, 5]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "mindspore.ops.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `baddbmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float16",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle baddbmm不支持float16，仅支持float32/float64；而MindSpore支持float16。为使两框架均可执行，需将dtype统一改为float32，符合Paddle文档明确列出的支持类型。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 14.38311672",
+        "pd_shape": [
+          1,
+          10,
+          10
+        ],
+        "ms_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore baddbmm requires batch1 and batch2 to be compatible for matrix multiplication: if batch1 is (C,W,T), batch2 must be (C,T,H); here both are (1,10,10), so batch1@batch2 is valid (10x10 @ 10x10), but input must be broadcastable to output shape (1,10,10). However, Paddle's x and y are both (1,10,10), matching the same constraint. The inconsistency arises because the original test uses identical random-initialized tensors across frameworks — but without controlled initialization, numerical differences accumulate. To ensure semantic equivalence, we must enforce identical input values (not just shapes) and validate correct parameter mapping: Paddle's 'x' ↔ MindSpore's 'batch1', 'y' ↔ 'batch2'. Also, MindSpore docs state alpha/beta must be integers for non-FloatTensor, but dtype is float32, so floats are allowed — yet precision divergence suggests uninitialized randomness causes drift. Repair: use deterministic small-constant tensors to eliminate noise."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "beta": 1.0,
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "batch1": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 9.81356001",
+        "pd_shape": [
+          1,
+          10,
+          10
+        ],
+        "ms_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致且最大差异9.81356001远超可容忍精度误差(1e-3)；但两框架API语义一致（均为Out=alpha*x*y+beta*input），参数映射正确；差异可能源于内部实现数值稳定性或初始化差异，需通过fuzzing验证鲁棒性，故对输入形状进行变异以覆盖更广场景。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 10.02708960",
+        "pd_shape": [
+          2,
+          5,
+          5
+        ],
+        "ms_shape": [
+          2,
+          5,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "bfloat16"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "bfloat16"
+        },
+        "input": {
+          "shape": [
+            2,
+            50,
+            1
+          ],
+          "dtype": "bfloat16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "bfloat16"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "bfloat16"
+        },
+        "input": {
+          "shape": [
+            2,
+            50,
+            1
+          ],
+          "dtype": "bfloat16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "mindspore.ops.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 1], y's shape = [2, 5, 10].",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          2,
+          50,
+          10
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'x's width must equal y's height'，即x.shape[-1]必须等于y.shape[-2]；当前x=[2,50,5], y=[2,5,10]满足该条件（5==5），但input=[2,50,1]与bmm结果[2,50,10]不匹配，无法广播相加；根据文档，input需能广播为[2,50,10]，故修复input shape为[2,50,10]或[1,50,10]等可广播形状。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 10], y's shape = [2, 5, 10].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [2, 50, 5] and other.shape = [2, 50, 10]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（50x5 * 5x10合法，但当前y为[2,5,10]，需y为[2,5,10]→x@y要求x.shape[-1]==y.shape[-2]，即x.shape=[2,50,5], y.shape=[2,5,10]合法；但input必须与输出广播一致，输出shape=[2,50,10]，故input应为[2,50,10]或可广播形状。MindSpore中input shape=[2,50,5]错误，应改为[2,50,10]以匹配baddbmm输出维度。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "beta": 1.0,
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 10], y's shape = [2, 5, 10].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [2, 50, 5] and other.shape = [2, 50, 10]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（50x5 * 2x5x10不满足矩阵乘法维度要求），正确应为x.shape=[2,50,5]与y.shape=[2,5,10]可乘得[2,50,10]，但input需匹配输出形状[2,50,10]；MindSpore中input也需广播兼容[2,50,10]，原MindSpore input.shape=[2,50,5]错误，应统一为[2,50,10]以满足baddbmm广播规则。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 10], y's shape = [2, 5, 10].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [2, 50, 5] and other.shape = [2, 50, 10]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            1,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0,
+        "alpha": 0.5,
+        "api": "paddle.baddbmm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            1,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0,
+        "alpha": 0.5,
+        "api": "mindspore.ops.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The dimension of x, y should be 3 but receive x's shape: [1, 15], y's shape: [1, 10, 15]",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          1,
+          50,
+          15
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle要求input必须 be broadcastable to the output shape [1,50,15] (from x@y), but input shape [1,15] is invalid; it must be 3D or broadcastable to [1,50,15]. MindSpore accepts 2D input via broadcasting, but Paddle requires input to have same batch dim and compatible spatial dims. Fix: expand input to [1,50,15] or [1,1,15] for proper broadcasting."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "alpha": 0.5,
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5,
+        "batch1": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 50, 15], y's shape = [1, 10, 15].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [1, 50, 10] and other.shape = [1, 50, 15]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（50x10 * 10x15合法，但用例中y为[1,10,15]，x为[1,50,10]，则x@y要求x.shape[-1]==y.shape[-2]即10==10，实际合法；错误根源是input形状不匹配：Paddle要求input与输出同shape即[1,50,15]，但MindSpore用例中input为[1,50,10]，且MindSpore报错也表明input需广播到[1,50,10]而y是[1,10,15]，故应统一input为[1,50,15]以满足bmm输出维度并兼容broadcast。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "beta": 2.0,
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0,
+        "batch1": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 50, 15], y's shape = [1, 10, 15].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [1, 50, 10] and other.shape = [1, 50, 15]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（50x10 * 10x15合法，但用例中y为[1,10,15]导致x@y不满足矩阵乘法维度要求）；MindSpore用例中input.shape=[1,50,10]与baddbmm输出shape[1,50,15]不匹配，无法广播。需统一使input.shape匹配输出维度[1,50,15]，且确保x@y维度兼容：x=[1,50,10], y=[1,10,15] → output=[1,50,15]，故input必须为[1,50,15]。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "alpha": 0.5,
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5,
+        "batch1": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 50, 15], y's shape = [1, 10, 15].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [1, 50, 10] and other.shape = [1, 50, 15]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "mindspore.ops.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          1,
+          3,
+          2
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'x's width must equal y's height'，但原始用例中x.shape=[1,3,4], y.shape=[1,4,2]满足矩阵乘法要求（4==4），错误源于Paddle参数名不匹配：Paddle文档明确要求参数名为input/x/y，而测试用例中误将batch1/batch2语义的张量直接映射为x/y，但Paddle实际校验逻辑可能对输入顺序或命名敏感；需确保input为首个参数且x,y维度兼容，当前shape合法，故问题在MindSpore用例参数名与Paddle不一致：MindSpore用batch1/batch2，Paddle用x/y，但测试用例中统一用了x/y导致Paddle内部解析异常；修复为显式按框架文档使用正确参数名，并验证维度兼容性。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [1, 3, 4] and other.shape = [1, 3, 2]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2]=4与y.shape[1]=4不匹配（需x.shape[2]==y.shape[1]），但原始y.shape=[1,4,2]导致x@y不可行；MindSpore要求batch1@batch2输出shape为[1,3,2]，故input必须广播为[1,3,2]，而原始MindSpore input.shape=[1,3,4]错误。应统一修正为：x=[1,3,4], y=[1,4,2] → x@y=[1,3,2]，input需为[1,3,2]或可广播形状。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "beta": 1.0,
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "batch1": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [1, 3, 4] and other.shape = [1, 3, 2]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（3×4与4×2合法，但原始input为[1,3,2]不匹配输出维度[1,3,2]应为[1,3,2]←x@y结果是[1,3,2]，故input必须广播兼容[1,3,2]；而MindSpore中input被设为[1,3,4]，与x@y=[1,3,2]不兼容。修复：统一input为[1,3,2]，且确保x@y维度合法：x=[1,3,4], y=[1,4,2] → x@y=[1,3,2]，input=[1,3,2]可直接相加。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "alpha": 1.0,
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "ms_test_case": {
+        "batch2": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "batch1": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.baddbmm",
+        "input": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "ms_api": "mindspore.ops.baddbmm",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "ms_error": "ValueError: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [1, 3, 4] and other.shape = [1, 3, 2]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\ops_utils\\op_utils.cc:93 mindspore::ops::CalBroadCastShape\n",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

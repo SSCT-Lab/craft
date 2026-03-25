@@ -1,0 +1,83 @@
+来源文件: llm_enhanced_torch_where_20251209_151232.json
+样例编号: 2
+tensorflow_error 错误信息: cannot compute SelectV2 as input #2(zero-based) was expected to be a float tensor but is a int32 tensor [Op:SelectV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.where",
+  "condition": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "x": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "y": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.where",
+  "condition": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "x": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "y": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.where` 在输入 `x` 与 `y` 类型不一致时（如 `float32` 与 `int32`），会要求两者必须具有相同的数据类型，否则抛出 `cannot compute SelectV2 ... was expected to be a float tensor but is a int32 tensor` 错误；而 PyTorch 的 `torch.where` 允许 `x` 与 `y` 类型不同，会自动进行类型提升或广播。
+   - 尽管测试用例中 `condition` 和 `x`、`y` 的 shape 均为 `[2, 0, 3, 4]`（包含 0 的维度），但该形状在 TensorFlow 中虽可接受，其张量实际为空，此时对类型一致性检查更为严格，导致类型不匹配错误。
+
+3. 修复建议：
+   - 该问题属于框架间类型处理行为差异，建议提交 issue 至 TensorFlow 官方仓库，说明在空张量（含 0 维度）场景下，`tf.where` 对输入类型一致性要求过严且与 PyTorch 不一致。

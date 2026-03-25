@@ -1,0 +1,93 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251215_201554.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__MirrorPad_device_/job:localhost/replica:0/task:0/device:CPU:0}} paddings must be non-negative: -1 0 [Op:MirrorPad]
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      128,
+      264,
+      33,
+      33
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.8011758923530579,
+      0.5722933411598206,
+      0.7228055000305176,
+      -2.016477108001709,
+      0.7731958031654358,
+      -0.6513539552688599,
+      0.6782407164573669,
+      0.52581787109375,
+      0.18838442862033844,
+      -1.3192596435546875
+    ]
+  },
+  "pad": [
+    -1,
+    0,
+    -1,
+    0
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.pad",
+  "input": {
+    "shape": [
+      128,
+      264,
+      33,
+      33
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.8011758923530579,
+      0.5722933411598206,
+      0.7228055000305176,
+      -2.016477108001709,
+      0.7731958031654358,
+      -0.6513539552688599,
+      0.6782407164573669,
+      0.52581787109375,
+      0.18838442862033844,
+      -1.3192596435546875
+    ]
+  },
+  "paddings": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      -1,
+      0
+    ],
+    [
+      -1,
+      0
+    ]
+  ],
+  "mode": "REFLECT",
+  "constant_values": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.pad` 函数在 `mode="REFLECT"` 时要求所有 `paddings` 值必须为非负整数，而测试用例中传入了 `-1`（如 `[[-1, 0], [-1, 0]]`），这违反了 TensorFlow 的输入校验逻辑，导致报错“paddings must be non-negative: -1 0”。  
+   - PyTorch 的 `torch.nn.functional.pad` 在 `mode="reflect"` 时允许负的 padding 值（表示从边界向内反射填充），其语义与 TensorFlow 不同，因此该参数在两个框架中行为不一致。
+
+3. 修复建议：  
+   - 此为框架间语义差异，应提交 issue 至 TensorFlow 官方仓库，指出 `tf.pad` 在 `REFLECT` 模式下对负 padding 的严格限制与 PyTorch 不一致，且缺乏明确文档说明该限制。

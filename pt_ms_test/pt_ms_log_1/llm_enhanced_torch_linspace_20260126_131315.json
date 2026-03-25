@@ -1,0 +1,513 @@
+{
+  "operator": "torch.linspace",
+  "timestamp": "2026-01-26T13:13:15.389562",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 5,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "start": -10,
+        "end": 10,
+        "steps": 100,
+        "requires_grad": true,
+        "api": "torch.linspace"
+      },
+      "mindspore_test_case": {
+        "start": -10,
+        "end": 10,
+        "steps": 100,
+        "requires_grad": true,
+        "api": "mindspore.numpy.linspace"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "linspace() got an unexpected keyword argument 'end'",
+        "comparison_error": null,
+        "torch_shape": [
+          100
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: linspace() got an unexpected keyword argument 'end'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.numpy.linspace不接受参数名'end'，而应使用'stop'；同时不支持'requires_grad'参数（MindSpore中梯度属性由Tensor构造时指定，而非linspace函数参数）；此外，MindSpore要求显式指定'num'而非'steps'，且'dtype'需按MindSpore规范传入（如mindspore.float32），不能直接沿用PyTorch的dtype逻辑。根据文档，需将'end'→'stop'，'steps'→'num'，移除'requires_grad'，并补充'dtype'以确保类型推断明确。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10,
+        "end": 10,
+        "steps": 100,
+        "requires_grad": true
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": -10,
+        "stop": 10,
+        "num": 100,
+        "dtype": "float32"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          100
+        ],
+        "mindspore_shape": [
+          100
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例在PyTorch和MindSpore上均执行成功且结果一致，但未覆盖边界值、极端参数组合及dtype推断场景；根据API文档，PyTorch的torch.linspace支持complex输入和requires_grad，而MindSpore的mindspore.numpy.linspace支持endpoint=False、retstep=True、axis等特有参数，且dtype可为None（触发类型推断）；为提升鲁棒性与兼容性测试覆盖率，需进行fuzzing：1) 使用边界值start=0, stop=0以测试退化区间；2) 设置num=1和num=0（MindSpore中num=0合法，PyTorch steps=0会报错，故需调整为steps=1保持语义等价）；3) 启用retstep=True（MindSpore）并对应PyTorch手动计算step，确保功能对齐；4) 使用dtype=None让MindSpore自动推断，而PyTorch使用默认dtype（float32隐式）；5) 添加requires_grad=False和endpoint=False变体以覆盖不同行为分支。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0,
+        "end": 0,
+        "steps": 1,
+        "requires_grad": false
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": 0,
+        "stop": 0,
+        "num": 1,
+        "endpoint": true,
+        "retstep": true,
+        "dtype": null,
+        "axis": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "比较过程出错: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (2,) + inhomogeneous part.",
+        "torch_shape": [
+          1
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的linspace在retstep=True时返回(samples, step)二元组，而PyTorch的linspace仅返回tensor；当前测试用例中MindSpore启用了retstep=True但PyTorch未对应处理，导致比较时尝试将tuple与tensor比较，引发'array element with a sequence'错误。根据API语义等价性要求，应使两者输出结构一致：MindSpore需设retstep=False以仅返回Tensor，且参数名需对齐（end↔stop），steps↔num，同时移除PyTorch中MindSpore不支持的requires_grad参数（因mindspore.numpy.linspace不支持梯度）。此外，dtype应显式指定为float32以确保类型一致性，避免隐式推断差异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0,
+        "end": 0,
+        "steps": 1,
+        "dtype": "torch.float32"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": 0,
+        "stop": 0,
+        "num": 1,
+        "endpoint": true,
+        "retstep": false,
+        "dtype": "float32",
+        "axis": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": false,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": "linspace() received an invalid combination of arguments - got (start=int, end=int, steps=int, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": [
+          1
+        ],
+        "torch_dtype": null,
+        "mindspore_dtype": "Float32",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 627, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: linspace() received an invalid combination of arguments - got (start=int, end=int, steps=int, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "start": -10,
+        "end": 10,
+        "steps": 5,
+        "requires_grad": true,
+        "api": "torch.linspace"
+      },
+      "mindspore_test_case": {
+        "start": -10,
+        "end": 10,
+        "steps": 5,
+        "requires_grad": true,
+        "api": "mindspore.numpy.linspace"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "linspace() got an unexpected keyword argument 'end'",
+        "comparison_error": null,
+        "torch_shape": [
+          5
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: linspace() got an unexpected keyword argument 'end'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.numpy.linspace不接受参数名'end'，而应使用'stop'；同时不支持'requires_grad'参数（MindSpore中梯度需求由Tensor构造或后续操作控制，非linspace函数参数）；此外，MindSpore中样本数量参数名为'num'而非'steps'。根据MindSpore文档，正确参数为start, stop, num, endpoint, retstep, dtype, axis；PyTorch中steps对应MindSpore的num，end对应stop，requires_grad在MindSpore linspace中无等价参数且不应传递。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10,
+        "end": 10,
+        "steps": 5,
+        "requires_grad": true
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": -10,
+        "stop": 10,
+        "num": 5,
+        "endpoint": true,
+        "dtype": "float32"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5
+        ],
+        "mindspore_shape": [
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，符合预期；根据任务要求，需对用例进行变异（fuzzing）以提升测试覆盖率。原始用例使用标量start/end/stop和较小steps/num=5，且dtype固定为float32、endpoint=True。变异策略包括：(1) 使用浮点边界值（如-1e10, 1e10）测试数值稳定性；(2) 使用极小steps/num=1和极大steps/num=100000验证边界与性能；(3) 增加requires_grad=False和dtype=float64以覆盖不同精度与梯度需求；(4) 补充endpoint=False场景（MindSpore支持而PyTorch无直接对应参数，但PyTorch行为默认包含end，故需通过调整end值模拟等效输出——但注意：PyTorch linspace始终包含end，而MindSpore当endpoint=False时exclude stop，因此严格语义等价需避免endpoint=False，故本次变异不引入endpoint=False，仅保持endpoint=True确保语义一致）；最终选择num/steps=1（单点）、100000（大尺寸）、start/end为极限浮点数，并统一dtype为float64以增强数值鲁棒性检验。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10000000000.0,
+        "end": 10000000000.0,
+        "steps": 100000,
+        "requires_grad": false,
+        "dtype": "torch.float64"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": -10000000000.0,
+        "stop": 10000000000.0,
+        "num": 100000,
+        "endpoint": true,
+        "dtype": "float64"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": false,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": "linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": [
+          100000
+        ],
+        "torch_dtype": null,
+        "mindspore_dtype": "Float64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 627, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, requires_grad=bool, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.linspace does not accept 'requires_grad' and 'dtype' as positional or keyword arguments in this signature; the error shows that dtype must be passed as torch.dtype (not string 'torch.float64'), and requires_grad is only valid when start/end are tensors — but here they are floats. According to PyTorch docs, dtype should be a torch.dtype enum (e.g., torch.float64), not a string. Also, MindSpore uses 'stop' and 'num', while PyTorch uses 'end' and 'steps' — those are correct name mappings. The core issue is passing dtype as string instead of torch.dtype object and incorrectly including requires_grad for scalar inputs. Repair: replace 'dtype': 'torch.float64' with 'dtype': torch.float64 (in code) — but since test case is JSON, we must use serializable representation; however, per task requirement, scalar params stay as values, and dtype in PyTorch test case must be a valid string *only if* framework accepts it — but PyTorch does NOT accept string dtype in linspace (unlike torch.tensor). So the correct fix is to remove 'requires_grad' (invalid for scalars) and ensure dtype is omitted or passed as proper torch.dtype — but JSON can't hold torch.dtype objects. Therefore, the only compliant repair is to omit 'requires_grad' and use correct dtype specification: PyTorch supports dtype via torch.dtype constants, but in JSON test representation, we follow convention used in valid PyTorch test suites — i.e., use string like 'torch.float64' *only if* the test runner converts it; however, the error proves it's rejected. Hence, safest repair is to remove 'requires_grad' and change dtype to None (let PyTorch infer), or use integer dtype code? No — official doc says dtype=torch.dtype. Since JSON cannot embed torch.dtype, and string fails, the minimal working fix is to omit dtype (rely on default) and omit requires_grad — both are optional and invalid here. Also verify: steps=100000 is valid (int), start/end are floats — that's allowed *only if* dtype is not string and requires_grad is absent. So repaired PyTorch case removes 'requires_grad' and sets 'dtype': null (to indicate omission), but per output format requirement, scalar params are direct values — so we must omit the key entirely. However, the output schema requires all original keys? No — task says 'repair' means change parameters to make it valid. So we drop invalid keys: 'requires_grad' must be removed, and 'dtype' must be either removed or set to a valid torch.dtype — but JSON can’t hold torch.dtype. Therefore, per PyTorch doc and error, the only valid scalar-input call is: torch.linspace(start, end, steps). All other kwargs are invalid unless start/end are tensors. So repair: remove 'requires_grad' and 'dtype' entirely from PyTorch test case. MindSpore case is already valid."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": -10000000000.0,
+        "end": 10000000000.0,
+        "steps": 100000
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": -10000000000.0,
+        "stop": 10000000000.0,
+        "num": 100000,
+        "endpoint": true,
+        "dtype": "float64"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1024.0",
+        "torch_shape": [
+          100000
+        ],
+        "mindspore_shape": [
+          100000
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "start": 0,
+        "end": 0.998046875,
+        "steps": 5,
+        "requires_grad": true,
+        "api": "torch.linspace"
+      },
+      "mindspore_test_case": {
+        "start": 0,
+        "end": 0.998046875,
+        "steps": 5,
+        "requires_grad": true,
+        "api": "mindspore.numpy.linspace"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "linspace() got an unexpected keyword argument 'end'",
+        "comparison_error": null,
+        "torch_shape": [
+          5
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: linspace() got an unexpected keyword argument 'end'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.numpy.linspace不接受'end'参数，而应使用'stop'；同时不支持'requires_grad'参数（MindSpore中梯度需通过context或autograd显式控制，该API无此参数）；此外，'steps'在MindSpore中对应'num'。根据文档，需将'end'→'stop'、'steps'→'num'，并移除'requires_grad'以匹配MindSpore API签名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0,
+        "end": 0.998046875,
+        "steps": 5,
+        "requires_grad": true
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": 0,
+        "stop": 0.998046875,
+        "num": 5
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5
+        ],
+        "mindspore_shape": [
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，说明基础功能等价；但原始用例仅覆盖简单标量输入和默认参数组合，未测试边界值、极端精度、dtype一致性、endpoint行为差异（MindSpore支持endpoint=False而PyTorch无此参数）、retstep返回、以及高维/张量输入场景。为提升鲁棒性测试覆盖率，需进行fuzzing：引入endpoint=False变体（MindSpore特有，需在PyTorch中通过手动截断模拟语义等价）、添加dtype显式指定（float32/float64）、测试steps/num=1和steps/num=0（边界）、测试start=end的退化情况，并确保requires_grad与MindSpore的grad兼容性（MindSpore无requires_grad参数，但可通过Tensor构造控制可微性，此处保持标量输入不变，仅增强数值多样性）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0.0,
+        "end": 1.0,
+        "steps": 1,
+        "dtype": "torch.float32",
+        "requires_grad": true
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": 0.0,
+        "stop": 1.0,
+        "num": 1,
+        "endpoint": true,
+        "dtype": "mindspore.float32"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": "linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, dtype=str, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "mindspore_error": "only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": null,
+        "torch_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 627, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, dtype=str, requires_grad=bool, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\numpy\\array_creations.py\", line 715, in linspace\n    start, stop, num, endpoint, dtype = _type_checking_for_xspace(start, stop, num, endpoint, dtype)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\numpy\\array_creations.py\", line 656, in _type_checking_for_xspace\n    dtype = _check_dtype(dtype)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\ops\\primitive.py\", line 965, in __call__\n    return fn(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\numpy\\utils_const.py\", line 75, in _check_dtype\n    raise TypeError(f\"only {all_types} are allowed for dtype, but got {type(dtype)}\")\nTypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.linspace does not accept string dtype (e.g., 'torch.float32'); it requires a torch.dtype object like torch.float32. MindSpore's mindspore.numpy.linspace similarly rejects string dtype ('mindspore.float32') — it expects either a mindspore.dtype enum (e.g., ms.float32) or a valid NumPy dtype (e.g., np.float32), not a string. Both frameworks failed due to invalid dtype type (string instead of enum/class). Also, PyTorch uses 'steps', while MindSpore uses 'num'; both are correct, but dtype must be fixed. Additionally, PyTorch's 'requires_grad' is valid only for tensor inputs, but here start/end are scalars — however, the error shows dtype mismatch is the primary failure; fixing dtype resolves the core issue. We replace string dtypes with proper enum values: torch.float32 for PyTorch and mindspore.float32 (not string) for MindSpore. Note: MindSpore's dtype accepts 'mindspore.float32' *only if imported as ms* — but in actual usage, it must be the dtype constant, not a string. Since test case is JSON-based and cannot import, safest repair is to use NumPy-compatible dtype strings *only if supported*, but MindSpore docs explicitly forbid string dtypes (error says 'only [...] np.* are allowed'). Therefore, we switch both to np.float32 (valid for both: PyTorch accepts np.float32 as dtype arg; MindSpore explicitly allows np.float32 per error message). Also, ensure parameter names match framework expectations: 'end'→'stop' for MindSpore, 'steps'→'num' — already done. No need for requires_grad=True with scalar start/end (it's ignored or invalid), so remove it to avoid ambiguity."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.linspace",
+        "start": 0.0,
+        "end": 1.0,
+        "steps": 1,
+        "dtype": "np.float32"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.numpy.linspace",
+        "start": 0.0,
+        "stop": 1.0,
+        "num": 1,
+        "endpoint": true,
+        "dtype": "np.float32"
+      },
+      "execution_result": {
+        "torch_api": "torch.linspace",
+        "mindspore_api": "mindspore.numpy.linspace",
+        "torch_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": "linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "mindspore_error": "only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": null,
+        "torch_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 627, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: linspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\numpy\\array_creations.py\", line 715, in linspace\n    start, stop, num, endpoint, dtype = _type_checking_for_xspace(start, stop, num, endpoint, dtype)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\numpy\\array_creations.py\", line 656, in _type_checking_for_xspace\n    dtype = _check_dtype(dtype)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\ops\\primitive.py\", line 965, in __call__\n    return fn(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\mindspore\\numpy\\utils_const.py\", line 75, in _check_dtype\n    raise TypeError(f\"only {all_types} are allowed for dtype, but got {type(dtype)}\")\nTypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

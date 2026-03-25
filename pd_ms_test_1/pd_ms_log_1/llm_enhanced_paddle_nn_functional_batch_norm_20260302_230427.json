@@ -1,0 +1,2125 @@
+{
+  "pd_api": "paddle.nn.functional.batch_norm",
+  "ms_api": "mindspore.ops.batch_norm",
+  "timestamp": "2026-03-02T23:04:27.351973",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 15,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "paddle.nn.functional.batch_norm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "mindspore.ops.batch_norm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: batch_norm() got an unexpected keyword argument 'epsilon'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm does not accept 'epsilon' parameter; official doc shows it uses 'eps' instead. Also, MindSpore's batch_norm only supports 2D input (N,C), but Paddle case uses 4D (N,C,H,W). Must reshape input to (N,C) and rename 'epsilon' → 'eps', adjust 'momentum' to MindSpore's default range [0,1] (0.9 is valid), and remove unsupported 'data_format'."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "ms_shape": [
+          8,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；测试中虽显式设为 0.9，但 MindSpore 文档明确要求 momentum ∈ [0, 1]，且其内部动量更新公式为 new_running = (1-momentum)*old + momentum*current，与 Paddle 一致；但关键差异在于：MindSpore 要求 training=True 时 weight/bias/running_* 为 Parameter 类型，而测试中 training=False，此时需确保所有输入 tensor dtype 严格一致（float32），且 eps=1e-5 合法；然而最大差异为 nan，表明存在未初始化或 inf/nan 输入。原始用例未指定 tensor 初始化值，导致随机数据可能含 nan/inf 或方差为0，触发除零；需修复为确定性、非退化输入（如全1+小扰动），并统一 eps 名称（MindSpore 用 eps，Paddle 用 epsilon），同时 MindSpore 不支持 data_format 参数，故删除冗余字段以避免隐式行为。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "ms_shape": [
+          8,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；当前用例设 momentum=0.9，但 MindSpore 文档明确要求 momentum ∈ [0, 1]，虽合法，但两框架对 momentum 的更新公式实现细节不同（如是否使用 1-momentum 加权），且结果出现 nan 差异，表明数值不稳定。需统一为 MindSpore 接受且行为更稳定的默认值 0.1，并确保 training=false 时 MindSpore 要求 running_* 为 Tensor（非 Parameter），但用例中无类型问题；关键修复是将 momentum 改为 0.1 以对齐实际默认行为并消除 nan。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "ms_shape": [
+          8,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NHWC",
+        "api": "paddle.nn.functional.batch_norm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NHWC",
+        "api": "mindspore.ops.batch_norm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: batch_norm() got an unexpected keyword argument 'epsilon'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          5,
+          3
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm does not accept 'epsilon' parameter; official doc specifies 'eps' instead. Also, MindSpore requires input shape (N,C) for 2D case but current NHWC input is (2,4,5,3); must reshape to (N,C) or use proper layout — however MindSpore's batch_norm only supports 2D (N,C) input per doc, so we must flatten spatial dims and adjust running_mean/var/weight/bias to match channel dim C=3. Also momentum default differs (0.1 in MS vs 0.9 in Paddle), but user passed 0.9 — allowed as long as in [0,1]. Fix: rename 'epsilon'→'eps', ensure input is (N,C), i.e., (2*4*5, 3) = (40,3), and align all (C,)-shaped params to C=3."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            40,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            40,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          40,
+          3
+        ],
+        "ms_shape": [
+          40,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；测试用例中两者都设为 0.9，但 MindSpore 文档明确要求 momentum ∈ [0, 1]，虽合法，但其内部动量更新公式与 Paddle 不同（MindSpore 使用 new = (1-momentum)*old + momentum*current，Paddle 同样，但默认值差异反映设计偏好）；更关键的是：MindSpore 要求 training=True 时 weight/bias/running_mean/running_var 必须是 Parameter，而 training=False 时可为 Tensor；当前用例 training=false，合法。但最大差异为 nan，说明存在除零或无效数值——根源在于 Paddle 支持 data_format='NC' 且 x=[40,3]，而 MindSpore 文档明确限定 input_x 形状为 (N,C)，即等价于 NC，但其 eps 默认 1e-5 且要求 >0，无问题；然而 MindSpore batch_norm 在 training=False 时严格依赖 running_var ≥ 0，若生成的 running_var 含零或负值会导致 sqrt(负数+eps) 产生 nan；因此需确保 running_var 初始化为正数（如全 1.0），并在两框架中保持一致初始化逻辑。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            40,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            40,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          40,
+          3
+        ],
+        "ms_shape": [
+          40,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；测试中显式设为 0.9 导致行为不一致（MindSpore 的 running_mean/var 更新逻辑依赖 momentum，即使 training=False，内部实现可能仍受 momentum 影响数值稳定性）；此外 MindSpore 要求 input_x 为 (N,C) 且文档明确仅支持 float16/float32，但 Paddle 支持 float64；为保证语义对齐和数值一致性，应统一使用 MindSpore 推荐的 momentum=0.1，并确保所有张量 dtype 为 float32。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            40,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            40,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.97416842",
+        "pd_shape": [
+          40,
+          3
+        ],
+        "ms_shape": [
+          40,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "paddle.nn.functional.batch_norm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "mindspore.ops.batch_norm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: batch_norm() got an unexpected keyword argument 'epsilon'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3,
+          4
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm uses 'eps' instead of 'epsilon' as parameter name, and only supports float32/float16 (not float64). Also, MindSpore requires input shape to be (N,C) for 2D, but given (2,3,4) implies NCHW — must reshape to 2D or use proper format; however, doc states input_x must be (N,C), so we flatten spatial dims to match. Also momentum default differs: Paddle=0.9, MindSpore=0.1, but user passed 0.9 — allowed per doc, so keep. Fix: rename 'epsilon'→'eps', change dtype to float32, and ensure input is (N,C) — here C=3, so reshape x from [2,3,4] → [8,3] (N=8, C=3) to satisfy (N,C) requirement."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "ms_shape": [
+          8,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；当前用例设 momentum=0.9，但 MindSpore 文档明确要求 momentum ∈ [0, 1]，虽合法，但两框架对 momentum 的更新公式实现细节不同（如是否使用 1-momentum 加权），且结果出现 nan 差异，表明数值不稳定。需统一为 MindSpore 接受且行为更稳定的默认值 0.1，并确保 training=false 时 MindSpore 要求 running_* 为 Tensor（非 Parameter），但用例中无类型问题；关键修复是将 momentum 改为 0.1 以对齐实际默认行为并消除 nan。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.05378318",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "ms_shape": [
+          8,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；当前用例设 momentum=0.1 导致训练模式下统计量更新步长不一致，且 MindSpore 文档明确 momentum 范围为 [0,1]，但 PaddlePaddle 同样接受 0.1；然而关键差异在于：MindSpore 在 training=False 时完全 ignores momentum（仅用于 training=True 更新 running stats），而 PaddlePaddle 的 use_global_stats=None 逻辑与 training 参数耦合，但本例 training=false，应确保两者均使用 global stats；最大误差 4.05 远超精度容忍（1e-3），属功能一致性缺陷，需对齐 momentum 含义——实际应统一为 Paddle 默认 0.9 或显式对齐；但文档指出 MindSpore momentum only affects training=True，故 inconsistency stems from Paddle using momentum even in inference for backward compat? No — in inference (training=False), Paddle ignores momentum. So root cause is parameter name mismatch: Paddle uses 'epsilon', MindSpore uses 'eps'; both set to 1e-5, ok. Another: data_format='NC' in Paddle is valid, but MindSpore only supports (N,C) layout implicitly — no data_format param. However, the real issue is that MindSpore batch_norm requires weight/bias/running_mean/running_var to have same dtype as input_x (float32), which is satisfied, but Paddle allows different dtypes? No — both require float32. Final root: MindSpore's default momentum=0.1 vs Paddle's 0.9 is irrelevant in inference (training=False), so discrepancy must come from numerical implementation differences in normalization formula or epsilon handling. However, official docs show identical formula. Therefore, the only actionable fix is to ensure identical inputs and deterministic init — but test case lacks actual tensor values. Since only shapes/dtypes are given, inconsistency arises from uninitialized random tensors differing between frameworks. To fix, we must enforce same random seed and value initialization — but test case spec doesn't support that. Hence, per task requirement: when result inconsistent >1e-3 and frameworks are semantically equivalent, repair by aligning parameters that affect computation — here, MindSpore lacks 'data_format', but input is (8,3) matching NC, so fine; however, Paddle's 'data_format'='NC' is correct for 2D, while MindSpore assumes (N,C). So no mismatch. The critical undocumented divergence: MindSpore batch_norm in inference mode uses running_mean/var *without* correction (no Bessel’s correction), same as Paddle. So difference likely due to different default epsilon parsing or floating point accumulation order. But per strict spec, we must make cases as comparable as possible: change Paddle's epsilon to 'eps' spelling? No — Paddle uses 'epsilon'. Instead, note MindSpore requires eps > 0 and ≤1, and 1e-5 is valid. The only actionable repair is to use identical momentum value *and* ensure both use same training mode semantics — but training=false in both. Therefore, the minimal repair is to add missing 'use_global_stats=True' in Paddle to force strict global stats usage (avoiding any None logic ambiguity), and confirm MindSpore has no equivalent — it doesn't, so it's safe. Also, Paddle's default epsilon=1e-5 matches MindSpore's eps=1e-5. So repair: add use_global_stats=True in Paddle to eliminate ambiguity."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "use_global_stats": true,
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "ms_shape": [
+          8,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "paddle.nn.functional.batch_norm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "mindspore.ops.batch_norm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: batch_norm() got an unexpected keyword argument 'epsilon'",
+        "comparison_error": null,
+        "pd_shape": [
+          4,
+          5
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm uses 'eps' instead of 'epsilon' as parameter name, and momentum default is 0.1 (not 0.9). Also, MindSpore requires input shape (N,C) and does not support 'data_format' parameter — it's hardcoded to NCHW-like layout but only accepts 2D input for this op. PaddlePaddle supports NCHW with 4D input, but test uses 2D [4,5] which is valid for both; however, MindSpore's doc specifies input shape (N,C), so we keep shape but remove unsupported 'data_format' and rename 'epsilon'→'eps', adjust 'momentum' to valid value."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NCHW"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          4,
+          5
+        ],
+        "ms_shape": [
+          4,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore默认momentum=0.1而PaddlePaddle默认momentum=0.9，但测试中两者都显式设为不同值（0.9 vs 0.1），导致训练/推理模式下running_mean/var更新逻辑不一致；且MindSpore文档明确要求training=False时使用预存统计量，此时momentum实际不参与计算，但参数值差异可能引发内部实现偏差；为保证语义一致，应统一momentum值（采用Paddle默认0.9）并确保两框架均处于纯推理模式（training=False），同时MindSpore需确认输入shape兼容性：其文档限定input_x为(N,C)，当前[4,5]符合，无需改shape。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NCHW"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          4,
+          5
+        ],
+        "ms_shape": [
+          4,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm 默认 momentum=0.1，而 PaddlePaddle 默认 momentum=0.9；测试中虽显式设为 0.9，但 MindSpore 文档明确要求 momentum ∈ [0, 1]，且其内部动量更新公式为 new_running = (1-momentum)*old + momentum*current，与 Paddle 一致；但关键差异在于：MindSpore 要求 input_x 形状为 (N,C)，不支持 NCHW 多维格式（如 [4,5,1,1]），而当前用例 x/input_x 是 [4,5]，符合 MindSpore 要求；然而 Paddle 的 data_format='NCHW' 在输入为 2D [4,5] 时会触发 shape mismatch 或隐式解释异常；实际应确保输入维度语义对齐：Paddle 当 data_format='NCHW' 时期望至少 4D，而 [4,5] 被当作 NC，故需统一为 2D 并改 data_format='NC' 以匹配 MindSpore 的 (N,C) 约束。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.9,
+        "training": false,
+        "input_x": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          4,
+          5
+        ],
+        "ms_shape": [
+          4,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            3,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "paddle.nn.functional.batch_norm"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            3,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float16"
+        },
+        "training": false,
+        "momentum": 0.9,
+        "epsilon": 1e-05,
+        "data_format": "NCHW",
+        "api": "mindspore.ops.batch_norm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": false,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `batch_norm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "ms_error": "TypeError: batch_norm() got an unexpected keyword argument 'epsilon'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持float16，仅支持float32/float64；MindSpore参数名应为'eps'而非'epsilon'，且momentum默认值为0.1（非0.9），需统一dtype为float32并修正参数名和默认值。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            1,
+            4,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NCHW"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            1,
+            4,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          1,
+          4,
+          3,
+          3
+        ],
+        "ms_shape": [
+          1,
+          4,
+          3,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm only supports 2D input (N,C), but test case provides 4D (1,4,3,3). PaddlePaddle supports NCHW via data_format, but MindSpore requires flattening or channel-only input. Must reshape input_x to (N,C) = (1,4) or adjust to match MindSpore's strict 2D requirement."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          1,
+          4
+        ],
+        "ms_shape": [
+          1,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore batch_norm要求input_x形状为(N,C)，但其内部实现对单样本(N=1)且training=False时，若running_var含零或极小值易导致除零产生NaN；PaddlePaddle使用epsilon=1e-5且数值更稳健。需确保running_var全为正且远离零，同时统一eps/epsilon命名和momentum默认差异（MindSpore默认0.1，Paddle默认0.9，但用例中已设0.1，故需同步初始化running_var避免nan）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "epsilon": 1e-05,
+        "x": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.batch_norm",
+        "data_format": "NC"
+      },
+      "ms_test_case": {
+        "bias": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_mean": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "momentum": 0.1,
+        "training": false,
+        "input_x": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "running_var": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.batch_norm",
+        "eps": 1e-05
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.batch_norm",
+        "ms_api": "mindspore.ops.batch_norm",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [
+          1,
+          4
+        ],
+        "ms_shape": [
+          1,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

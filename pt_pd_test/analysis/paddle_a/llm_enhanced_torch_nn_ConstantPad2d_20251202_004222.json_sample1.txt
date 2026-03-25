@@ -1,0 +1,57 @@
+来源文件: llm_enhanced_torch_nn_ConstantPad2d_20251202_004222.json
+样例编号: 1
+paddle_error 错误信息: (PreconditionNotMet) The meta data must be valid when call the mutable data function.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.ConstantPad2d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "padding": [
+    -1,
+    0,
+    -1,
+    0
+  ],
+  "value": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.Pad2D",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "padding": [
+    -1,
+    0,
+    -1,
+    0
+  ],
+  "value": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `Pad2D` API 对输入张量的维度有严格要求，尤其当某维长度为 0（如本例中 `shape=[2, 3, 0, 4]`）时，若 padding 值为负数（如 `-1`），会触发元数据校验失败，导致 “The meta data must be valid when call the mutable data function” 错误。
+   - 根据官方文档，`mode='constant'` 时虽然未明确禁止负 padding，但实际执行中对 shape 维度为 0 的情况处理不兼容负 padding，而 PyTorch 的 `ConstantPad2d` 在此类边界情况下仍能容忍负 padding 并进行合法填充。
+
+3. 修复建议：
+   - 此问题属于框架间行为不一致，建议提交 issue 至 PaddlePaddle 官方仓库，指出在空维度（size=0）上使用负 padding 时缺乏有效错误提示或容错机制。

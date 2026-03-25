@@ -1,0 +1,905 @@
+{
+  "ms_api": "mindspore.ops.ArgMaxWithValue",
+  "tensorflow_api": "tf.math.top_k",
+  "timestamp": "2026-03-05T01:40:47.647401",
+  "total_iterations": 18,
+  "llm_generated_test_cases": 13,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "tf.math.top_k",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k does not accept 'axis' parameter; it only operates on the last dimension. To match ArgMaxWithValue(axis=0), we must transpose input to make target axis the last, then apply top_k with k=1, and optionally adjust indices via transpose/reshape. However, since top_k returns top-k values (not global argmax per axis) and semantics differ fundamentally (ArgMaxWithValue reduces along axis, top_k selects top-k per last dim), direct functional equivalence is impossible. Thus repair is infeasible — correct action is skip due to semantic incompatibility."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(3,) vs TF=(4, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue(axis=0)在MindSpore中沿axis=0求最大值，输出shape为(3,)（即每列1个最大值，共3列）；tf.math.top_k默认作用于最后维度（axis=-1），需显式指定k=4且axis=0才能等价，但top_k不支持任意axis，仅支持last dimension。因此语义不等价，应改用tf.argmax + tf.reduce_max组合，但题目限定API为top_k，故必须跳过——但根据任务要求：'语义不等价则skip'，然而当前已知执行成功但形状不匹配，且文档明确top_k仅支持last dim，而ArgMaxWithValue支持任意axis，二者不可对齐，属根本性语义差异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(3,) vs TF=(4, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue(axis=0) on (4,3) tensor returns indices/values of shape (3,) in MS, while tf.math.top_k(k=1) on same input returns (4,1) due to operating on last dim by default; to align semantics, TF must reduce along axis=0, but top_k only supports last-dim reduction. Thus, equivalent TF behavior requires transpose + top_k + transpose, but per task constraints we repair by matching k to output size: for axis=0 reduction on (4,3), output shape is (3,), so k must equal input.shape[0]=4 to get top-1 per column — however top_k operates on last dim, so correct alignment is using k=input.shape[0] and transposing input to make target axis last: TF input should be (3,4), k=1 → output (3,1), then squeeze. But simplest repair is to use tf.reduce_max + tf.argmax instead; however task restricts to tf.math.top_k. Since top_k cannot natively emulate axis=0 argmax on non-last axis, the mapping is semantically invalid — thus repair is to adjust TF test to use equivalent primitive: skip top_k and use tf.argmax + tf.reduce_max, but per instructions only allowed APIs are given. Therefore, the inconsistency is fundamental: ArgMaxWithValue(axis=0) ≠ top_k. So operation is 'skip'. Wait — re-read requirement: 'if semantic not equivalent then skip'. Yes — ArgMaxWithValue reduces arbitrary axis; top_k only last axis. They are not semantically equivalent. So skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(3,) vs TF=(4, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0,
+        "api": "tf.math.top_k",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k does not accept 'axis' parameter; it only operates on the last dimension. To match ArgMaxWithValue(axis=0), we must transpose input to make target axis the last, then apply top_k with k=1, and adjust indices accordingly. However, since top_k returns top-k values/indices and ArgMaxWithValue returns global argmax per slice, the semantic mapping requires k=1 and axis handling via transpose. The repair replaces 'axis' with 'k=1' and adds preprocessing logic — but for test case compatibility, we fix by using k=1 and noting axis must be last dim; thus we transpose input to (3,4) so axis=0 becomes last dim after transpose, then use k=1."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(3,) vs TF=(4, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue(axis=0) reduces along axis 0 → outputs shape (3,) for indices/values, while top_k(k=1) operates on last axis only and returns (4,1); to align semantics, TF must use tf.argmax + tf.reduce_max or reshape to make last dim match reduction axis; but top_k is not a semantic equivalent — it's k-largest per row, not argmax over axis. Correct TF equivalent is tf.argmax(input, axis=0) + tf.reduce_max(input, axis=0), not top_k. Thus original mapping is invalid — repair by replacing TF with proper argmax+reduce_max pair."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0,
+        "keep_dims": false
+      },
+      "tensorflow_test_case": {
+        "output_type": "int32",
+        "api": "tf.math.argmax",
+        "input": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.argmax",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs TF=(3,)",
+        "ms_shape": null,
+        "tensorflow_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue returns both indices and values (2-tuple), while tf.math.argmax returns only indices; TF equivalent for full functionality is tf.math.top_k, not argmax. Also, axis=0 on (4,3) tensor yields shape (3,) for argmax, but ArgMaxWithValue with keep_dims=False yields (3,) for indices and values — however original TF test uses argmax instead of top_k, causing shape mismatch (2,3) vs (3,). Must replace TF API with tf.math.top_k(k=1) to match semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0,
+        "keep_dims": false
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "input": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "sorted": false
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(3,) vs TF=(4, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "tf.math.top_k",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k does not accept 'axis' parameter; it only supports k (number of top elements) and operates on the last dimension by default. To match ArgMaxWithValue(axis=0), we must transpose input to make axis=0 become the last dimension, then use top_k with k=1, and transpose back indices/values. However, since top_k returns top-k values (not argmax over arbitrary axis), direct semantic equivalence is impossible without manual reduction. Thus, repair is infeasible — but per task requirement, we must either repair or skip. Given that tf.math.top_k fundamentally lacks axis support and no equivalent single-axis argmax-with-value exists in TF core (tf.argmax + tf.reduce_max don't return both together), the correct action is 'skip' per rule #6 and #8."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(32, 256) vs TF=(2, 32, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue (axis=0) reduces along first dim, output shape (32,256); tf.math.top_k operates on last dim by default and returns top-k per slice — to match semantics, must set k=1 and reshape input to move target axis to last dim, then transpose back. Current TF case uses k=1 on full 3D tensor, yielding (2,32,1), not equivalent."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "sorted": false,
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(32, 256) vs TF=(2, 32, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue (axis=0) reduces along first dim, output shape (32,256); tf.math.top_k operates on last dim by default and requires k=32*256 to match reduction size, but semantics differ fundamentally: ArgMaxWithValue returns single argmax per slice, top_k returns top-k per row. They are not semantically equivalent — skip is inappropriate because both execute, but repair must align axis behavior: use tf.reduce_max + tf.argmax with axis=0 instead of top_k."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0
+      },
+      "tensorflow_test_case": {
+        "sorted": false,
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(32, 256) vs TF=(2, 32, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "axis": 1,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "axis": 1,
+        "api": "tf.math.top_k",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k does not accept 'axis' parameter; it only operates on the last dimension. To match ArgMaxWithValue(axis=1), we must transpose input to make dim-1 the last dim, apply top_k(k=1), then transpose back. But since test harness expects direct param mapping and k=1 is required for argmax equivalence, we repair by replacing 'axis' with 'k=1' and adjusting input shape handling accordingly."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "keep_dims": false,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "axis": 1
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(2, 128) vs TF=(2, 64, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "ArgMaxWithValue (axis-reduction) and top_k (k-largest selection) are semantically incompatible:前者沿指定轴返回全局最大值及其索引，后者在最后维返回k个最大值及索引；TF top_k无axis参数且固定作用于last dimension，无法等价模拟axis=1的reduce行为；文档明确显示二者用途不同，属算子语义不等价，不可修复或变异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2,
+        "api": "tf.math.top_k",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.top_k 不支持 'axis' 参数，仅支持在最后维度（-1）上操作；需替换为 tf.argmax + tf.reduce_max 组合实现等价功能，或使用 tf.nn.top_k 的兼容方式。但根据文档，top_k 无 axis 参数，故必须修复为正确API调用。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2
+      },
+      "tensorflow_test_case": {
+        "output_type": "int32",
+        "api": "tf.argmax",
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.argmax",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 128, 1024) vs TF=(128, 1024)",
+        "ms_shape": null,
+        "tensorflow_shape": [
+          128,
+          1024
+        ],
+        "ms_dtype": null,
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (index, value) tuple with shape matching keep_dims logic; TF tf.argmax returns only indices (not values), and its output shape is (128, 1024) for axis=2 on (128,1024,1), while MS default keep_dims=False yields index shape (128,1024) — but original MS test case didn’t specify keep_dims, and TF has no equivalent 'values' output. The inconsistency stems from comparing a 2-output MS op to a 1-output TF op. To align semantics, we must either use TF's tf.math.top_k (which returns both values/indices) or recognize that tf.argmax ≠ ArgMaxWithValue — they are not equivalent APIs. Per docs, ArgMaxWithValue is paired with max+argmax jointly; tf.argmax alone lacks the 'values' output. Thus correct repair is to skip — no TF API matches the dual-output semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2,
+        "keep_dims": false
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "sorted": false
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(128, 1024) vs TF=(128, 1024, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "ArgMaxWithValue (axis=2, keep_dims=False) on shape [128,1024,1] reduces last dim → output shape [128,1024]; tf.math.top_k(k=1) on same input returns shape [128,1024,1] because it always preserves rank and appends k-dim. To align semantics, TF must squeeze last dim or use tf.argmax + tf.reduce_max; but top_k is not a direct substitute for argmax-with-value along arbitrary axis. Correct mapping requires tf.argmax + tf.gather_nd or tf.reduce_max + tf.argmax with proper reshape."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2,
+        "keep_dims": false
+      },
+      "tensorflow_test_case": {
+        "k": 1,
+        "api": "tf.math.top_k",
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "sorted": false
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "tensorflow_api": "tf.math.top_k",
+        "ms_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "[0]形状不匹配: MS=(128, 1024) vs TF=(128, 1024, 1)",
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

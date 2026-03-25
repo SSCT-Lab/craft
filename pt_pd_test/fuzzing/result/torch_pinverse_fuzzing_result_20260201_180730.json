@@ -1,0 +1,749 @@
+{
+  "operator": "torch_pinverse",
+  "torch_api": "torch.pinverse",
+  "paddle_api": "paddle.linalg.pinv",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T18:07:30.497367",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260124_181413.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3944154977798462,
+            -1.2017817497253418,
+            0.4613814055919647,
+            -0.03124859184026718,
+            1.170854926109314,
+            0.09351136535406113,
+            -0.610559344291687,
+            0.09135621041059494,
+            0.275912344455719,
+            1.456872820854187
+          ]
+        },
+        "api": "torch.pinverse"
+      },
+      "original_paddle_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3944154977798462,
+            -1.2017817497253418,
+            0.4613814055919647,
+            -0.03124859184026718,
+            1.170854926109314,
+            0.09351136535406113,
+            -0.610559344291687,
+            0.09135621041059494,
+            0.275912344455719,
+            1.456872820854187
+          ]
+        },
+        "api": "paddle.linalg.pinv"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发SVD分解中的数值稳定性缺陷、条件判断分歧或未定义行为，暴露pinv实现对边界值处理的不一致。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.3944154977798462,
+                -1.2017817497253418,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.4613814055919647,
+                -0.03124859184026718
+              ]
+            },
+            "rcond": 1e-15
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.3944154977798462,
+                -1.2017817497253418,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.4613814055919647,
+                -0.03124859184026718
+              ]
+            },
+            "rcond": 1e-15,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "_LinAlgError: linalg.svd: The algorithm failed to converge because the input matrix contained non-finite values.",
+            "paddle_error": "ValueError: (InvalidArgument) This -4-th argument has an illegal value (at ..\\paddle\\phi\\kernels\\cpu\\svd_kernel.cc:64)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试单元素矩阵（1x1）",
+          "mutation_reason": "单元素矩阵是pinv最简非退化情形，易暴露SVD实现中对极小矩阵的数值处理差异或rcond边界逻辑bug",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 dtype 下的 pinverse 数值稳定性与精度一致性",
+          "mutation_reason": "float64 可暴露 SVD 实现中截断容差（rcond）处理、奇异值排序、数值舍入等底层差异，且两框架均完全支持该 dtype，数学等价性严格成立。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.3944154977798462,
+                -1.2017817497253418,
+                0.4613814055919647,
+                -0.03124859184026718,
+                1.170854926109314,
+                0.09351136535406113,
+                -0.610559344291687,
+                0.09135621041059494,
+                0.275912344455719,
+                1.456872820854187
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.3944154977798462,
+                -1.2017817497253418,
+                0.4613814055919647,
+                -0.03124859184026718,
+                1.170854926109314,
+                0.09351136535406113,
+                -0.610559344291687,
+                0.09135621041059494,
+                0.275912344455719,
+                1.456872820854187
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              3
+            ],
+            "paddle_shape": [
+              5,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260124_181413.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.pinverse",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.8668600719084922,
+            -0.16288074039003525,
+            -0.5495805522770135,
+            1.4673747986262815,
+            2.2444029950321562,
+            0.3405340161661219,
+            0.931444979640599,
+            -0.00030935697551897793,
+            1.2184724322253506,
+            0.6188134954486078
+          ]
+        },
+        "rcond": 1e-10
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.linalg.pinv",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.8668600719084922,
+            -0.16288074039003525,
+            -0.5495805522770135,
+            1.4673747986262815,
+            2.2444029950321562,
+            0.3405340161661219,
+            0.931444979640599,
+            -0.00030935697551897793,
+            1.2184724322253506,
+            0.6188134954486078
+          ]
+        },
+        "rcond": 1e-10,
+        "hermitian": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露SVD实现中对奇异值截断、NaN传播、无穷大处理的框架差异，尤其rcond阈值判断和伪逆定义在边界情形下可能不一致。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                2,
+                3,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.8668600719084922,
+                -0.16288074039003525,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                2.2444029950321562,
+                0.6188134954486078
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                2,
+                3,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.8668600719084922,
+                -0.16288074039003525,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                2.2444029950321562,
+                0.6188134954486078
+              ]
+            },
+            "rcond": 1e-10,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "_LinAlgError: linalg.svd: (Batch element 0): The algorithm failed to converge because the input matrix contained non-finite values.",
+            "paddle_error": "ValueError: (InvalidArgument) This -4-th argument has an illegal value (at ..\\paddle\\phi\\kernels\\cpu\\svd_kernel.cc:64)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1]）和含零维的不规则形状（shape=[0,3,5]）",
+          "mutation_reason": "单元素矩阵和空批量维度是SVD伪逆的边界情况，易暴露框架对退化矩阵或空张量的处理差异（如SVD分解失败、维度广播逻辑不一致）",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            },
+            "rcond": 1e-10,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float64变异为float32，同时注入边界值（inf, -inf, nan, -0.0）以暴露数值稳定性差异",
+          "mutation_reason": "float32精度更低，更易暴露SVD实现中rcond阈值判断、零奇异值截断、浮点异常传播等差异；inf/nan/-0.0可触发框架对非正规数的不同处理逻辑。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                2,
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.8668601,
+                -0.16288075,
+                -0.54958055,
+                1.4673748,
+                2.244403,
+                0.34053403,
+                0.93144494,
+                -0.00030935697,
+                1.2184724,
+                0.6188135,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                2,
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.8668601,
+                -0.16288075,
+                -0.54958055,
+                1.4673748,
+                2.244403,
+                0.34053403,
+                0.93144494,
+                -0.00030935697,
+                1.2184724,
+                0.6188135,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "_LinAlgError: linalg.svd: (Batch element 0): The algorithm failed to converge because the input matrix contained non-finite values.",
+            "paddle_error": "ValueError: (InvalidArgument) This -4-th argument has an illegal value (at ..\\paddle\\phi\\kernels\\cpu\\svd_kernel.cc:64)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260124_181413.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.pinverse",
+        "input": {
+          "shape": [
+            1,
+            0,
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": []
+        },
+        "rcond": 1e-20
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.linalg.pinv",
+        "input": {
+          "shape": [
+            1,
+            0,
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": []
+        },
+        "rcond": 1e-20,
+        "hermitian": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "奇异值分解对非有限值和极值敏感，框架可能在边界处理（如SVD预处理、rcond比较、零向量判定）存在不一致实现。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                0,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-20
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                1,
+                0,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-20,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              4,
+              0
+            ],
+            "paddle_shape": [
+              1,
+              4,
+              0
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量输入（shape=[]）",
+          "mutation_reason": "标量是矩阵伪逆的退化情形（1x1矩阵），数学上pinv([a]) = [1/a]（a≠0）或[0]（a=0），易暴露框架对零维张量SVD处理的不一致。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                2.0,
+                0.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "rcond": 1e-20
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                2.0,
+                0.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "rcond": 1e-20,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: linalg.pinv(Double{[]}): expected a tensor with 2 or more dimensions of float, double, cfloat or cdouble types",
+            "paddle_error": "ValueError: (InvalidArgument) the rank of input must greater than 2\n  [Hint: Expected in_dims.size() >= 2, but received in_dims.size():0 < 2:2.] (at ..\\paddle\\phi\\infermeta\\unary.cc:5484)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float64 变异为 float32，并填充边界/特殊浮点值",
+          "mutation_reason": "float32 更易暴露数值稳定性差异（如 SVD 截断容差、梯度传播、inf/nan 处理），且两框架均支持，数学等价性不变。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                1,
+                0,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-20
+          },
+          "paddle_test_case": {
+            "api": "paddle.linalg.pinv",
+            "input": {
+              "shape": [
+                1,
+                0,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-20,
+            "hermitian": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              4,
+              0
+            ],
+            "paddle_shape": [
+              1,
+              4,
+              0
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

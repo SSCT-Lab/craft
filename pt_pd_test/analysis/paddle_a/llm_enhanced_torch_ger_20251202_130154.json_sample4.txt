@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_ger_20251202_130154.json
+样例编号: 4
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 0] and the shape of Y = [1, 5]. Received [0] in X is not equal to [5] in Y at i:1.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.ger",
+  "input": {
+    "shape": [
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "vec2": {
+    "shape": [
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7804319262504578,
+      1.5716158151626587,
+      1.2085239887237549,
+      0.07983226329088211,
+      -0.22752681374549866
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.ger",
+  "input": {
+    "shape": [
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "vec2": {
+    "shape": [
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7804319262504578,
+      1.5716158151626587,
+      1.2085239887237549,
+      0.07983226329088211,
+      -0.22752681374549866
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.ger` 在处理形状为 `[0]` 的输入张量时存在限制，其内部实现要求两个输入张量在广播前至少有一个非零维度以支持外积计算；而错误信息中明确指出 `X = [0, 0]`（实际应为 `[0]`）与 `Y = [1, 5]` 在第1维上出现 `0 != 5` 的广播不匹配，说明框架在处理空维度（shape 中含 0）时无法正确进行广播或外积运算。  
+   - 对比 PyTorch，`torch.ger` 虽然也已弃用但其语义允许对长度为 0 的向量执行外积（返回形状为 `[0, 5]` 的张量），而 PaddlePaddle 当前实现对该类边界情况的处理更严格，导致运行时失败。
+
+3. 修复建议：  
+   - 建议提交一个 issue 给 PaddlePaddle 官方，反馈 `paddle.ger` 对 `shape=[0]` 输入的处理不一致问题，该行为与 PyTorch 不兼容且缺乏明确文档说明。

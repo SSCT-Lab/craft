@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_nn_functional_pixel_shuffle_20251215_204601.json
+样例编号: 3
+tensorflow_error 错误信息: {{function_node __wrapped__DepthToSpace_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input depth dimension 85 should be divisible by: 9 [Op:DepthToSpace] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pixel_shuffle",
+  "input": {
+    "shape": [
+      4,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.03801806643605232,
+      1.2479008436203003,
+      -0.08118777722120285,
+      -0.07604190707206726,
+      -1.4505419731140137,
+      -0.4141620993614197,
+      0.9992266893386841,
+      -1.7089344263076782,
+      1.5769391059875488,
+      0.2324485331773758
+    ]
+  },
+  "upscale_factor": 3
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.depth_to_space",
+  "input": {
+    "shape": [
+      4,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.03801806643605232,
+      1.2479008436203003,
+      -0.08118777722120285,
+      -0.07604190707206726,
+      -1.4505419731140137,
+      -0.4141620993614197,
+      0.9992266893386841,
+      -1.7089344263076782,
+      1.5769391059875488,
+      0.2324485331773758
+    ]
+  },
+  "block_size": 3
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.nn.depth_to_space` 要求输入的深度维度（即 channel 维度，此处为 9）必须能被 `block_size`（3）整除，但实际输入中 `C = 9`，而 `block_size = 3`，虽然 9 ÷ 3 = 3 是整数，但该算子的逻辑要求的是 **输入通道数为 `r² × C`**，即原始通道数应为 `block_size² × output_channels`。在本例中，输入形状为 `[4, 9, 85, 85]`，其中 `C=9`，`block_size=3`，意味着 `9` 应等于 `3² × C_out = 9 × C_out`，因此 `C_out = 1`，这是合理的。然而错误提示“Input depth dimension 85 should be divisible by: 9”表明系统误将 **H 或 W 维度（85）当作 depth 维度处理了**，这说明框架内部对输入维度的理解与 API 语义不一致，可能是由于维度顺序或数据布局（如 NHWC vs NCHW）未正确对齐导致。
+   - 更关键的是，`DepthToSpace` 的文档明确要求：**depth 必须是 `block_size^2` 的倍数**，而这里 `depth=9`，`block_size=3`，`9 = 3²`，满足条件；但错误信息却报“85 应能被 9 整除”，说明错误发生在 **对 input shape 的解析阶段**，可能是因为框架误将空间维度（H/W）当作 depth 维度处理，暗示存在 **坐标轴顺序或参数解释上的根本性不一致**。
+
+3. 修复建议：  
+   - 此问题极可能源于框架内部对 `depth_to_space` 输入格式的严格限制与实际使用时维度理解的偏差，建议提交 issue 至 TensorFlow 官方仓库，指出 `depth_to_space` 在某些情况下会错误地将空间维度误判为 depth 维度，导致错误信息误导用户。

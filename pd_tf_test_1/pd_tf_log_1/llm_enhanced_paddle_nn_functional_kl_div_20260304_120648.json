@@ -1,0 +1,1348 @@
+{
+  "pd_api": "paddle.nn.functional.kl_div",
+  "tensorflow_api": "tf.keras.losses.kld",
+  "timestamp": "2026-03-04T12:06:48.411682",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "batchmean",
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "batchmean",
+        "log_target": false,
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: kl_div() got an unexpected keyword argument 'target'",
+        "tensorflow_error": "TypeError: kl_divergence() got an unexpected keyword argument 'reduction'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的kl_div接受'input'和'label'参数，而非'x'和'target'；TensorFlow的kld接受'y_true'和'y_pred'，且不支持'reduction'或'log_target'参数。需按各自文档修正参数名并移除不支持参数。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "batchmean",
+        "input": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            4,
+            5,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(4, 5)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          4,
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.kld expects y_true and y_pred to be probability distributions (not log-probabilities), while Paddle's kl_div expects input as log-probabilities and label as probabilities (unless log_target=True). To align semantics, we must set log_target=True in Paddle to match TF's expectation that both inputs are probabilities — but wait: no, TF docs state y_true/y_pred are probabilities, and Paddle's default is input=log-prob, label=prob. So for equivalence, Paddle input must be log(y_pred) and label=y_true. Thus the original test passes raw probabilities to both, causing semantic mismatch. Repair: generate log-prob input for Paddle and keep prob for label; TF uses y_true=prob, y_pred=prob — but KL divergence requires log-prob of first arg. Hence TF kld computes sum(y_true * log(y_true / y_pred)), which assumes y_true is target (prob), y_pred is pred (prob), and internally uses log(y_pred). However, Paddle's default is input=log(q), label=p → KL(p||q) = sum(p * (log(p) - log(q))) = sum(p * log(p/q)). But TF kld computes sum(y_true * log(y_true / y_pred)) = KL(y_true || y_pred). So they match *only if* Paddle's input = log(y_pred) and label = y_true. Therefore, we must ensure Paddle input is log-transformed, and TF y_pred is same as exp(input). Since test cases only specify shapes/dtypes, not values, the shape mismatch () vs (4,5) indicates reduction='batchmean' in Paddle returns scalar, while TF kld returns per-batch loss (shape [batch_size] = [4]) by default. So TF output shape is (4,), not (4,5). The reported TF shape (4,5) is inconsistent with doc — likely a bug in test harness. Per TF doc, kld returns shape matching batch dim: for input (4,5,5), output is (4,) — but Paddle with reduction='batchmean' returns scalar (). To align, set reduction='none' in Paddle to get (4,5,5), then manually reduce to (4,) via mean over last two dims, or better: use reduction='sum' and divide by batch size manually. However, simplest repair is to make both return per-sample loss: set Paddle reduction='none' and TF use tf.reduce_sum(..., axis=[1,2]) to match shape (4,). But test harness expects direct comparison. So correct repair: change Paddle reduction to 'none', and TF compute per-sample KL manually using tf.math.reduce_sum(y_true * tf.math.log(y_true / (y_pred + 1e-7) + 1e-7), axis=[1,2]), but that's not kld API. Instead, standard practice is to use TF's kld only on flattened logits? No — kld is designed for probability vectors. Key insight: TF kld reduces over all dims except batch by default? Actually, TF kld does *no reduction* — it returns element-wise KL? No, doc says 'KL Divergence loss values with shape = [batch_size, d0, .. dN-1]' — wait, conflicting info. Rechecking: official TF kld signature shows it returns same shape as inputs unless reduced. But actual behavior: tf.keras.losses.kld(y_true, y_pred) with (4,5,5) inputs returns (4,5,5) tensor. However, the error says TF=(4,5), implying test harness applied reduction. Given inconsistency and shape mismatch due to differing default reductions, the fix is to explicitly set Paddle reduction='none' and TF compute unreduced KL — but TF kld doesn't support unreduced return; it always returns per-batch scalar? No, experimentation shows tf.keras.losses.kld returns (N,) for (N,D) inputs. For (4,5,5), it returns (4,). So reported TF=(4,5) is erroneous — likely the test used wrong axis. To resolve, align reduction: use reduction='sum' in Paddle and tf.reduce_sum(..., axis=[1,2]) in TF, but since we can only specify API args, best repair is to flatten inputs to 2D: (4,25) so both yield (4,) output."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "none",
+        "input": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(4, 25) vs TF=(4,)",
+        "pd_shape": [
+          4,
+          25
+        ],
+        "tensorflow_shape": [
+          4
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.keras.losses.kld computes per-sample KL divergence and returns shape (batch_size,), while Paddle's kl_div with reduction='none' returns full (batch_size, dim) shape. To align semantics, TF must use tf.keras.losses.KLD() with manual reduction or switch to tf.keras.losses.kullback_leibler_divergence with per-batch reduction; but since kld is a metric-like function that defaults to sample-wise reduction, we must reshape inputs to treat each row as independent distribution and apply mean over last dim in TF to match Paddle's 'none' behavior. However, correct alignment requires TF to compute KL per row then keep full batch-dim — but kld doesn't support that. So fix: use tf.keras.losses.KLD() + tf.reduce_sum or explicit KL computation. But simplest repair is to set Paddle reduction='batchmean' or 'sum' to match TF's implicit per-sample scalar output. Since TF output shape is (4,) and PD is (4,25), the inconsistency stems from reduction mismatch: TF kld always reduces over last dim implicitly, while Paddle 'none' does no reduction. Thus repair: change Paddle reduction to 'batchmean' and TF to compute mean over last dim manually."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "batchmean",
+        "input": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            4,
+            25
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(4,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          4
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "none",
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "none",
+        "log_target": false,
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: kl_div() got an unexpected keyword argument 'target'",
+        "tensorflow_error": "TypeError: kl_divergence() got an unexpected keyword argument 'reduction'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的kl_div接受'input'和'label'参数，而非'x'和'target'；TensorFlow的kld接受'y_true'和'y_pred'，且不支持'reduction'或'log_target'参数。需按各自签名修复参数名和数量：Paddle侧改x→input、target→label；TF侧移除reduction/log_target，改x→y_true、target→y_pred，并确保输入为概率分布（需clip预处理，但测试用例仅定义shape/dtype，故只需参数对齐）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "none",
+        "input": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            3,
+            2,
+            7,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(3, 2, 7, 7) vs TF=(3, 2, 7)",
+        "pd_shape": [
+          3,
+          2,
+          7,
+          7
+        ],
+        "tensorflow_shape": [
+          3,
+          2,
+          7
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.kld expects y_true and y_pred to be probability distributions (not log-probabilities), and it computes KL divergence as sum(y_true * log(y_true / y_pred)) over last dimension, reducing to shape [batch_size, ...] excluding the final dim. Paddle's kl_div expects input=log-probabilities and label=probabilities (unless log_target=True). The shape mismatch (PD=(3,2,7,7) vs TF=(3,2,7)) indicates TF is reducing along the last axis by default, while Paddle with reduction='none' preserves full shape. To align semantics: TF kld is equivalent to Paddle's kl_div with reduction='none' only if we reinterpret inputs — but TF actually reduces along the last dim implicitly in its broadcasting behavior. Per doc, TF kld output shape matches y_true.shape[:-1] when y_true/y_pred are >1D. So to match Paddle's full-shape output, we must reshape inputs to make the distribution dimension explicit and consistent — i.e., flatten spatial dims into logits dim, or use 2D inputs. Best fix: reduce both to 2D (batch, classes) where KL is mathematically defined."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "none",
+        "input": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(42, 7) vs TF=(42,)",
+        "pd_shape": [
+          42,
+          7
+        ],
+        "tensorflow_shape": [
+          42
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.kld computes mean KL divergence per batch sample (shape [batch_size]), while Paddle's kl_div with reduction='none' returns full shape [42,7]. To align semantics, TF must use tf.reduce_mean(..., axis=1) or equivalent; but since API is loss function, we must match reduction behavior: set Paddle reduction='batchmean' and TF use tf.reduce_mean(kld(y_true,y_pred), axis=1) — however kld itself doesn't reduce. So correct alignment is: Paddle reduction='sum' or 'mean', and TF must manually reduce accordingly. But per doc, TF kld returns per-sample loss (shape [N]), so Paddle must use reduction='none' AND reshape/sum to match — but shape mismatch indicates fundamental reduction mismatch. Fix: use reduction='batchmean' in Paddle and ensure TF computes mean over last dim manually, but TF kld has no native per-batch-sum option. Best repair: change Paddle to reduction='sum' and TF to tf.reduce_sum(tf.keras.losses.kld(y_true,y_pred), axis=1), but test case only defines inputs. So instead, align by making both compute scalar: set Paddle reduction='mean', TF compute tf.reduce_mean(tf.keras.losses.kld(y_true,y_pred))."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            42,
+            7
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(42,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          42
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "mean",
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "mean",
+        "log_target": false,
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: kl_div() got an unexpected keyword argument 'target'",
+        "tensorflow_error": "TypeError: kl_divergence() got an unexpected keyword argument 'reduction'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的kl_div接受'input'和'label'参数，而非'x'和'target'；TensorFlow的kld接受'y_true'和'y_pred'，且不支持'reduction'或'log_target'参数。需按各自文档修正参数名和移除不支持参数。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(2, 3, 5, 7)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          2,
+          3,
+          5,
+          7
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.kld expects y_true and y_pred to be probability distributions (not log-probabilities), and returns per-sample loss (shape [batch_size]) by default, while Paddle's kl_div expects input as log-probabilities and applies reduction='mean' to scalar output. To align semantics: (1) TF must clip inputs to [1e-7, 1] and compute batch-mean manually; (2) Paddle's label must be probabilities (log_target=False), but TF has no log_target equivalent — so we must ensure both inputs are valid probs. Also, TF kld does not support arbitrary reduction; it always returns unreduced per-batch-element loss (rank = rank(y_true)-1). Thus, to match Paddle's 'mean' reduction, TF output must be mean-reduced over all dims. Original shapes cause shape mismatch because TF returns (2,3,5,7) for 5D input due to implicit sample-wise reduction on last dim — but docs show it actually returns same rank as inputs. Correction: TF kld preserves input shape, but official behavior is element-wise KL then *no reduction* — so output shape equals input shape. However, the error says TF=(2,3,5,7) vs PD=(), meaning TF returned rank-4 while Paddle returned scalar. This implies TF test used wrong API or missing reduction. Correct approach: use tf.keras.losses.KLD() as function with manual mean, or switch to tf.keras.losses.KLDivergence(reduction=tf.keras.losses.Reduction.NONE) then tf.reduce_mean. But kld function itself has no reduction arg. So repair: make TF compute mean over all axes explicitly, and ensure inputs are clipped probabilities."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(2, 3, 5, 7)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          2,
+          3,
+          5,
+          7
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.kld expects y_true and y_pred to be probability distributions (not log-probabilities), while Paddle's kl_div expects input as log-probabilities and label as probabilities (log_target=False). Also, TF kld returns per-sample loss (shape [batch_size]) for rank>1 inputs, but Paddle's default 'mean' reduction collapses all dims. To align semantics: (1) TF must use tf.keras.losses.KLD() with manual reduction='mean' equivalent; (2) Input data must satisfy probability constraints (non-negative, sum-to-1 per sample) and avoid zeros via clipping; (3) Paddle requires input=log(probs), so we must generate logits and apply log_softmax, not raw probs. Original test uses arbitrary float64 tensors violating domain assumptions."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            2,
+            3,
+            5,
+            7,
+            9
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(2, 3, 5, 7)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          2,
+          3,
+          5,
+          7
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "sum",
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "sum",
+        "log_target": false,
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: kl_div() got an unexpected keyword argument 'target'",
+        "tensorflow_error": "TypeError: kl_divergence() got an unexpected keyword argument 'reduction'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的kl_div接受'input'和'label'参数，而非'x'和'target'；TensorFlow的kld接受'y_true'和'y_pred'，且不支持'reduction'或'log_target'参数。需按各自文档修正参数名并移除不支持参数，同时确保输入为概率分布（clip到[1e-7,1]）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "sum",
+        "input": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(5,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle的kl_div要求input为log-probability，label为probability（log_target=False），而TF的kld要求y_true和y_pred均为probability且内部clip到[1e-7,1]；但Paddle无自动clip，且reduction='sum'时输出标量()，TF kld默认返回(batch_size,)即(5,)，需对齐reduction行为：TF侧应使用tf.reduce_sum(tf.keras.losses.kld(y_true, y_pred), axis=-1)或改用tf.keras.losses.KLDivergence(reduction=tf.keras.losses.Reduction.SUM)以匹配Paddle sum语义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "sum",
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false
+      },
+      "tensorflow_test_case": {
+        "reduction": "sum",
+        "y_pred": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.KLDivergence",
+        "y_true": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.KLDivergence",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Loss.__call__() missing 1 required positional argument: 'y_pred'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.keras.losses.KLDivergence is a class, not a function; it must be instantiated first before calling with y_true/y_pred. The original test case incorrectly treats it as a callable function. Repair: wrap in lambda or instantiate and call, but test case format requires direct API call — so switch to functional tf.keras.losses.kl_divergence (which matches paddle.nn.functional.kl_div semantics) and align reduction via manual aggregation since TF's functional version has no 'reduction' arg."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "sum",
+        "input": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kl_divergence"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kl_divergence",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AttributeError: 无法找到 TF API: tf.keras.losses.kl_divergence",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "sum",
+        "log_target": true,
+        "api": "paddle.nn.functional.kl_div"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "target": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "reduction": "sum",
+        "log_target": true,
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: kl_div() got an unexpected keyword argument 'target'",
+        "tensorflow_error": "TypeError: kl_divergence() got an unexpected keyword argument 'reduction'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的kl_div接受'input'和'label'参数，而非'x'和'target'；TensorFlow的kld接受'y_true'和'y_pred'，且不支持'reduction'或'log_target'参数。需按各自文档修正参数名并移除不支持参数，同时确保语义等价：Paddle需设log_target=True（因TF输入为概率，而Paddle默认input=log-prob, label=prob，但TF无log版本，故需将Paddle的label转为log-space以对齐）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "sum",
+        "input": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "log_target": true,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(5,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.keras.losses.kld expects y_true and y_pred as probability distributions (not log-probabilities), while Paddle's kl_div with log_target=True expects input as log-probabilities and label as log-probabilities. To align semantics: TF must use exp(label) as y_true, and input as y_pred (but input is log-prob → need exp(input) for TF), OR set log_target=False in Paddle and ensure both inputs are probabilities. Also, TF kld returns per-sample loss (shape [5]), while Paddle with reduction='sum' returns scalar; to compare fairly, set reduction='none' in Paddle to match TF's element-wise output shape."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "none",
+        "input": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(5, 20) vs TF=(5,)",
+        "pd_shape": [
+          5,
+          20
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.keras.losses.kld returns per-sample KL loss (shape [batch_size]), while Paddle's kl_div with reduction='none' returns element-wise loss (shape [batch_size, num_classes]). To align semantics, TF must use tf.keras.losses.KLD() with manual reduction or switch to tf.keras.losses.kullback_leibler_divergence with explicit per-batch reduction; but since kld is an alias and defaults to per-sample reduction, we must reshape TF inputs to enforce batch-level reduction matching Paddle's 'none' output shape by using tf.reduce_sum over classes after computing KLD, or more directly: use tf.keras.losses.KLD as a function and apply tf.reduce_mean(axis=1) to match Paddle's element-wise output interpretation. However, per-docs and behavior, the correct alignment is to make TF compute full element-wise loss then keep it — but TF kld does not support that. So repair: change TF to use raw computation: y_true clipped, y_pred clipped, then sum(y_true * log(y_true / y_pred), axis=-1) to match Paddle's element-wise unreduced KL. But simplest valid repair is to set TF reduction to match Paddle's 'none' by computing per-element loss manually. However, given constraints, safest repair is to change Paddle's reduction to 'batchmean' and TF to reduce mean over last dim to get scalar per sample, but shape mismatch shows TF outputs (5,) and PD (5,20). So actual issue: TF kld computes mean over last dim implicitly, while Paddle 'none' does not. Therefore, to compare same semantics, TF test case must NOT use kld directly but compute element-wise KL manually. But per task, we must adjust test cases to be semantically aligned. Since TF kld has no 'none' mode, we must skip automatic kld and instead use tf.math.reduce_sum(y_true * (tf.math.log(y_true + 1e-7) - tf.math.log(y_pred + 1e-7)), axis=-1) to get (5,) — but that’s (5,), still not (5,20). To get (5,20), TF must avoid any reduction — but kld doesn't support that. Hence, the APIs are not directly comparable in 'none' mode: Paddle supports element-wise unreduced; TF kld does not. Therefore, per task rule #3(2): 'if you think the two cross-framework operators are not fully equivalent', choose skip. But wait — official TF docs say kld returns '[batch_size, d0, .. dN-1]' — contradiction with observed (5,). Rechecking: actual TF kld behavior is to return mean over last dim? No — example shows loss.shape==(2,) for (2,3) input, i.e., reduces over last dim. So TF kld always reduces over all but batch dim. Thus 'none' mode is unsupported in TF. Therefore, semantic misalignment makes direct comparison invalid. So operation is 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "none",
+        "input": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "log_target": false,
+        "api": "paddle.nn.functional.kl_div",
+        "label": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "y_true": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "y_pred": {
+          "shape": [
+            5,
+            20
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.kld"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.kl_div",
+        "tensorflow_api": "tf.keras.losses.kld",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(5, 20) vs TF=(5,)",
+        "pd_shape": [
+          5,
+          20
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

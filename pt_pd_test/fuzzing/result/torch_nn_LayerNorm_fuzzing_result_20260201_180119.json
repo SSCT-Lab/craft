@@ -1,0 +1,784 @@
+{
+  "operator": "torch_nn_LayerNorm",
+  "torch_api": "torch.nn.LayerNorm",
+  "paddle_api": "paddle.nn.LayerNorm",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T18:01:19.763688",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_LayerNorm_20260124_223457.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.LayerNorm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.0436401329934597,
+            -1.2929660081863403,
+            -1.0172454118728638,
+            0.9916463494300842,
+            0.6010529398918152,
+            1.3867806196212769
+          ]
+        },
+        "normalized_shape": 3,
+        "eps": 1e-12
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.LayerNorm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.0436401329934597,
+            -1.2929660081863403,
+            -1.0172454118728638,
+            0.9916463494300842,
+            0.6010529398918152,
+            1.3867806196212769
+          ]
+        },
+        "normalized_shape": 3,
+        "epsilon": 1e-12
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "极端值易暴露框架在方差计算、除零保护、NaN传播、负零处理上的实现差异，尤其影响LayerNorm中mean/var/epsilon分支逻辑。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                -1e+38,
+                "nan",
+                "inf",
+                "-inf",
+                -0.0,
+                1e-38,
+                0.0
+              ]
+            },
+            "normalized_shape": 3,
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                -1e+38,
+                "nan",
+                "inf",
+                "-inf",
+                -0.0,
+                1e-38,
+                0.0
+              ]
+            },
+            "normalized_shape": 3,
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3
+            ],
+            "paddle_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1]）和标量（shape=[]）",
+          "mutation_reason": "单元素和标量输入是LayerNorm的数学边界情况，均方差为0，易暴露框架对eps处理、广播逻辑或维度归一化范围的实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "normalized_shape": 1,
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "normalized_shape": 1,
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": false,
+            "torch_error": null,
+            "paddle_error": "ValueError: (InvalidArgument) 'begin_norm_axis' in Op(LayerNorm) should be greater than zero. But received [0].\n  [Hint: Expected begin_norm_axis > 0, but received begin_norm_axis:0 <= 0:0.] (at ..\\paddle\\phi\\infermeta\\ternary.cc:1366)\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": null,
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，保持数学等价性",
+          "mutation_reason": "float64 提供更高数值精度，可暴露框架在方差计算、eps 加法、开方等中间步骤的舍入差异或实现不一致（如 sqrt 精度、求和顺序）",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.0436401329934597,
+                -1.2929660081863403,
+                -1.0172454118728638,
+                0.9916463494300842,
+                0.6010529398918152,
+                1.3867806196212769
+              ]
+            },
+            "normalized_shape": 3,
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.0436401329934597,
+                -1.2929660081863403,
+                -1.0172454118728638,
+                0.9916463494300842,
+                0.6010529398918152,
+                1.3867806196212769
+              ]
+            },
+            "normalized_shape": 3,
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: mixed dtype (CPU): all inputs must share same datatype.",
+            "paddle_error": "ValueError: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.\n  [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():10 != phi::CppTypeToDataType<T>::Type():11.] (at ..\\paddle\\phi\\core\\dense_tensor.cc:160)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_LayerNorm_20260124_223457.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.LayerNorm",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6827428340911865,
+            0.2965838313102722,
+            0.4265679121017456,
+            0.6952674984931946,
+            1.1272810697555542,
+            -0.7172638773918152,
+            -0.11417026817798615,
+            -0.6101497411727905,
+            -0.05261187255382538,
+            0.6984328031539917
+          ]
+        },
+        "normalized_shape": [
+          4,
+          5
+        ],
+        "eps": 1e-12
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.LayerNorm",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6827428340911865,
+            0.2965838313102722,
+            0.4265679121017456,
+            0.6952674984931946,
+            1.1272810697555542,
+            -0.7172638773918152,
+            -0.11417026817798615,
+            -0.6101497411727905,
+            -0.05261187255382538,
+            0.6984328031539917
+          ]
+        },
+        "normalized_shape": [
+          4,
+          5
+        ],
+        "epsilon": 1e-12
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值易触发数值稳定性缺陷（如inf/nan传播、除零、下溢/上溢处理差异），暴露框架间eps处理、sqrt/mean实现或梯度回传逻辑的不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.6827428340911865,
+                0.2965838313102722,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.4265679121017456,
+                0.6952674984931946
+              ]
+            },
+            "normalized_shape": [
+              4,
+              5
+            ],
+            "eps": 1e-12,
+            "elementwise_affine": true,
+            "bias": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.6827428340911865,
+                0.2965838313102722,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.4265679121017456,
+                0.6952674984931946
+              ]
+            },
+            "normalized_shape": [
+              4,
+              5
+            ],
+            "epsilon": 1e-12,
+            "weight_attr": null,
+            "bias_attr": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])和含0维度(shape=[2,0,4,5])",
+          "mutation_reason": "单元素张量和零维张量触发边缘数值稳定性路径；Paddle/Torch对空维度的mean/var计算逻辑可能不一致，易暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.5
+              ]
+            },
+            "normalized_shape": [
+              1
+            ],
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.5
+              ]
+            },
+            "normalized_shape": [
+              1
+            ],
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": false,
+            "torch_error": null,
+            "paddle_error": "ValueError: (InvalidArgument) 'begin_norm_axis' in Op(LayerNorm) should be greater than zero. But received [0].\n  [Hint: Expected begin_norm_axis > 0, but received begin_norm_axis:0 <= 0:0.] (at ..\\paddle\\phi\\infermeta\\ternary.cc:1366)\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": null,
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，并注入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "float64 提高数值精度，暴露因浮点实现差异（如方差计算顺序、sqrt 精度、inf/nan 传播规则）导致的 LayerNorm 输出不一致，且两框架均完全支持 float64 CPU。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.6827428340911865,
+                0.2965838313102722,
+                0.4265679121017456,
+                0.6952674984931946,
+                1.1272810697555542,
+                -0.7172638773918152,
+                -0.11417026817798615,
+                -0.6101497411727905,
+                -0.05261187255382538,
+                0.6984328031539917,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "normalized_shape": [
+              4,
+              5
+            ],
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.6827428340911865,
+                0.2965838313102722,
+                0.4265679121017456,
+                0.6952674984931946,
+                1.1272810697555542,
+                -0.7172638773918152,
+                -0.11417026817798615,
+                -0.6101497411727905,
+                -0.05261187255382538,
+                0.6984328031539917,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "normalized_shape": [
+              4,
+              5
+            ],
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: mixed dtype (CPU): all inputs must share same datatype.",
+            "paddle_error": "ValueError: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.\n  [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():10 != phi::CppTypeToDataType<T>::Type():11.] (at ..\\paddle\\phi\\core\\dense_tensor.cc:160)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_LayerNorm_20260124_223457.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.LayerNorm",
+        "input": {
+          "shape": [
+            2,
+            1024
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3425309956073761,
+            -0.9460400342941284,
+            2.1634747982025146,
+            -0.541294515132904,
+            -0.22810468077659607,
+            1.3170586824417114,
+            -0.18173424899578094,
+            0.04788878187537193,
+            -0.2816883325576782,
+            -0.2748323678970337
+          ]
+        },
+        "normalized_shape": 1024,
+        "eps": 1e-12
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.LayerNorm",
+        "input": {
+          "shape": [
+            2,
+            1024
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3425309956073761,
+            -0.9460400342941284,
+            2.1634747982025146,
+            -0.541294515132904,
+            -0.22810468077659607,
+            1.3170586824417114,
+            -0.18173424899578094,
+            0.04788878187537193,
+            -0.2816883325576782,
+            -0.2748323678970337
+          ]
+        },
+        "normalized_shape": 1024,
+        "epsilon": 1e-12
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "LayerNorm对无穷和NaN的传播行为易因框架底层实现差异（如variance计算中是否屏蔽NaN、inf处理顺序）导致不一致，暴露数值稳定性bug。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                1024
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.3425309956073761,
+                -0.9460400342941284,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                2.1634747982025146,
+                -0.541294515132904
+              ]
+            },
+            "normalized_shape": 1024,
+            "eps": 1e-12,
+            "elementwise_affine": true,
+            "bias": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                1024
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.3425309956073761,
+                -0.9460400342941284,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                2.1634747982025146,
+                -0.541294515132904
+              ]
+            },
+            "normalized_shape": 1024,
+            "epsilon": 1e-12,
+            "weight_attr": null,
+            "bias_attr": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              1024
+            ],
+            "paddle_shape": [
+              2,
+              1024
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）和标量（shape=[]）",
+          "mutation_reason": "LayerNorm在标量和单元素输入时应退化为恒等变换（均值=自身，方差=0，故分母为sqrt(eps)），易暴露框架对退化维度的处理差异或除零逻辑bug。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.5
+              ]
+            },
+            "normalized_shape": [],
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.5
+              ]
+            },
+            "normalized_shape": [],
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: Expected normalized_shape to be at least 1-dimensional, i.e., containing at least one element, but got normalized_shape = []",
+            "paddle_error": "TypeError: (InvalidType) argument (position 2) must be list of int, but got numpy.float64 at pos 0 (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:523)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持其他参数一致",
+          "mutation_reason": "高精度浮点下数值稳定性差异更易暴露实现偏差，如方差计算中累加顺序、sqrt精度处理等框架底层差异。",
+          "torch_test_case": {
+            "api": "torch.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                1024
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.3425309956073761,
+                -0.9460400342941284,
+                2.1634747982025146,
+                -0.541294515132904,
+                -0.22810468077659607,
+                1.3170586824417114,
+                -0.18173424899578094,
+                0.04788878187537193,
+                -0.2816883325576782,
+                -0.2748323678970337
+              ]
+            },
+            "normalized_shape": 1024,
+            "eps": 1e-12
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.LayerNorm",
+            "input": {
+              "shape": [
+                2,
+                1024
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.3425309956073761,
+                -0.9460400342941284,
+                2.1634747982025146,
+                -0.541294515132904,
+                -0.22810468077659607,
+                1.3170586824417114,
+                -0.18173424899578094,
+                0.04788878187537193,
+                -0.2816883325576782,
+                -0.2748323678970337
+              ]
+            },
+            "normalized_shape": 1024,
+            "epsilon": 1e-12
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: mixed dtype (CPU): all inputs must share same datatype.",
+            "paddle_error": "ValueError: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.\n  [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():10 != phi::CppTypeToDataType<T>::Type():11.] (at ..\\paddle\\phi\\core\\dense_tensor.cc:160)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

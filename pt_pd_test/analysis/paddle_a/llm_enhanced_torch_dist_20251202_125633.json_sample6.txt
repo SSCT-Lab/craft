@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_dist_20251202_125633.json
+样例编号: 6
+paddle_error 错误信息: (InvalidType) dist(): argument (position 3) must be double, but got str (at ..\paddle\fluid\pybind\op_function_common.cc:423)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.dist",
+  "input": {
+    "shape": [
+      2,
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "p": "inf"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.dist",
+  "input": {
+    "shape": [
+      2,
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "p": "inf"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.dist` 要求参数 `p` 必须是浮点数类型（float32 或 float64），而测试用例中传入的是字符串 `"inf"`，尽管 PyTorch 可以接受字符串形式的 `'inf'` 表示无穷范数，但 PaddlePaddle 严格要求 `p` 为数值类型，因此报错“must be double, but got str”。
+   - 此外，输入张量形状包含 0 维（如 `[2, 0, 3, 1]`），虽然在某些框架中可容忍空维度，但 PaddlePaddle 在 `dist` 算子中对含 0 的 shape 处理可能更严格，存在潜在不兼容风险。
+
+3. 修复建议：
+   - 将 `p` 参数从字符串 `"inf"` 改为数值 `float('inf')`，以符合 PaddlePaddle 对 `p` 类型的要求；该问题反映两个框架在参数类型处理上的差异，值得提交 issue 至 PaddlePaddle 官方以增强对字符串 `inf` 的兼容性。

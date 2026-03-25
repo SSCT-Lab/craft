@@ -1,0 +1,93 @@
+来源文件: llm_enhanced_torch_add_20251216_014706.json
+样例编号: 4
+mindspore_error 错误信息: For 'AddExt', input.shape and other.shape need to broadcast. The value of input.shape[5] or other.shape[5] must be 1 or -1 when they are not the same, but got input.shape = [0, 128, 960, 4, 4] and other.shape = [128, 1, 960, 4, 4]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.add",
+  "input": {
+    "shape": [
+      0,
+      128,
+      960,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      128,
+      1,
+      960,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.24843347072601318,
+      -2.0407612323760986,
+      0.05665968731045723,
+      0.6854086518287659,
+      0.017409566789865494,
+      0.417877733707428,
+      1.5160599946975708,
+      1.7383002042770386,
+      0.29095423221588135,
+      -1.0680269002914429
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.add",
+  "input": {
+    "shape": [
+      0,
+      128,
+      960,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      128,
+      1,
+      960,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.24843347072601318,
+      -2.0407612323760986,
+      0.05665968731045723,
+      0.6854086518287659,
+      0.017409566789865494,
+      0.417877733707428,
+      1.5160599946975708,
+      1.7383002042770386,
+      0.29095423221588135,
+      -1.0680269002914429
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `mint.add` 算子要求输入张量在广播时，维度不匹配的维度必须为 1 或 -1 才能成功广播，但当前输入 `input.shape = [0, 128, 960, 4, 4]` 与 `other.shape = [128, 1, 960, 4, 4]` 在第 0 维（即第一个维度）上分别为 0 和 128，二者均不为 1 或 -1，且不相等，违反了 MindSpore 广播规则。  
+   - 尽管 PyTorch 支持此类形状的广播（如零维形状可被广播），但 MindSpore 对包含 0 的 shape 的广播处理更为严格，尤其在非 1 或 -1 的维度上强制要求一致或可广播，这属于框架间的行为差异。
+
+3. 修复建议：  
+   - 建议提交一个 issue 给 MindSpore 官方，指出其在处理含 0 的 shape 且广播维度不满足 1/-1 要求时的限制过于严格，而 PyTorch 可以正常执行，存在兼容性差异。

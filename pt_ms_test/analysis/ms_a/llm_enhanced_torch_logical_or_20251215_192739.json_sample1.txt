@@ -1,0 +1,125 @@
+来源文件: llm_enhanced_torch_logical_or_20251215_192739.json
+样例编号: 1
+mindspore_error 错误信息: For 'LogicalOr', input1.shape and input2.shape need to broadcast. The value of input1.shape[3] or input2.shape[3] must be 1 or -1 when they are not the same, but got input1.shape = [0, 4, 5] and input2.shape = [3, 1, 5]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.logical_or",
+  "input": {
+    "shape": [
+      0,
+      4,
+      5
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      5
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "out": {
+    "shape": [
+      3,
+      4,
+      5
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.logical_or",
+  "input": {
+    "shape": [
+      0,
+      4,
+      5
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      5
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "out": {
+    "shape": [
+      3,
+      4,
+      5
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `logical_or` 算子在广播时要求形状不匹配的维度必须为 1 或 -1，但输入 `input1.shape = [0, 4, 5]` 中存在维度为 0 的情况，而该维度无法参与有效广播（0 表示空张量，不支持广播扩展）；
+   - 尽管 PyTorch 可以处理 shape 为 `[0, 4, 5]` 与 `[3, 1, 5]` 的逻辑或操作并正确广播到 `[3, 4, 5]`，但 MindSpore 在广播规则中对 0 维度的处理更为严格，不允许其作为非 1/−1 的维度参与广播，导致报错。
+
+3. 修复建议：
+   - 该问题反映框架间在空张量广播行为上的不一致，建议提交 issue 至 MindSpore 官方仓库，指出 `logical_or` 对包含 0 维度的张量广播支持不足的问题。

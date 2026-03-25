@@ -1,0 +1,59 @@
+来源文件: llm_enhanced_torch_nn_AdaptiveMaxPool3d_20251215_184731.json
+样例编号: 2
+mindspore_error 错误信息: Resize failed for kernel: Default/AdaptiveMaxPool3D-op1
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ccsrc\runtime\pynative\op_runner.cc:529 mindspore::runtime::`anonymous-namespace'::ResizeKernelMod
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.AdaptiveMaxPool3d",
+  "input": {
+    "shape": [
+      0,
+      3,
+      4,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "output_size": [
+    1,
+    1,
+    1
+  ]
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.AdaptiveMaxPool3d",
+  "input": {
+    "shape": [
+      0,
+      3,
+      4,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "output_size": [
+    1,
+    1,
+    1
+  ]
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `AdaptiveMaxPool3d` 算子在官方文档中明确要求 `output_size` 必须为正整数或长度为 3 的元组，且输入张量的维度必须是 4 或 5（即 `(C, D, H, W)` 或 `(N, C, D, H, W)`），但当前输入 shape 为 `[0, 3, 4, 4, 4]`，其中第一个维度为 0，表示空张量。尽管 PyTorch 允许此类形状（在某些情况下可接受零维输入），但 MindSpore 在执行 `AdaptiveMaxPool3D-op1` 时对输入尺寸合法性进行严格检查，**当任一维度为 0 时会导致 resize 失败**，从而触发 `Resize failed for kernel` 错误。
+   - 此类行为属于框架实现层面的差异：PyTorch 在部分算子上容忍零维输入（如 `AdaptiveMaxPool3d` 可处理 shape 为 `[0, ...]` 的 tensor），而 MindSpore 当前版本不支持该情况，属于 **框架行为不一致**。
+
+3. 修复建议：
+   - 建议提交 issue 至 MindSpore 官方仓库，指出 `AdaptiveMaxPool3d` 对零维输入（如 shape[0]=0）缺乏兼容性，与 PyTorch 行为不一致，建议增强对零维输入的支持以提升一致性。

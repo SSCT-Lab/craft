@@ -1,0 +1,85 @@
+来源文件: llm_enhanced_torch_minimum_20251215_151108.json
+样例编号: 1
+mindspore_error 错误信息: For 'Minimum', input1.shape and input2.shape need to broadcast. The value of input1.shape[3] or input2.shape[3] must be 1 or -1 when they are not the same, but got input1.shape = [0, 3, 1] and input2.shape = [2, 3, 4]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.minimum",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.7757833003997803,
+      -2.983877420425415,
+      0.24895364046096802,
+      0.9590649008750916,
+      0.3947068154811859,
+      0.24839568138122559,
+      0.8358719944953918,
+      -1.4407018423080444,
+      -0.528436005115509,
+      -1.7048317193984985
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.minimum",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.7757833003997803,
+      -2.983877420425415,
+      0.24895364046096802,
+      0.9590649008750916,
+      0.3947068154811859,
+      0.24839568138122559,
+      0.8358719944953918,
+      -1.4407018423080444,
+      -0.528436005115509,
+      -1.7048317193984985
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `mint.minimum` 要求输入张量在广播时，若某维尺寸不等，则必须为 1 或 -1 才能广播；而本例中 `input.shape = [0, 3, 1]` 与 `other.shape = [2, 3, 4]` 在第 0 维（0 和 2）和第 2 维（1 和 4）均不满足广播条件（既非 1 也非 -1），因此触发广播失败。
+   - 尽管 PyTorch 支持包含 0 维的形状进行最小值运算（如 `torch.minimum(torch.empty(0,3,1), torch.empty(2,3,4))` 可正常执行），但 MindSpore 在广播逻辑中对含 0 的 shape 处理更为严格，当前实现不允许此类情况，属于框架间行为差异。
+
+3. 修复建议：
+   - 建议提交 issue 至 MindSpore 官方仓库，反馈该场景下对零维形状的广播行为与 PyTorch 不一致，可作为兼容性改进点。

@@ -1,0 +1,53 @@
+来源文件: llm_enhanced_torch_nn_MSELoss_20251125_145633.json
+样例编号: 1
+paddle_error 错误信息: When Variable is used as the condition of if/while , Variable can only contain one element.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.3050273358821869,
+      -0.30382397770881653,
+      1.9494136571884155,
+      -0.6304544806480408,
+      -0.7118192315101624,
+      0.44898316264152527
+    ]
+  },
+  "api": "torch.nn.MSELoss"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.3050273358821869,
+      -0.30382397770881653,
+      1.9494136571884155,
+      -0.6304544806480408,
+      -0.7118192315101624,
+      0.44898316264152527
+    ]
+  },
+  "api": "torch.nn.MSELoss"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 中 `torch.nn.MSELoss` 在执行时若涉及条件判断（如在 loss 计算中隐式使用 Tensor 作为 if/while 条件），会要求该 Tensor 必须是标量（即仅含一个元素），否则报错“Variable can only contain one element”。而 PyTorch 的 `MSELoss` 在计算过程中允许对任意 shape 张量进行操作，不会强制要求中间条件变量为单元素。
+   - 当前输入 shape 为 [2, 3]，输出 loss 本身是一个标量，但可能在内部实现中存在对中间张量的条件判断（例如根据 reduce 模式选择逻辑分支），导致框架在某些条件下误将非标量张量用于条件判断。
+
+3. 修复建议：
+   - 此问题暴露了框架在控制流处理上的不一致行为，建议提交 issue 给 PaddlePaddle 官方，指出在 `torch.nn.MSELoss` 内部不应对非标量张量做条件判断。

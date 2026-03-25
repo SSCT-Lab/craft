@@ -1,0 +1,105 @@
+来源文件: llm_enhanced_torch_ge_20251215_205856.json
+样例编号: 3
+tensorflow_error 错误信息: cannot compute GreaterEqual as input #1(zero-based) was expected to be a float tensor but is a int32 tensor [Op:GreaterEqual] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.ge",
+  "input": {
+    "shape": [
+      3,
+      1,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.961667537689209,
+      0.24397672712802887,
+      -0.011935276910662651,
+      -0.11078397929668427,
+      -0.623584508895874,
+      1.72662353515625,
+      -0.004600687883794308,
+      1.9039214849472046,
+      -0.34617212414741516,
+      -0.3888842761516571
+    ]
+  },
+  "other": {
+    "shape": [
+      1,
+      4,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      5,
+      -1,
+      1,
+      -9,
+      2,
+      -4,
+      4,
+      -6,
+      -7,
+      -10
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.greater_equal",
+  "input": {
+    "shape": [
+      3,
+      1,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.961667537689209,
+      0.24397672712802887,
+      -0.011935276910662651,
+      -0.11078397929668427,
+      -0.623584508895874,
+      1.72662353515625,
+      -0.004600687883794308,
+      1.9039214849472046,
+      -0.34617212414741516,
+      -0.3888842761516571
+    ]
+  },
+  "other": {
+    "shape": [
+      1,
+      4,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      5,
+      -1,
+      1,
+      -9,
+      2,
+      -4,
+      4,
+      -6,
+      -7,
+      -10
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.math.greater_equal` 要求两个输入张量的 dtype 必须相同，或至少可隐式转换（如 int32 与 float32 不支持直接比较）；而错误信息明确指出“input #1 was expected to be a float tensor but is a int32 tensor”，说明在执行时传入的 `other` 是 int32 类型，但 `input` 是 float32，且二者无法自动广播进行比较。
+   - 尽管 PyTorch 的 `torch.ge` 支持跨类型比较（如 float32 与 int32），会自动将 int32 升级为 float32 后比较，但 TensorFlow 在此操作上更为严格，不支持非同类型张量的直接比较，导致运行时失败。
+
+3. 修复建议：
+   - 该问题属于框架间类型兼容性差异，值得提交 issue 给 TensorFlow 官方，以讨论是否应放宽对 `tf.math.greater_equal` 等算子的类型约束。

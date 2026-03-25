@@ -1,0 +1,266 @@
+{
+  "operator": "torch_nn_UpsamplingNearest2d",
+  "torch_api": "torch.nn.UpsamplingNearest2d",
+  "paddle_api": "paddle.nn.Upsample",
+  "total_cases": 1,
+  "total_fuzzing_rounds": 3,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T18:20:47.192368",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_UpsamplingNearest2d_20260124_234350.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.7129178047180176,
+            0.24692927300930023,
+            -1.3004900217056274,
+            -0.2453591525554657,
+            1.7404731512069702,
+            0.6579146385192871,
+            -0.8576948046684265,
+            -0.13276144862174988,
+            -0.4882960915565491,
+            -0.7443727850914001
+          ]
+        },
+        "scale_factor": 2,
+        "api": "torch.nn.UpsamplingNearest2d"
+      },
+      "original_paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.7129178047180176,
+            0.24692927300930023,
+            -1.3004900217056274,
+            -0.2453591525554657,
+            1.7404731512069702,
+            0.6579146385192871,
+            -0.8576948046684265,
+            -0.13276144862174988,
+            -0.4882960915565491,
+            -0.7443727850914001
+          ]
+        },
+        "scale_factor": 2,
+        "api": "paddle.nn.Upsample"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "Nearest-neighbor upsampling should be robust to edge-case floats; divergence on NaN/inf handling often reveals uninitialized memory, incorrect boundary checks, or silent propagation differences.",
+          "torch_test_case": {
+            "api": "torch.nn.UpsamplingNearest2d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.7129178047180176,
+                0.24692927300930023,
+                -1.3004900217056274,
+                -0.2453591525554657,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "scale_factor": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Upsample",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.7129178047180176,
+                0.24692927300930023,
+                -1.3004900217056274,
+                -0.2453591525554657,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "scale_factor": 2,
+            "mode": "nearest",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "paddle_error": "ValueError: One of size and scale_factor must not be None.",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（1,1,1,1）+ 特殊浮点值",
+          "mutation_reason": "单元素输入是最近邻插值的极端边界，易暴露框架对坐标映射、索引边界、scale_factor应用逻辑的差异；特殊值可触发NaN传播或inf处理不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.UpsamplingNearest2d",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan"
+              ]
+            },
+            "scale_factor": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan"
+              ]
+            },
+            "scale_factor": 2,
+            "mode": "nearest",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "paddle_error": "ValueError: One of size and scale_factor must not be None.",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持shape、scale_factor和sample_values数学等价",
+          "mutation_reason": "float64更高精度可能暴露两框架在nearest插值坐标映射或边界处理上的数值实现差异（如floor/round逻辑、浮点累积误差）",
+          "torch_test_case": {
+            "api": "torch.nn.UpsamplingNearest2d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.7129178047180176,
+                0.24692927300930023,
+                -1.3004900217056274,
+                -0.2453591525554657,
+                1.7404731512069702,
+                0.6579146385192871,
+                -0.8576948046684265,
+                -0.13276144862174988,
+                -0.4882960915565491,
+                -0.7443727850914001
+              ]
+            },
+            "scale_factor": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Upsample",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.7129178047180176,
+                0.24692927300930023,
+                -1.3004900217056274,
+                -0.2453591525554657,
+                1.7404731512069702,
+                0.6579146385192871,
+                -0.8576948046684265,
+                -0.13276144862174988,
+                -0.4882960915565491,
+                -0.7443727850914001
+              ]
+            },
+            "scale_factor": 2,
+            "mode": "nearest",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "paddle_error": "ValueError: One of size and scale_factor must not be None.",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

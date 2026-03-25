@@ -1,0 +1,896 @@
+{
+  "operator": "torch_masked_select",
+  "torch_api": "torch.masked_select",
+  "tensorflow_api": "tf.boolean_mask",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T15:44:28.014104",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_masked_select_20260123_182217.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.masked_select",
+        "input": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.4449310004711151,
+            0.726868748664856,
+            -0.6314126253128052,
+            1.3523433208465576,
+            -0.17099130153656006,
+            0.09899155795574188,
+            -0.4553762972354889,
+            1.9445747137069702
+          ]
+        },
+        "mask": {
+          "shape": [
+            8
+          ],
+          "dtype": "bool",
+          "sample_values": [
+            false,
+            false,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.boolean_mask",
+        "input": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.4449310004711151,
+            0.726868748664856,
+            -0.6314126253128052,
+            1.3523433208465576,
+            -0.17099130153656006,
+            0.09899155795574188,
+            -0.4553762972354889,
+            1.9445747137069702
+          ]
+        },
+        "mask": {
+          "shape": [
+            8
+          ],
+          "dtype": "bool",
+          "sample_values": [
+            false,
+            false,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层NaN propagation、溢出处理或比较逻辑差异，暴露masked_select/boolean_mask在边界值上的实现不一致",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.0
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                true,
+                false,
+                true,
+                false,
+                true,
+                true,
+                false,
+                true
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.0
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                true,
+                false,
+                true,
+                false,
+                true,
+                true,
+                false,
+                true
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0]）与标量（shape=[]）组合",
+          "mutation_reason": "空张量和标量是边界情况，易暴露框架对退化维度的处理差异，如索引逻辑、形状推导或空输出张量创建bug。",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "mask": {
+              "shape": [
+                0
+              ],
+              "dtype": "bool",
+              "sample_values": []
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "mask": {
+              "shape": [
+                0
+              ],
+              "dtype": "bool",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将输入和mask dtype同时变异为 float16，测试低精度下边界值处理一致性",
+          "mutation_reason": "float16 动态范围小（~6e-5 到 ~65504），易触发框架间舍入、溢出或NaN传播差异；且两API均支持float16，数学语义完全等价。",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                0.4449310004711151,
+                0.726868748664856,
+                -0.6314126253128052,
+                1.3523433208465576,
+                -0.17099130153656006,
+                0.09899155795574188,
+                -0.4553762972354889,
+                1.9445747137069702
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                false,
+                false,
+                true,
+                true,
+                true,
+                false,
+                true,
+                true
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                0.4449310004711151,
+                0.726868748664856,
+                -0.6314126253128052,
+                1.3523433208465576,
+                -0.17099130153656006,
+                0.09899155795574188,
+                -0.4553762972354889,
+                1.9445747137069702
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                false,
+                false,
+                true,
+                true,
+                true,
+                false,
+                true,
+                true
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_masked_select_20260123_182217.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.masked_select",
+        "input": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7196587324142456,
+            -0.08917684108018875,
+            1.1592543125152588,
+            0.343437522649765,
+            -1.644849419593811,
+            0.6468175649642944,
+            -0.7746541500091553,
+            -0.18079674243927002
+          ]
+        },
+        "mask": {
+          "shape": [
+            8
+          ],
+          "dtype": "bool",
+          "sample_values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.boolean_mask",
+        "input": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7196587324142456,
+            -0.08917684108018875,
+            1.1592543125152588,
+            0.343437522649765,
+            -1.644849419593811,
+            0.6468175649642944,
+            -0.7746541500091553,
+            -0.18079674243927002
+          ]
+        },
+        "mask": {
+          "shape": [
+            8
+          ],
+          "dtype": "bool",
+          "sample_values": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            true,
+            true,
+            true
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理差异（如NaN传播、无穷大比较、次正规数舍入），暴露masked_select/boolean_mask在边界情况下的实现不一致。",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.0
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                true,
+                false,
+                true,
+                true,
+                false,
+                true,
+                false,
+                true
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.0
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                true,
+                false,
+                true,
+                true,
+                false,
+                true,
+                false,
+                true
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0]）与标量mask（shape=[]）组合",
+          "mutation_reason": "空输入张量和标量布尔掩码是极端边界情况，两框架对空维度广播、索引合法性检查及返回空张量的处理逻辑可能存在不一致。",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "mask": {
+              "shape": [],
+              "dtype": "bool",
+              "sample_values": [
+                true
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "mask": {
+              "shape": [],
+              "dtype": "bool",
+              "sample_values": [
+                true
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float16，覆盖边界值（inf/nan/-0.0）",
+          "mutation_reason": "float16 精度低、动态范围小，易暴露框架对 inf/nan/-0.0 的处理差异；两框架在 subnormal 数、舍入、mask 索引顺序上可能有实现分歧。",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                65504.0
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                false,
+                true,
+                false,
+                true,
+                true,
+                false,
+                true,
+                false
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                65504.0
+              ]
+            },
+            "mask": {
+              "shape": [
+                8
+              ],
+              "dtype": "bool",
+              "sample_values": [
+                false,
+                true,
+                false,
+                true,
+                true,
+                false,
+                true,
+                false
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_masked_select_20260123_182217.json",
+        "iteration": 4,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.masked_select",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float64",
+          "sample_values": []
+        },
+        "mask": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "bool",
+          "sample_values": []
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.boolean_mask",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float64",
+          "sample_values": []
+        },
+        "mask": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "bool",
+          "sample_values": []
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层NaN propagation、inf handling或边界检查差异，暴露masked_select/boolean_mask在空张量下的数值稳定性bug",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "mask": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "bool",
+              "sample_values": []
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "mask": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "bool",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入与标量mask",
+          "mutation_reason": "标量是张量的退化情形，两框架对0维mask的广播和索引行为可能不一致，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "mask": {
+              "shape": [],
+              "dtype": "bool",
+              "sample_values": [
+                true
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "mask": {
+              "shape": [],
+              "dtype": "bool",
+              "sample_values": [
+                true
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "变异输入 dtype 为 float16 并填充特殊浮点值（inf/nan/-0.0）以触发精度与边界处理差异",
+          "mutation_reason": "float16 数值范围小、精度低，易暴露框架在 inf/nan/-0.0 处理、空张量广播、掩码对齐逻辑上的实现不一致，且两框架对 subnormal 值和舍入行为不同",
+          "torch_test_case": {
+            "api": "torch.masked_select",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "mask": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "bool",
+              "sample_values": []
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.boolean_mask",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "mask": {
+              "shape": [
+                2,
+                0,
+                3
+              ],
+              "dtype": "bool",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: masked_select() missing 1 required positional arguments: \"mask\"",
+            "tensorflow_error": "TypeError: Missing required positional argument",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

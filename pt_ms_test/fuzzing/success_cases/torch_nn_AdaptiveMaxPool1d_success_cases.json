@@ -1,0 +1,237 @@
+{
+  "operator": "torch_nn_AdaptiveMaxPool1d",
+  "export_time": "2026-01-27T12:54:21.025657",
+  "total_success_cases": 3,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_nn_AdaptiveMaxPool1d_20260126_112107.json",
+      "operator": "torch.nn.AdaptiveMaxPool1d",
+      "iteration": 1,
+      "case_number": 1,
+      "is_llm_generated": false,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.5506634712219238,
+            0.06856297701597214,
+            -1.0623036623001099,
+            0.4735924303531647,
+            -0.9194242358207703,
+            1.5499343872070312,
+            -0.7832533121109009,
+            -0.3220615088939667,
+            0.8135172128677368,
+            -1.2308642864227295
+          ]
+        },
+        "output_size": 5,
+        "api": "torch.nn.AdaptiveMaxPool1d"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.5506634712219238,
+            0.06856297701597214,
+            -1.0623036623001099,
+            0.4735924303531647,
+            -0.9194242358207703,
+            1.5499343872070312,
+            -0.7832533121109009,
+            -0.3220615088939667,
+            0.8135172128677368,
+            -1.2308642864227295
+          ]
+        },
+        "output_size": 5,
+        "api": "mindspore.nn.AdaptiveMaxPool1d"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AdaptiveMaxPool1d",
+        "mindspore_api": "mindspore.nn.AdaptiveMaxPool1d",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          5
+        ],
+        "mindspore_shape": [
+          2,
+          3,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "PyTorch和MindSpore均执行成功且结果一致，但MindSpore文档明确要求输入张量最后一维（L_in）必须能被output_size整除，而当前用例中10 % 5 == 0满足条件；为增强鲁棒性测试，需变异出边界/压力场景：(1) 测试output_size=1（最小合法值）；(2) 测试input shape最后一维不可整除的情况（如[2,3,11]）——此情况在PyTorch中合法但在MindSpore中会抛ValueError，可暴露框架行为差异；(3) 测试单通道极小尺寸[1,1,2]以覆盖低维边界；综合考虑发现性与合法性，选择变异为output_size=1且input=[1,1,2]，该用例在两框架中均合法（2%1==0），且触发最小输出尺寸路径，易暴露实现偏差。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_nn_AdaptiveMaxPool1d_20260126_112107.json",
+      "operator": "torch.nn.AdaptiveMaxPool1d",
+      "iteration": 2,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.nn.AdaptiveMaxPool1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.44651496410369873,
+            0.8563988208770752
+          ]
+        },
+        "output_size": 1
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.AdaptiveMaxPool1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.44651496410369873,
+            0.8563988208770752
+          ]
+        },
+        "output_size": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AdaptiveMaxPool1d",
+        "mindspore_api": "mindspore.nn.AdaptiveMaxPool1d",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1,
+          1
+        ],
+        "mindspore_shape": [
+          1,
+          1,
+          1
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例执行一致且无错误，但MindSpore文档明确要求输入的最后一个维度（L_in）必须能被output_size整除，且output_size必须为int、>=1；而PyTorch支持output_size为int或tuple[int]且无整除约束（自动适应分段）。当前用例(1,1,2) with output_size=1 satisfies MindSpore's divisibility constraint (2 % 1 == 0), but to stress-test divergence points, we mutate to a case where PyTorch accepts but MindSpore rejects — however, per task requirement: since current result is 'consistent', we must perform fuzzing. We choose boundary/more challenging cases: (1) output_size larger than input length (violates MindSpore's ValueError 'last dim smaller than output_size'), (2) non-divisible case (e.g., shape [1,1,5], output_size=2 → 5%2≠0), (3) multi-channel and batch variation. But mutation must keep semantic equivalence *where both support*, so safest high-coverage fuzzing is to use a non-divisible case that triggers MindSpore error — however, the task says 'if consistent → mutate', not 'mutate to break'. So we generate a valid but more diverse case: increase channels, vary length, ensure divisibility still holds but explore edge of MindSpore's constraints (e.g., output_size=1 is minimal; try output_size=2 with L_in=4, and add return_indices=True in PyTorch to test feature parity — but MindSpore does NOT support return_indices per doc. Hence, to maintain equivalence, we must avoid return_indices. Instead, we mutate to shape [2, 3, 6] (N=2,C=3,L_in=6), output_size=3 (6%3==0), which is valid for both, increases dimensionality and coverage without breaking constraints."
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_nn_AdaptiveMaxPool1d_20260126_112107.json",
+      "operator": "torch.nn.AdaptiveMaxPool1d",
+      "iteration": 3,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.nn.AdaptiveMaxPool1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            6
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.21409374475479126,
+            -1.2457387447357178,
+            0.17318092286586761,
+            0.3853173851966858,
+            -0.8838574290275574,
+            0.15372510254383087,
+            0.05820871889591217,
+            -1.142970323562622,
+            0.3577873706817627,
+            0.5607845187187195
+          ]
+        },
+        "output_size": 3
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.AdaptiveMaxPool1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            6
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.21409374475479126,
+            -1.2457387447357178,
+            0.17318092286586761,
+            0.3853173851966858,
+            -0.8838574290275574,
+            0.15372510254383087,
+            0.05820871889591217,
+            -1.142970323562622,
+            0.3577873706817627,
+            0.5607845187187195
+          ]
+        },
+        "output_size": 3
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AdaptiveMaxPool1d",
+        "mindspore_api": "mindspore.nn.AdaptiveMaxPool1d",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，但MindSpore文档明确要求输入张量最后一维（L_in）必须能被output_size整除，而PyTorch无此限制；当前用例shape=[2,3,6]、output_size=3满足6%3==0，属合规用例。为提升鲁棒性测试覆盖率，需变异出边界/压力/违规场景：(1) 测试MindSpore的约束校验能力——构造L_in不可被output_size整除的用例（如shape=[2,3,7], output_size=3），此时MindSpore应报ValueError，PyTorch应仍成功；(2) 测试output_size=1（最小合法值）及output_size=L_in（退化情况）；(3) 测试单批次/单通道/极小尺寸（如shape=[1,1,1]）以覆盖边界路径。此处选择最具区分度的变异：使L_in不被output_size整除，触发MindSpore显式校验，同时验证PyTorch行为差异。"
+      }
+    }
+  ]
+}

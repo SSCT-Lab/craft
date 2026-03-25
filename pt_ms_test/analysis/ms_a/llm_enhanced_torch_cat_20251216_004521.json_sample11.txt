@@ -1,0 +1,62 @@
+来源文件: llm_enhanced_torch_cat_20251216_004521.json
+样例编号: 11
+mindspore_error 错误信息: It should be stub tensor, but got {'shape': [9812, 1], 'dtype': int64}
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ccsrc\pynative\pynative_utils.cc:634 mindspore::pynative::PyNativeAlgo::Common::StubNodeToTensor
+
+【PyTorch 测试用例】
+{
+  "api": "torch.cat",
+  "tensors": [
+    {
+      "shape": [
+        9812,
+        1
+      ],
+      "dtype": "int64"
+    },
+    {
+      "shape": [
+        9812,
+        1
+      ],
+      "dtype": "int64"
+    }
+  ],
+  "dim": 1
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.cat",
+  "tensors": [
+    {
+      "shape": [
+        9812,
+        1
+      ],
+      "dtype": "int64"
+    },
+    {
+      "shape": [
+        9812,
+        1
+      ],
+      "dtype": "int64"
+    }
+  ],
+  "dim": 1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 错误信息 `It should be stub tensor, but got {'shape': [9812, 1], 'dtype': int64}` 表明在 PyNative 执行过程中，MindSpore 期望接收一个“stub tensor”（用于符号化执行的占位符），但实际传入的是一个具体张量（形状为 [9812, 1]，类型 int64）。
+   - 根据 MindSpore 官方文档，`mint.cat` 支持输入为真实 Tensor，且对 shape 兼容性有明确要求（除 concat 维度外其余维度必须相等），本例中两个 Tensor 的 shape 为 [9812, 1]，在 dim=1 时应满足其他维度一致（即第0维需相等），而 9812 == 9812，符合要求。因此该错误并非由 shape 不兼容引起，而是运行时上下文不匹配。
+   - 此类错误通常出现在动态图（PyNative）执行中，当框架内部逻辑期望使用“stub tensor”进行图构建或自动微分计算，但用户直接传入了真实数据张量，导致类型校验失败。
+
+3. 修复建议：
+   - 该问题反映 MindSpore 在 PyNative 模式下对真实张量与 stub tensor 的边界处理不够严格，建议提交 issue 至官方仓库，说明在非图模式下不应强制要求 stub tensor 而允许直接传入真实张量。

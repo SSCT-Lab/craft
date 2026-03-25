@@ -1,0 +1,729 @@
+{
+  "operator": "torch_inverse",
+  "torch_api": "torch.inverse",
+  "tensorflow_api": "tf.linalg.inv",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 4,
+  "timestamp": "2026-02-01T15:42:39.948478",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_inverse_20260123_183701.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            8,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6014988422393799,
+            0.046542905271053314,
+            -0.3174205720424652,
+            -0.48931556940078735,
+            0.42313408851623535,
+            -0.6632840633392334,
+            0.5732104778289795,
+            0.8166846632957458,
+            -0.6725713610649109,
+            0.24599049985408783
+          ]
+        },
+        "api": "torch.inverse"
+      },
+      "original_tensorflow_test_case": {
+        "input": {
+          "shape": [
+            8,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6014988422393799,
+            0.046542905271053314,
+            -0.3174205720424652,
+            -0.48931556940078735,
+            0.42313408851623535,
+            -0.6632840633392334,
+            0.5732104778289795,
+            0.8166846632957458,
+            -0.6725713610649109,
+            0.24599049985408783
+          ]
+        },
+        "api": "tf.linalg.inv"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值 stress-test numerical stability and edge-case handling in matrix inversion; divergent behavior on singular/near-singular or non-finite inputs may expose framework bugs.",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [
+                8,
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [
+                8,
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              8,
+              3,
+              3
+            ],
+            "tensorflow_shape": [
+              8,
+              3,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量（0维）输入",
+          "mutation_reason": "标量是矩阵求逆的退化情形（1x1矩阵），两框架对scalar input的处理逻辑可能不一致，易暴露实现差异或未定义行为",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.inv: The input tensor A must have at least 2 dimensions.",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatrixInverse_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input tensor 0 must have rank >= 2, got 0 [Op:MatrixInverse] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下逆矩阵数值稳定性与特殊值处理",
+          "mutation_reason": "float16动态范围小、精度低，易在矩阵求逆中触发溢出、下溢或NaN传播；两框架底层BLAS实现对半精度特殊值（inf/nan）的容错逻辑可能不一致。",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [
+                8,
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                6.1035e-05,
+                65504.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [
+                8,
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                6.1035e-05,
+                65504.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": true,
+            "torch_error": "RuntimeError: linalg.inv: Low precision dtypes not supported. Got Half",
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": [
+              8,
+              3,
+              3
+            ],
+            "torch_dtype": null,
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_inverse_20260123_183701.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.inverse",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.0387297883729283,
+            0.049296640260045016,
+            0.15467017742353095,
+            0.04552475930613778,
+            -0.17956876262170324,
+            0.8699210623248229,
+            0.7308248496195215,
+            1.9870474868495827,
+            0.4514687595994973,
+            -0.5230645519880458
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linalg.inv",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.0387297883729283,
+            0.049296640260045016,
+            0.15467017742353095,
+            0.04552475930613778,
+            -0.17956876262170324,
+            0.8699210623248229,
+            0.7308248496195215,
+            1.9870474868495827,
+            0.4514687595994973,
+            -0.5230645519880458
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易暴露框架在奇异矩阵处理、数值稳定性、NaN传播规则或边界条件上的实现差异，而数学上若输入等价则输出必须一致。",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [
+                2,
+                2,
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0387297883729283,
+                0.049296640260045016,
+                "nan",
+                "inf",
+                -0.17956876262170324,
+                0.8699210623248229,
+                0.7308248496195215,
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.4514687595994973,
+                -0.5230645519880458,
+                "nan",
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.15467017742353095,
+                0.04552475930613778
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [
+                2,
+                2,
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0387297883729283,
+                0.049296640260045016,
+                "nan",
+                "inf",
+                -0.17956876262170324,
+                0.8699210623248229,
+                0.7308248496195215,
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.4514687595994973,
+                -0.5230645519880458,
+                "nan",
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.15467017742353095,
+                0.04552475930613778
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              2,
+              3,
+              3
+            ],
+            "tensorflow_shape": [
+              2,
+              2,
+              3,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量（0维）输入",
+          "mutation_reason": "标量是矩阵求逆的退化情况（1x1矩阵），框架对0维张量的inverse处理逻辑可能不一致，易暴露广播或维度校验bug",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.inv: The input tensor A must have at least 2 dimensions.",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatrixInverse_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input tensor 0 must have rank >= 2, got 0 [Op:MatrixInverse] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下逆矩阵计算的数值稳定性差异",
+          "mutation_reason": "float16动态范围小、精度低，易暴露框架在奇异/病态矩阵处理、舍入误差累积或算法路径选择上的不一致bug",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [
+                2,
+                2,
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0387297883729283,
+                0.049296640260045016,
+                0.15467017742353095,
+                0.04552475930613778,
+                -0.17956876262170324,
+                0.8699210623248229,
+                0.7308248496195215,
+                1.9870474868495827,
+                0.4514687595994973,
+                -0.5230645519880458
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [
+                2,
+                2,
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0387297883729283,
+                0.049296640260045016,
+                0.15467017742353095,
+                0.04552475930613778,
+                -0.17956876262170324,
+                0.8699210623248229,
+                0.7308248496195215,
+                1.9870474868495827,
+                0.4514687595994973,
+                -0.5230645519880458
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": true,
+            "torch_error": "RuntimeError: linalg.inv: Low precision dtypes not supported. Got Half",
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": [
+              2,
+              2,
+              3,
+              3
+            ],
+            "torch_dtype": null,
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_inverse_20260123_183701.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.inverse",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5731346011161804,
+            -1.4988151788711548,
+            -0.26277807354927063,
+            -0.17001281678676605,
+            -0.13443085551261902,
+            -0.6043747663497925,
+            -2.3619682788848877,
+            -0.9695579409599304,
+            -0.1614614725112915
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linalg.inv",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5731346011161804,
+            -1.4988151788711548,
+            -0.26277807354927063,
+            -0.17001281678676605,
+            -0.13443085551261902,
+            -0.6043747663497925,
+            -2.3619682788848877,
+            -0.9695579409599304,
+            -0.1614614725112915
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发框架底层BLAS/LAPACK实现的边界处理差异或NaN传播逻辑不一致，暴露逆矩阵计算中的潜在bug。",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                -0.0,
+                "nan",
+                1e-38,
+                -1.4988151788711548,
+                1e+38,
+                -0.6043747663497925,
+                -0.1614614725112915
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                -0.0,
+                "nan",
+                1e-38,
+                -1.4988151788711548,
+                1e+38,
+                -0.6043747663497925,
+                -0.1614614725112915
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatrixInverse_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input is not invertible. [Op:MatrixInverse] name: ",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "tensorflow_shape": null,
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量（0维）输入",
+          "mutation_reason": "标量是矩阵求逆的退化情形（1x1矩阵），数学上等价于倒数，但框架可能对0维张量处理不一致或未正确广播。",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.inv: The input tensor A must have at least 2 dimensions.",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatrixInverse_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input tensor 0 must have rank >= 2, got 0 [Op:MatrixInverse] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下逆矩阵计算的数值稳定性差异",
+          "mutation_reason": "float16动态范围小、精度低，易暴露两框架在奇异值截断、梯度回传或LU分解实现上的细微差异，可能引发不一致结果。",
+          "torch_test_case": {
+            "api": "torch.inverse",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.573,
+                -1.499,
+                -0.263,
+                -0.17,
+                -0.134,
+                -0.604,
+                -2.362,
+                -0.97,
+                -0.161
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.inv",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.573,
+                -1.499,
+                -0.263,
+                -0.17,
+                -0.134,
+                -0.604,
+                -2.362,
+                -0.97,
+                -0.161
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": true,
+            "torch_error": "RuntimeError: linalg.inv: Low precision dtypes not supported. Got Half",
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": [
+              3,
+              3
+            ],
+            "torch_dtype": null,
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,523 @@
+{
+  "operator": "torch_tril",
+  "torch_api": "torch.tril",
+  "tensorflow_api": "tf.linalg.band_part",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T13:57:30.043123",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_tril_20260123_212202.json",
+        "iteration": 2,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6591835618019104,
+            -1.676877737045288,
+            -0.973950207233429,
+            -0.010280449874699116,
+            -0.15632766485214233,
+            1.1205204725265503,
+            1.1183277368545532,
+            -0.25887367129325867,
+            1.1972806453704834,
+            -0.3978991210460663
+          ]
+        },
+        "diagonal": 2
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6591835618019104,
+            -1.676877737045288,
+            -0.973950207233429,
+            -0.010280449874699116,
+            -0.15632766485214233,
+            1.1205204725265503,
+            1.1183277368545532,
+            -0.25887367129325867,
+            1.1972806453704834,
+            -0.3978991210460663
+          ]
+        },
+        "num_lower": -1,
+        "num_upper": 2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf、-inf、nan、-0.0、1e-38、1e38等边界值",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理逻辑差异（如NaN传播规则、无穷大比较、次正规数舍入），暴露tril/band_part在边界条件下的实现不一致。",
+          "torch_test_case": {
+            "api": "torch.tril",
+            "input": {
+              "shape": [
+                5,
+                10,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "diagonal": 2
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.band_part",
+            "input": {
+              "shape": [
+                5,
+                10,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_lower": -1,
+            "num_upper": 2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              10,
+              10
+            ],
+            "tensorflow_shape": [
+              5,
+              10,
+              10
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 5, 5]）",
+          "mutation_reason": "空张量触发框架对零维/退化维度的边界处理逻辑，PyTorch和TensorFlow可能在空batch或空矩阵的tril/band_part实现中存在索引越界、默认填充或广播行为差异。",
+          "torch_test_case": {
+            "api": "torch.tril",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "diagonal": 2
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.band_part",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_lower": -1,
+            "num_upper": 2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              5,
+              5
+            ],
+            "tensorflow_shape": [
+              0,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float16，并注入 IEEE 754 边界值（inf, -inf, nan, subnormal）",
+          "mutation_reason": "float16 具有更小的动态范围和精度，易暴露框架对特殊浮点值处理不一致的底层实现差异；tf.linalg.band_part 和 torch.tril 在边界值裁剪逻辑上可能存在未对齐的 NaN/inf 传播行为。",
+          "torch_test_case": {
+            "api": "torch.tril",
+            "input": {
+              "shape": [
+                5,
+                10,
+                10
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "diagonal": 2
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.band_part",
+            "input": {
+              "shape": [
+                5,
+                10,
+                10
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_lower": -1,
+            "num_upper": 2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              10,
+              10
+            ],
+            "tensorflow_shape": [
+              5,
+              10,
+              10
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_tril_20260123_212202.json",
+        "iteration": 3,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "diagonal": -3
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_lower": -1,
+        "num_upper": -3
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf、-inf、nan、-0.0、1e-38、1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层NaN传播逻辑、溢出处理或符号零比较差异，暴露tril/band_part在边界数值下的实现不一致",
+          "torch_test_case": {
+            "api": "torch.tril",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "diagonal": -3
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.band_part",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_lower": -1,
+            "num_upper": -3
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              5,
+              5
+            ],
+            "tensorflow_shape": [
+              0,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）",
+          "mutation_reason": "标量是矩阵操作的退化边界，torch.tril 和 tf.linalg.band_part 对标量的处理逻辑未明确定义，易暴露框架对零维张量的不一致实现。",
+          "torch_test_case": {
+            "api": "torch.tril",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "diagonal": -3
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.band_part",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_lower": -1,
+            "num_upper": -3
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: tril: input tensor must have at least 2 dimensions",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatrixBandPart_device_/job:localhost/replica:0/task:0/device:CPU:0}} input must be at least 2-dim, received shape: [] [Op:MatrixBandPart] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，并填充边界值和特殊浮点值",
+          "mutation_reason": "float16精度更低、动态范围更小，易暴露框架对inf/nan/次正规数的处理差异；保持相同shape和diagonal参数确保数学等价",
+          "torch_test_case": {
+            "api": "torch.tril",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "diagonal": -3
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.band_part",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_lower": -1,
+            "num_upper": -3
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              5,
+              5
+            ],
+            "tensorflow_shape": [
+              0,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

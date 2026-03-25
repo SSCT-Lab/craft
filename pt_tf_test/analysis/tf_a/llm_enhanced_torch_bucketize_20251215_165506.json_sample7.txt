@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_bucketize_20251215_165506.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__UpperBound_device_/job:localhost/replica:0/task:0/device:CPU:0}} Leading dim_size of both tensors must match. [Op:UpperBound] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bucketize",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -10,
+      -7,
+      -2,
+      -7,
+      -9,
+      2
+    ]
+  },
+  "boundaries": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      -10,
+      2,
+      -7,
+      0
+    ]
+  },
+  "right": true
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.searchsorted",
+  "values": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      -3,
+      -9,
+      -2,
+      1,
+      4
+    ]
+  },
+  "sorted_sequence": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      8,
+      -7,
+      5,
+      -1
+    ]
+  },
+  "side": "right"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.searchsorted` 要求 `sorted_sequence` 必须是严格递增的序列，否则行为未定义；而测试用例中 `sorted_sequence` 的值为 `[8, 8, -7, 5, -1]`，包含重复值（8,8）且非单调递增，违反了 API 前提条件。
+   - 错误信息 `Leading dim_size of both tensors must match` 实际上是 `tf.searchsorted` 在处理不合法输入时可能触发的底层张量操作异常，其根本原因在于输入序列未满足“严格递增”的要求，导致内部比较逻辑失败。
+
+3. 修复建议：
+   - 该问题属于框架对输入合法性有强约束但测试用例未满足的情况，应提交 issue 给 TensorFlow 官方以增强错误提示或增加输入校验。

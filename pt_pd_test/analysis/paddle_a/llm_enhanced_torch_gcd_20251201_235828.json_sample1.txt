@@ -1,0 +1,77 @@
+来源文件: llm_enhanced_torch_gcd_20251201_235828.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 3] and the shape of Y = [3, 4]. Received [0] in X is not equal to [3] in Y at i:0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.gcd",
+  "input": {
+    "shape": [
+      0,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -10,
+      7,
+      -5,
+      -7,
+      -8,
+      1,
+      6,
+      -2,
+      2,
+      7
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.gcd",
+  "input": {
+    "shape": [
+      0,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -10,
+      7,
+      -5,
+      -7,
+      -8,
+      1,
+      6,
+      -2,
+      2,
+      7
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.gcd` 在广播时要求各维度大小相等或可广播，但当输入张量的某一维为 0（如 `[0, 3]`）时，其广播规则与 PyTorch 存在不一致：尽管 PyTorch 能处理形状中包含 0 的情况（例如 `torch.gcd(torch.empty(0,3), torch.ones(3,4))` 可正常执行），但 PaddlePaddle 在检测到 `X = [0, 3]` 与 `Y = [3, 4]` 在第 0 维分别为 `0` 和 `3` 时，认为广播维度不匹配（`Received [0] in X is not equal to [3] in Y at i:0`），直接报错。
+   - 根据官方文档，`paddle.gcd` 支持广播，但未明确说明对 shape 中含 0 的维度是否支持。实际实现中，当任一维度为 0 且无法广播时，会触发该错误，而 PyTorch 允许此类空维度参与广播计算。
+
+3. 修复建议：
+   - 建议提交 issue 至 PaddlePaddle 官方仓库，指出 `paddle.gcd` 对包含 0 维度的张量广播行为与 PyTorch 不一致，属于框架行为差异，应统一兼容空维度的 GCD 计算。

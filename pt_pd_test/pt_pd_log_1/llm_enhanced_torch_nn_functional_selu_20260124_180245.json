@@ -1,0 +1,243 @@
+{
+  "operator": "torch.nn.functional.selu",
+  "timestamp": "2026-01-24T18:02:45.499925",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 2,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.09406688809394836,
+            -0.045125626027584076
+          ]
+        },
+        "inplace": false,
+        "api": "torch.nn.functional.selu"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.09406688809394836,
+            -0.045125626027584076
+          ]
+        },
+        "inplace": false,
+        "api": "paddle.nn.functional.selu"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.selu",
+        "paddle_api": "paddle.nn.functional.selu",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "selu() got an unexpected keyword argument 'inplace'",
+        "comparison_error": null,
+        "torch_shape": [
+          2
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: selu() got an unexpected keyword argument 'inplace'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的selu API不支持'inplace'参数，而PyTorch的selu函数虽有inplace参数（但仅在torch.nn.SELU模块中支持，torch.nn.functional.selu本身也不接受inplace参数）；根据PyTorch官方文档，torch.nn.functional.selu没有inplace参数，因此原始测试用例中错误地传入了'inplace': false；同时PaddlePaddle文档明确显示其selu函数签名只有x, scale, alpha, name四个参数，无inplace。故需移除'inplace'参数以使两个框架调用签名合法且语义一致。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.functional.selu",
+        "input": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.3273091316223145,
+            -0.22378334403038025
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.selu",
+        "input": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.3273091316223145,
+            -0.22378334403038025
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.selu",
+        "paddle_api": "paddle.nn.functional.selu",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2
+        ],
+        "paddle_shape": [
+          2
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始测试用例仅覆盖一维形状[2]和默认参数，未覆盖边界情况、多维张量、极端数值范围、不同精度类型及自定义scale/alpha参数。根据文档，PaddlePaddle明确支持scale>1.0且alpha>=0，而PyTorch的selu是固定参数（无显式scale/alpha参数），因此需通过变异测试验证Paddle在非默认参数下的行为是否与PyTorch默认行为等价，并增强对空张量、高维、float64、负值密集输入等场景的覆盖。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.functional.selu",
+        "input": {
+          "shape": [
+            3,
+            4,
+            0
+          ],
+          "dtype": "float64",
+          "sample_values": []
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.selu",
+        "input": {
+          "shape": [
+            3,
+            4,
+            0
+          ],
+          "dtype": "float64",
+          "sample_values": []
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.selu",
+        "paddle_api": "paddle.nn.functional.selu",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          3,
+          4,
+          0
+        ],
+        "paddle_shape": [
+          3,
+          4,
+          0
+        ],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例使用空维度 shape=[3,4,0]，虽在两框架中均执行成功且结果一致，但该用例覆盖度有限；根据任务要求，当结果一致时需进行fuzzing变异以提升测试强度。结合SELU算子特性（定义域为全体实数，但对极小/极大值、边界dtype、非默认scale/alpha参数敏感），应变异为包含负数、零、正数的典型非空输入，并显式传入文档规定的默认scale和alpha值以验证参数兼容性；同时将dtype降为float32以覆盖常用精度场景，并避免空张量掩盖潜在广播或梯度问题。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.functional.selu",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8856117725372314,
+            0.49932464957237244,
+            -1.3536516427993774,
+            -0.8679139018058777,
+            -0.055517204105854034,
+            1.0826436281204224
+          ]
+        },
+        "args": [],
+        "kwargs": {}
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.selu",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8856117725372314,
+            0.49932464957237244,
+            -1.3536516427993774,
+            -0.8679139018058777,
+            -0.055517204105854034,
+            1.0826436281204224
+          ]
+        },
+        "args": [],
+        "kwargs": {
+          "scale": 1.0507009873554805,
+          "alpha": 1.6732632423543772
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.selu",
+        "paddle_api": "paddle.nn.functional.selu",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "selu() got an unexpected keyword argument 'args'",
+        "paddle_error": "selu() got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: selu() got an unexpected keyword argument 'args'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: selu() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

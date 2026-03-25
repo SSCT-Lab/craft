@@ -1,0 +1,507 @@
+{
+  "operator": "torch_cumprod",
+  "torch_api": "torch.cumprod",
+  "tensorflow_api": "tf.math.cumprod",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T15:38:09.691683",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_cumprod_20260123_192826.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.cumprod",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.20755581557750702,
+            -0.16653406620025635,
+            -0.6224343180656433,
+            -0.43767768144607544,
+            -0.21259832382202148,
+            0.41343796253204346,
+            0.05797504261136055,
+            0.5790813565254211,
+            -1.1871531009674072
+          ]
+        },
+        "dim": 0
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.cumprod",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.20755581557750702,
+            -0.16653406620025635,
+            -0.6224343180656433,
+            -0.43767768144607544,
+            -0.21259832382202148,
+            0.41343796253204346,
+            0.05797504261136055,
+            0.5790813565254211,
+            -1.1871531009674072
+          ]
+        },
+        "axis": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数学库差异（如NaN传播规则、无穷大乘法规则、次正规数处理），暴露cumprod实现不一致的bug",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                -0.0,
+                "nan",
+                1e-38,
+                -1.0,
+                1e+38,
+                "-inf",
+                0.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                -0.0,
+                "nan",
+                1e-38,
+                -1.0,
+                1e+38,
+                "-inf",
+                0.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "tensorflow_shape": [
+              3,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）",
+          "mutation_reason": "单元素张量是 cumprod 的最小非空输入，易暴露框架对退化维度的处理差异（如 axis/dim 验证、空累积逻辑）。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.cumprod",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float16 类型下特殊浮点值（inf, -inf, nan, -0.0）的累积乘行为",
+          "mutation_reason": "float16 动态范围小、精度低，易暴露框架对特殊值（如NaN传播、-0.0符号保持、溢出截断）实现不一致；PyTorch和TF在cumprod中对inf/nan的累积规则虽数学等价，但底层数值处理路径不同，可能引发差异。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              3
+            ],
+            "tensorflow_shape": [
+              3,
+              3
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_cumprod_20260123_192826.json",
+        "iteration": 4,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.cumprod",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.09541425235036129,
+            -0.3109204507667767,
+            -1.609593567737881,
+            0.6463160689778724,
+            -1.3717617123560488,
+            -0.4934150027685813,
+            -0.12809034489518167,
+            0.03699482936100133,
+            -0.018791946458860554,
+            -0.7671426694039966
+          ]
+        },
+        "dim": 0
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.cumprod",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.09541425235036129,
+            -0.3109204507667767,
+            -1.609593567737881,
+            0.6463160689778724,
+            -1.3717617123560488,
+            -0.4934150027685813,
+            -0.12809034489518167,
+            0.03699482936100133,
+            -0.018791946458860554,
+            -0.7671426694039966
+          ]
+        },
+        "axis": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, subnormal, overflow values",
+          "mutation_reason": "特殊 floating-point values expose divergent IEEE 754 handling (e.g., nan propagation order, -0.0 sign preservation, inf arithmetic) between frameworks.",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                2.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                2.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              5,
+              5
+            ],
+            "tensorflow_shape": [
+              5,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试空张量（含0维）和单元素张量",
+          "mutation_reason": "空张量和单元素张量是累积运算的边界情况，易暴露框架对维度退化、初始值处理或轴索引越界的不同实现逻辑，可能导致NaN/inf传播差异或静默截断。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.cumprod",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              5,
+              5
+            ],
+            "tensorflow_shape": [
+              0,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16与特殊浮点值（inf, -inf, nan, -0.0）组合",
+          "mutation_reason": "float16精度低、动态范围小，易暴露累积乘法中溢出、下溢、NaN传播或符号处理的框架差异；特殊值可触发边界路径不一致。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 32.0",
+            "torch_shape": [
+              5,
+              5,
+              5
+            ],
+            "tensorflow_shape": [
+              5,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

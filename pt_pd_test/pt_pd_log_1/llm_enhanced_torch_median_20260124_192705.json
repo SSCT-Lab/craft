@@ -1,0 +1,808 @@
+{
+  "operator": "torch.median",
+  "timestamp": "2026-01-24T19:27:05.752357",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 6,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -1.7530523809460354,
+            -1.2363882625684017,
+            1.8087277837883993,
+            -0.8510236961622816,
+            -0.34395710372014926,
+            -0.5911221789148521,
+            -0.5068344192620219,
+            0.5242359186811171,
+            -0.3034016047982338,
+            -0.2949298466435773
+          ]
+        },
+        "api": "torch.median"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -1.7530523809460354,
+            -1.2363882625684017,
+            1.8087277837883993,
+            -0.8510236961622816,
+            -0.34395710372014926,
+            -0.5911221789148521,
+            -0.5068344192620219,
+            0.5242359186811171,
+            -0.3034016047982338,
+            -0.2949298466435773
+          ]
+        },
+        "api": "paddle.median"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但未覆盖关键参数组合：axis/dim、keepdim、mode（尤其是mode='min'时Paddle返回tuple而PyTorch仍返回单tensor，且索引行为需验证）；此外原始用例未测试边界情况如单元素张量、1D张量、空维度、int类型输入等。根据Paddle文档，mode='min'且axis不为None时返回(median_values, indices)元组，而PyTorch的torch.median在指定dim时也返回(values, indices)，二者接口语义一致但需验证dtype、keepdim交互及int输入行为；因此需变异以覆盖axis、mode、keepdim组合及int32/int64输入等场景。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32",
+          "sample_values": [
+            8,
+            0,
+            3,
+            -1
+          ]
+        },
+        "dim": 0,
+        "keepdim": true,
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32",
+          "sample_values": [
+            8,
+            0,
+            3,
+            -1
+          ]
+        },
+        "axis": 0,
+        "keepdim": true,
+        "mode": "min"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "median() received an invalid combination of arguments - got (Tensor, dim=int, keepdim=bool, return_indices=bool), but expected one of:\n * (Tensor input)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: median() received an invalid combination of arguments - got (Tensor, dim=int, keepdim=bool, return_indices=bool), but expected one of:\n * (Tensor input)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.median does not accept 'return_indices' parameter; instead, when indices are needed, it requires 'keepdim' and returns a namedtuple (values, indices) only for the two-argument overload with dim specified — but the signature does not include 'return_indices=True'. The error shows invalid argument combination: PyTorch expects either (input,) or (input, dim, keepdim), and does not support 'return_indices' as a boolean flag. To get indices in PyTorch, one must use the form torch.median(input, dim, keepdim) which *always* returns (values, indices) as a namedtuple when dim is provided. PaddlePaddle's 'mode=\"min\"' with axis specified also returns a tuple (median, indices), so the PyTorch side must be repaired to omit 'return_indices' and rely on the natural return type. Also, dtype 'int32' is unsupported in PyTorch's median (requires floating point or int64); per PyTorch docs, median supports float32/64, int64, but not int32 — so input dtype must be upgraded to int64 or float32 to avoid runtime error."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            8,
+            0,
+            8,
+            -1
+          ]
+        },
+        "dim": 0,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            8,
+            0,
+            8,
+            -1
+          ]
+        },
+        "axis": 0,
+        "keepdim": true,
+        "mode": "min"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但当前用例仅覆盖一维int64张量、axis=0、keepdim=True、mode='min'的简单场景；为提升测试鲁棒性与边界覆盖，需进行fuzzing：扩展至高维（3D）、引入偶数长度轴以触发mode差异（avg vs min）、测试None axis（全量中位数）、测试keepdim=False、测试float32 dtype（因Paddle对float64/float32有精度类型推导规则，PyTorch无此区分）、测试负axis（-1）及空维度（shape=[0]）等边界情况。本次变异选择最具代表性的高维+偶数轴+mode='avg'+keepdim=False+float32组合，既验证核心功能一致性，又暴露mode默认值差异（Paddle alias调用时mode默认min，显式指定avg可检验行为对齐）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.040551990270614624,
+            0.18921193480491638,
+            0.21418815851211548,
+            -0.8680903315544128,
+            -0.6441606283187866,
+            -0.8618708848953247,
+            -1.1159011125564575,
+            -1.5184587240219116,
+            -2.129194974899292,
+            1.4959518909454346
+          ]
+        },
+        "dim": 1,
+        "keepdim": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.040551990270614624,
+            0.18921193480491638,
+            0.21418815851211548,
+            -0.8680903315544128,
+            -0.6441606283187866,
+            -0.8618708848953247,
+            -1.1159011125564575,
+            -1.5184587240219116,
+            -2.129194974899292,
+            1.4959518909454346
+          ]
+        },
+        "axis": 1,
+        "keepdim": false,
+        "mode": "avg"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2, 4) vs PaddlePaddle (2, 4)",
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          4
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.25835591315129713,
+            1.073702016671881,
+            0.1820040798703327,
+            -0.8676411079891455,
+            -0.1338873197301274,
+            0.24307796837867698,
+            -0.46853662339453134,
+            0.4385682201829939,
+            -0.5216293130598612,
+            0.6651427965351295
+          ]
+        },
+        "api": "torch.median"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.25835591315129713,
+            1.073702016671881,
+            0.1820040798703327,
+            -0.8676411079891455,
+            -0.1338873197301274,
+            0.24307796837867698,
+            -0.46853662339453134,
+            0.4385682201829939,
+            -0.5216293130598612,
+            0.6651427965351295
+          ]
+        },
+        "api": "paddle.median"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但未覆盖关键参数组合：axis（dim）、keepdim、mode（尤其是'avg' vs 'min'）、以及边界形状（如含0维、1维、单元素、负axis）和数据类型（如int32/int64/float16）。PaddlePaddle文档明确指出mode默认为'avg'，但当使用alias dim时默认变为'min'；同时mode='min'且axis!=None时返回tuple (values, indices)，而PyTorch的torch.median在指定dim时也返回namedtuple (values, indices)，但行为细节（如偶数长度时取min而非avg）需对齐验证。因此需变异以覆盖axis、keepdim、mode组合及边界shape（如[0,5], [1], [5,1,5]）和dtype（int64, float16）等高风险场景。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            4,
+            1,
+            6
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            7,
+            5,
+            -9,
+            3,
+            -2,
+            6,
+            7,
+            2,
+            -6,
+            -6
+          ]
+        },
+        "axis": 2,
+        "keepdim": true,
+        "output_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            4,
+            1,
+            6
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            7,
+            5,
+            -9,
+            3,
+            -2,
+            6,
+            7,
+            2,
+            -6,
+            -6
+          ]
+        },
+        "axis": 2,
+        "keepdim": true,
+        "mode": "min"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "median() received an invalid combination of arguments - got (Tensor, axis=int, output_indices=bool, keepdim=bool), but expected one of:\n * (Tensor input)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: median() received an invalid combination of arguments - got (Tensor, axis=int, output_indices=bool, keepdim=bool), but expected one of:\n * (Tensor input)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.median does not accept 'output_indices' parameter; instead, when indices are needed, it returns a named tuple (values, indices) only when dim is specified and the function is called in its two-output form — but the correct signature requires 'dim', not 'axis', and no 'output_indices' flag. The error shows PyTorch rejected (Tensor, axis=int, output_indices=bool, keepdim=bool) because 'axis' is not a valid parameter name and 'output_indices' doesn't exist. Paddle uses 'mode=\"min\"' to return both values and indices (as a tuple), matching PyTorch's behavior when dim is given — but PyTorch's equivalent is calling torch.median(input, dim=2, keepdim=True) which returns (values, indices) by default (no boolean flag). Thus, the PyTorch test case must remove 'output_indices' and rename 'axis' → 'dim'; Paddle's 'mode=\"min\"' is already correct for index-returning behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            4,
+            1,
+            6
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -5,
+            -4,
+            -8,
+            7,
+            8,
+            -1,
+            -1,
+            5,
+            -6,
+            4
+          ]
+        },
+        "dim": 2,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            4,
+            1,
+            6
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -5,
+            -4,
+            -8,
+            7,
+            8,
+            -1,
+            -1,
+            5,
+            -6,
+            4
+          ]
+        },
+        "axis": 2,
+        "keepdim": true,
+        "mode": "min"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle上执行成功且结果一致，但未覆盖关键边界场景：(1) axis=None（全量中位数）；(2) 偶数长度维度下mode='avg'与'min'的行为差异；(3) keepdim=False时的shape squeeze行为；(4) float32/float64精度敏感场景；(5) 1D空张量（shape=[0]）或单元素张量（shape=[1]）等边界情况。根据Paddle文档，mode默认为'avg'仅当显式使用axis/dim参数时才生效，而alias调用（如dim=2）会触发mode默认为'min'，因此需变异以验证mode='avg'路径及跨框架数值一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 1,
+        "keepdim": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "keepdim": false,
+        "mode": "avg"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 0) vs PaddlePaddle (0,)",
+        "torch_shape": null,
+        "paddle_shape": [
+          0
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.3784456111186261,
+            -0.33840237283057706,
+            -0.6760495374867311,
+            0.13330023134821853,
+            -0.8400036802364095,
+            1.29937129404485,
+            -1.158473123377439,
+            0.8236769570086664,
+            1.0360815145507833,
+            0.6576127391879667
+          ]
+        },
+        "api": "torch.median"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.3784456111186261,
+            -0.33840237283057706,
+            -0.6760495374867311,
+            0.13330023134821853,
+            -0.8400036802364095,
+            1.29937129404485,
+            -1.158473123377439,
+            0.8236769570086664,
+            1.0360815145507833,
+            0.6576127391879667
+          ]
+        },
+        "api": "paddle.median"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始测试用例仅覆盖默认参数（axis=None, keepdim=False, mode='avg'），未覆盖PaddlePaddle中mode='min'时返回tuple（值+indices）与PyTorch行为差异的关键场景；且未测试axis指定、keepdim=True、负axis、边界shape（如含1维或0维）、int类型输入等重要变体。根据Paddle文档，当mode='min'且axis is not None时返回(tuple of Tensor)，而PyTorch的torch.median在指定dim时始终返回(values, indices)二元组（无论even/odd），但Paddle的mode='avg'不返回indices，mode='min'才返回；因此需变异以覆盖多参数组合、数据类型边界（int32/int64）、空维度（shape=[0,5]）、单元素张量及负axis等高价值fuzzing场景。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "dim": 1,
+        "keepdim": true,
+        "result_type": "tuple"
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "keepdim": true,
+        "mode": "min"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "median() received an invalid combination of arguments - got (Tensor, result_type=str, dim=int, keepdim=bool), but expected one of:\n * (Tensor input)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: median() received an invalid combination of arguments - got (Tensor, result_type=str, dim=int, keepdim=bool), but expected one of:\n * (Tensor input)\n * (Tensor input, int dim, bool keepdim = False, *, tuple of Tensors out = None)\n * (Tensor input, name dim, bool keepdim = False, *, tuple of Tensors out = None)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.median does not accept 'result_type' parameter, and the error shows invalid argument combination — it expects either (Tensor) or (Tensor, dim, keepdim) but received 'result_type=str'. Also, for empty dimension (shape=[1,0,5] with dim=1), PyTorch requires special handling: median over dim with size 0 is undefined and raises RuntimeError in newer versions; however, the immediate issue is the extraneous 'result_type' parameter which is not part of torch.median's signature. Paddle's 'mode=\"min\"' corresponds to PyTorch's behavior when returning indices (but torch.median only returns indices when using torch.median(input, dim, keepdim, out=(..., ...)) or via torch.nanmedian for some cases — however, standard torch.median with dim does NOT return indices by default. Crucially, torch.median with dim returns a namedtuple (values, indices) since 1.9+, but only when called with dim — and it does NOT accept 'result_type'. So the PyTorch test case must remove 'result_type' and rely on the natural return type. Also, shape [1,0,5] along dim=1 (size 0) is invalid in PyTorch — it throws 'RuntimeError: cannot compute median over dimension 1 because dimension 1 has size 0'. Therefore, to repair: (1) remove invalid 'result_type' param; (2) avoid empty dim — change shape to non-empty, e.g., [1,2,5], keeping dtype and other params valid per both APIs."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            1,
+            2,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": [
+            -6,
+            5,
+            -3,
+            6,
+            -7,
+            1,
+            3,
+            0,
+            -8,
+            -4
+          ]
+        },
+        "dim": 1,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            1,
+            2,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": [
+            -6,
+            5,
+            -3,
+            6,
+            -7,
+            1,
+            3,
+            0,
+            -8,
+            -4
+          ]
+        },
+        "axis": 1,
+        "keepdim": true,
+        "mode": "min"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始用例仅覆盖了基础场景（3D int32 tensor, axis=1, keepdim=True, mode='min'）。为提升鲁棒性测试覆盖率，需进行fuzzing：引入边界维度（含0维）、极端数据类型（float64、bfloat16）、空张量（shape=[0,2,5]）、全相同值张量（易触发中位数定义歧义）、以及mode='avg'与mode='min'的对比场景；同时PaddlePaddle文档明确指出当使用alias（如dim）时mode默认为'min'，而显式使用axis时默认为'avg'，原始用例强制指定mode='min'虽正确，但应补充默认行为测试以验证一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.median",
+        "input": {
+          "shape": [
+            0,
+            2,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 1,
+        "keepdim": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.median",
+        "input": {
+          "shape": [
+            0,
+            2,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "keepdim": false,
+        "mode": "avg"
+      },
+      "execution_result": {
+        "torch_api": "torch.median",
+        "paddle_api": "paddle.median",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 0, 5) vs PaddlePaddle (0, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          0,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

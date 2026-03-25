@@ -1,0 +1,742 @@
+{
+  "operator": "torch_argmax",
+  "torch_api": "torch.argmax",
+  "tensorflow_api": "tf.argmax",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 5,
+  "timestamp": "2026-02-01T15:35:25.871251",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_argmax_20260123_133336.json",
+        "iteration": 3,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.argmax",
+        "input": {
+          "shape": [
+            1,
+            17
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6228021383285522,
+            -0.23531581461429596,
+            0.9389694333076477,
+            0.5074061751365662,
+            0.0036050663329660892,
+            -0.4398094415664673,
+            -0.08292810618877411,
+            -0.15314701199531555,
+            0.5470973253250122,
+            -0.6587080359458923
+          ]
+        },
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.argmax",
+        "input": {
+          "shape": [
+            1,
+            17
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6228021383285522,
+            -0.23531581461429596,
+            0.9389694333076477,
+            0.5074061751365662,
+            0.0036050663329660892,
+            -0.4398094415664673,
+            -0.08292810618877411,
+            -0.15314701199531555,
+            0.5470973253250122,
+            -0.6587080359458923
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊浮点值易触发框架底层比较逻辑差异（如NaN排序、inf处理、次正规数精度），暴露argmax实现中未定义行为或边界bug。",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                1,
+                17
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.6228021383285522,
+                -0.23531581461429596,
+                0.9389694333076477,
+                0.5074061751365662,
+                0.0036050663329660892,
+                -0.4398094415664673,
+                -0.08292810618877411,
+                -0.15314701199531555,
+                0.5470973253250122,
+                -0.6587080359458923,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0
+              ]
+            },
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                1,
+                17
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.6228021383285522,
+                -0.23531581461429596,
+                0.9389694333076477,
+                0.5074061751365662,
+                0.0036050663329660892,
+                -0.4398094415664673,
+                -0.08292810618877411,
+                -0.15314701199531555,
+                0.5470973253250122,
+                -0.6587080359458923,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 2",
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1]) with inf/nan/-0.0",
+          "mutation_reason": "单元素张量在argmax中应 always return 0, but frameworks may mishandle inf/nan/-0.0 edge cases differently due to floating-point comparison semantics.",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，并注入inf/-inf/nan/-0.0等边界值",
+          "mutation_reason": "float16精度低、动态范围小，易暴露argmax对NaN/inf的处理差异及舍入导致的索引偏移bug；两框架对特殊浮点值的排序稳定性定义可能不一致。",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                1,
+                17
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.6228021383285522,
+                -0.23531581461429596,
+                0.9389694333076477,
+                0.5074061751365662,
+                0.0036050663329660892,
+                -0.4398094415664673,
+                -0.08292810618877411,
+                -0.15314701199531555,
+                0.5470973253250122,
+                -0.6587080359458923,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0
+              ]
+            },
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                1,
+                17
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.6228021383285522,
+                -0.23531581461429596,
+                0.9389694333076477,
+                0.5074061751365662,
+                0.0036050663329660892,
+                -0.4398094415664673,
+                -0.08292810618877411,
+                -0.15314701199531555,
+                0.5470973253250122,
+                -0.6587080359458923,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 2",
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_argmax_20260123_133336.json",
+        "iteration": 4,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.argmax",
+        "input": {
+          "shape": [
+            0,
+            17
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.argmax",
+        "input": {
+          "shape": [
+            0,
+            17
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "argmax行为在边界值（如NaN、inf）上易出现框架差异：PyTorch和TF对NaN排序、inf比较、空维度处理逻辑可能不一致。",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                0,
+                17
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                0,
+                17
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0
+            ],
+            "tensorflow_shape": [
+              0
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）",
+          "mutation_reason": "标量是argmax最简边界情况，两框架对零维张量的axis/dim处理逻辑易不一致，可能暴露索引维度广播或空轴验证bug。",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [],
+              "dtype": "int32",
+              "sample_values": [
+                42
+              ]
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [],
+              "dtype": "int32",
+              "sample_values": [
+                42
+              ]
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__ArgMax_device_/job:localhost/replica:0/task:0/device:CPU:0}} Expected dimension in the range [0, 0), but got 0 [Op:ArgMax] name: ",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [],
+            "tensorflow_shape": null,
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从int32变异为float32，并注入边界/特殊浮点值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "浮点特殊值处理是argmax易出错区域，两框架对NaN/inf的排序和索引行为可能存在差异，且float32精度边界更易暴露实现分歧。",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                0,
+                17
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                0,
+                17
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0
+            ],
+            "tensorflow_shape": [
+              0
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_argmax_20260123_133336.json",
+        "iteration": 4,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.argmax",
+        "input": {
+          "shape": [
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.31808653473854065,
+            -1.764997959136963,
+            -0.23598749935626984,
+            0.7237783074378967,
+            0.6817489862442017,
+            -1.1125141382217407,
+            1.2733074426651,
+            -1.1765729188919067,
+            -0.2789630889892578,
+            0.9744040369987488
+          ]
+        },
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.argmax",
+        "input": {
+          "shape": [
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.31808653473854065,
+            -1.764997959136963,
+            -0.23598749935626984,
+            0.7237783074378967,
+            0.6817489862442017,
+            -1.1125141382217407,
+            1.2733074426651,
+            -1.1765729188919067,
+            -0.2789630889892578,
+            0.9744040369987488
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层比较逻辑差异，如NaN排序、inf处理、次正规数精度丢失，暴露argmax实现不一致bug",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.31808653473854065,
+                "inf",
+                -0.23598749935626984,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.6817489862442017,
+                -1.1125141382217407,
+                1.2733074426651,
+                "nan",
+                -0.2789630889892578,
+                0.9744040369987488,
+                "inf",
+                -0.0
+              ]
+            },
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.31808653473854065,
+                "inf",
+                -0.23598749935626984,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.6817489862442017,
+                -1.1125141382217407,
+                1.2733074426651,
+                "nan",
+                -0.2789630889892578,
+                0.9744040369987488,
+                "inf",
+                -0.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 3",
+            "torch_shape": [
+              4
+            ],
+            "tensorflow_shape": [
+              4
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）",
+          "mutation_reason": "单元素张量是argmax的退化边界情况，框架对维度索引和返回形状处理可能不一致，易暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16 dtype下argmax对特殊浮点值的处理一致性",
+          "mutation_reason": "float16精度较低，易暴露框架在inf/nan/-0.0等边界值上的实现差异，且PyTorch与TF对float16中NaN传播和inf比较行为可能不一致",
+          "torch_test_case": {
+            "api": "torch.argmax",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                0.3181,
+                -1.765,
+                -0.236,
+                0.7236,
+                0.6816,
+                -1.112,
+                1.273,
+                -1.177,
+                -0.279,
+                0.9744,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.argmax",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                0.3181,
+                -1.765,
+                -0.236,
+                0.7236,
+                0.6816,
+                -1.112,
+                1.273,
+                -1.177,
+                -0.279,
+                0.9744,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 1",
+            "torch_shape": [
+              4
+            ],
+            "tensorflow_shape": [
+              4
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

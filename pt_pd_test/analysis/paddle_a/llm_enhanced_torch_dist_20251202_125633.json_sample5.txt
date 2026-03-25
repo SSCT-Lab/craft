@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_dist_20251202_125633.json
+样例编号: 5
+paddle_error 错误信息: (InvalidType) dist(): argument (position 3) must be double, but got str (at ..\paddle\fluid\pybind\op_function_common.cc:423)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.dist",
+  "input": {
+    "shape": [
+      2,
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "p": "inf"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.dist",
+  "input": {
+    "shape": [
+      2,
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "p": "inf"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.dist` 要求参数 `p` 必须是数值类型（float32 或 float64），而测试用例中传入的是字符串 `"inf"`，尽管 PyTorch 支持 `p="inf"` 表示无穷范数，但 PaddlePaddle 不接受字符串形式的 `p`，导致类型不匹配错误。  
+   - 此外，输入张量形状为 `[2, 0, 3, 1]` 和 `[0, 3, 1]`，其中包含维度为 0 的空张量，在 PaddlePaddle 中对这类形状的广播和计算支持有限，可能引发底层执行异常，进一步加剧了错误。
+
+3. 修复建议：  
+   - 建议提交 issue 给 PaddlePaddle 官方，指出 `paddle.dist` 应支持 `p="inf"` 字符串形式以与 PyTorch 对齐；同时可考虑在映射层对 `p="inf"` 进行预处理转换为 `float('inf')`。

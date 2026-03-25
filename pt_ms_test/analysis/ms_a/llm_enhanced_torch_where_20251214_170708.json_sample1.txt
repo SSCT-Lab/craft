@@ -1,0 +1,129 @@
+来源文件: llm_enhanced_torch_where_20251214_170708.json
+样例编号: 1
+mindspore_error 错误信息: For 'Select', input.shape and other.shape need to broadcast. The value of input.shape[3] or other.shape[4] must be 1 or -1 when they are not the same, but got input.shape = [0, 4, 1] and other.shape = [2, 3, 4, 1]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.where",
+  "condition": {
+    "shape": [
+      2,
+      3,
+      4,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "x": {
+    "shape": [
+      0,
+      4,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "y": {
+    "shape": [
+      2,
+      3,
+      4,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -6,
+      -4,
+      2,
+      4,
+      0,
+      -7,
+      2,
+      -4,
+      8,
+      -9
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.where",
+  "condition": {
+    "shape": [
+      2,
+      3,
+      4,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "x": {
+    "shape": [
+      0,
+      4,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "y": {
+    "shape": [
+      2,
+      3,
+      4,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -6,
+      -4,
+      2,
+      4,
+      0,
+      -7,
+      2,
+      -4,
+      8,
+      -9
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `mint.where` 要求 `condition`、`input` 和 `other` 三者必须能够广播（broadcast）到相同形状，且在维度不一致时，要求对应维度为 1 或 -1 才可广播。本例中 `input.shape = [0, 4, 1]`，其第一维为 0（空张量），而 `condition.shape = [2, 3, 4, 1]`，二者在第 0 维分别为 0 和 2，无法广播（0 不能与 2 广播），即使存在 1 也因维度不匹配而失败。
+   - 尽管 PyTorch 允许 `torch.where` 在 `input` 为 `[0,4,1]` 且 `condition` 为 `[2,3,4,1]` 时通过广播规则进行处理（如将 `[0,4,1]` 视为可广播的零维张量），但 MindSpore 对广播的严格性更高，尤其对包含 0 的 shape 处理更为保守，当前实现不支持此类情形。
+
+3. 修复建议：
+   - 建议提交 issue 至 MindSpore 官方仓库，反馈该场景下对 `shape[0] == 0` 的广播行为与 PyTorch 不一致，属于框架行为差异，建议增强对零维张量广播的支持。

@@ -1,0 +1,55 @@
+来源文件: llm_enhanced_torch_take_20251202_012201.json
+样例编号: 7
+paddle_error 错误信息: (InvalidArgument) Variable value (index) of OP(index_select) expected >= -1 and < 1, but got 2. Please check input value.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.take",
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "index": {
+    "shape": [
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      2
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.take",
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "index": {
+    "shape": [
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      2
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.take` 在默认 `mode='raise'` 时，会对索引超出范围的情况进行严格检查，当输入张量为标量（shape=[]）时，其一维视图长度为1，索引值2已超出有效范围（0~0），因此抛出“index >= -1 and < 1, but got 2”错误。
+   - 而 PyTorch 的 `torch.take` 在相同情况下会将输入视为一维后按索引访问，但对越界索引的处理逻辑与 Paddle 不同：PyTorch 实际上在某些版本中对越界索引的行为是未定义的或允许部分扩展，而 Paddle 明确要求索引必须在合法范围内（即 [0, len(input))），导致该样例在 Paddle 中失败。
+
+3. 修复建议：
+   - 该行为差异属于框架间语义不一致问题，建议提交 issue 给 PaddlePaddle 官方，说明 `paddle.take` 在标量输入下对越界索引的严格检查与 PyTorch 不一致，可能影响模型迁移兼容性。

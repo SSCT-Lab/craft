@@ -1,0 +1,39 @@
+来源文件: llm_enhanced_torch_fmod_20251125_143746.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) remainder(): argument 'y' (position 1) must be Tensor, but got float (at ..\paddle\fluid\pybind\eager_utils.cc:1513)
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "other": 1.5,
+  "api": "torch.fmod"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "other": 1.5,
+  "api": "torch.fmod"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `torch.fmod` API 虽然在文档中支持 `Scalar` 作为 `other` 参数，但其底层实现要求 `other` 必须是 `Tensor` 类型（如错误信息所示：`must be Tensor, but got float`），而 PyTorch 的 `torch.fmod` 明确支持 `Scalar`（如 `1.5`）作为 `other`。
+   - 该行为差异属于框架实现层面的不一致：尽管两者都标称支持 `Scalar`，但 PaddlePaddle 在实际执行时对 `other` 的类型检查更严格，强制要求必须为 `Tensor`，导致传入 `float` 值时报错。
+
+3. 修复建议：
+   - 建议提交 issue 给 PaddlePaddle 官方，指出 `torch.fmod` 对 `Scalar` 输入的兼容性与 PyTorch 不一致，建议放宽类型限制以保持语义对齐。

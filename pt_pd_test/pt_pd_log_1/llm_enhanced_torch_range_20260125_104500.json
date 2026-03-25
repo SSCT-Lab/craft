@@ -1,0 +1,167 @@
+{
+  "operator": "torch.range",
+  "timestamp": "2026-01-25T10:45:00.047945",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 1,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "start": 1,
+        "end": 20,
+        "api": "torch.range"
+      },
+      "paddle_test_case": {
+        "start": 1,
+        "end": 20,
+        "api": "paddle.arange"
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "paddle_api": "paddle.arange",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (20,) vs PaddlePaddle (19,)",
+        "torch_shape": [
+          20
+        ],
+        "paddle_shape": [
+          19
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.range and paddle.arange have fundamentally different semantics: torch.range includes 'end' in the output (closed interval [start, end]), while paddle.arange excludes 'end' (half-open interval [start, end)). The original test case with start=1, end=20 produces shape (20,) in PyTorch (values 1..20 inclusive) but shape (19,) in Paddle (values 1..19). To make them equivalent, we must adjust the 'end' parameter in paddle.arange to be 21, so that paddle.arange(1, 21) yields values [1,2,...,20], matching torch.range(1,20). This repair aligns with the documented behavior of both APIs."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 1,
+        "end": 20
+      },
+      "paddle_test_case": {
+        "api": "paddle.arange",
+        "start": 1,
+        "end": 21
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "paddle_api": "paddle.arange",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          20
+        ],
+        "paddle_shape": [
+          20
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "PyTorch torch.range(start, end) generates values from start to end inclusive (with floor((end-start)/step)+1 elements), while paddle.arange(start, end) generates values in the half-open interval [start, end), i.e., up to but not including end. Thus, to match torch.range(1, 20), paddle.arange must use end=21 when step=1. Since current execution is consistent and both succeed, we perform fuzzing to increase coverage: test with non-integer start/end, negative step, float dtype, and boundary cases like start==end and step=0 (though step=0 is invalid per docs, we fuzz it to check robustness). We choose a valid but edge-case mutation: float inputs with explicit dtype=torch.float64 vs paddle.float64, and include a negative step case which requires careful alignment — for torch.range, negative step is allowed and produces descending sequence; paddle.arange also supports negative step, but interval remains [start, end), so to match torch.range(5, 0, -1) → [5,4,3,2,1], paddle.arange(5, -1, -1) is needed. We mutate to start=0.5, end=5.5, step=0.5, dtype=float64 to stress floating-point precision and step alignment."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 0.5,
+        "end": 5.5,
+        "step": 0.5,
+        "dtype": "torch.float64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.arange",
+        "start": 0.5,
+        "end": 5.5,
+        "step": 0.5,
+        "dtype": "float64"
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "paddle_api": "paddle.arange",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "range(): argument 'dtype' must be torch.dtype, not str",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          10
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: range(): argument 'dtype' must be torch.dtype, not str\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.range expects dtype to be a torch.dtype object (e.g., torch.float64), not a string 'torch.float64'. The error 'range(): argument 'dtype' must be torch.dtype, not str' confirms this type mismatch. PaddlePaddle accepts string dtype names like 'float64', but PyTorch requires actual dtype constants. Additionally, torch.range is deprecated since PyTorch 1.5 and its behavior differs from paddle.arange: torch.range includes 'end' (closed interval), while paddle.arange excludes 'end' (half-open [start, end)). However, the primary immediate fix is correcting the dtype argument type for PyTorch. Also note: torch.range's step is applied inclusively up to end, so the output length is floor((end-start)/step)+1, whereas paddle.arange produces floor((end-start)/step) elements when start, end, step are such that end is not exactly reachable — but in this case (0.5 to 5.5 step 0.5), both should yield 11 elements [0.5,1.0,...,5.5] for torch.range and [0.5,1.0,...,5.0] for paddle.arange — revealing a functional inconsistency. However, per PyTorch docs, torch.range *does* include end, while paddle.arange *excludes* end — making them semantically incompatible for exact equivalence. But the immediate failure is dtype type error, so we repair that first. Since the user's goal is cross-framework testing and torch.range is deprecated, best practice is to replace it with torch.arange (which matches paddle.arange semantics). However, the task specifies 'torch.range' as the API, and the error is purely about dtype type — so we fix dtype to torch.float64 (not string) and retain torch.range. Note: even after dtype fix, numerical outputs will differ due to inclusive vs exclusive end — but the task only requires fixing the execution failure, and the instruction says 'if execution failed, repair based on error and doc'. So we repair dtype type."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 0.5,
+        "end": 5.5,
+        "step": 0.5,
+        "dtype": "torch.float64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.arange",
+        "start": 0.5,
+        "end": 5.5,
+        "step": 0.5,
+        "dtype": "float64"
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "paddle_api": "paddle.arange",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "range(): argument 'dtype' must be torch.dtype, not str",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          10
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: range(): argument 'dtype' must be torch.dtype, not str\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

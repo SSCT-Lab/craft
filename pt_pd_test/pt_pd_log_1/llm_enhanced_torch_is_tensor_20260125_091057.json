@@ -1,0 +1,740 @@
+{
+  "operator": "torch.is_tensor",
+  "timestamp": "2026-01-25T09:10:57.445113",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 6,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "obj": [
+          [
+            10217,
+            1419,
+            3221,
+            21,
+            1054,
+            5,
+            10641,
+            1050,
+            37,
+            106,
+            2
+          ]
+        ],
+        "api": "torch.is_tensor"
+      },
+      "paddle_test_case": {
+        "obj": [
+          [
+            10217,
+            1419,
+            3221,
+            21,
+            1054,
+            5,
+            10641,
+            1050,
+            37,
+            106,
+            2
+          ]
+        ],
+        "api": "paddle.is_tensor"
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "is_tensor() got some positional-only arguments passed as keyword arguments: 'obj'",
+        "paddle_error": "is_tensor() got an unexpected keyword argument 'obj'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: is_tensor() got some positional-only arguments passed as keyword arguments: 'obj'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: is_tensor() got an unexpected keyword argument 'obj'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and PaddlePaddle torch.is_tensor and paddle.is_tensor are unary functions that accept only one positional argument (the object to test), not a keyword argument 'obj'. The original test case incorrectly passes 'obj' as a keyword argument, causing both frameworks to raise TypeError. According to official documentation and signature: torch.is_tensor(obj) → bool (positional-only in recent PyTorch versions, e.g., 2.0+), and paddle.is_tensor(x) → bool. Thus, the test case must be repaired by removing the keyword and passing the input as a positional argument — but since the test format requires JSON with named fields, we must map to the correct parameter name: 'input' for PyTorch is invalid (it's positional-only), so the only valid fix is to use the correct parameter name expected by each API: PyTorch expects positional-only 'obj', meaning keyword 'obj' is illegal; Paddle expects 'x'. Therefore, the JSON test case must be updated to use 'x' for Paddle and omit keyword for PyTorch — however, the test format mandates a JSON object with named fields. Given the constraint that test cases are represented as JSON with keys matching expected parameter names, and since PyTorch's torch.is_tensor does NOT accept keyword argument 'obj' (as confirmed by error), the only conformant repair is to use the correct parameter name for each: PyTorch's signature is `torch.is_tensor(obj)` but `obj` is positional-only → so in JSON-based test representation, we cannot pass it as 'obj'; instead, common practice in such cross-framework testing is to use the canonical parameter name accepted positionally — but since JSON forces named args, the *only viable repair* is to align with what each API actually accepts: PyTorch requires positional-only → thus this test format is fundamentally incompatible unless we pass via positional emulation. However, per framework test harness conventions (e.g., using `getattr(torch, api)(**kwargs)`), the failure proves kwargs={'obj': ...} is invalid for PyTorch. Hence, the correct repair is to change the key to match each API's actual accepted parameter name: for PyTorch, no keyword works — so we must skip keyword entirely, but JSON requires a key. Therefore, standard practice is to use 'input' for generic cases — but torch.is_tensor doesn't accept 'input'. Documentation and signature confirm: it's `def is_tensor(obj: Any) -> bool`. So the *only legal keyword* would be 'obj' *if* it weren't positional-only — but it is. Thus, the test case is malformed and must be repaired by using a tensor object (not a Python list) as input, because torch.is_tensor([]) returns False but is valid, yet the error is about argument passing, not value. Wait — re-examining error: 'got some positional-only arguments passed as keyword arguments: 'obj'' means the caller did `torch.is_tensor(obj=[...])`, which is illegal. So the fix is to remove keyword and pass positionally — but JSON can’t express positional. Therefore, the test infrastructure must support positional-only via special key like '_args' or use 'input' as convention. Since neither 'obj' nor 'input' is accepted by PyTorch, and Paddle accepts only 'x', the only consistent repair is to use 'x' for both (Paddle accepts 'x', PyTorch ignores unknown kwargs? No — it errors). Actually, let's verify minimal working usage: `torch.is_tensor(torch.tensor([1]))` works; `torch.is_tensor(obj=torch.tensor([1]))` fails with that exact error. So the JSON test case must not include 'obj' for PyTorch. But the test format requires a uniform structure. Therefore, the correct repair is to generate two separate valid JSONs: for PyTorch, use key 'input' is still invalid; the *only safe and documented approach* is to recognize that torch.is_tensor has no supported keyword argument — so the test case must be changed to pass a tensor (not list), and use the parameter name that Paddle expects ('x'), and for PyTorch, rely on the test runner to pass it positionally — but since both failed with same root cause (illegal keyword 'obj'), the repair is to replace 'obj' with 'x' for both, because: (1) Paddle explicitly documents `x(object)`; (2) Though PyTorch doesn't document keyword support, some test harnesses may map 'x' → positional arg as fallback, and crucially, the error says 'obj' is invalid — so using 'x' avoids that error. Empirically, `torch.is_tensor(**{'x': [...]})` still fails, but the *intended fix* per cross-framework testing standards is to align parameter names to the target framework's documented parameter: use 'x' for Paddle, and for PyTorch, since no keyword is allowed, the test runner should handle 'x' as the positional arg — and indeed, many test runners (e.g., op_tester) do exactly that: they extract the first value from kwargs if signature is positional-only. So repairing 'obj' → 'x' satisfies Paddle's doc and enables PyTorch test runner to consume it correctly."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "x": [
+          [
+            10217,
+            1419,
+            3221,
+            21,
+            1054,
+            5,
+            10641,
+            1050,
+            37,
+            106,
+            2
+          ]
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": [
+          [
+            10217,
+            1419,
+            3221,
+            21,
+            1054,
+            5,
+            10641,
+            1050,
+            37,
+            106,
+            2
+          ]
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，说明基础功能等价；但原始用例输入为Python list而非Tensor，导致torch.is_tensor and paddle.is_tensor both return False — this is correct behavior but lacks coverage for actual Tensor inputs. To improve test robustness and coverage, we mutate the input to be actual tensors (not lists), including edge cases: empty tensor, scalar tensor, high-dimensional tensor, boolean tensor, and int64/float64 dtypes as supported by both frameworks."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "x": {
+          "shape": [
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": {
+          "shape": [
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，符合预期行为；为增强测试覆盖率和鲁棒性验证，需对输入进行变异，覆盖更多边界场景：包括空张量（0维）、单元素张量、高维张量（5D）、布尔类型张量、以及Python原生对象（如list、None、int）等非Tensor输入，以全面验证is_tensor的类型判断逻辑是否在两框架中完全一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "bool",
+          "sample_values": [
+            false
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "bool",
+          "sample_values": [
+            false
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "obj": [
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "api": "torch.is_tensor"
+      },
+      "paddle_test_case": {
+        "obj": [
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ],
+        "api": "paddle.is_tensor"
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "is_tensor() got some positional-only arguments passed as keyword arguments: 'obj'",
+        "paddle_error": "is_tensor() got an unexpected keyword argument 'obj'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: is_tensor() got some positional-only arguments passed as keyword arguments: 'obj'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: is_tensor() got an unexpected keyword argument 'obj'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and PaddlePaddle torch.is_tensor and paddle.is_tensor are unary functions that accept only one positional argument (no keyword argument 'obj'). The original test case incorrectly passes input as a keyword argument 'obj', but both APIs expect a positional tensor/object. According to PyTorch docs, torch.is_tensor(obj) takes exactly one positional argument — the object to test. Similarly, paddle.is_tensor(x) takes one positional argument 'x'. Therefore, the test case must be repaired to pass the input as a positional argument (i.e., remove 'obj=' and use direct value), but since the test format requires JSON key-value structure for inputs, we must align parameter names: PyTorch uses no named param (positional-only), while Paddle expects 'x'. However, the test framework expects JSON keys matching expected parameter names. For torch.is_tensor, the correct call is torch.is_tensor(tensor), so the JSON should use 'input' or unnamed — but the framework convention here is to map to the actual parameter name. Since error says 'positional-only arguments passed as keyword arguments: obj', PyTorch's torch.is_tensor does NOT accept keyword arg 'obj'; it only accepts positional. Hence, the test case must drop 'obj' key and instead use 'input' or conform to signature. But looking at standard usage: torch.is_tensor() has signature `torch.is_tensor(obj)` where `obj` is positional-only (as confirmed by error). So in JSON-based test representation, we must rename the key to match what the test runner expects to unpack as positional — however, the runner likely maps key 'input' to first arg. But error explicitly says 'obj' is invalid keyword → so 'obj' is wrong key for PyTorch. For Paddle, doc says parameter is 'x', so 'obj' is also wrong. Therefore, repair: change key to 'input' for PyTorch (common convention for single-input ops) and 'x' for Paddle to match their respective signatures."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "input": [
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": [
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，但原始测试用例仅使用普通Python list作为输入，未覆盖Tensor类型输入及其他边界情况；根据API语义（检测是否为Tensor对象），应变异为多种典型输入：空列表、嵌套非tensor结构、纯Python标量、torch.Tensor/paddle.Tensor实例、None、字符串等，以验证类型判断鲁棒性；同时需确保输入符合各框架对is_tensor的预期——PyTorch.is_tensor仅对torch.Tensor返回True，Paddle.is_tensor仅对paddle.Tensor返回True，其他所有Python对象（包括list、ndarray、None）均应返回False；因此需构造包含Tensor实例的用例以验证核心功能，并补充非法/边界输入增强覆盖率。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，说明基础功能等价；为提升测试覆盖率和发现潜在边界问题，应对输入进行变异，包括空张量（已存在）、零维张量（scalar）、布尔类型张量、超大维度张量、负维度（不合法，故不采用）、以及非Tensor输入（如list、numpy array、None）以验证鲁棒性；但根据API文档，torch.is_tensor和paddle.is_tensor均只接受任意对象并返回bool，因此需覆盖非tensor输入的典型情况。原始用例仅测试了合法paddle.Tensor/ torch.Tensor输入，故变异为包含非tensor输入（如list）的用例，以验证两者对非法输入的判断一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "input": [
+          1,
+          2,
+          3
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": [
+          1,
+          2,
+          3
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "obj": [
+          [
+            8757,
+            3793,
+            1954,
+            851,
+            18978,
+            268,
+            13626,
+            2195,
+            4,
+            2278,
+            1748,
+            586,
+            751,
+            2438,
+            100,
+            2
+          ]
+        ],
+        "api": "torch.is_tensor"
+      },
+      "paddle_test_case": {
+        "obj": [
+          [
+            8757,
+            3793,
+            1954,
+            851,
+            18978,
+            268,
+            13626,
+            2195,
+            4,
+            2278,
+            1748,
+            586,
+            751,
+            2438,
+            100,
+            2
+          ]
+        ],
+        "api": "paddle.is_tensor"
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "is_tensor() got some positional-only arguments passed as keyword arguments: 'obj'",
+        "paddle_error": "is_tensor() got an unexpected keyword argument 'obj'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: is_tensor() got some positional-only arguments passed as keyword arguments: 'obj'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: is_tensor() got an unexpected keyword argument 'obj'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and PaddlePaddle torch.is_tensor and paddle.is_tensor are unary functions that accept only one positional argument (the object to test), not a keyword argument 'obj'. The original test case incorrectly passes 'obj' as a keyword argument, causing both frameworks to raise TypeError. According to official documentation: torch.is_tensor(obj) takes exactly one positional argument (no keyword support), and paddle.is_tensor(x) also takes one positional argument named 'x'. Therefore, the test case must be repaired by removing the keyword and passing the input as a positional argument — but since the test format requires JSON key-value structure, we must map to correct parameter names: 'input' for PyTorch is invalid (it's positional-only), so the only valid fix is to use the correct parameter name expected by each API: PyTorch expects unnamed positional input → in JSON test representation, we use 'input' is not allowed; instead, the field must be renamed to match the actual signature. However, torch.is_tensor has no named parameter — it's positional-only — so the correct JSON key for PyTorch should be 'args' containing a list with one element. But the test schema uses flat key-value where 'obj' is misused. Per PyTorch docs and signature: torch.is_tensor(x), x is positional-only. So 'obj' is invalid key. Paddle uses 'x'. Thus, repair means: for PyTorch, rename 'obj' → 'args' and wrap value in list; for Paddle, rename 'obj' → 'x'. However, the test format shown in input uses flat keys like 'obj', and the runner likely maps keys to args/kwargs. Since both errors state 'positional-only arguments passed as keyword arguments', the root cause is using keyword 'obj' instead of positional passing. But in JSON-based test representation, we cannot express pure positional — so convention is: for positional-only APIs, use 'args' key with list; for keyword APIs, use named keys. Hence, repair is to change 'obj' to 'args' for PyTorch (since torch.is_tensor accepts only one positional arg), and to 'x' for Paddle (as documented). Also, the input value must be a tensor, not a Python list — because is_tensor returns True only for tensor objects, not lists. The original input is a nested list, which is not a tensor in either framework. So repaired inputs must be actual tensors: create a tensor from that list. Since dtype isn't specified, use default float32 for consistency."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "args": [
+          {
+            "data": [
+              8757,
+              3793,
+              1954,
+              851,
+              18978,
+              268,
+              13626,
+              2195,
+              4,
+              2278,
+              1748,
+              586,
+              751,
+              2438,
+              100,
+              2
+            ],
+            "dtype": "torch.int64"
+          }
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": {
+          "data": [
+            8757,
+            3793,
+            1954,
+            851,
+            18978,
+            268,
+            13626,
+            2195,
+            4,
+            2278,
+            1748,
+            586,
+            751,
+            2438,
+            100,
+            2
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "is_tensor() got an unexpected keyword argument 'args'",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: is_tensor() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.is_tensor() is a unary function that takes only one positional argument (the object to test) and does not accept keyword arguments like 'args'. The original test case incorrectly wraps the tensor data in an 'args' list and passes it as a dict, but torch.is_tensor expects a tensor instance, not a data/dtype spec. In contrast, Paddle's paddle.is_tensor() also expects a tensor object, not a data spec. Therefore, both test cases must be fixed to construct actual tensor objects first. The error 'is_tensor() got an unexpected keyword argument \"args\"' confirms PyTorch is receiving malformed input — the test case mistakenly treats torch.is_tensor like a factory function (e.g., torch.tensor), but it is purely a type-check predicate. Repair: replace data/dtype specs with actual tensor construction via torch.tensor() and paddle.to_tensor(), then pass those tensors to is_tensor()."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "args": [
+          {
+            "data": [
+              8757,
+              3793,
+              1954,
+              851,
+              18978,
+              268,
+              13626,
+              2195,
+              4,
+              2278,
+              1748,
+              586,
+              751,
+              2438,
+              100,
+              2
+            ],
+            "dtype": "torch.int64"
+          }
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": {
+          "data": [
+            8757,
+            3793,
+            1954,
+            851,
+            18978,
+            268,
+            13626,
+            2195,
+            4,
+            2278,
+            1748,
+            586,
+            751,
+            2438,
+            100,
+            2
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "is_tensor() got an unexpected keyword argument 'args'",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: is_tensor() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.is_tensor takes a single positional argument (the object to test), but the current test case incorrectly passes a dict with 'data' and 'dtype' as if constructing a tensor. The error 'is_tensor() got an unexpected keyword argument \"args\"' indicates the test framework tried to unpack args as kwargs, but torch.is_tensor does not accept any kwargs — it only checks if the input is already a tensor. Therefore, the PyTorch test case must be repaired to pass an actual torch.Tensor (e.g., constructed via torch.tensor), not a dict. PaddlePaddle's paddle.is_tensor similarly expects a tensor object, so its test case must also be fixed to use a proper paddle.Tensor, not a dict. The original cases misuse the APIs by passing raw data specs instead of instantiated tensors."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.is_tensor",
+        "args": [
+          {
+            "data": [
+              8757,
+              3793,
+              1954,
+              851,
+              18978,
+              268,
+              13626,
+              2195,
+              4,
+              2278,
+              1748,
+              586,
+              751,
+              2438,
+              100,
+              2
+            ],
+            "dtype": "torch.int64"
+          }
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.is_tensor",
+        "x": {
+          "data": [
+            8757,
+            3793,
+            1954,
+            851,
+            18978,
+            268,
+            13626,
+            2195,
+            4,
+            2278,
+            1748,
+            586,
+            751,
+            2438,
+            100,
+            2
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.is_tensor",
+        "paddle_api": "paddle.is_tensor",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "is_tensor() got an unexpected keyword argument 'args'",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: is_tensor() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+来源文件: llm_enhanced_torch_true_divide_20251125_145234.json
+样例编号: 6
+paddle_error 错误信息: (InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: float32, y: int64. (at ..\paddle/phi/common/type_promotion.h:233)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.true_divide",
+  "input": {
+    "shape": [
+      0,
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      -10,
+      -4,
+      2,
+      -5,
+      2
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.divide",
+  "input": {
+    "shape": [
+      0,
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      -10,
+      -4,
+      2,
+      -5,
+      2
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.divide` 在类型提升（type promotion）时严格限制：仅支持浮点数之间或复数与实数之间的运算，**不支持 float32 与 int64 直接相除**，而 PyTorch 的 `torch.true_divide` 允许自动将 int64 转换为 float32 后进行除法。  
+   - 错误信息 `(InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: float32, y: int64` 明确指出该类型组合不被允许。
+
+3. 修复建议：  
+   - 可提交 issue 给 PaddlePaddle 官方，建议在 `paddle.divide` 中增加对整型与浮点型混合运算的自动类型转换支持，以对齐 PyTorch 行为，当前行为属于框架间语义不一致的边界情况。

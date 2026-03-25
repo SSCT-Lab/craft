@@ -1,0 +1,1855 @@
+{
+  "tf_api": "tf.nn.conv2d",
+  "pytorch_api": "torch.nn.functional.conv2d",
+  "timestamp": "2026-02-09T23:54:30.032147",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 2,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, strides=list, padding=str, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not accept 'padding=\"SAME\"' or 'data_format' — it uses NCHW layout by default and only supports 'valid'/'same' (lowercase) string padding in recent versions, and requires explicit weight shape [out_c, in_c, kH, kW]. TF uses NHWC with filters [kH, kW, in_c, out_c], so PyTorch filters must be permuted and padding='same' (not 'SAME'), strides must be tuple, and no data_format."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": "same",
+        "bias": null
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 3, 3, 4) vs PT=(2, 4, 3, 3)",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": [
+          2,
+          4,
+          3,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d expects input in NCHW format (batch, channels, height, width), but TF uses NHWC. Input shape [2,3,3,3] in TF is (N,H,W,C), so PyTorch input must be reshaped to [2,3,3,3] → [2,3,3,3] is invalid for NCHW; correct PyTorch input shape must be [2,3,3,3] interpreted as NCHW → channels=3, so height=3, width=3, thus input shape should be [2,3,3,3] → no, that's still NHWC order. Actual fix: TF input [2,3,3,3] (NHWC) means N=2, H=3, W=3, C=3 → PyTorch NCHW requires [2,3,3,3] → [2,3,3,3] is ambiguous; correct PyTorch input shape is [2,3,3,3] → must be [2,3,3,3] with dims (N,C,H,W), so original [2,3,3,3] as NHWC maps to PyTorch [2,3,3,3] only if we reinterpret — but it's actually [2,3,3,3] → for NCHW: N=2, C=3, H=3, W=3 → same numeric shape, but semantics differ. However, the real issue is weight shape: TF filters [2,2,3,4] is [H,W,C_in,C_out], PyTorch weight must be [C_out,C_in,H,W] = [4,3,2,2] — which is already correct. The output shape mismatch (TF=(2,3,3,4) vs PT=(2,4,3,3)) confirms TF outputs NHWC and PyTorch outputs NCHW. To compare consistently, PyTorch output must be permuted to NHWC or TF to NCHW. But test expects direct numerical comparison — so repair by making both outputs same layout: convert PyTorch output to NHWC via permute(0,2,3,1), or adjust test to compare after layout alignment. Since test framework likely compares raw tensors, the fix is to make PyTorch input use NCHW and explicitly transpose output for comparison — but per task, we must fix test cases to produce *same shape*. Therefore, correct repair is to change PyTorch input to NCHW-compatible shape and ensure output shape matches TF's NHWC by adjusting weight and using consistent padding/stride. However, padding='same' in PyTorch with stride=1 and kernel [2,2] on input [2,3,3,3] (NCHW) gives output [2,4,3,3]; TF SAME on [2,3,3,3] NHWC with filter [2,2,3,4] gives [2,3,3,4]. So shapes differ due to layout, not computation. Thus, to align, PyTorch test case must use input shape [2,3,3,3] as NCHW → valid, and weight [4,3,2,2] → valid, but output is naturally [2,4,3,3]; TF output is [2,3,3,4]. To match, either transpose PyTorch output or reshape TF input to NCHW and use data_format='NCHW'. Best repair: set TF data_format='NCHW' and adjust input/filters accordingly so both yield [2,4,3,3]. TF NCHW requires input [2,3,3,3] → [2,3,3,3], filters [4,3,2,2] (since filters shape is [C_out,C_in,H,W] in NCHW mode), strides [1,1,1,1], padding 'SAME'. Then TF output is [2,4,3,3], matching PyTorch."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": "same",
+        "bias": null
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv2D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input depth must be evenly divisible by filter depth: 3 vs 2 [Op:Conv2D] name: ",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          2,
+          4,
+          3,
+          3
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires input's last dimension (in_channels) to match filter's third dimension (in_channels); here input has 3 channels but filters shape [4,3,2,2] implies in_channels=3 (dim=1) for 'NHWC' or dim=1 for 'NCHW' — however 'data_format':'NCHW' expects filters shape [out_channels, in_channels, H, W], but given [4,3,2,2] is valid for NCHW. The real error 'input depth must be evenly divisible by filter depth: 3 vs 2' indicates TensorFlow interpreted input as NHWC and filters as [H,W,in_c,out_c], expecting input.shape[-1]==filters.shape[2]. So data_format='NCHW' conflicts with actual layout; fix by either using NHWC with filters [2,2,3,4] or correcting data_format consistency. Standard practice is to align to NHWC for tf.nn.conv2d unless explicitly using NCHW with proper shape and device support. Also PyTorch conv2d expects input [N,C,H,W] and weight [O,C,KH,KW], so filters must be [4,3,2,2] — thus TF must use NHWC input [2,3,3,3] → reinterpret as [2,3,3,3] NHWC means in_channels=3, so filters must be [2,2,3,4]."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": "same",
+        "bias": null
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 3, 3, 4) vs PT=(2, 4, 3, 3)",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": [
+          2,
+          4,
+          3,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[0, 3], [0, 0]] of size 2",
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, strides=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding as 'SAME', 'VALID', or list of 4 integers (for NHWC: [top,bottom,left,right]), but got 2-element list. PyTorch conv2d expects padding as tuple of 2 or 4 ints (H,W or top,bottom,left,right), not nested lists. Both errors stem from invalid padding format. Repair: use explicit 4-element padding [0,3,0,0] for TF and (0,0,0,3) for PyTorch (note PyTorch uses (left,right,top,bottom) order in tuple form, but actual signature requires 2- or 4-tuple — here 4-tuple matches semantics). Also ensure filter shape aligns: TF filters [H,W,in_c,out_c], PyTorch weight [out_c,in_c,H,W], so reshape filter for PyTorch."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          3,
+          0,
+          0
+        ],
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0,
+          3
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When `padding` is a list, each element of `padding` must be a list/tuple of size 2. Received: padding=[0, 3, 0, 0] with element at index 0 of type <class 'int'>",
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, strides=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d expects padding as 'SAME', 'VALID', or list of *pairs* like [[0,0],[1,1],[1,1],[0,0]], not flat list [0,3,0,0]. PyTorch conv2d expects padding as tuple (padH, padW) or int, not 4-element list. Both errors stem from invalid padding format. Repair: use 'VALID' padding for both, and fix PyTorch strides to match TF's spatial stride (1,1), while ensuring filter shape aligns with NCHW (out_ch, in_ch, h, w) vs NHWC (h, w, in_ch, out_ch)."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, strides=list, weight=Tensor, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not accept 'strides' or 'data_format' as named arguments; strides must be passed as 'stride', padding must be tuple/int not list, and input/weight must match NCHW layout. TensorFlow uses NHWC by default but PyTorch requires NCHW, so input shape [2,2,3,2] (NHWC) must be permuted to [2,2,2,3] (NCHW), and filters [1,2,2,2] (H,W,in,out) must become weight [2,2,1,2] → corrected to [2,2,1,2] is actually valid for NCHW, but input layout mismatch causes error. Fix: remove 'strides' key, use 'stride' param; fix padding to tuple; ensure input is NCHW-compatible."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [2, 2, 1, 2], expected input[2, 3, 2, 2] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          1,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[1, 0], [0, 2]] of size 2",
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, strides=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d accepts explicit list padding of size 4 (e.g., [top, bottom, left, right]) for NHWC, not nested 2x2 lists. PyTorch conv2d expects flat tuple/list padding like (1, 0, 0, 2) or int/tuple per dimension, not nested lists. Both errors stem from invalid padding format — must convert to framework-correct forms: TF needs [1,0,0,2], PyTorch needs (1, 0, 0, 2). Also, PyTorch weight shape must be (out_channels, in_channels, kH, kW), so [2,3,2,2] not [2,2,3,2]."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          0,
+          2
+        ],
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          0,
+          2
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When `padding` is a list, each element of `padding` must be a list/tuple of size 2. Received: padding=[1, 0, 0, 2] with element at index 0 of type <class 'int'>",
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d accepts 'padding' as string ('VALID', 'SAME') or list of 2-element lists [[top, bottom], [left, right]]; PyTorch conv2d expects 'padding' as tuple (padH, padW) or int, not 4-element list. Both frameworks reject the invalid 4-element padding=[1,0,0,2]. Repair: use symmetric 'VALID'/'valid' and adjust input/filter shapes to ensure compatibility."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d expects 'weight' not 'filters', input must be NCHW (so [1,2,3,3] not [1,3,3,2]), weight shape must be [out_channels, in_channels, kH, kW] = [2,2,2,2], and 'data_format' is not a valid arg — it's implicit. Also 'padding' as list requires int elements, but TF's 'VALID' maps to [0,0]. Fixed shape order, param names, and removed invalid 'data_format'."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [2, 2, 2, 2], expected input[1, 3, 3, 2] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[3, 4], [4, 2]] of size 2",
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filters=Tensor, strides=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d accepts explicit list padding of size 4 (e.g., [top, bottom, left, right]) for NHWC, not nested 2x2 lists. PyTorch conv2d expects flat tuple/list padding like (left, right, top, bottom) or int/str, not nested lists. Both errors stem from invalid padding format — must repair to framework-correct forms: TF → [3,4,4,2], PyTorch → (4,2,3,4) for NHWC-aligned semantics."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          3,
+          4,
+          4,
+          2
+        ],
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          3,
+          4,
+          4,
+          2
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When `padding` is a list, each element of `padding` must be a list/tuple of size 2. Received: padding=[3, 4, 4, 2] with element at index 0 of type <class 'int'>",
+        "pytorch_error": "RuntimeError: expected padding to be a single integer value or a list of 2 values to match the convolution dimensions, but got padding=[3, 4, 4, 2]",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d 和 PyTorch conv2d 均不支持 4-element padding list like [3,4,4,2]. TF requires 'padding' as string ('VALID'/'SAME') or explicit [[top,bottom],[left,right]]; PyTorch expects 0/1/2-element padding (int or [h,w]). Both errors stem from invalid padding format. Repair by switching to standard 'VALID' padding and adjusting input/filter shapes to ensure valid convolution."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            5,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            5,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [4, 3, 2, 2], expected input[1, 5, 5, 3] to have 3 channels, but got 5 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d expects input in NCHW format [N,C,H,W], but test case provides NHWC [1,5,5,3]. Must transpose input to [1,3,5,5] and adjust weight shape to match: TF filters [H,W,in_C,out_C] = [2,2,3,4] → PyTorch weight [out_C,in_C,H,W] = [4,3,2,2] is correct, but input must be reshaped from NHWC to NCHW."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            5,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            5,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [4, 3, 2, 2], expected input[1, 5, 5, 3] to have 3 channels, but got 5 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilations": [
+          2,
+          1
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilations": [
+          2,
+          1
+        ],
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[1, 0], [0, 1]] of size 2",
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, dilations=list, filters=Tensor, strides=list, padding=list, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding as list of 4 integers (for NHWC: [[top, bottom], [left, right]] → flattened to [top, bottom, left, right] or string), but input used 2x2 nested list. PyTorch conv2d expects padding as tuple/list of 2 or 4 ints (not nested lists) and does not accept 'data_format' or 'dilations' as keyword args — dilations must be 'dilation', padding must be flat tuple, and weight shape must be (out_channels, in_channels, kH, kW). Both frameworks reject nested padding lists; repair aligns padding format, fixes param names (dilations→dilation), removes unsupported data_format, and reshapes filters to PyTorch's (out_c, in_c, kH, kW) order."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilations": [
+          1,
+          2,
+          1,
+          1
+        ],
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          1
+        ],
+        "dilation": [
+          2,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[1, 0], [0, 1]] of size 2",
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [2, 1, 1, 2], expected input[1, 3, 2, 1] to have 1 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow要求padding为长度4的列表（NHWC格式对应[0, pad_h1, pad_w1, 0]或显式4元素），而原用例传入2-element嵌套列表；PyTorch输入通道数(3)与weight预期in_channels(1)不匹配，因TF filters shape [H,W,in_c,out_c]对应PyTorch weight [out_c,in_c,H,W]，故TF filters [1,2,1,2] → PyTorch weight [2,1,1,2]正确，但TF input [1,3,2,1] (NHWC) 表示 in_channels=1，需修正input shape为 [1,2,1,3] 并转为NCHW [1,3,2,1] → 实际应统一为NHWC输入时in_channels=last，故input应为 [1,2,1,3] 不合理；正确修复：TF input shape [1,2,1,3] 不合法（in_channels must match filters[2]），filters[2]=1 ⇒ input must have in_channels=1 ⇒ input shape should be [1,2,1,1] or adjust filters. 最小修复：TF input [1,2,1,1], filters [1,2,1,2]; PyTorch input [1,1,2,1], weight [2,1,1,2]. 同时TF padding需为4-element list: [0,1,0,1] for 'NHWC' with explicit padding."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "dilations": [
+          1,
+          2,
+          1,
+          1
+        ],
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0
+        ],
+        "dilation": [
+          2,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When `padding` is a list, each element of `padding` must be a list/tuple of size 2. Received: padding=[0, 1, 0, 1] with element at index 0 of type <class 'int'>",
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [2, 1, 1, 2], expected input[1, 2, 1, 1] to have 1 channels, but got 2 channels instead",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow要求padding为list of lists/tuples of size 2 when using explicit padding, but [0,1,0,1] is invalid; PyTorch expects input channels=1 for weight shape [2,1,1,2], but input has 2 channels. Fix: align channel dim (TF filters: [H,W,in_c,out_c] = [1,2,2,2], PyTorch weight: [out_c,in_c,H,W] = [2,2,1,2]), use 'VALID' padding and consistent strides/dilation."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "dilations": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [2, 2, 1, 2], expected input[1, 1, 1, 2] to have 2 channels, but got 1 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

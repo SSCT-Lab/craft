@@ -1,0 +1,173 @@
+{
+  "operator": "torch_nn_GroupNorm",
+  "export_time": "2026-01-27T00:52:00.568920",
+  "total_success_cases": 2,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_nn_GroupNorm_20260125_023013.json",
+      "operator": "torch.nn.GroupNorm",
+      "iteration": 2,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.nn.GroupNorm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7355228066444397,
+            -0.0007769642979837954,
+            0.9162282943725586,
+            -1.306026816368103,
+            0.5740576386451721,
+            -0.30581018328666687
+          ]
+        },
+        "num_groups": 1,
+        "num_channels": 3
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.GroupNorm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7355228066444397,
+            -0.0007769642979837954,
+            0.9162282943725586,
+            -1.306026816368103,
+            0.5740576386451721,
+            -0.30581018328666687
+          ]
+        },
+        "num_groups": 1,
+        "num_channels": 3
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.GroupNorm",
+        "paddle_api": "paddle.nn.GroupNorm",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，需通过fuzzing增强测试覆盖：原始用例输入为2D张量[2,3]，但GroupNorm要求输入至少3维（N,C,*），PyTorch和Paddle均隐式将2D输入视为[N,C]并报warning或行为未定义；根据文档，标准输入应为NCHW/NCL等格式，因此需变异为合法多维形状（如[2,6,4,4]）并覆盖边界情况（如num_groups=3, num_channels=6可整除）、极端情况（eps=0.0、affine=False vs weight_attr=False/bias_attr=False）、以及data_format适配（Paddle支持NHWC需同步构造对应输入）。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_nn_GroupNorm_20260125_023013.json",
+      "operator": "torch.nn.GroupNorm",
+      "iteration": 3,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.nn.GroupNorm",
+        "input": {
+          "shape": [
+            2,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7776118516921997,
+            -1.5403896570205688,
+            1.144436240196228,
+            1.8601720333099365,
+            -0.42617517709732056,
+            1.0296528339385986,
+            -0.1922336369752884,
+            -1.1210795640945435,
+            1.0521596670150757,
+            -0.5324077010154724
+          ]
+        },
+        "num_groups": 3,
+        "num_channels": 6,
+        "eps": 0.0,
+        "affine": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.GroupNorm",
+        "input": {
+          "shape": [
+            2,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7776118516921997,
+            -1.5403896570205688,
+            1.144436240196228,
+            1.8601720333099365,
+            -0.42617517709732056,
+            1.0296528339385986,
+            -0.1922336369752884,
+            -1.1210795640945435,
+            1.0521596670150757,
+            -0.5324077010154724
+          ]
+        },
+        "num_groups": 3,
+        "num_channels": 6,
+        "epsilon": 0.0,
+        "weight_attr": false,
+        "bias_attr": false,
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.GroupNorm",
+        "paddle_api": "paddle.nn.GroupNorm",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          6,
+          4,
+          4
+        ],
+        "paddle_shape": [
+          2,
+          6,
+          4,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明基础功能等价；但原始用例中eps=0.0属于边界值（可能导致除零风险），且未覆盖常见变体如affine=True、不同data_format、weight_attr/bias_attr为ParamAttr、非标准通道分组（如num_groups不整除num_channels）、不同输入维度（如5D）、不同dtype（如float64）等。为提升鲁棒性测试和边界覆盖，需进行fuzzing：将eps改为1e-8（更小但安全的浮点数），启用affine=True以激活可学习参数路径，并在Paddle中对应启用weight_attr=True/bias_attr=True；同时将输入shape扩展为5D（NCDHW）并设置data_format='NCDHW'，验证多维支持；此外将dtype升级为float64以检验双精度一致性。"
+      }
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "operator": "torch.set_default_dtype",
+  "timestamp": "2026-01-24T22:53:54.027906",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "d": "torchdtype",
+        "api": "torch.set_default_dtype"
+      },
+      "paddle_test_case": {
+        "d": "torchdtype",
+        "api": "paddle.set_default_dtype"
+      },
+      "execution_result": {
+        "torch_api": "torch.set_default_dtype",
+        "paddle_api": "paddle.set_default_dtype",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "set_default_dtype() got some positional-only arguments passed as keyword arguments: 'd'",
+        "paddle_error": "set_default_dtype only supports [float16, float32, float64, bfloat16] , but received torchdtype",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: set_default_dtype() got some positional-only arguments passed as keyword arguments: 'd'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\framework\\framework.py\", line 72, in set_default_dtype\n    raise TypeError(\nTypeError: set_default_dtype only supports [float16, float32, float64, bfloat16] , but received torchdtype\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.set_default_dtype accepts only a positional torch.dtype (e.g., torch.float32), not a string like 'torchdtype'; the original test case uses invalid string 'torchdtype' which is neither a valid torch.dtype nor a supported string in Paddle. Per docs: PyTorch requires floating-point torch.dtype (e.g., torch.float32); Paddle supports string ('float32'), paddle.dtype, or np.dtype, but only float16/32/64/bfloat16. 'torchdtype' is invalid for both. Repair by using a valid, shared floating-point dtype: torch.float32 for PyTorch and 'float32' for Paddle (since Paddle does not accept torch.dtype objects, and PyTorch does not accept strings). Also fix parameter passing: PyTorch's set_default_dtype takes positional-only argument, so 'd' keyword is invalid — must pass positionally; however, in JSON test case representation, we model the *value*, not call syntax — so the repaired case must use correct value types: torch.float32 object is not representable as JSON string, so we use canonical string mapping: for PyTorch test case, 'd' must be a string that resolves to a valid torch.dtype in test harness context (common practice is to use 'torch.float32' as string to be eval'd), but per error 'got some positional-only arguments passed as keyword arguments', the test harness likely expects positional call — however, the JSON schema here represents *argument values*, not call style. Given the error indicates keyword arg 'd' is rejected, the root cause is that the test harness tries to call torch.set_default_dtype(d=...) which is invalid. Therefore, the repair must replace 'torchdtype' with a valid torch.dtype *object equivalent*, but since JSON can't hold objects, standard practice in such test schemas is to use strings like 'torch.float32' that the harness converts. However, the Paddle error says 'received torchdtype' — meaning the string 'torchdtype' was passed literally and not resolved. So repair must use a string that is both: (a) resolvable to torch.dtype in PyTorch harness (e.g., 'torch.float32'), and (b) a supported string in Paddle (e.g., 'float32'). But 'torch.float32' is not a supported string in Paddle. Hence, safest repair is to use 'float32' for both, relying on harness to map 'float32' → torch.float32 for PyTorch and 'float32' → paddle.float32 for Paddle — this is common cross-framework test convention. Also, Paddle explicitly supports 'float32' string per doc; PyTorch test harnesses (e.g., in op_tester) often accept 'float32' as alias for torch.float32. Thus, repair both to 'float32'."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.set_default_dtype",
+        "d": "float32"
+      },
+      "paddle_test_case": {
+        "api": "paddle.set_default_dtype",
+        "d": "float32"
+      },
+      "execution_result": {
+        "torch_api": "torch.set_default_dtype",
+        "paddle_api": "paddle.set_default_dtype",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "set_default_dtype() got some positional-only arguments passed as keyword arguments: 'd'",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: set_default_dtype() got some positional-only arguments passed as keyword arguments: 'd'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.set_default_dtype only accepts positional-only argument 'd', but the test case passes it as a keyword argument 'd', causing 'got some positional-only arguments passed as keyword arguments' error. According to PyTorch documentation, it expects a torch.dtype object (e.g., torch.float32), not a string. PaddlePaddle accepts string ('float32'), paddle.dtype, or np.dtype, but PyTorch requires actual dtype constants. Thus, the PyTorch test case must be fixed to pass torch.float32 (not string) as a positional argument, while PaddlePaddle can keep string for compatibility; however, to ensure cross-framework equivalence and correctness, we align both to use dtype objects where possible — but since PaddlePaddle's API doc explicitly supports string and PyTorch does not, the repair is to make PyTorch use positional torch.float32 and PaddlePaddle use paddle.float32 (dtype object) for strict type consistency and avoid ambiguity."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.set_default_dtype",
+        "args": [
+          "torch.float32"
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.set_default_dtype",
+        "args": [
+          "paddle.float32"
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.set_default_dtype",
+        "paddle_api": "paddle.set_default_dtype",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "set_default_dtype() got an unexpected keyword argument 'args'",
+        "paddle_error": "set_default_dtype() got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: set_default_dtype() got an unexpected keyword argument 'args'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: set_default_dtype() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks' set_default_dtype APIs accept a single positional argument of dtype, not keyword argument 'args'. The original test cases incorrectly wrap the dtype in an 'args' list, but the API expects direct dtype input. According to PyTorch doc, it takes torch.dtype (e.g., torch.float32), and PaddlePaddle doc states it accepts string ('float32'), paddle.dtype, or np.dtype. So we must pass the dtype directly — not as a list under 'args'. Also, for cross-framework consistency, use string form 'float32' which is supported by both (PyTorch accepts string dtype names since v1.12+, and Paddle explicitly supports string)."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.set_default_dtype",
+        "args": [
+          "float32"
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.set_default_dtype",
+        "args": [
+          "float32"
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.set_default_dtype",
+        "paddle_api": "paddle.set_default_dtype",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "set_default_dtype() got an unexpected keyword argument 'args'",
+        "paddle_error": "set_default_dtype() got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: set_default_dtype() got an unexpected keyword argument 'args'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: set_default_dtype() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

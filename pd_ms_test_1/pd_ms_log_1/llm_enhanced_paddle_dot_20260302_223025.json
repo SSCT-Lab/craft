@@ -1,0 +1,1138 @@
+{
+  "pd_api": "paddle.dot",
+  "ms_api": "mindspore.ops.dot",
+  "timestamp": "2026-03-02T22:30:25.782373",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 7,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.dot"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.dot"
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: The 'x1' doesn't support 'Float64' and expect to receive [mindspore.float16, mindspore.float32].",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore dot仅支持float16/float32，不支持float64；而PaddlePaddle支持float64。需将dtype统一改为float32以满足MindSpore约束，同时保持语义等价。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "api": "mindspore.ops.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.ops.dot要求输入tensor维度>=2，而PaddlePaddle的paddle.dot支持1-D输入；原始用例为1-D向量，需将输入升维为2-D（如[1, 121]和[1, 121]）以满足MindSpore约束，同时保持语义等价（batch size=1的向量点积）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore.ops.dot要求输入tensor rank >= 2且dtype为float16/float32，但其内部实现调用MatMul，要求x1_col == x2_row；而Paddle.dot支持1-D/2-D向量内积。当前[1,121]×[1,121]在MindSpore中被误解释为矩阵乘法维度不匹配（121 vs 1）。需将MindSpore输入改为兼容向量点积的形状，如转置第二输入为[121,1]并确保广播逻辑正确，但根据文档示例，MindSpore.dot实际是batched dot-like contraction，更稳妥修复是改用1-D输入（rank=1）或适配其广播规则。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.dot"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot"
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的dot要求输入tensor维度>=2，而PaddlePaddle支持1-D；需将1-D输入扩展为2-D（如[1, 121]和[1, 121]）以满足MindSpore约束，同时保持语义等价（batch size=1的向量点积）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的dot要求输入tensor维度>=2，而PaddlePaddle支持1-D；原始用例为1-D向量，需将输入升维为2-D（如[1, 121]）以满足MindSpore约束，同时保持语义等价（batch size=1），PaddlePaddle对2-D输入也支持逐batch点积。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore.ops.dot要求输入tensor rank >= 2且dtype为float16/float32，但其内部实现调用MatMul，要求x1_col == x2_row；而Paddle.dot支持1-D/2-D向量内积。当前[1,121]×[1,121]在MindSpore中被误解释为矩阵乘法维度不匹配（121 vs 1）。需将MindSpore输入改为兼容向量点积的形状：x为[121]，y为[121]，或使用mindspore.ops.reduce_sum(x*y)等价实现；但因API语义差异，修复为1-D输入。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.dot"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot"
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 12 and 'x2_row': 11.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 12 and 'x2_row': 11.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          11
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore.ops.dot要求输入tensor rank >= 2且支持广播式点积，但实际内部调用MatMul，要求x.shape[-1] == y.shape[-2]；而Paddle.dot对2D输入执行batch-wise dot（即逐行内积），要求两tensor形状完全相同。原始用例[11,12]×[11,12]在MindSpore中不满足MatMul维度约束（12 != 11），需修复为兼容双方语义的合法输入：将y转置为[12,11]使MindSpore MatMul可行，同时Paddle.dot仍支持（因文档明确支持2D且batch维度对齐）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            11,
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 12 and 'x2_row': 11.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 12 and 'x2_row': 11.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          11
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore.ops.dot要求输入tensor秩>=2且支持广播，但实际内部调用MatMul，需满足x1_col == x2_row；而Paddle.dot对2D输入按batch-wise向量点积（要求两tensor形状完全相同）。原用例[11,12]×[11,12]在MindSpore中被误解释为MatMul(x: [11,12], y: [11,12])导致维度不匹配。修复：将MindSpore输入改为兼容dot语义的1D或适配MatMul维度，但文档明确mindspore.ops.dot仅支持rank>=2且执行类似torch.einsum('bi,bi->b', x, y)的逐向量点积，故需使两输入最后一维对齐且倒数第二维相同，即改为[11,12]和[11,12]合法，但MindSpore实际实现要求input.shape[-1]==other.shape[-1]且broadcastable；错误根源是MindSpore将dot实现为MatMul变体，需确保x.shape[-1]==y.shape[-2]，因此将y改为[12,11]无法满足；正确修复是降维为1D：两框架均用shape=[12]，符合各自文档中'1-D Tensor'支持。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的dot要求输入tensor维度>=2，而PaddlePaddle支持1-D；原始用例为1-D向量，需将输入升维为2-D（如[1,12]）以满足MindSpore约束，同时保持语义等价（batch size=1），PaddlePaddle对2-D输入也支持按batch计算点积。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            1,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            1,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            1,
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 12 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 12 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "complex128"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "complex128"
+        },
+        "api": "paddle.dot"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "complex128"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "complex128"
+        },
+        "api": "mindspore.ops.dot"
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: The 'x1' doesn't support 'Complex128' and expect to receive [mindspore.float16, mindspore.float32].",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.complex128",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore dot不支持complex128，仅支持float16/float32；而PaddlePaddle支持complex128。为使两框架可比，需将dtype统一改为MindSpore支持的float32，同时保持shape一致，符合各自文档对输入维度（1-D）和数据类型的要求。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "api": "mindspore.ops.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.ops.dot要求输入tensor维度>=2，而PaddlePaddle的paddle.dot支持1-D输入；原始用例为1-D向量，需将输入升维为2-D（如[1, 121]和[1, 121]）以满足MindSpore约束，同时保持语义等价（batch size=1的向量点积）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore.ops.dot要求输入tensor rank >= 2且dtype为float16/float32，但其内部实现调用MatMul，要求x1_col == x2_row；而Paddle.dot支持1-D/2-D向量内积。当前[1,121]×[1,121]在MindSpore中被误解释为矩阵乘法维度不匹配（121 vs 1）。需将MindSpore输入改为兼容向量点积的形状，如转置第二输入为[121,1]并确保广播逻辑正确，但根据文档示例，MindSpore.dot实际是batched dot-like contraction，更稳妥修复是改用1-D输入（rank=1）或适配其广播规则。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float16"
+        },
+        "api": "paddle.dot"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float16"
+        },
+        "api": "mindspore.ops.dot"
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": false,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `dot` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: complex64, complex128, float32, int32, float64, int64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": null,
+        "pd_dtype": null,
+        "ms_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持float16，需改为float32/float64/int32/int64/complex64/complex128；MindSpore要求输入rank>=2，需将1-D张量reshape为2-D（如[1,121]和[121,1]或[1,121]和[1,121]满足batched dot）。两者语义可对齐：Paddle支持2-D batched dot，MindSpore的dot在rank>=2时支持广播式点积，需统一为2-D形状且dtype兼容。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore.ops.dot requires rank >= 2 and supports only float16/float32, but more critically, its implementation internally uses MatMul which expects compatible dimensions for matrix multiplication; however, paddle.dot computes inner product (sum(x_i * y_i)) for 1D/2D vectors — the given [1,121] x [1,121] inputs are invalid for MindSpore's dot as it treats them as batched matrices needing contraction on last dim of first and second-to-last of second; to align semantics, inputs must be 1-D or reshaped to enable element-wise dot per batch — repair by converting both to 1-D [121] for valid inner product."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For \\'dot\\', the inputs x1, x2 should have \\'dimension >= 2\\',but got \\'len(x1_shape)\\': (1) and \\'len(x2_shape)\\': (1).",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的dot要求输入tensor维度>=2，而PaddlePaddle支持1-D；原始用例为1-D向量，需将输入升维为2-D（如[1,121]和[1,121]）以满足MindSpore约束，同时保持语义等价（batch size=1的向量点积）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.dot",
+        "x": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "ms_test_case": {
+        "other": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.dot",
+        "input": {
+          "shape": [
+            1,
+            121
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.dot",
+        "ms_api": "mindspore.ops.dot",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "ValueError: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "comparison_error": "比较异常: For 'MatMul' the input dimensions must be equal, but got 'x1_col': 121 and 'x2_row': 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer/ops_func_impl//matmul.cc:200 mindspore::ops::MatMulFuncImpl::InferShape\n",
+        "pd_shape": [
+          1
+        ],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,1753 @@
+{
+  "ms_api": "mindspore.ops.Conv2D",
+  "tensorflow_api": "tf.nn.conv2d",
+  "timestamp": "2026-03-05T01:49:44.125632",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Conv2D",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.conv2d",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires kernel_size >= 2 per error, but doc says kernel_size can be int/tuple[int] and 1 is valid; however error indicates strict >=2 check — likely a bug in older version or misconfigured init. TensorFlow conv2d rejects 'w' param (should be 'filters'), and init_params are invalid for tf.nn.conv2d which takes only input, filters, strides, padding, etc. Must replace w→filters, remove unsupported params, fix strides format ([1,1,1,1]), and ensure kernel shape matches TF's [H,W,in_c,out_c] order."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 1,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            1,
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires kernel_size >= 2 for primitive, but input used kernel_size=1; TensorFlow tf.nn.conv2d supports 1x1 conv but expects filters shape [H,W,in_channels,out_channels] = [1,1,3,2], while MindSpore Conv2D weight shape is [out_channel,in_channel//group,kernel_h,kernel_w] = [2,3,1,1] — mismatched channel order and invalid kernel_size. Repair: upgrade kernel_size to 2 (min valid), adjust weight shape to [2,3,2,2], and align filters shape in TF to [2,2,3,2] with NHWC→NCHW-aware transpose or use data_format='NCHW' if supported. However, tf.nn.conv2d does not support 'NCHW' on CPU by default; thus fix weight shape to match TF's expected [H,W,C_in,C_out] = [2,2,3,2] and update MindSpore weight to [2,3,2,2]."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 2,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input channel (C_in) to match weight's in_channels (w[1]), but w.shape=[2,3,2,2] implies C_in=3 while x.shape=[1,3,3,3] is NCHW → C_in=3 OK; however, error 'infer must be greater than or equal to 2, but got 1' indicates invalid inferred spatial dim — likely due to input H/W=3 and kernel_size=2 with stride=1 & pad_mode='valid' yielding output size floor((3-2)/1)+1=2, which is valid; the real issue is missing 'in_channel' init param in MindSpore Conv2D primitive — it's required for shape inference. TensorFlow tf.nn.conv2d also fails due to missing 'strides' in call (not just init_params) and incorrect filter layout: [H,W,C_in,C_out] expected, but [2,2,3,2] is correct; however, 'TypeError: Missing required positional argument' suggests filters not passed as positional arg. Repair: add 'in_channel=3' to MindSpore init_params; ensure filters is positional in TF call and fix TF test case to pass all required args."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 2,
+          "in_channel": 3,
+          "out_channel": 2,
+          "group": 1,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: got an unexpected keyword argument 'in_channel'",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            3,
+            3,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Conv2D",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            3,
+            3,
+            5,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.conv2d",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires kernel_size >= 2 (error: 'must be greater than or equal to 2'), but kernel_size=1 is invalid; TensorFlow conv2d rejects 'w' param (should be 'filters'), and init_params like 'out_channel', 'mode', 'group' are invalid for tf.nn.conv2d. Must fix param names, remove unsupported args, align kernel shape: TF expects [H,W,in_c,out_c], MS Conv2D primitive expects weight as [out_c,in_c//group,H,W]. Also input layout: MS default NCHW, TF default NHWC — must transpose x and w accordingly."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input rank >= 4 with NCHW layout (N,C,H,W), but given x.shape=[1,3,4,2] implies C=3, H=4, W=2 → valid, however error 'infer must be greater than or equal to 2' suggests invalid inferred channel dim; root cause is missing 'in_channel' in init_params — Conv2D primitive requires explicit in_channel matching x[1], but it's omitted. TensorFlow tf.nn.conv2d fails due to unknown param 'w' — it expects 'filters', not 'w'. Also strides/dilations must be 4D with [1,s_h,s_w,1], and input must be NHWC or explicitly specified. Repair: fix param names, add required in_channel, align data format (NHWC for TF, NCHW for MS), and ensure kernel shape matches: TF filters=[H,W,in_c,out_c], MS weight=[out_c,in_c,H,W]."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "in_channel": 3,
+          "out_channel": 2,
+          "group": 1,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: got an unexpected keyword argument 'in_channel'",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D is a Primitive op that does NOT accept 'in_channel' in init_params — it's inferred from weight shape; TensorFlow tf.nn.conv2d requires explicit strides[0]=strides[3]=1 and filters shape [H,W,in_c,out_c], but input is NCHW while TF expects NHWC by default. Fix: remove invalid 'in_channel', align data format (use NCHW-compatible TF call via data_format='NCHW'), and correct strides/dilations to match MindSpore's implicit defaults."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "data_format": "NCHW",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            6,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Conv2D",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            6,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.conv2d",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires kernel_size >= 2 (error: 'must be greater than or equal to 2'), but kernel_size=1 is invalid. TensorFlow tf.nn.conv2d rejects unknown param 'w' — it expects 'filters', not 'w', and input/filter layout differs: TF expects NHWC input & [H,W,in_c,out_c] filters, while MS uses NCHW & [out_c,in_c//g,H,W]. Also 'out_channel', 'mode', 'group' etc. are invalid kwargs for tf.nn.conv2d."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            6,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input rank >= 4 and channel dim (N,C,H,W) valid; given x=[1,6,4,4] is NCHW OK, but error 'infer must be greater than or equal to 2' indicates missing 'in_channel' or misaligned kernel shape. TensorFlow tf.nn.conv2d expects filters [H,W,in_c,out_c] = [3,3,6,2], matching MindSpore weight [out_c,in_c,H,W] = [2,6,3,3] — correct. However, MindSpore Conv2D primitive does NOT accept 'group' param (not in doc), causing ValueError. Also, 'dilation' must be tuple for rank-2, not int. Remove invalid 'group', fix 'dilation' to tuple, and ensure pad_mode='valid' implies pad=0."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            6,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": [
+            1,
+            1
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For 'Conv2D', the type of 'dilation' should be one of '['int', 'tuple']', but got type 'list'.",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D rejects list-type 'dilation' (requires tuple/int), while TensorFlow tf.nn.conv2d requires 'filters' as positional arg and 'dilations' must be 4D with [1,DH,DW,1]; both errors are fixable by converting dilation to tuple in MS and correcting filter shape + dilations format in TF."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            6,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": [
+            1,
+            1
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            6,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For 'Conv2D', the type of 'dilation' should be one of '['int', 'tuple']', but got type 'list'.",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            4,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Conv2D",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            4,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.conv2d",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires kernel_size >= 2 per error, but kernel_size=1 is valid in TF; also TF conv2d doesn't accept 'out_channel', 'mode', 'pad_mode', etc. — these are invalid kwargs. Must align params: use correct TF signature (input, filters, strides, padding, dilations) and fix kernel_size>=2 for MS, while ensuring filter shape matches TF's [H,W,in_c,out_c] and input layout (NHWC vs NCHW)."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires 'in_channel' to be inferable from input shape and group, but 'w' shape [2,3,3,3] implies out_channel=2, in_channel=3, yet group=1 is valid; however, MindSpore's Conv2D primitive expects weight in format [out_channel, in_channel//group, kH, kW], which matches. The real issue is missing 'input' tensor name — MindSpore ops.Conv2D expects 'x' as first arg, but init_params lacks required 'in_channel' (not needed for inference if x/w provided) — however error 'infer must be greater than or equal to 2' suggests invalid kernel_size or stride/dilation combo with input size. Input H=W=6, kernel=3, stride=1, pad_mode='valid' → output size = floor((6−3)/1)+1 = 4, valid. But error points to internal infer dim < 2 — likely because 'group' is passed to primitive but Conv2D primitive doesn't accept 'group' — it's only in nn.Conv2d. So 'group' must be removed. TensorFlow tf.nn.conv2d has no 'group'; also 'w' shape [2,3,3,3] is NCHW-like but tf.nn.conv2d expects HWIO: [filter_height, filter_width, in_channels, out_channels] = [3,3,3,2]. So both cases need shape & param repair."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input rank >= 4 and channel dim must be at least 2; current x shape [1,3,6,6] is NCHW but w shape [2,3,3,3] implies in_channels=3, out_channels=2 — however MindSpore's Conv2D primitive expects 'x' as NCHW and 'w' as [out_c, in_c, k_h, k_w], which is correct. The error 'infer must be greater than or equal to 2, but got 1' indicates invalid inferred dimension — likely due to missing explicit 'in_channel' in init_params. TensorFlow tf.nn.conv2d requires strides[0]=strides[3]=1, but given [1,1,1,1] is valid; the 'Missing required positional argument' error suggests filters not passed correctly in test harness. Repair: add 'in_channel': 3 to MindSpore init_params; fix TF filters order consistency and ensure data_format='NCHW' is specified to align layouts."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "x": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "in_channel": 3,
+          "stride": 1,
+          "pad_mode": "valid",
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "dilations": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "padding": "VALID",
+          "data_format": "NCHW",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: got an unexpected keyword argument 'in_channel'",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            3,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.Conv2D",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            3,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.conv2d",
+        "init_params": {
+          "out_channel": 2,
+          "kernel_size": 1,
+          "mode": 1,
+          "pad_mode": "valid",
+          "pad": 0,
+          "stride": 1,
+          "dilation": 1,
+          "group": 1
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'w'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input channel (C_in) to match weight's in_channels, but w.shape[1]=2 vs x.shape[1]=2 is valid; however, out_channel=2 conflicts with w.shape[0]=3 — must fix w.shape[0] to equal out_channel. TensorFlow tf.nn.conv2d expects filter shape [H,W,C_in,C_out], so w must be [1,1,2,2], not [3,2,1,1]. Also 'w' is invalid param name in tf.nn.conv2d — should be 'filters'. Both errors stem from malformed weight shape and incorrect param naming."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 1,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            1,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input channel (C_in) >= 2 for kernel shape [out_channel, C_in, H, W], but x.shape=[1,2,1,1] implies NCHW layout with C_in=2 — however w.shape=[2,2,1,1] violates weight layout: should be [out_c, in_c, kH, kW] = [2,2,1,1] → in_c=2 matches, but MindSpore's error 'infer must be greater than or equal to 2' refers to inferred input channel dimension; actual issue is that x has only 2 channels but w expects in_c=2, yet the error suggests internal inference failed due to invalid spatial dims: H=1/W=1 with stride=1/pad_mode='valid' is legal, but MindSpore's Conv2D primitive strictly requires input spatial dims >= kernel_size when pad_mode='valid', and here H_in=1, kH=1 → ok, but likely the real issue is group=1 with in_c=2 and out_c=2 is valid; however the error traceback points to CheckInteger on 'infer', indicating a framework-internal validation bug — safest repair is to increase input spatial dims to [1,2,3,3] and kernel to [2,2,3,3] to satisfy all constraints. TensorFlow fails due to missing 'filters' in init_params and wrong filter shape order: tf.nn.conv2d expects [H,W,in_c,out_c], but given [1,1,2,2] is correct for NHWC if x is [N,H,W,C] — but x.shape=[1,2,1,1] in TF is interpreted as NHWC → H=2,W=1,C=1, so filters must be [1,1,1,2], not [1,1,2,2]. So repair both: align x to NCHW for MS ([1,2,3,3]), NHWC for TF ([1,3,3,2]); adjust w/filters accordingly and fix parameter names."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "x": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "w": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore Conv2D requires input channel (C_in) to match weight's in_channels, but w.shape[1]=2 while x.shape[1]=2 is interpreted as NCHW → C_in=2, however Conv2D expects w.shape[0] = out_channel, w.shape[1] = in_channel//group. Here group=1, so w.shape[1] must equal x.shape[1]=2 → OK, but error 'infer must be >=2' indicates kernel_size or input spatial dims too small for 'valid' mode: input H=W=3, kernel_size=3, stride=1 → output size = floor((3-3)/1)+1 = 1, but MindSpore Conv2D primitive internally requires inferred output dim >=2. Fix: increase input spatial dims to 4x4 or adjust kernel_size to 2. Also TF conv2d expects filters shape [H,W,C_in,C_out], but given [3,3,2,2] is correct; however TF requires strides[0]=strides[3]=1 and data_format='NHWC' conflicts with x shape [1,2,3,3] (NCHW). So repair: align layouts — use NHWC for TF ([1,3,3,2]) and transpose x/w for MS to NCHW-compatible, or standardize both to NHWC. Best fix: make x shape [1,4,4,2] (NHWC), w/filters shape [3,3,2,2], pad_mode='valid' works in both."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.Conv2D",
+        "w": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "kernel_size": 3,
+          "out_channel": 2,
+          "stride": 1,
+          "pad_mode": "valid",
+          "group": 1,
+          "dilation": 1
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.nn.conv2d",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "init_params": {
+          "padding": "VALID",
+          "data_format": "NHWC",
+          "strides": [
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.Conv2D",
+        "tensorflow_api": "tf.nn.conv2d",
+        "ms_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For primitive[Conv2D], the Conv2d infer must be greater than or equal to 2, but got 1.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:626 mindspore::CheckAndConvertUtils::CheckInteger\n",
+        "tensorflow_error": "TypeError: Missing required positional argument",
+        "comparison_error": null,
+        "ms_shape": null,
+        "tensorflow_shape": null,
+        "ms_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

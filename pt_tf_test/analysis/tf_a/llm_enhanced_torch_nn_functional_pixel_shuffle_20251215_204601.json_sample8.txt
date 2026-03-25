@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_nn_functional_pixel_shuffle_20251215_204601.json
+样例编号: 8
+tensorflow_error 错误信息: {{function_node __wrapped__DepthToSpace_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input depth dimension 85 should be divisible by: 9 [Op:DepthToSpace] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pixel_shuffle",
+  "input": {
+    "shape": [
+      100,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.8731440305709839,
+      -1.4773145914077759,
+      1.3314082622528076,
+      0.5502680540084839,
+      -1.5432864427566528,
+      0.10535018891096115,
+      -0.09832194447517395,
+      0.9342114925384521,
+      -1.175087809562683,
+      -0.5008823275566101
+    ]
+  },
+  "upscale_factor": 3
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.depth_to_space",
+  "input": {
+    "shape": [
+      100,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.8731440305709839,
+      -1.4773145914077759,
+      1.3314082622528076,
+      0.5502680540084839,
+      -1.5432864427566528,
+      0.10535018891096115,
+      -0.09832194447517395,
+      0.9342114925384521,
+      -1.175087809562683,
+      -0.5008823275566101
+    ]
+  },
+  "block_size": 3
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.nn.depth_to_space` 要求输入的 depth 维度（即 channel 维度）必须能被 `block_size²` 整除，而本例中 `depth=9`，`block_size=3`，则要求 `9 % (3²) = 9 % 9 = 0`，看似满足；但错误提示“Input depth dimension 85 should be divisible by: 9”表明实际检查的是 **depth=85**，这与输入 shape `[100, 9, 85, 85]` 中的 depth 为 9 矛盾。结合官方文档，`depth_to_space` 的 input shape 应为 `(N, H, W, C)` 且 `C` 必须是 `block_size²` 的倍数，而当前输入的 channel 为 9，对应 `r=3` 时应为 `C = 9 × r² = 9 × 9 = 81` 才合理。因此，问题在于：**输入 tensor 通道数为 9，但 `block_size=3` 时要求原 channel 为 81（即 `C × r²`），而实际输入是 `C=9`，导致内部逻辑认为 depth=85 是不合法的——这说明框架对 API 输入格式的理解存在语义差异，或测试用例中参数含义混淆了“输入 channel”与“输出 channel”**。  
+   - PyTorch `pixel_shuffle` 的输入是 `C × r²`，即 `9×3²=81`，而这里输入是 `9`，明显不匹配。所以该测试用例本身在两个框架中均不合理，但 TensorFlow 在运行时更严格地校验了 channel 与 block_size 之间的整除关系，报错提示“85”可能是由于内部实现中将维度误读或计算错误所致，暴露出框架对 shape 合法性判断的敏感性差异。
+
+3. 修复建议：  
+   - 该问题暴露了框架在处理 pixel shuffle/depth_to_space 时对输入 shape 的语义理解差异，尤其是对 channel 与 block_size 乘积关系的校验粒度不同。建议提交 issue 至 TensorFlow 官方仓库，指出其错误信息中的“85”与输入维度不符，可能为内部维度解析错误或日志打印错误。

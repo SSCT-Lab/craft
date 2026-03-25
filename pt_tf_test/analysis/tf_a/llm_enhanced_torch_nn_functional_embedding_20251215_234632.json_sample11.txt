@@ -1,0 +1,94 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_20251215_234632.json
+样例编号: 11
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[2,0] = -9 is not in [0, 1026) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding",
+  "input": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      5,
+      2,
+      -2,
+      -10,
+      -7
+    ]
+  },
+  "weight": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.2773491442203522,
+      -2.5295848846435547,
+      -0.2877095639705658,
+      -0.585738480091095,
+      1.6562050580978394,
+      0.20940633118152618,
+      0.6801327466964722,
+      0.0923093855381012,
+      0.1268278956413269,
+      0.28142789006233215
+    ]
+  },
+  "padding_idx": 1,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "sparse": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.9972452521324158,
+      0.3117283284664154,
+      -0.906196653842926,
+      -0.024006739258766174,
+      0.2205422967672348,
+      0.8767021298408508,
+      0.13030420243740082,
+      0.0539202056825161,
+      -0.8438975811004639,
+      1.0446745157241821
+    ]
+  },
+  "ids": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      1,
+      0,
+      -9,
+      6,
+      -3
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求索引（indices）必须在 `[0, vocab_size)` 范围内，而测试用例中出现了 `-9` 和 `-3` 等负值索引，违反了该限制，导致运行时抛出 `indices[2,0] = -9 is not in [0, 1026)` 错误。
+   - PyTorch 的 `torch.nn.functional.embedding` 允许负索引（如 -9），并将其视为无效索引处理（通常映射到 `padding_idx` 所指定的位置或默认为零向量），但 TensorFlow 无此容错机制，强制要求输入索引合法。
+
+3. 修复建议：
+   - 该行为差异属于框架设计层面的不一致，值得提交 issue 至 TensorFlow 官方仓库，建议增加对负索引的兼容性处理或明确文档说明。

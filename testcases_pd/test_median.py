@@ -1,0 +1,685 @@
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import copy
+import unittest
+
+import numpy as np
+from op_test import get_device_place, is_custom_device
+
+import paddle
+from paddle.base import core
+
+DELTA = 1e-6
+
+
+def np_medain_min(data, keepdims=False):
+    shape = data.shape
+    data_flat = data.flatten()
+    data_cnt = len(data_flat)
+
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_flat[np.isnan(data_flat)] = np.inf
+    data_sort = np.sort(data_flat)
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_sort[np.isinf(data_sort)] = np.nan
+
+    if data_cnt % 2:
+        is_odd = False
+    else:
+        is_odd = True
+
+    i = int(data_cnt / 2)
+    if is_odd:
+        np_res = min(data_sort[i - 1], data_sort[i])
+    else:
+        np_res = data_sort[i]
+    if keepdims:
+        new_shape = [1] * len(shape)
+        np_res = np_res.reshape(new_shape)
+    return np_res + np.sum(np.isnan(data).astype(data.dtype) * data)
+
+
+def np_median_min_axis(data, axis=None, keepdims=False):
+    data = copy.deepcopy(data)
+    if axis is None:
+        return np_medain_min(data, keepdims)
+
+    axis = axis + len(data.shape) if axis < 0 else axis
+    trans_shape = []
+    reshape = []
+    for i in range(len(data.shape)):
+        if i != axis:
+            trans_shape.append(i)
+            reshape.append(data.shape[i])
+    trans_shape.append(axis)
+    last_shape = data.shape[axis]
+    reshape.append(last_shape)
+
+    data_flat = np.transpose(data, trans_shape)
+
+    data_flat = np.reshape(data_flat, (-1, reshape[-1]))
+
+    data_cnt = np.full(
+        shape=data_flat.shape[:-1], fill_value=data_flat.shape[-1]
+    )
+
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_flat[np.isnan(data_flat)] = np.inf
+    data_sort = np.sort(data_flat, axis=-1)
+    if data.dtype != 'int32' and data.dtype != 'int64':
+        data_sort[np.isinf(data_sort)] = np.nan
+
+    is_odd = data_cnt % 2
+
+    np_res = np.zeros(len(is_odd), dtype=data.dtype)
+
+    for j in range(len(is_odd)):
+        if data_cnt[j] == 0:
+            np_res[j] = np.nan
+            continue
+
+        i = int(data_cnt[j] / 2)
+        if is_odd[j]:
+            np_res[j] = data_sort[j, i]
+        else:
+            np_res[j] = min(data_sort[j, i - 1], data_sort[j, i])
+
+    if keepdims:
+        shape = list(data.shape)
+        shape[axis] = 1
+        np_res = np.reshape(np_res, shape)
+    else:
+        np_res = np.reshape(np_res, reshape[:-1])
+    return np_res + np.sum(
+        np.isnan(data).astype(data.dtype) * data, axis=axis, keepdims=keepdims
+    )
+
+
+class TestMedianAvg(unittest.TestCase):
+    def check_numpy_res(self, np1, np2):
+        self.assertEqual(np1.shape, np2.shape)
+        np1_isnan = np.isnan(np1)
+        np2_isnan = np.isnan(np2)
+        nan_mismatch = np.sum(
+            (np1_isnan.astype('int32') - np2_isnan.astype('int32'))
+            * (np1_isnan.astype('int32') - np2_isnan.astype('int32'))
+        )
+        self.assertEqual(nan_mismatch, 0)
+        np1 = np.where(np.isnan(np1), 0.0, np1)
+        np2 = np.where(np.isnan(np2), 0.0, np2)
+        mismatch = np.sum((np1 - np2) * (np1 - np2))
+        self.assertAlmostEqual(mismatch, 0, delta=DELTA)
+
+    def static_single_test_median(self, lis_test):
+        paddle.enable_static()
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        exe = paddle.static.Executor()
+        with paddle.static.program_guard(main_program, startup_program):
+            x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
+            y = paddle.median(x_in, axis, keepdims)
+            [res_pd] = exe.run(feed={'x': x}, fetch_list=[y])
+            self.check_numpy_res(res_pd, res_np)
+        paddle.disable_static()
+
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
+        self.check_numpy_res(res_pd.numpy(False), res_np)
+
+    def dygraph_single_test_median_cpu(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        res_pd = paddle.median(paddle.to_tensor(x).to('cpu'), axis, keepdims)
+        self.check_numpy_res(res_pd.numpy(False), res_np)
+
+    def test_median_static(self):
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.static_single_test_median(lis_test)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+
+    def test_median_exception(self):
+        paddle.disable_static()
+        x = [1, 2, 3, 4]
+        self.assertRaises(TypeError, paddle.median, x)
+        x = paddle.arange(12).reshape([3, 4])
+        self.assertRaises(ValueError, paddle.median, x, 1.0)
+        self.assertRaises(ValueError, paddle.median, x, 2)
+        self.assertRaises(ValueError, paddle.median, x, 2, False, 'max')
+        self.assertRaises(ValueError, paddle.median, x, [], False, 'max')
+
+    def test_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+            self.dygraph_single_test_median_cpu(lis_test)
+
+    def test_all_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+                [float('nan'), float('nan'), float('nan'), float('nan')],
+            ]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+            self.dygraph_single_test_median_cpu(lis_test)
+
+    @unittest.skipIf(
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_float16_supported(get_device_place()),
+        "core is not compiled with CUDA and do not support float16",
+    )
+    def test_float16(self):
+        paddle.disable_static(get_device_place())
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        ).astype('float16')
+        lis_tests = [
+            [axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+        ]
+        for axis, keepdims in lis_tests:
+            res_np = np.median(x, axis=axis, keepdims=keepdims)
+            res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
+            self.check_numpy_res(res_pd.numpy(False), res_np.astype('float64'))
+            np.testing.assert_equal(res_pd.numpy(False).dtype, np.float32)
+
+    def test_output_dtype(self):
+        supported_dypes = ['float32', 'float64', 'int32', 'int64']
+        for inp_dtype in supported_dypes:
+            x = np.random.randint(low=-100, high=100, size=[2, 4, 5]).astype(
+                inp_dtype
+            )
+            res = paddle.median(paddle.to_tensor(x), mode='avg')
+            if inp_dtype == 'float64':
+                np.testing.assert_equal(res.numpy().dtype, np.float64)
+            else:
+                np.testing.assert_equal(res.numpy().dtype, np.float32)
+
+
+class TestMedianMin(unittest.TestCase):
+    def static_single_test_median(self, lis_test):
+        paddle.enable_static()
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        exe = paddle.static.Executor()
+        with paddle.static.program_guard(main_program, startup_program):
+            x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
+            y = paddle.median(x_in, axis, keepdims, mode='min')
+            [res_pd, _] = exe.run(feed={'x': x}, fetch_list=[y])
+            np.testing.assert_allclose(res_pd, res_np)
+        paddle.disable_static()
+
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        if axis is None:
+            res_pd = paddle.median(
+                paddle.to_tensor(x), axis, keepdims, mode='min'
+            )
+        else:
+            res_pd, _ = paddle.median(
+                paddle.to_tensor(x), axis, keepdims, mode='min'
+            )
+        np.testing.assert_allclose(res_pd.numpy(False), res_np)
+
+    def test_median_static(self):
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.static_single_test_median(lis_test)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+
+    def test_index_even_case(self):
+        paddle.disable_static()
+        x = paddle.arange(2 * 100).reshape((2, 100)).astype(paddle.float32)
+        out, index = paddle.median(x, axis=1, mode='min')
+        np.testing.assert_allclose(out.numpy(), [49.0, 149.0])
+        np.testing.assert_equal(index.numpy(), [49, 49])
+
+    def test_index_odd_case(self):
+        paddle.disable_static()
+        x = paddle.arange(30).reshape((3, 10)).astype(paddle.float32)
+        out, index = paddle.median(x, axis=1, mode='min')
+        np.testing.assert_allclose(out.numpy(), [4.0, 14.0, 24.0])
+        np.testing.assert_equal(index.numpy(), [4, 4, 4])
+
+    def test_nan(self):
+        paddle.disable_static()
+        x = np.array(
+            [
+                [1, 2, 3, float('nan')],
+                [1, 2, 3, 4],
+                [float('nan'), 1, 2, 3],
+                [1, float('nan'), 3, float('nan')],
+                [float('nan'), float('nan'), 3, float('nan')],
+            ]
+        )
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+
+    @unittest.skipIf(
+        not (core.is_compiled_with_cuda() or is_custom_device())
+        or not core.is_float16_supported(get_device_place()),
+        "core is not compiled with CUDA and do not support float16",
+    )
+    def test_float16(self):
+        paddle.disable_static(get_device_place())
+        x = np.array(
+            [[1, 2, 3, float('nan')], [1, 2, 3, 4], [float('nan'), 1, 2, 3]]
+        ).astype('float16')
+        lis_tests = [
+            [axis, keepdims]
+            for axis in [-1, 0, 1, None]
+            for keepdims in [False, True]
+        ]
+        for axis, keepdims in lis_tests:
+            res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+            if axis is None:
+                res_pd = paddle.median(
+                    paddle.to_tensor(x), axis, keepdims, mode='min'
+                )
+            else:
+                res_pd, _ = paddle.median(
+                    paddle.to_tensor(x), axis, keepdims, mode='min'
+                )
+            np.testing.assert_allclose(res_pd.numpy(False), res_np)
+            np.testing.assert_equal(res_pd.numpy(False).dtype, np.float16)
+
+    def test_output_dtype(self):
+        supported_dypes = ['float32', 'float64', 'int32', 'int64']
+        for inp_dtype in supported_dypes:
+            x = np.random.randint(low=-100, high=100, size=[2, 4, 5]).astype(
+                inp_dtype
+            )
+            res = paddle.median(paddle.to_tensor(x), mode='min')
+            np.testing.assert_equal(res.numpy().dtype, np.dtype(inp_dtype))
+
+
+class TestMedianAvg_ZeroSize(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        res_pd = paddle.median(x_pd, axis, keepdims)
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+        paddle.sum(res_pd).backward()
+        np.testing.assert_allclose(x_pd.grad.shape, x_pd.shape)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 0
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        self.dygraph_single_test_median([x, 1, False])
+
+
+class TestMedianMin_ZeroSize(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        if axis is None:
+            res_pd = paddle.median(x_pd, axis, keepdims, mode='min')
+        else:
+            res_pd, _ = paddle.median(x_pd, axis, keepdims, mode='min')
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+        paddle.sum(res_pd).backward()
+        np.testing.assert_allclose(x_pd.grad.shape, x_pd.shape)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 0
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        self.dygraph_single_test_median([x, 1, False])
+
+
+class TestMedianSort(unittest.TestCase):
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np.median(x, axis=axis, keepdims=keepdims)
+        x_pd = paddle.to_tensor(x)
+        x_pd.stop_gradient = False
+        res_pd = paddle.median(x_pd, axis, keepdims)
+        np.testing.assert_allclose(res_pd.numpy(), res_np)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 2
+        w = 20000
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l])
+        self.dygraph_single_test_median([x, 1, False])
+
+
+class TestMedianAlias(unittest.TestCase):
+    def static_single_test_median(self, lis_test):
+        paddle.enable_static()
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        exe = paddle.static.Executor()
+        with paddle.static.program_guard(main_program, startup_program):
+            x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
+            y = paddle.median(x_in, dim=axis, keepdim=keepdims)
+            [res_pd, _] = exe.run(feed={'x': x}, fetch_list=[y])
+            np.testing.assert_allclose(res_pd, res_np)
+        paddle.disable_static()
+
+    def dygraph_single_test_median(self, lis_test):
+        x, axis, keepdims = lis_test
+        res_np = np_median_min_axis(x, axis=axis, keepdims=keepdims)
+        if axis is None:
+            res_pd = paddle.median(
+                paddle.to_tensor(x), dim=axis, keepdim=keepdims
+            )
+        else:
+            res_pd, _ = paddle.median(
+                paddle.to_tensor(x), dim=axis, keepdim=keepdims
+            )
+        np.testing.assert_allclose(res_pd.numpy(False), res_np)
+
+    def test_median_static(self):
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.static_single_test_median(lis_test)
+
+    def test_median_dygraph(self):
+        paddle.disable_static()
+        h = 3
+        w = 4
+        l = 2
+        x = np.arange(h * w * l).reshape([h, w, l]).astype("float32")
+        lis_tests = [
+            [x.astype(dtype), axis, keepdims]
+            for axis in [-1, 0, 1, 2]
+            for keepdims in [False, True]
+            for dtype in ['float32', 'float64', 'int32', 'int64']
+        ]
+        for lis_test in lis_tests:
+            self.dygraph_single_test_median(lis_test)
+
+    def test_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array(
+            [
+                [1.0, 2.0, 3.0, np.nan],
+                [5.0, 6.0, 7.0, 8.0],
+                [1.0, 3.0, 3.0, 5.0],
+            ]
+        )
+        np_grad = np.array(
+            [[0.0, 0.0, 0.0, 1.0], [0, 0.5, 0.5, 0], [0, 0.5, 0.5, 0]]
+        )
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor, axis=-1)
+        dx = paddle.grad(y, x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_all_nan_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([np.nan, np.nan, np.nan, np.nan])
+        np_grad = np.array([1, 0, 0, 0])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor, axis=0, mode="min")
+        dx = paddle.grad(y[0], x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_none_dim_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([[1.0, 1.0, 1.0, 1.0], [1.0, 0.0, 2.0, 0.0]])
+        np_grad = np.array([[0.2, 0.2, 0.2, 0.2], [0.2, 0, 0, 0]])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor)
+        dx = paddle.grad(y, x_tensor)[0].numpy()
+        np.testing.assert_allclose(np_grad, dx, rtol=1e-05, equal_nan=True)
+
+    def test_zero_size_cpu(self):
+        paddle.disable_static(place=paddle.CPUPlace())
+        x_np = np.array([])
+
+        x_tensor = paddle.to_tensor(x_np, stop_gradient=False).to('cpu')
+        y = paddle.median(x_tensor)
+        np_y = np.array([np.nan])
+        np.testing.assert_allclose(np_y, y, rtol=1e-05, equal_nan=True)
+
+
+class MedianOutTest(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        if core.is_compiled_with_cuda():
+            self.place = core.CUDAPlace(0)
+        else:
+            self.place = core.CPUPlace()
+
+    def test_median_api(self):
+        def run_median(test_type):
+            x = paddle.to_tensor(
+                [[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='float32'
+            )
+            a = paddle.ones([3], dtype="float32")
+            b = paddle.ones([3], dtype="int64")
+            x.stop_gradient = False
+            a.stop_gradient = False
+            b.stop_gradient = False
+
+            input = x + x
+            values = a + a
+            indices = b + b
+            out = (values, indices)
+
+            if test_type == "return":
+                out = paddle.median(input, dim=0, keepdim=False, mode='min')
+            elif test_type == "input_out":
+                paddle.median(input, dim=0, keepdim=False, mode='min', out=out)
+            elif test_type == "both_return":
+                out = paddle.median(
+                    input, dim=0, keepdim=False, mode='min', out=out
+                )
+            elif test_type == "both_input_out":
+                tmp = paddle.median(
+                    input, dim=0, keepdim=False, mode='min', out=out
+                )
+
+            ref_out = paddle._C_ops.median(input, 0, False, 'min')
+            np.testing.assert_allclose(
+                ref_out[0].numpy(),
+                out[0].numpy(),
+                1e-20,
+                1e-20,
+            )
+            np.testing.assert_allclose(
+                ref_out[1].numpy(),
+                out[1].numpy(),
+                1e-20,
+                1e-20,
+            )
+
+            out_0 = out[0] + out[0]
+            out_1 = out[1] + out[1]
+            (
+                paddle.sum(paddle.abs(out_0)) + paddle.sum(paddle.abs(out_1))
+            ).backward()
+
+            return out[0], out[1], x.grad, a.grad, b.grad
+
+        paddle.disable_static()
+        v1, i1, gx1, ga1, gb1 = run_median("return")
+        v2, i2, gx2, ga2, gb2 = run_median("input_out")
+        v3, i3, gx3, ga3, gb3 = run_median("both_return")
+        v4, i4, gx4, ga4, gb4 = run_median("both_input_out")
+
+        np.testing.assert_allclose(
+            v1.numpy(),
+            v2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            v1.numpy(),
+            v3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            v1.numpy(),
+            v4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            i1.numpy(),
+            i2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            i1.numpy(),
+            i3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            i1.numpy(),
+            i4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx2.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx3.numpy(),
+            1e-20,
+            1e-20,
+        )
+        np.testing.assert_allclose(
+            gx1.numpy(),
+            gx4.numpy(),
+            1e-20,
+            1e-20,
+        )
+
+        np.testing.assert_equal(ga1, None)
+        np.testing.assert_equal(ga2, None)
+        np.testing.assert_equal(ga3, None)
+        np.testing.assert_equal(ga4, None)
+        np.testing.assert_equal(gb1, None)
+        np.testing.assert_equal(gb2, None)
+        np.testing.assert_equal(gb3, None)
+        np.testing.assert_equal(gb4, None)
+
+
+if __name__ == '__main__':
+    unittest.main()

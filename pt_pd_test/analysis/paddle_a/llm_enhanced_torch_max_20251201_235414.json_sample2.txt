@@ -1,0 +1,41 @@
+来源文件: llm_enhanced_torch_max_20251201_235414.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Cannot perform reduction along an axis (1) that has a size of 0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.max",
+  "input": {
+    "shape": [
+      3,
+      0,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.max",
+  "input": {
+    "shape": [
+      3,
+      0,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.max` 在沿某个轴进行 reduction 时，若该轴的尺寸为 0（如本例中 shape 为 [3, 0, 5]，轴 1 的大小为 0），会直接报错“Cannot perform reduction along an axis (1) that has a size of 0”，这是 PaddlePaddle 的严格限制。  
+   - 而 PyTorch 的 `torch.max` 在面对空维度（如形状中包含 0）时，仍可正常执行并返回合理结果（例如在所有元素上取最大值，即使数据为空也会返回一个标量，或根据实现可能返回负无穷等），体现了两框架在处理空张量维度上的行为差异。
+
+3. 修复建议：  
+   - 该问题属于框架间对空维度 reduction 的行为不一致，建议提交 issue 至 PaddlePaddle 官方仓库，反映其在空轴上执行 max reduction 时缺乏容错性，与 PyTorch 不一致。

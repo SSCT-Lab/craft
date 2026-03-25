@@ -1,0 +1,644 @@
+{
+  "operator": "torch_nn_functional_softmin",
+  "torch_api": "torch.nn.functional.softmin",
+  "mindspore_api": "mindspore.ops.softmin",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T19:59:10.441253",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmin_20260126_014811.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmin",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.11268595606088638,
+            -0.9826397895812988,
+            1.1930800676345825,
+            0.4587301015853882,
+            -0.4814194142818451,
+            2.599069833755493
+          ]
+        },
+        "dim": -1
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.softmin",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.11268595606088638,
+            -0.9826397895812988,
+            1.1930800676345825,
+            0.4587301015853882,
+            -0.4814194142818451,
+            2.599069833755493
+          ]
+        },
+        "axis": -1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "softmin涉及exp(-x)，对无穷和NaN敏感；不同框架对边界情况的处理（如exp(-inf)=inf, exp(inf)=0）可能存在实现差异，易暴露数值稳定性bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                "inf"
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                "inf"
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3
+            ],
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[]）和标量输入",
+          "mutation_reason": "标量输入是softmin的退化边界情况，数学上softmin应等价于恒等映射（exp(-x)/exp(-x)=1），但框架可能未正确处理0维张量的dim/axis语义，易暴露实现bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "ValueError: For primitive[Softmax], the axis must be in [0,0), but got 0.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nkins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//softmax.cc:87 mindspore::ops::SoftmaxFuncImpl::InferShape\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下含inf/-inf/nan/-0.0的边界值行为",
+          "mutation_reason": "高精度float64可暴露数值稳定性差异；inf/-inf/nan/-0.0是softmin数学定义的临界点，两框架对未定义行为（如exp(-inf)、exp(inf)、0/0）的处理可能不一致，易触发实现bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                "-inf",
+                "nan",
+                -0.0,
+                "inf",
+                1e-38
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                "-inf",
+                "nan",
+                -0.0,
+                "inf",
+                1e-38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3
+            ],
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmin_20260126_014811.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmin",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 2
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.softmin",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发数值不稳定、边界处理差异或未定义行为，暴露softmin在指数运算中的框架级实现差异（如inf/nan传播规则、下溢/上溢处理）",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                -1e+38,
+                "nan"
+              ]
+            },
+            "dim": 2
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                -1e+38,
+                "nan"
+              ]
+            },
+            "axis": 2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              0,
+              3
+            ],
+            "mindspore_shape": [
+              1,
+              0,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量输入（shape=[]）测试软最小值算子",
+          "mutation_reason": "标量是softmin的退化情况（dim=-1在0维张量上应被忽略），两框架对空维度的处理逻辑易不一致，可能暴露边界条件bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "ValueError: For primitive[Softmax], the axis must be in [0,0), but got 0.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nkins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//softmax.cc:87 mindspore::ops::SoftmaxFuncImpl::InferShape\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下含特殊浮点值的softmin行为",
+          "mutation_reason": "float64可暴露数值稳定性差异；inf/-inf/nan在指数运算中易引发框架间处理不一致，如exp(-inf)或exp(nan)的定义差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf"
+              ]
+            },
+            "dim": 2
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf"
+              ]
+            },
+            "axis": 2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              0,
+              3
+            ],
+            "mindspore_shape": [
+              1,
+              0,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmin_20260126_014811.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmin",
+        "input": {
+          "shape": [
+            1,
+            1,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.14252270758152008,
+            -1.0244439840316772,
+            -0.22645203769207,
+            2.410339117050171,
+            0.056031886488199234
+          ]
+        },
+        "dim": -1
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.softmin",
+        "input": {
+          "shape": [
+            1,
+            1,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.14252270758152008,
+            -1.0244439840316772,
+            -0.22645203769207,
+            2.410339117050171,
+            0.056031886488199234
+          ]
+        },
+        "axis": -1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发数值不稳定、下溢/上溢处理差异或NaN传播逻辑不一致，暴露softmin实现中exp(-x)分支的边界bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [
+                1,
+                1,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [
+                1,
+                1,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              5
+            ],
+            "mindspore_shape": [
+              1,
+              1,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[]）标量输入",
+          "mutation_reason": "标量输入是softmin的退化边界情况，数学上softmin of scalar = 1.0；两框架对零维张量的axis/dim处理逻辑易不一致，可能暴露广播或维度校验bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "ValueError: For primitive[Softmax], the axis must be in [0,0), but got 0.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nkins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//softmax.cc:87 mindspore::ops::SoftmaxFuncImpl::InferShape\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下特殊浮点值（inf, -inf, nan）的软最小值行为",
+          "mutation_reason": "高精度float64可暴露数值稳定性差异；inf/-inf/nan在softmin分母求和与exp(-x)计算中易引发框架间溢出或NaN传播策略不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmin",
+            "input": {
+              "shape": [
+                1,
+                1,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.14252270758152008,
+                "-inf",
+                -0.22645203769207,
+                "inf",
+                "nan"
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softmin",
+            "input": {
+              "shape": [
+                1,
+                1,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.14252270758152008,
+                "-inf",
+                -0.22645203769207,
+                "inf",
+                "nan"
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              5
+            ],
+            "mindspore_shape": [
+              1,
+              1,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

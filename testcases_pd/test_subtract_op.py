@@ -1,0 +1,259 @@
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+import unittest
+
+import numpy as np
+from op_test import get_device_place, is_custom_device
+
+import paddle
+from paddle.base import core
+
+
+class ApiSubtractTest(unittest.TestCase):
+    def setUp(self):
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
+        else:
+            self.place = core.CPUPlace()
+
+        self.input_x = np.random.rand(10, 15).astype("float32")
+        self.input_y = np.random.rand(10, 15).astype("float32")
+        self.input_z = np.random.rand(15).astype("float32")
+        self.input_a = np.array([0, np.nan, np.nan]).astype('int64')
+        self.input_b = np.array([2, np.inf, -np.inf]).astype('int64')
+        self.input_c = np.array([4, 1, 3]).astype('int64')
+
+        self.np_expected1 = np.subtract(self.input_x, self.input_y)
+        self.np_expected2 = np.subtract(self.input_x, self.input_z)
+        self.np_expected3 = np.subtract(self.input_a, self.input_c)
+        self.np_expected4 = np.subtract(self.input_b, self.input_c)
+
+        self.np_expected5 = np.subtract(self.input_x, self.input_y * 2)
+        self.np_expected6 = np.subtract(self.input_x, self.input_z * 2)
+        self.np_expected7 = np.subtract(self.input_a, self.input_c * 2)
+        self.np_expected8 = np.subtract(self.input_b, self.input_c * 2)
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_y = paddle.static.data(
+                "y", shape=self.input_y.shape, dtype="float32"
+            )
+            result_max = paddle.subtract(data_x, data_y)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"x": self.input_x, "y": self.input_y},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_z = paddle.static.data(
+                "z", shape=self.input_z.shape, dtype="float32"
+            )
+            result_max = paddle.subtract(data_x, data_z)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"x": self.input_x, "z": self.input_z},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_a = paddle.static.data(
+                "a", shape=self.input_a.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_b.shape, dtype="int64"
+            )
+            result_max = paddle.subtract(data_a, data_c)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"a": self.input_a, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_b = paddle.static.data(
+                "b", shape=self.input_b.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_c.shape, dtype="int64"
+            )
+            result_max = paddle.subtract(data_b, data_c)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"b": self.input_b, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_y = paddle.static.data(
+                "y", shape=self.input_y.shape, dtype="float32"
+            )
+            result_max = paddle.sub(data_x, data_y, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"x": self.input_x, "y": self.input_y},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected5, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_x = paddle.static.data(
+                "x", shape=self.input_x.shape, dtype="float32"
+            )
+            data_z = paddle.static.data(
+                "z", shape=self.input_z.shape, dtype="float32"
+            )
+            result_max = paddle.sub(data_x, data_z, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"x": self.input_x, "z": self.input_z},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected6, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_a = paddle.static.data(
+                "a", shape=self.input_a.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_b.shape, dtype="int64"
+            )
+            result_max = paddle.sub(data_a, data_c, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"a": self.input_a, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected7, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            data_b = paddle.static.data(
+                "b", shape=self.input_b.shape, dtype="int64"
+            )
+            data_c = paddle.static.data(
+                "c", shape=self.input_c.shape, dtype="int64"
+            )
+            result_max = paddle.sub(data_b, data_c, alpha=2)
+            exe = paddle.static.Executor(self.place)
+            (res,) = exe.run(
+                feed={"b": self.input_b, "c": self.input_c},
+                fetch_list=[result_max],
+            )
+        np.testing.assert_allclose(res, self.np_expected8, rtol=1e-05)
+
+    def test_dynamic_api(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.input_x)
+        y = paddle.to_tensor(self.input_y)
+        z = paddle.to_tensor(self.input_z)
+
+        a = paddle.to_tensor(self.input_a)
+        b = paddle.to_tensor(self.input_b)
+        c = paddle.to_tensor(self.input_c)
+
+        res = paddle.subtract(x, y)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected1, rtol=1e-05)
+
+        # test broadcast
+        res = paddle.subtract(x, z)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected2, rtol=1e-05)
+
+        res = paddle.subtract(a, c)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected3, rtol=1e-05)
+
+        res = paddle.subtract(b, c)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected4, rtol=1e-05)
+
+        res = paddle.sub(x, y, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected5, rtol=1e-05)
+
+        res = paddle.sub(x, z, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected6, rtol=1e-05)
+
+        res = paddle.sub(a, c, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected7, rtol=1e-05)
+
+        res = paddle.sub(b, c, alpha=2)
+        res = res.numpy()
+        np.testing.assert_allclose(res, self.np_expected8, rtol=1e-05)
+
+        x.sub_(y, alpha=2)
+        np.testing.assert_allclose(x, self.np_expected5, rtol=1e-05)
+
+
+class ApiSubtractTestZeroSize(ApiSubtractTest):
+    def setUp(self):
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self.place = get_device_place()
+        else:
+            self.place = core.CPUPlace()
+
+        self.input_x = np.random.rand(0, 15).astype("float32")
+        self.input_y = np.random.rand(1, 15).astype("float32")
+        self.input_z = np.random.rand(15).astype("float32")
+        self.input_a = np.random.rand(3).astype('int64')
+        self.input_b = np.random.rand(3).astype('int64')
+        self.input_c = np.random.rand(3).astype('int64')
+
+        self.np_expected1 = np.subtract(self.input_x, self.input_y)
+        self.np_expected2 = np.subtract(self.input_x, self.input_z)
+        self.np_expected3 = np.subtract(self.input_a, self.input_c)
+        self.np_expected4 = np.subtract(self.input_b, self.input_c)
+
+        self.np_expected5 = np.subtract(self.input_x, self.input_y * 2)
+        self.np_expected6 = np.subtract(self.input_x, self.input_z * 2)
+        self.np_expected7 = np.subtract(self.input_a, self.input_c * 2)
+        self.np_expected8 = np.subtract(self.input_b, self.input_c * 2)
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

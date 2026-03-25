@@ -1,0 +1,1295 @@
+{
+  "pd_api": "paddle.nn.functional.cross_entropy",
+  "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+  "timestamp": "2026-03-04T12:04:32.518190",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 12,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "tf.keras.losses.categorical_crossentropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: categorical_crossentropy() got an unexpected keyword argument 'ignore_index'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.categorical_crossentropy does not support 'ignore_index' parameter, unlike Paddle's cross_entropy. To achieve semantic equivalence, we must convert integer labels to one-hot format and handle ignore_index manually by masking — but since TF API lacks ignore_index, the only valid repair is to remove ignore_index and ensure label format matches TF's expectation: one-hot for categorical_crossentropy. Also, soft_label=false in Paddle expects integer labels, but TF's categorical_crossentropy requires one-hot y_true; thus we must transform label to one-hot and drop ignore_index."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": false
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": true,
+        "y_true": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(30,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          30
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle使用整数标签(shape=[30])和soft_label=False，而TensorFlow categorical_crossentropy要求y_true为one-hot(shape=[30,10])；但二者语义不等价。应统一为整数标签模式：TensorFlow需改用sparse_categorical_crossentropy，而非categorical_crossentropy。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": false
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": true,
+        "y_true": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: sparse_categorical_crossentropy() got an unexpected keyword argument 'label_smoothing'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's sparse_categorical_crossentropy does not accept 'label_smoothing' parameter (only categorical_crossentropy does), while Paddle's cross_entropy supports it. To align semantics, remove label_smoothing from TF test case and ensure both use integer labels with logits. Also fix dtype mismatch: TF expects int32 for sparse labels, and 'from_logits=True' must be used to match Paddle's default use_softmax=True behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": false,
+        "use_softmax": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "from_logits": true,
+        "y_true": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(30,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          30
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "tf.keras.losses.categorical_crossentropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: categorical_crossentropy() got an unexpected keyword argument 'ignore_index'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.categorical_crossentropy does not support 'ignore_index' parameter, unlike Paddle's cross_entropy. To achieve semantic equivalence, we must convert integer labels to one-hot in TF and remove ignore_index. Also, TF categorical_crossentropy expects probabilities by default (from_logits=False), while Paddle uses logits when use_softmax=True (default). So we keep Paddle as-is and adapt TF: convert label to one-hot, drop ignore_index, and ensure both use raw logits or softmax outputs consistently — but since Paddle defaults to use_softmax=True, TF must use from_logits=True for numerical equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": false,
+        "use_softmax": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": true,
+        "y_true": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(30,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          30
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's categorical_crossentropy expects one-hot y_true (shape [30,10]), but Paddle's cross_entropy with soft_label=False expects integer labels (shape [30]). To align semantics, TF must convert integer labels to one-hot or use sparse_categorical_crossentropy. Since the original Paddle case uses int64 label of shape [30], the correct TF equivalent is tf.keras.losses.sparse_categorical_crossentropy (not categorical_crossentropy), which accepts integer labels and matches shape and semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": false,
+        "use_softmax": true
+      },
+      "tensorflow_test_case": {
+        "reduction": "auto",
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "from_logits": true,
+        "y_true": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: sparse_categorical_crossentropy() got an unexpected keyword argument 'reduction'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's sparse_categorical_crossentropy does not accept 'reduction' parameter; it returns per-sample loss and reduction must be handled externally. Also, 'axis' is not a valid arg for sparse_categorical_crossentropy (only categorical_crossentropy supports axis). Must remove 'reduction' and 'axis', and ensure label_smoothing/use_softmax/soft_label alignment is unnecessary since TF sparse version expects integer labels and logits by default when from_logits=True."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": false,
+        "use_softmax": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "from_logits": true,
+        "y_true": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.sparse_categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(30,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          30
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "tf.keras.losses.categorical_crossentropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: categorical_crossentropy() got an unexpected keyword argument 'ignore_index'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.categorical_crossentropy does not support 'ignore_index' parameter, which is Paddle-specific and only valid when soft_label=False. Since soft_label=True is used, ignore_index is semantically irrelevant in TF and must be removed. Also, TF expects y_true to be one-hot (soft labels) and y_pred logits/probs — no ignore_index logic exists. Thus, remove ignore_index from TF case to align semantics."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(5,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle cross_entropy with soft_label=True expects label to be probability distribution (sum=1 per sample), while TF categorical_crossentropy also expects y_true as one-hot/probability, but output shape mismatch () vs (5,) indicates Paddle's reduction='mean' default caused scalar output whereas TF returns per-sample loss. To align semantics, set reduction='none' in Paddle and remove reduction from TF (it always returns per-sample). Also ensure label_smoothing alignment and confirm both use probability inputs (from_logits=False)."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "none",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(5, 1) vs TF=(5,)",
+        "pd_shape": [
+          5,
+          1
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于TensorFlow categorical_crossentropy要求y_true为one-hot且输出为(5,)，而Paddle soft_label=True时接受[5,37]软标签但cross_entropy默认axis=-1且reduction='none'输出(5,)；需统一label格式：TensorFlow侧y_true应为one-hot整数标签转one-hot，但当前用例中y_true是[5,37]软标签，与Paddle soft_label=True语义一致，故TF侧应使用tf.keras.losses.CategoricalCrossentropy(from_logits=False, label_smoothing=0.0, reduction='none')类并确保返回shape=(5,)，但函数式API默认返回(5,)，而实际比较中TF输出为(5,)、PD输出为(5,1)，说明PD侧可能因label shape[5,37]和input[5,37]触发了内部broadcast或axis处理异常；根据文档，Paddle当soft_label=True时label必须与input同shape且sum=1，此时reduction='none'应返回(5,)，故问题在于Paddle测试未指定axis=-1（虽为默认值）且可能隐式行为差异；修复：显式添加axis=-1，并确保TF侧使用等价的CategoricalCrossentropy类实例以控制reduction，但函数式API无reduction参数，故改用tf.keras.losses.categorical_crossentropy + tf.reduce_mean(..., axis=1)不适用；正确修复是让Paddle输出与TF一致：将Paddle reduction='none'保持，但确认其输出应为(5,)，当前(5,1)表明label被误解析为int标签（触发了ignore_index路径），因此需强制label为float且soft_label=True，同时移除可能干扰的ignore_index（仅对hard label有效），故删除ignore_index参数。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "none",
+        "axis": -1,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label_smoothing": 0.0,
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(5, 1) vs TF=(5,)",
+        "pd_shape": [
+          5,
+          1
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "tf.keras.losses.categorical_crossentropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: categorical_crossentropy() got an unexpected keyword argument 'ignore_index'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.categorical_crossentropy does not support 'ignore_index' parameter, which is Paddle-specific and only valid when soft_label=False. Since soft_label=True is used, ignore_index is redundant in both frameworks and must be removed from TF case; also, TF expects y_true to be one-hot (matching label shape) but does not accept ignore_index at all."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(5,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle cross_entropy with soft_label=True expects label to be probability distribution (sum=1 per sample), while TF categorical_crossentropy also expects y_true as one-hot/probability, but output shape mismatch () vs (5,) indicates Paddle's reduction='mean' default caused scalar output whereas TF returns per-sample loss. To align semantics, set reduction='none' in Paddle and remove reduction from TF (which defaults to no reduction), ensuring both return shape (5,). Also, TF requires from_logits=False for probability inputs, which is already set."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "none",
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(5, 1) vs TF=(5,)",
+        "pd_shape": [
+          5,
+          1
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow categorical_crossentropy expects y_true to be one-hot labels (shape [5,37]) and returns shape (5,), while Paddle's cross_entropy with soft_label=True and reduction='none' returns (5,1) due to internal broadcasting/axis handling mismatch. To align semantics, TensorFlow must use from_logits=False (correct) but Paddle requires explicit axis=-1 and removal of spurious singleton dim; however, the core issue is label format: TF categorical_crossentropy assumes soft labels sum to 1 per row, but Paddle's soft_label=True also expects that — yet output shape mismatch indicates Paddle may be interpreting label as integer under soft_label=False fallback. Fix: ensure Paddle uses soft_label=True AND label_smoothing=0.0 explicitly, and TF matches via same label_smoothing; also enforce consistent reduction behavior by adding 'axis=-1' to Paddle and confirming TF axis=-1 (default). Most critically, the shape mismatch (5,1) vs (5,) suggests Paddle is inserting a redundant dimension — this occurs when label has shape [5,37] but Paddle internally treats it as [5,37,1] due to legacy behavior; solution is to keep label shape [5,37] but add 'axis=-1' and verify no auto-squeeze suppression. However, official Paddle doc states soft_label=True + shape [N,C] is valid, and reduction='none' should return [N]. The observed (5,1) implies test infrastructure or version-specific squeeze bug — safest repair is to align both to explicit (5,) output by using reduction='none' and post-squeeze in validation, but per task requirement we must fix test case. Since TF outputs (5,) and Paddle docs guarantee (N) for reduction='none', the Paddle call is misbehaving — likely due to missing 'axis=-1' or implicit rank assumption. Adding 'axis=-1' ensures correct softmax dim and avoids unintended broadcasting."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "none",
+        "axis": -1,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label_smoothing": 0.0,
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "label_smoothing": 0.0,
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(5, 1) vs TF=(5,)",
+        "pd_shape": [
+          5,
+          1
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": 3,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": 3,
+        "api": "tf.keras.losses.categorical_crossentropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: categorical_crossentropy() got an unexpected keyword argument 'ignore_index'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.losses.categorical_crossentropy does not support 'ignore_index' parameter, unlike Paddle's cross_entropy. To achieve semantic equivalence, we must convert integer labels to one-hot format and handle ignore_index manually by masking, but since TF API lacks native ignore_index, the only valid repair is to remove ignore_index and ensure label format matches TF's expectation: one-hot y_true with same shape as logits (30,10). Also, soft_label must be True for one-hot input in Paddle to align with TF's categorical_crossentropy behavior."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "use_softmax": false
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label_smoothing": 0.0,
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(30,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          30
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's cross_entropy with soft_label=True expects label to be probability distribution (sum=1 per sample), but TF's categorical_crossentropy also expects y_true as one-hot or prob dist; however, shape mismatch () vs (30,) indicates Paddle returned scalar (due to reduction='mean') while TF returned per-sample loss (no reduction). To align semantics, TF must apply tf.reduce_mean on output, and Paddle must ensure same reduction behavior. Also, TF categorical_crossentropy does not support 'reduction' param — must manually reduce."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "use_softmax": false
+      },
+      "tensorflow_test_case": {
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label_smoothing": 0.0,
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=() vs TF=(30,)",
+        "pd_shape": [],
+        "tensorflow_shape": [
+          30
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle cross_entropy with soft_label=True expects label to be probability distribution (sum=1 per sample), while TF categorical_crossentropy also expects y_true as one-hot or prob dist, but shape mismatch () vs (30,) indicates Paddle returned scalar (due to reduction='mean') while TF returned (30,) vector — because TF's categorical_crossentropy defaults to no reduction. Must add 'reduction' equivalent in TF via tf.reduce_mean, or align reduction behavior by computing mean manually in TF test case."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "api": "paddle.nn.functional.cross_entropy",
+        "label": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "use_softmax": false
+      },
+      "tensorflow_test_case": {
+        "reduction_equivalent": "mean",
+        "y_pred": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label_smoothing": 0.0,
+        "api": "tf.keras.losses.categorical_crossentropy",
+        "from_logits": false,
+        "y_true": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "tensorflow_api": "tf.keras.losses.categorical_crossentropy",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: categorical_crossentropy() got an unexpected keyword argument 'reduction_equivalent'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

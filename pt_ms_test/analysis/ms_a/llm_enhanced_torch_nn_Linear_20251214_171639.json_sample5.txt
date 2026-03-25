@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_nn_Linear_20251214_171639.json
+样例编号: 5
+mindspore_error 错误信息: Dense shape error, got x_col: 3, w_row: 64. In Dense x_col and w_row should be equal. if the dim of w is 2.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//dense.cc:199 mindspore::ops::DenseFuncImpl::InferShape
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -2.048510789871216,
+      0.6406558156013489,
+      1.1791901588439941,
+      -1.1077766418457031,
+      -1.0305434465408325,
+      -0.38905027508735657
+    ]
+  },
+  "in_features": 64,
+  "out_features": 64,
+  "bias": false,
+  "api": "torch.nn.Linear"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -2.048510789871216,
+      0.6406558156013489,
+      1.1791901588439941,
+      -1.1077766418457031,
+      -1.0305434465408325,
+      -0.38905027508735657
+    ]
+  },
+  "in_features": 64,
+  "out_features": 64,
+  "bias": false,
+  "api": "torch.nn.Linear"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 错误信息 `Dense shape error, got x_col: 3, w_row: 64` 明确指出输入张量的列数（3）与权重矩阵的行数（64）不匹配，但根据 PyTorch `Linear` 的语义，输入应为 `[batch, in_features]`，即 `in_features=64` 时输入最后一维必须是 64。而本例中输入形状为 `[2, 3]`，其 `in_features` 为 3，与 `in_features=64` 参数矛盾。
+   - 此处存在框架行为差异：MindSpore 在 `torch.nn.Linear` 实现中对输入维度的校验比 PyTorch 更严格，或在算子实现中将输入的“特征维度”错误地理解为第 1 维（即 `x_col=3`），而实际应以 `in_features=64` 为准，说明框架在参数与输入形状的对齐逻辑上存在不一致。
+
+3. 修复建议：
+   - 该问题反映的是框架在算子执行时对输入维度与 `in_features` 参数的校验逻辑不一致，建议提交 issue 至 MindSpore 官方仓库，反馈 `torch.nn.Linear` 在输入维度与 `in_features` 不匹配时应抛出更清晰的语义错误，而非仅报告 Dense 内部 shape 匹配失败。

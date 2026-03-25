@@ -1,0 +1,103 @@
+来源文件: llm_enhanced_torch_logical_and_20251202_134022.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [2, 0, 4, 1] and the shape of Y = [3, 1, 4]. Received [0] in X is not equal to [3] in Y at i:1.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.logical_and",
+  "input": {
+    "shape": [
+      2,
+      0,
+      4,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "out": {
+    "shape": [
+      2,
+      0,
+      4,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.logical_and",
+  "input": {
+    "shape": [
+      2,
+      0,
+      4,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "out": {
+    "shape": [
+      2,
+      0,
+      4,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.logical_and` 在广播时要求各维度大小必须能兼容，且当某维为 0 时（如 `[2, 0, 4, 1]` 中的第 1 维），其广播规则与 PyTorch 存在差异。错误提示中明确指出 `X` 的第 1 维为 0，而 `Y` 的第 1 维为 3，二者不相等且无法广播，导致失败。  
+   - 尽管 PyTorch 支持含 0 维的张量进行广播（如 `[2, 0, 4, 1]` 与 `[3, 1, 4]` 可通过广播扩展为 `[2, 3, 4, 4]`），但 PaddlePaddle 对于包含 0 维的输入在广播过程中存在严格限制，当前版本可能不支持此类情况。
+
+3. 修复建议：  
+   - 建议提交 issue 至 PaddlePaddle 官方仓库，反映该行为差异问题，特别是对空维度（shape 为 0）的广播处理应与 PyTorch 保持一致，以提升框架间兼容性。

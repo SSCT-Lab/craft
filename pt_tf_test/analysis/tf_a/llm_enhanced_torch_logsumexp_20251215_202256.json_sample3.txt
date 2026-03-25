@@ -1,0 +1,39 @@
+来源文件: llm_enhanced_torch_logsumexp_20251215_202256.json
+样例编号: 3
+tensorflow_error 错误信息: {{function_node __wrapped__Max_device_/job:localhost/replica:0/task:0/device:CPU:0}} Invalid reduction dimension (0 for input with 0 dimension(s) [Op:Max] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.logsumexp",
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "dim": 0
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.reduce_logsumexp",
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "axis": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.math.reduce_logsumexp` 在输入张量维度为 0（即标量，shape=[]）时，不允许对维度 0 进行归约操作，因为该维度不存在（无有效 reduction axis），而 PyTorch 的 `torch.logsumexp` 在空 shape 输入上允许对 dim=0 进行操作（此时视为对唯一元素进行 logsumexp，结果为输入本身）。
+   - 错误信息 “Invalid reduction dimension (0 for input with 0 dimension(s)” 明确指出：输入无维度，却试图在维度 0 上做 reduce，这在 TensorFlow 中是非法的，而 PyTorch 允许。
+
+3. 修复建议：
+   - 此为框架间语义不一致，值得提交 issue 给 TensorFlow 官方，建议统一处理空 shape 时的 reduction 行为以与 PyTorch 对齐。

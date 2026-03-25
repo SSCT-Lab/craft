@@ -1,0 +1,43 @@
+{
+  "updated_at": "2026-03-22T11:40:59.909776",
+  "records": [
+    {
+      "operator": "mindspore.Tensor.addmv",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": 3,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore addmv 报错 'MatMul inputs should have the same dimension size and equal to 2' 表明其底层 MatMul 要求输入为 2D，但 vec 是 1D（shape [3]）。PyTorch 允许 1D vec，而 MindSpore 当前实现可能未自动升维。根据 mindspore.ops.addmv 文档（需匹配 mat @ vec + beta * input），vec 应为 1D，但 MindSpore 实现存在 shape 检查缺陷；修复方式是显式确保 vec 为列向量（shape [3, 1]）或改用 ops.addmv 并验证参数名映射：input→x, mat→mat, vec→vec, beta/alpha 位置一致。",
+          "execute_symbol": "✗",
+          "ms_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore addmv requires vec to be 1D (shape [n]), but test uses [3,1]; PyTorch addmv also expects 1D vec. Both errors stem from invalid vec dimensionality: mat @ vec needs vec.shape == (3,) not (3,1). Fix by flattening vec to 1D.",
+          "execute_symbol": "✗",
+          "ms_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore addmv 报错 'MatMul inputs should have the same dimension size and equal to 2' 表明其底层 MatMul 要求 mat 和 vec 均为 2D，但 vec 应为 1D 向量；根据文档和 PyTorch 语义，addmv(mat, vec) 要求 mat.shape[-1] == vec.shape[0]，即 mat: (m,n), vec: (n,) → output: (m,)；当前 mat=(2,3), vec=(3,) 是合法的，错误源于 MindSpore 实现未正确广播/reshape vec；修复方式：显式确保 vec 为列向量（n,1）或适配 MindSpore 当前限制——需将 vec reshape 为 (3,1) 并调整 mat 为 (2,3)，但会破坏语义；更稳妥修复是改用 ops.addmv（非 Tensor method）并验证参数顺序；但文档明确指向 ops.addmv，且 Tensor.addmv 是封装，故应使用函数式 API 并校准参数名：mindspore.ops.addmv(input=x, mat=mat, vec=vec, beta=1, alpha=1) —— 注意 MindSpore 函数式 API 参数名为 input/mat/vec，与 PyTorch 一致，而 Tensor method 的签名不匹配导致传参错误。",
+          "execute_symbol": "✓",
+          "ms_success": true,
+          "pytorch_success": true
+        }
+      ]
+    }
+  ]
+}

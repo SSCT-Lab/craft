@@ -1,0 +1,308 @@
+{
+  "operator": "torch.cholesky_inverse",
+  "timestamp": "2026-01-25T00:56:21.139623",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 1,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.156359076499939,
+            0.477144330739975,
+            1.4231675863265991,
+            0.07457615435123444,
+            0.030066387727856636,
+            -1.2126601934432983,
+            1.5083696842193604,
+            0.13239097595214844,
+            -0.09861692786216736
+          ]
+        },
+        "api": "torch.cholesky_inverse"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.156359076499939,
+            0.477144330739975,
+            1.4231675863265991,
+            0.07457615435123444,
+            0.030066387727856636,
+            -1.2126601934432983,
+            1.5083696842193604,
+            0.13239097595214844,
+            -0.09861692786216736
+          ]
+        },
+        "api": "paddle.linalg.cholesky_inverse"
+      },
+      "execution_result": {
+        "torch_api": "torch.cholesky_inverse",
+        "paddle_api": "paddle.linalg.cholesky_inverse",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 3089.782958984375",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.cholesky_inverse expects a Cholesky factor (lower/upper triangular matrix) as input, not a generic symmetric positive-definite matrix. The original test case only specifies shape and dtype but does not generate a valid Cholesky factor — it likely feeds a random full matrix to both APIs. Paddle's paddle.linalg.cholesky_inverse similarly expects the Cholesky factor (x), not the original matrix. However, the mismatch (max diff ~3089.78) indicates the inputs are inconsistent: likely PyTorch received a proper lower-triangular L (e.g., from torch.cholesky), while Paddle received a full random matrix or vice versa. To ensure functional equivalence, both frameworks must receive the *same valid Cholesky factor* (e.g., lower triangular with positive diagonal). Therefore, the test case must be repaired to explicitly generate a valid Cholesky factor (e.g., via torch.linalg.cholesky on a random SPD matrix for PyTorch reference, then use that L as input to both APIs) — but since the test case format only supports declarative input specs (not procedural generation), the minimal repair is to add 'upper': False (default-consistent) and ensure input is constrained to be lower-triangular. However, the current spec lacks triangular constraint. Per docs, both APIs require triangular input; thus the original random [3,3] tensor is invalid. The repair introduces explicit triangular structure via 'triangular': true and ensures consistent upper/lower convention. But since the test schema doesn't support 'triangular' flag, the correct fix is to align parameterization: PyTorch supports 'upper' bool, Paddle also supports 'upper', so we must add 'upper': false to both to enforce identical triangular assumption, and crucially, the input must be *generated as triangular*. Since the test framework only declares shape/dtype, the root cause is missing triangularity — hence we repair by adding 'upper': false to both to make behavior deterministic and match documented defaults, and note that test infrastructure must generate triangular input. Given constraints, adding 'upper': false is the minimal required repair to ensure consistent interpretation."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.cholesky_inverse",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7940046787261963,
+            1.2253763675689697,
+            0.9865268468856812,
+            -0.9022359251976013,
+            0.5104827880859375,
+            0.7959842681884766,
+            -1.2462763786315918,
+            0.6412389874458313,
+            0.44099268317222595
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.cholesky_inverse",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7940046787261963,
+            1.2253763675689697,
+            0.9865268468856812,
+            -0.9022359251976013,
+            0.5104827880859375,
+            0.7959842681884766,
+            -1.2462763786315918,
+            0.6412389874458313,
+            0.44099268317222595
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.cholesky_inverse",
+        "paddle_api": "paddle.linalg.cholesky_inverse",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 4.431065559387207",
+        "torch_shape": [
+          3,
+          3
+        ],
+        "paddle_shape": [
+          3,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致且最大差异为4.43，远超可容忍精度误差（1e-3），但问题根源在于原始测试用例未提供有效的Cholesky因子输入：两个框架的cholesky_inverse均要求输入为下/上三角Cholesky分解矩阵（即来自正定矩阵的分解），而原始用例仅随机生成shape=[3,3]的float32张量，未保证其为合法的三角Cholesky因子（如未设为下三角、未满足正定性前提）。因此需变异测试用例，显式构造符合要求的输入：生成正定矩阵→对其做Cholesky分解→传入cholesky_inverse。同时需对齐参数：PyTorch默认upper=False（下三角），Paddle也默认upper=False，但必须确保输入张量确实是下三角（或按upper参数一致设置）。此外，为增强鲁棒性，变异为batched输入（shape=[2,3,3]）并显式指定upper=False以消除歧义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.cholesky_inverse",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6231784820556641,
+            1.9867104291915894,
+            2.9616599082946777,
+            1.2362300157546997,
+            0.2604932188987732,
+            0.6382415890693665,
+            0.4340274930000305,
+            2.351749897003174,
+            0.13740383088588715,
+            -0.4142618477344513
+          ]
+        },
+        "params": {
+          "upper": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.cholesky_inverse",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6231784820556641,
+            1.9867104291915894,
+            2.9616599082946777,
+            1.2362300157546997,
+            0.2604932188987732,
+            0.6382415890693665,
+            0.4340274930000305,
+            2.351749897003174,
+            0.13740383088588715,
+            -0.4142618477344513
+          ]
+        },
+        "params": {
+          "upper": false
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.cholesky_inverse",
+        "paddle_api": "paddle.linalg.cholesky_inverse",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "cholesky_inverse() got an unexpected keyword argument 'params'",
+        "paddle_error": "cholesky_inverse() got an unexpected keyword argument 'params'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: cholesky_inverse() got an unexpected keyword argument 'params'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: cholesky_inverse() got an unexpected keyword argument 'params'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks failed with 'unexpected keyword argument \"params\"', indicating the test case incorrectly wraps parameters under a 'params' key. According to both PyTorch and PaddlePaddle documentation, 'upper' is a direct keyword argument (not nested), and the input tensor must be explicitly generated — the current test case only specifies shape/dtype but does not provide an actual Cholesky factor tensor. Moreover, torch.cholesky_inverse requires a valid lower/upper triangular Cholesky factor of a positive-definite matrix; passing raw uninitialized/random tensor of shape [2,3,3] without ensuring triangularity and positive-definiteness will cause runtime failure. The repair involves: (1) removing the invalid 'params' wrapper, promoting 'upper' to top-level kwarg; (2) generating a valid input tensor — for robustness, we construct a batch of symmetric positive-definite matrices via A = L @ L.T (with L lower-triangular), then pass L as input; (3) ensuring dtype consistency and using float32 as specified; (4) aligning parameter names: PyTorch uses 'upper', Paddle uses 'upper' (same name), so no renaming needed. Also note: PyTorch's cholesky_inverse does NOT accept 'out' in this context and requires proper input structure — the original test case was syntactically invalid."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.cholesky_inverse",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.21981275081634521,
+            -1.293856143951416,
+            0.6856783032417297,
+            0.34545451402664185,
+            0.9516400694847107,
+            -0.6040029525756836,
+            -1.2270907163619995,
+            0.6798810958862305,
+            0.8250977993011475,
+            -1.1044425964355469
+          ]
+        },
+        "upper": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.linalg.cholesky_inverse",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.21981275081634521,
+            -1.293856143951416,
+            0.6856783032417297,
+            0.34545451402664185,
+            0.9516400694847107,
+            -0.6040029525756836,
+            -1.2270907163619995,
+            0.6798810958862305,
+            0.8250977993011475,
+            -1.1044425964355469
+          ]
+        },
+        "upper": false
+      },
+      "execution_result": {
+        "torch_api": "torch.cholesky_inverse",
+        "paddle_api": "paddle.linalg.cholesky_inverse",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "The input tensor must be 2-dimensional",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          3
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 5839, in cholesky_inverse\n    raise ValueError('The input tensor must be 2-dimensional')\nValueError: The input tensor must be 2-dimensional\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

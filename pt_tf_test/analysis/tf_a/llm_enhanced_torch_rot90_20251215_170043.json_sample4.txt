@@ -1,0 +1,49 @@
+来源文件: llm_enhanced_torch_rot90_20251215_170043.json
+样例编号: 4
+tensorflow_error 错误信息: inner 3 dims of 'image.shape' must be > 0: (1, 0, 5, 5)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.rot90",
+  "input": {
+    "shape": [
+      1,
+      0,
+      5,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "k": 1,
+  "dims": [
+    0,
+    1
+  ]
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.image.rot90",
+  "input": {
+    "shape": [
+      1,
+      0,
+      5,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "k": 1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.image.rot90` 要求输入张量的前三个维度（即空间维度）必须大于 0，而本例中输入 shape 为 `[1, 0, 5, 5]`，第二维为 0，违反了该函数对非空张量的要求。官方文档虽未显式说明此限制，但实际执行中会触发“inner 3 dims of 'image.shape' must be > 0”错误，表明其内部实现对空维度有严格限制。  
+   - 相比之下，PyTorch 的 `torch.rot90` 对 shape 中包含 0 的维度无此限制，可接受任意形状（包括含 0 维度），因此在相同输入下不会报错。
+
+3. 修复建议：  
+   - 该问题反映的是框架间对空维度处理的行为差异，属于合理但未被充分文档化的边界情况；建议提交 issue 至 TensorFlow 官方仓库，指出 `tf.image.rot90` 在处理含 0 维度输入时缺乏明确容错或文档说明。

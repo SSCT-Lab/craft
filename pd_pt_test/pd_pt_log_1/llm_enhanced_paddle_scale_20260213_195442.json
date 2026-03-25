@@ -1,0 +1,1136 @@
+{
+  "pd_api": "paddle.scale",
+  "pytorch_api": "torch.mul",
+  "timestamp": "2026-02-13T19:54:42.897378",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 14,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "scale": -2.3,
+        "bias": 0.0,
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "scale": -2.3,
+        "bias": 0.0,
+        "bias_after_scale": true,
+        "api": "torch.mul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: mul() missing 1 required positional arguments: \"other\"",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": null,
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mul requires 'other' parameter (equivalent to scale), but test case incorrectly passes 'scale' and 'bias' which are not supported by torch.mul. paddle.scale has bias and bias_after_scale, while torch.mul only does element-wise multiplication. To align semantics, we must map paddle.scale(x, scale, bias, bias_after_scale=True) to torch.add(torch.mul(x, scale), bias), not torch.mul alone."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "scale": -2.3,
+        "bias": 0.0,
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "other": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 10.69738674",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.scale computes 'scale * x + bias', while torch.add computes 'input + alpha * other'; to match semantics, PyTorch should use torch.mul + torch.add or directly torch.add with scalar alpha, but current test uses elementwise add of two tensors. Correct mapping requires torch.add(input, other=0, alpha=scale) is invalid; instead, use torch.mul(x, scale) then add bias — but no single torch op matches paddle.scale. Since torch.add does not support scaling-only transformation like paddle.scale, and the original PyTorch test incorrectly uses two tensor inputs instead of a scalar scale, the test case is misaligned. Repair: replace torch.add with torch.mul for scaling, and handle bias separately — but per task requirement, we must pick one op. Given docs show torch.add signature is input + alpha*other, the only faithful repair is to set 'other' as scalar (not tensor) and 'alpha' as scale, and omit bias (since torch.add has no bias param). However, torch.add doesn't support bias; thus, true functional equivalence requires torch.add(torch.mul(x,scale), bias), but that's two ops. Therefore, the original mapping is invalid — skip is warranted."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "scale": -2.3
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.mul",
+        "other": -2.3
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing变异以增强测试覆盖：将输入张量改为3D形状[2, 5, 10]，scale改为极小浮点数1e-7，验证数值稳定性与高维兼容性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "scale": 1e-07
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.mul",
+        "other": 1e-07
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          5,
+          10
+        ],
+        "pytorch_shape": [
+          2,
+          5,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "scale": -2.3,
+        "bias": 0.0,
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "scale": -2.3,
+        "bias": 0.0,
+        "bias_after_scale": true,
+        "api": "torch.mul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: mul() missing 1 required positional arguments: \"other\"",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": null,
+        "pd_dtype": "paddle.float64",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mul requires 'other' parameter for multiplication, but test case incorrectly passes 'scale' and 'bias' parameters which don't exist in torch.mul. paddle.scale implements scale*x + bias, while torch.mul only does element-wise multiplication. To match functionality, we must use torch.add(torch.mul(x, scale), bias) or equivalent. Thus, repair PyTorch test case to use correct API composition."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "scale": -2.3
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.mul",
+        "other": -2.3
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "pytorch_dtype": "torch.float64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量变异为3D形状[2, 5, 10]、dtype降为float32，并将scale设为极小值1e-7，同时在Paddle中保持bias_after_scale=true和bias=0.0，PyTorch对应使用torch.mul，确保语义等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "scale": 1e-07
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.mul",
+        "other": 1e-07
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          5,
+          10
+        ],
+        "pytorch_shape": [
+          2,
+          5,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将scale改为极小浮点数1e-38（接近float32下限），并增加bias=1e-5和bias_after_scale=False以验证前置偏置逻辑；同时保持输入shape和dtype一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias_after_scale": false,
+        "bias": 1e-05,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "scale": 1e-38
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.mul",
+        "other": 1e-38
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          5,
+          10
+        ],
+        "pytorch_shape": [
+          2,
+          5,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "scale": -2.3,
+        "bias": 0.0,
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "scale": -2.3,
+        "bias": 0.0,
+        "bias_after_scale": true,
+        "api": "torch.mul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: mul() missing 1 required positional arguments: \"other\"",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": null,
+        "pd_dtype": "paddle.float64",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mul requires 'other' argument (equivalent to scale), but test case incorrectly passes 'scale' as parameter name; also bias and bias_after_scale are not supported by torch.mul since it only does element-wise multiplication without bias or activation. Must remove unsupported params and rename scale to other."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "scale": -2.3
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.mul",
+        "other": -2.3
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float64",
+        "pytorch_dtype": "torch.float64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量变异为高维(3,4,5,6)、dtype改为float32（更常用），scale改为极小负数-1e-7以检验数值稳定性，同时保持bias=0.0和bias_after_scale=True语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "scale": -1e-07
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.mul",
+        "other": -1e-07
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "pytorch_shape": [
+          3,
+          4,
+          5,
+          6
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将scale改为极小正数1e-12，并将输入shape变异为单元素[1]以测试边界情况，同时保持bias=0.0和bias_after_scale=True语义一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "bias_after_scale": true,
+        "bias": 0.0,
+        "api": "paddle.scale",
+        "x": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32"
+        },
+        "scale": 1e-12
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.mul",
+        "other": 1e-12
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          1
+        ],
+        "pytorch_shape": [
+          1
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "scale": 2.0,
+        "bias": 3.0,
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "scale": 2.0,
+        "bias": 3.0,
+        "bias_after_scale": true,
+        "api": "torch.mul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: mul() missing 1 required positional arguments: \"other\"",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": null,
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mul only supports element-wise multiplication with 'other' tensor/number, but the test case incorrectly includes bias and bias_after_scale parameters which don't exist in torch.mul. paddle.scale is not equivalent to torch.mul — it's equivalent to scale*x + bias (affine transform), so correct PyTorch equivalent is torch.add(torch.mul(x, scale), bias)."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "scale": 2.0,
+        "bias": 3.0,
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "other": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 5.50837576",
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": [
+          2,
+          25
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.scale(x, scale, bias) 对应数学公式为 scale * x + bias，而 torch.add(input, other, alpha) 是 input + alpha * other；当前PyTorch用例用torch.add且other为随机张量，语义不匹配。应改用 torch.mul + torch.add 或直接用 torch.add(input, torch.mul(input, scale-1), alpha=1) 不合理；正确等价是 torch.add(torch.mul(input, scale), bias)，但bias需广播。因此PyTorch侧应使用 torch.add(torch.mul(input, scale), torch.full_like(input, bias))，但更简洁等价是 torch.add(input * scale, bias) —— 故需将PyTorch API改为 torch.add with scalar bias via broadcasting，即 other=scalar bias，但torch.add(input, other, alpha)中other为标量时合法，alpha用于缩放other；所以应设 other=bias, alpha=1.0，但当前input未乘scale。根本修复：PyTorch应先mul再add，但单API无法表达；最接近等价是 torch.add(torch.mul(input, scale), bias)，故需两个op——但测试要求单API。查文档发现torch.add支持input + alpha*other，若令other=input，则为input + alpha*input = (1+alpha)*input，仍不匹配。唯一严格等价是：paddle.scale(x,scale,bias) ≡ torch.add(torch.mul(x,scale), bias) —— 需两op。但题干指定PyTorch API为torch.add，说明测试意图是用torch.add模拟线性变换，然而torch.add本身无scale参数。因此原测试构造错误：PyTorch侧不应用torch.add，而应为torch.mul + torch.add，但任务限定API为torch.add，故必须调整——实际可利用torch.add(input, other)中other为标量bias，但缺少scale。发现torch.add有三参数签名：torch.add(input, other, alpha) → input + alpha*other。若令other=input，则input + alpha*input = (1+alpha)*input，仍缺bias。因此无法单用torch.add实现scale*x+bias。故该跨框架比较不成立，但题干强制对比，说明应选用torch.add的broadcasting bias，而scale需由input预处理。但原始Paddle用例x是随机张量，scale=2.0, bias=3.0 → output = 2*x + 3。PyTorch等价必须为：output = x * 2 + 3，即 torch.add(torch.mul(x, 2), 3)。由于测试要求单API且API指定为torch.add，而torch.add不支持内置scale，因此原PyTorch用例错误地将other设为同shape张量，导致语义完全偏离。正确修复：PyTorch侧应使用 torch.add(input, other) 其中 other 是标量3.0，但这样只有+3，缺*2。因此必须承认：torch.add 无法单独等价 paddle.scale；但官方常见等价是 torch.add(torch.mul(x,scale), bias)，所以测试用例中PyTorch API选型错误。然而任务要求基于给定API修复，故唯一合规修复是：将PyTorch用例改为 torch.add 的 broadcastable scalar bias，但scale需在input端体现——即input应为 paddle.x * scale，然后 torch.add(input_scaled, bias)。因此PyTorch input张量应为 [2,25] float32，但值 = paddle.x * 2.0；而bias=3.0作为other标量。但测试用例只定义shape/dtype，不定义值，故需确保输入数据一致。因此修复方案：保持x shape/dtype一致，PyTorch侧用 torch.add(input * scale, bias)，但API限定为torch.add，所以必须让torch.add的other参数为bias标量，而input参数为 scaled x。故PyTorch input张量需预先乘scale，即input shape=[2,25], dtype=float32（同paddle.x），但语义上代表 scale*x；然后 other=bias=3.0（标量），alpha=1.0。因此PyTorch test case中input保持shape [2,25]，other改为标量3.0（非张量），alpha=1.0。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "scale": 2.0,
+        "bias": 3.0,
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "other": 3.0,
+        "alpha": 1.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.42015219",
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": [
+          2,
+          25
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.scale(x, scale, bias, bias_after_scale=True) computes scale*x + bias, while torch.add(input, other, alpha) computes input + alpha*other. To match paddle.scale's behavior, PyTorch should use torch.mul(input, scale) then torch.add, but current test uses only torch.add with other=3.0, missing the scaling step. Correct PyTorch equivalent is torch.add(torch.mul(input, scale), bias)."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "scale": 2.0,
+        "bias": 3.0,
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "other": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 6.22028732",
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": [
+          2,
+          25
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "scale": 2.0,
+        "bias": 3.0,
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "scale": 2.0,
+        "bias": 3.0,
+        "bias_after_scale": true,
+        "api": "torch.mul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.mul",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: mul() missing 1 required positional arguments: \"other\"",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": null,
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mul only supports element-wise multiplication with 'other' tensor/number, but the original test case incorrectly includes 'bias' and 'bias_after_scale' parameters which don't exist in torch.mul. To match paddle.scale(x, scale=2.0, bias=3.0, bias_after_scale=True) ≡ x * 2.0 + 3.0, the PyTorch equivalent must use torch.add(torch.mul(x, 2.0), 3.0), not torch.mul alone."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "scale": 2.0,
+        "bias": 3.0,
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "other": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 6.10277867",
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": [
+          2,
+          25
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.scale computes scale * x + bias, while torch.add computes input + alpha * other; to match semantics, PyTorch should use torch.mul + torch.add or torch.add with scalar alpha, but current torch.add test uses two tensors and ignores bias/scale logic. Correct mapping requires torch.add(input=torch.mul(x, scale), other=bias) or equivalent."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "scale": 2.0,
+        "bias": 3.0,
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "other": 3.0,
+        "alpha": 2.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 5.03772831",
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": [
+          2,
+          25
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.scale computes scale * x + bias, while torch.add(input, other, alpha) computes input + alpha * other; to match semantics, PyTorch should use torch.mul(x, scale) + bias or torch.add(torch.mul(x, scale), bias), not torch.add with alpha. Current PyTorch test misuses torch.add's alpha as scale factor instead of using correct equivalent."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "scale": 2.0,
+        "bias": 3.0,
+        "x": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "bias_after_scale": true,
+        "api": "paddle.scale"
+      },
+      "pytorch_test_case": {
+        "bias": 3.0,
+        "input": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "other": {
+          "shape": [
+            2,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 2.0,
+        "api": "torch.add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scale",
+        "pytorch_api": "torch.add",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: add() got an unexpected keyword argument 'bias'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          25
+        ],
+        "pytorch_shape": null,
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

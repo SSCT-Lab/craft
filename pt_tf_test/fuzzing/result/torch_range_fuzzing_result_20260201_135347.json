@@ -1,0 +1,130 @@
+{
+  "operator": "torch_range",
+  "torch_api": "torch.range",
+  "tensorflow_api": "tf.range",
+  "total_cases": 1,
+  "total_fuzzing_rounds": 3,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T13:53:47.798610",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_range_20260123_211404.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.range",
+        "start": 1,
+        "end": 20
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.range",
+        "start": 1,
+        "limit": 21
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "浮点边界和特殊值易触发框架底层数值处理差异，如floor/ceil实现、NaN传播规则、无穷大截断逻辑不一致，可能暴露torch.range与tf.range在数学等价性上的隐含bug。",
+          "torch_test_case": {
+            "api": "torch.range",
+            "start": 0.0,
+            "end": "inf",
+            "step": 1.0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.range",
+            "start": 0.0,
+            "limit": "inf",
+            "delta": 1.0
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: range(): argument 'end' must be Number, not str",
+            "tensorflow_error": "AssertionError: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量输入（shape=[]）及极端浮点值",
+          "mutation_reason": "标量输入触发框架对零维range的实现路径差异；inf/nan/-0.0等特殊值易暴露边界处理bug，且数学上torch.range(start, end)与tf.range(start, limit=end)仍等价。",
+          "torch_test_case": {
+            "api": "torch.range",
+            "start": 0.0,
+            "end": 1.0,
+            "step": 1.0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.range",
+            "start": 0.0,
+            "limit": 1.0,
+            "delta": 1.0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "形状不一致: torch=(2,), tf=(1,)",
+            "torch_shape": [
+              2
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16/float32/float64/int32/int64在边界值（inf/nan/-0.0）下的等价性",
+          "mutation_reason": "不同框架对特殊浮点值和低精度类型的截断、舍入、NaN传播规则可能不一致，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.range",
+            "start": 1.0,
+            "end": 20.0,
+            "step": 1.0,
+            "dtype": "torch.float16"
+          },
+          "tensorflow_test_case": {
+            "api": "tf.range",
+            "start": 1.0,
+            "limit": 21.0,
+            "delta": 1.0,
+            "dtype": "tf.float16"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "TypeError: range(): argument 'dtype' must be torch.dtype, not str",
+            "tensorflow_error": "TypeError: Cannot convert the argument `type_value`: 'tf.float16' to a TensorFlow DType.",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

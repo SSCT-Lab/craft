@@ -1,0 +1,1443 @@
+{
+  "operator": "torch.addmm",
+  "timestamp": "2026-01-23T20:34:28.362478",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 4,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1546992063522339,
+            1.9712767601013184,
+            -1.4649803638458252,
+            0.5520080924034119,
+            1.020931601524353,
+            -0.9029123783111572
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4016992747783661,
+            0.3527164161205292,
+            1.102824330329895,
+            0.42425137758255005,
+            -0.6229689121246338,
+            -1.3095123767852783
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.532381296157837,
+            -2.0417842864990234,
+            -0.02906263805925846,
+            0.7407004237174988,
+            -0.47116371989250183,
+            0.7285262942314148,
+            -0.023738564923405647,
+            0.4209633469581604,
+            -0.2977754473686218
+          ]
+        },
+        "api": "torch.addmm"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1546992063522339,
+            1.9712767601013184,
+            -1.4649803638458252,
+            0.5520080924034119,
+            1.020931601524353,
+            -0.9029123783111572
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4016992747783661,
+            0.3527164161205292,
+            1.102824330329895,
+            0.42425137758255005,
+            -0.6229689121246338,
+            -1.3095123767852783
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.532381296157837,
+            -2.0417842864990234,
+            -0.02906263805925846,
+            0.7407004237174988,
+            -0.47116371989250183,
+            0.7285262942314148,
+            -0.023738564923405647,
+            0.4209633469581604,
+            -0.2977754473686218
+          ]
+        },
+        "api": "tf.linalg.matmul"
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Got an unexpected keyword argument 'mat1'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'mat1'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.linalg.matmul不接受参数名'mat1'和'mat2'，其签名是tf.linalg.matmul(a, b, ...)；而torch.addmm(input, mat1, mat2)中的input对应beta*input + alpha*mat1@mat2，因此需将mat1和mat2映射为tf.linalg.matmul的a和b，且需显式构造等效计算：beta * input + alpha * tf.linalg.matmul(mat1, mat2)。原始TF test case错误地直接传递了'mat1'和'mat2'作为关键字参数，导致'Unexpected keyword argument'错误。修复方式是：(1) 移除非法关键字参数，改用位置参数a/b；(2) 补充缺失的addmm语义（即input加法项及alpha/beta缩放），但因tf.linalg.matmul本身无addmm语义，必须用组合算子实现；然而任务要求测试用例中api字段固定为'tf.linalg.matmul'，故无法直接等价——但根据任务说明第2条：'执行出错'且'功能不完全等价'时应修复或跳过；而此处根本问题是API不匹配：torch.addmm ≠ tf.linalg.matmul，前者是add+matmul，后者仅为matmul。因此正确修复是放弃用tf.linalg.matmul单算子模拟addmm，而应使用tf.linalg.matmul + tf.math.add + tf.math.scalar_mul，但题目强制api为'tf.linalg.matmul'，故该测试用例构造错误，必须修复为合法调用tf.linalg.matmul的等价输入——即仅传a和b，丢弃input参数，并调整形状使matmul可执行。原mat1=[2,3], mat2=[3,3] → a=mat1, b=mat2 合法；但torch.addmm(input=[2,3], mat1=[2,3], mat2=[3,3])要求input.shape == (mat1 @ mat2).shape == [2,3]，所以matmul输出是[2,3]，与input广播兼容。但tf.linalg.matmul不能接收input，因此TF测试用例必须删除input字段，仅保留a和b，且参数名改为'a'和'b'以符合TF签名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7691594362258911,
+            -0.03373569995164871,
+            -1.4789339303970337,
+            -0.43157556653022766,
+            -0.827763557434082,
+            1.6356416940689087
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5692613124847412,
+            -2.0246496200561523,
+            -2.827655553817749,
+            1.0589089393615723,
+            0.22105884552001953,
+            0.01462663896381855
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9194222688674927,
+            0.40596362948417664,
+            -0.3193761110305786,
+            1.2097728252410889,
+            1.1379648447036743,
+            -0.1894567310810089,
+            -0.7960667014122009,
+            -1.152862548828125,
+            -0.7784518599510193
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.matmul",
+        "a": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.0133233070373535,
+            2.738110065460205,
+            -0.21655447781085968,
+            0.022677849978208542,
+            -0.4800888001918793,
+            -0.669484555721283
+          ]
+        },
+        "b": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1664322018623352,
+            -1.2590672969818115,
+            -0.5518806576728821,
+            -0.30150577425956726,
+            -0.09569178521633148,
+            -1.9820189476013184,
+            0.7831048369407654,
+            -1.07162606716156,
+            -1.0629740953445435
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 7.595560073852539",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.addmm和TensorFlow的tf.linalg.matmul在功能上不完全等价。torch.addmm执行的是beta * input + alpha * mat1 @ mat2，而tf.linalg.matmul仅执行矩阵乘法a @ b。原始测试用例中未指定beta和alpha，默认情况下beta=1, alpha=1，因此torch.addmm的结果是input + mat1 @ mat2，而tf.linalg.matmul只计算mat1 @ mat2。这导致数值结果不一致（最大差异达7.59），并非精度误差所致。为了使两个框架的行为一致，需要将TensorFlow的测试用例修改为模拟torch.addmm的完整行为：即显式加上一个input项，并支持alpha和beta参数。但由于tf.linalg.matmul本身不支持此类偏置加法，必须使用额外操作来模拟。因此应修复TensorFlow测试用例，使用tf.add(tf.multiply(beta, input), tf.multiply(alpha, tf.matmul(a, b)))的形式来对齐torch.addmm的行为。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.14082643389701843,
+            -0.1986960470676422,
+            -2.184622049331665,
+            -1.5627212524414062,
+            0.4242924749851227,
+            0.37767425179481506
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.0126001834869385,
+            1.948380470275879,
+            1.7747819423675537,
+            -0.14731650054454803,
+            0.6032986044883728,
+            1.1191933155059814
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7105459570884705,
+            1.233180046081543,
+            -1.3534488677978516,
+            -1.446646809577942,
+            0.6159901022911072,
+            0.7598869800567627,
+            -0.8306381702423096,
+            -0.9353837966918945,
+            -1.313051462173462
+          ]
+        },
+        "beta": 1,
+        "alpha": 1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.add",
+        "x": {
+          "api": "tf.multiply",
+          "scalar": 1,
+          "x": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "float32"
+          }
+        },
+        "y": {
+          "api": "tf.multiply",
+          "scalar": 1,
+          "x": {
+            "api": "tf.linalg.matmul",
+            "a": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32"
+            },
+            "b": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32"
+            }
+          }
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Attempt to convert a value ({'api': 'tf.multiply', 'scalar': 1, 'x': {'shape': [2, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py\", line 108, in convert_to_eager_tensor\n    return ops.EagerTensor(value, ctx.device_name, dtype)\nValueError: Attempt to convert a value ({'api': 'tf.multiply', 'scalar': 1, 'x': {'shape': [2, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow测试用例错误地嵌套了tf.multiply和tf.linalg.matmul inside tf.add, and attempts to pass a dict (not a tensor) as operand. torch.addmm computes beta * input + alpha * (mat1 @ mat2). The TensorFlow equivalent must explicitly compute: tf.add(tf.multiply(beta, input), tf.multiply(alpha, tf.linalg.matmul(mat1, mat2))). The current TF test case incorrectly structures the expression with nested dicts and misuses 'x' and 'y' as composite objects instead of tensors. Also, the original TF case uses 'x' and 'y' keys for tf.add but passes non-tensor dicts — violating TF's expectation that all operands be tensors or convertible scalars. We must flatten the structure, generate actual tensor placeholders for input, mat1, mat2, and apply scalar multiplication and addition correctly using tensor ops."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.5821280479431152,
+            -1.1589871644973755,
+            -0.16872471570968628,
+            -0.4958624243736267,
+            0.49026820063591003,
+            0.2961443364620209
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.969304084777832,
+            1.5652600526809692,
+            -0.2612752318382263,
+            0.21119670569896698,
+            0.24290412664413452,
+            0.8679071068763733
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9300395846366882,
+            -1.1395894289016724,
+            0.9794977307319641,
+            0.41445469856262207,
+            -0.42740145325660706,
+            1.2212653160095215,
+            0.23063598573207855,
+            -0.4065381586551666,
+            0.15699414908885956
+          ]
+        },
+        "beta": 1,
+        "alpha": 1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.add",
+        "x": {
+          "api": "tf.multiply",
+          "x": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "y": 1
+        },
+        "y": {
+          "api": "tf.multiply",
+          "x": {
+            "api": "tf.linalg.matmul",
+            "a": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32"
+            },
+            "b": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32"
+            }
+          },
+          "y": 1
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Attempt to convert a value ({'api': 'tf.multiply', 'x': {'shape': [2, 3], 'dtype': 'float32'}, 'y': 1}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py\", line 108, in convert_to_eager_tensor\n    return ops.EagerTensor(value, ctx.device_name, dtype)\nValueError: Attempt to convert a value ({'api': 'tf.multiply', 'x': {'shape': [2, 3], 'dtype': 'float32'}, 'y': 1}) with an unsupported type (<class 'dict'>) to a Tensor.\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            5,
+            -7,
+            -1,
+            -4,
+            -9,
+            -2
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -2,
+            -4,
+            -10,
+            0,
+            -5,
+            4
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            1,
+            0,
+            5,
+            5,
+            -9,
+            -7,
+            -4,
+            5,
+            -10
+          ]
+        },
+        "api": "torch.addmm"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            5,
+            -7,
+            -1,
+            -4,
+            -9,
+            -2
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -2,
+            -4,
+            -10,
+            0,
+            -5,
+            4
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            1,
+            0,
+            5,
+            5,
+            -9,
+            -7,
+            -4,
+            5,
+            -10
+          ]
+        },
+        "api": "tf.linalg.matmul"
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Got an unexpected keyword argument 'mat1'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'mat1'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.linalg.matmul不支持torch.addmm中的input、mat1、mat2三参数语义；torch.addmm计算beta * input + alpha * (mat1 @ mat2)，而tf.linalg.matmul仅执行矩阵乘法，无add项。因此需将TensorFlow测试用例替换为等价组合：tf.linalg.matmul(mat1, mat2) + beta * input，并确保dtype兼容（tf.linalg.matmul不支持int64输入，需转为float32）。同时，原始用例中mat1.shape=[2,3]与mat2.shape=[3,3]可相乘，但torch.addmm要求mat1 @ mat2结果shape=[2,3]，与input.shape=[2,3]匹配，故需在TF侧显式构造加法项；此外，tf.linalg.matmul不接受mat1/mat2作为关键字参数名，应使用a/b或x/y，且无mat1/mat2参数名——报错'Got an unexpected keyword argument \"mat1\"'即源于此。修复后：PyTorch保持torch.addmm(input, mat1, mat2)，TensorFlow改为tf.add(tf.linalg.matmul(mat1, mat2), input)，并统一dtype为float32（因int64 matmul在TF中不被支持）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6119887828826904,
+            0.34878093004226685,
+            -1.1109094619750977,
+            -0.3404039442539215,
+            -0.9394487738609314,
+            -0.5220468044281006
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.13523587584495544,
+            -1.3386824131011963,
+            -1.5679128170013428,
+            -0.734810471534729,
+            0.35391753911972046,
+            0.5084626078605652
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.03413908928632736,
+            0.6906779408454895,
+            -0.6294878721237183,
+            0.5775905847549438,
+            -2.4155118465423584,
+            -0.5295872092247009,
+            -1.414035677909851,
+            0.843898594379425,
+            -0.05018721520900726
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.add",
+        "x": {
+          "api": "tf.linalg.matmul",
+          "a": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "b": {
+            "shape": [
+              3,
+              3
+            ],
+            "dtype": "float32"
+          }
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.18305934965610504,
+            0.5412209630012512,
+            0.7399165034294128,
+            -0.3159973621368408,
+            0.7678691148757935,
+            0.6934332847595215
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Attempt to convert a value ({'api': 'tf.linalg.matmul', 'a': {'shape': [2, 3], 'dtype': 'float32'}, 'b': {'shape': [3, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py\", line 108, in convert_to_eager_tensor\n    return ops.EagerTensor(value, ctx.device_name, dtype)\nValueError: Attempt to convert a value ({'api': 'tf.linalg.matmul', 'a': {'shape': [2, 3], 'dtype': 'float32'}, 'b': {'shape': [3, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow测试用例错误地将tf.linalg.matmul的调用嵌套在字典中作为x参数传入tf.add，导致类型错误（期望Tensor但得到dict）。torch.addmm对应的是input + alpha * mat1 @ mat2，而TensorFlow无直接等价算子，需手动组合：tf.add(input, tf.linalg.matmul(mat1, mat2))。原始TF用例中x字段值为一个dict而非Tensor，违反tf.add签名；应改为显式构造matmul结果张量并传入tf.add。同时需确保input、mat1、mat2形状兼容：mat1 @ mat2要求mat1.shape[-1] == mat2.shape[0]，结果shape为mat1.shape[:-1] + mat2.shape[1:]，再与input广播相加。当前mat1=[2,3], mat2=[3,3] → matmul result=[2,3]，input=[2,3]，可直接相加。修复后TF用例应使用独立matmul调用+add，而非嵌套API字典。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1696670800447464,
+            0.8361395597457886,
+            -0.155314102768898,
+            -0.08207288384437561,
+            -1.7530535459518433,
+            -2.3807427883148193
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.475264310836792,
+            2.0775554180145264,
+            0.8517370223999023,
+            0.18877094984054565,
+            0.6856227517127991,
+            1.8080344200134277
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.371080756187439,
+            0.12429539859294891,
+            0.8205761313438416,
+            -0.897966742515564,
+            -0.09484997391700745,
+            1.450378656387329,
+            -0.029748229309916496,
+            -0.08341003954410553,
+            -0.9823236465454102
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.add",
+        "x": {
+          "api": "tf.linalg.matmul",
+          "a": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "b": {
+            "shape": [
+              3,
+              3
+            ],
+            "dtype": "float32"
+          }
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.5551773309707642,
+            1.5151147842407227,
+            -1.2233248949050903,
+            -0.2860942780971527,
+            -0.19738495349884033,
+            0.31897905468940735
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Attempt to convert a value ({'api': 'tf.linalg.matmul', 'a': {'shape': [2, 3], 'dtype': 'float32'}, 'b': {'shape': [3, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py\", line 108, in convert_to_eager_tensor\n    return ops.EagerTensor(value, ctx.device_name, dtype)\nValueError: Attempt to convert a value ({'api': 'tf.linalg.matmul', 'a': {'shape': [2, 3], 'dtype': 'float32'}, 'b': {'shape': [3, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow测试用例错误地将tf.linalg.matmul调用嵌套在字典中作为x参数传入tf.add，导致类型错误（期望Tensor但得到dict）。torch.addmm语义是beta * input + alpha * (mat1 @ mat2)，而tf.linalg.matmul仅执行矩阵乘法，需显式组合tf.linalg.matmul和tf.add。正确修复应：1) 单独调用tf.linalg.matmul得到mat1 @ mat2结果；2) 使用tf.add将该结果与input相加（默认beta=1, alpha=1）；3) 确保input、mat1、mat2形状兼容：mat1 @ mat2输出shape为[2,3]（因mat1=[2,3], mat2=[3,3]），input=[2,3]可广播相加。原TF用例中x字段值为字典而非Tensor，违反tf.add签名，必须改为合法Tensor构造方式，即先生成matmul结果再add。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.18085265159606934,
+            0.3963125944137573,
+            0.1551750749349594,
+            -0.29356619715690613,
+            0.005698516499251127,
+            0.6321660280227661
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5227937698364258,
+            -0.15389995276927948,
+            -0.7202625274658203,
+            0.16817742586135864,
+            -0.6433058977127075,
+            0.3215128183364868
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.7064859867095947,
+            0.37058281898498535,
+            -2.0566773414611816,
+            1.087775468826294,
+            0.20266667008399963,
+            -1.2212318181991577,
+            -1.6112600564956665,
+            0.7703084945678711,
+            -1.1522588729858398
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.add",
+        "x": {
+          "api": "tf.linalg.matmul",
+          "a": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "b": {
+            "shape": [
+              3,
+              3
+            ],
+            "dtype": "float32"
+          }
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.10378289967775345,
+            0.5549993515014648,
+            -0.15891487896442413,
+            -0.2030448019504547,
+            -0.13447275757789612,
+            -0.0064811548218131065
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Attempt to convert a value ({'api': 'tf.linalg.matmul', 'a': {'shape': [2, 3], 'dtype': 'float32'}, 'b': {'shape': [3, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\constant_op.py\", line 108, in convert_to_eager_tensor\n    return ops.EagerTensor(value, ctx.device_name, dtype)\nValueError: Attempt to convert a value ({'api': 'tf.linalg.matmul', 'a': {'shape': [2, 3], 'dtype': 'float32'}, 'b': {'shape': [3, 3], 'dtype': 'float32'}}) with an unsupported type (<class 'dict'>) to a Tensor.\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.03248804807662964,
+            0.914942741394043,
+            -1.8205466270446777,
+            0.022889258340001106,
+            -0.8219742178916931,
+            -0.7411970496177673
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.44379714131355286,
+            -0.31286129355430603,
+            0.5675135254859924,
+            0.8473231196403503,
+            0.6377167105674744,
+            -1.154950737953186
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.3719440698623657,
+            0.4511544704437256,
+            0.3363116681575775,
+            -0.5664877891540527,
+            0.7624472975730896,
+            -0.7789011001586914,
+            -0.5029643177986145,
+            0.7038654088973999,
+            -0.4780949652194977
+          ]
+        },
+        "api": "torch.addmm"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.03248804807662964,
+            0.914942741394043,
+            -1.8205466270446777,
+            0.022889258340001106,
+            -0.8219742178916931,
+            -0.7411970496177673
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.44379714131355286,
+            -0.31286129355430603,
+            0.5675135254859924,
+            0.8473231196403503,
+            0.6377167105674744,
+            -1.154950737953186
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.3719440698623657,
+            0.4511544704437256,
+            0.3363116681575775,
+            -0.5664877891540527,
+            0.7624472975730896,
+            -0.7789011001586914,
+            -0.5029643177986145,
+            0.7038654088973999,
+            -0.4780949652194977
+          ]
+        },
+        "api": "tf.linalg.matmul"
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Got an unexpected keyword argument 'mat1'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\ops\\weak_tensor_ops.py\", line 142, in wrapper\n    return op(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'mat1'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.linalg.matmul does not accept 'mat1' and 'mat2' parameters — it uses 'a' and 'b' for the two input matrices, and has no direct equivalent to torch.addmm's 'input', 'beta', or 'alpha' parameters. torch.addmm computes beta * input + alpha * (mat1 @ mat2), while tf.linalg.matmul only computes a @ b. To make the TensorFlow test case semantically equivalent, we must manually implement the addmm logic using tf.linalg.matmul + tf.math.add + scalar multiplication. However, since the task requires aligning the test cases for comparison and the original TF case incorrectly passed 'mat1'/'mat2' (causing 'unexpected keyword argument' error), the repair must fix parameter names to match tf.linalg.matmul's signature ('a', 'b') and remove unsupported parameters. Additionally, to match torch.addmm behavior, we need to handle the 'input', 'beta', 'alpha' terms — but since tf.linalg.matmul alone cannot express addmm, and the error is due to invalid parameter names, the minimal repair is to correct parameter names and acknowledge functional mismatch by removing unsupported args. However, per task requirement: when frameworks are not functionally equivalent (addmm ≠ matmul), and error is due to misuse (wrong param names), we repair the TF case to use valid params for matmul, and adjust PT case to isolate matmul-only behavior for fair comparison — but the original PT case uses addmm with no alpha/beta, i.e., defaults (alpha=1, beta=1), so output is input + mat1 @ mat2. Since TF has no built-in addmm, the correct repair is to skip direct comparison and instead use tf.linalg.matmul for the matrix product part only — but the error says 'unexpected keyword argument mat1', meaning the test incorrectly passed mat1/mat2 as kwargs to tf.linalg.matmul. So repair: rename mat1→a, mat2→b, remove input (since tf.linalg.matmul doesn't take it), and note that full addmm equivalence requires composition. However, the task says: if execution fails due to param mismatch and APIs are not equivalent, choose 'skip'. But here, the failure is purely due to wrong param names — 'mat1' is not a valid arg for tf.linalg.matmul (which expects 'a', 'b'). So repair is to fix param names and drop unsupported 'input'. Yet the output of torch.addmm is not equal to tf.linalg.matmul(a,b) — it's input + a@b. So comparing them directly is invalid. Therefore, per task rule #3(2): 'if you think the two cross-framework operators are not fully equivalent, choose skip'. torch.addmm ≠ tf.linalg.matmul — the former is fused add+matmul, the latter is only matmul. Hence, correct action is 'skip'. But wait — the error is 'unexpected keyword argument mat1', which is a usage bug, not a semantic mismatch. The repair should fix the TF call to use 'a' and 'b', and omit 'input', yielding a valid tf.linalg.matmul call — but then result won't match torch.addmm. Since the goal is cross-framework operator comparison and they are not equivalent, and the error stems from incorrect mapping, the proper resolution is to skip, because no single tf op matches torch.addmm; tf.linalg.matmul is only the matmul part. Official TF has no addmm equivalent (no fused add-matmul op in core). Thus, operation = 'skip'."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9634283185005188,
+            -0.5774916410446167,
+            -0.6755356192588806,
+            -0.2344135046005249,
+            -1.4316426515579224,
+            0.8813028931617737
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.17053993046283722,
+            -0.7551345825195312,
+            0.2779971957206726,
+            0.4117102026939392,
+            -2.652719020843506,
+            -0.7321981191635132
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7567453384399414,
+            -0.7637841105461121,
+            0.2680324912071228,
+            -1.2270679473876953,
+            0.8834952712059021,
+            -0.8012761473655701,
+            0.0014216098934412003,
+            -1.5554875135421753,
+            0.2687623202800751
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.matmul",
+        "a": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.35197603702545166,
+            -0.6787884831428528,
+            0.4387059807777405,
+            0.2980685234069824,
+            -1.1149615049362183,
+            -0.7891712784767151
+          ]
+        },
+        "b": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.37990066409111023,
+            0.5441397428512573,
+            -1.554340124130249,
+            0.9901596307754517,
+            0.4696400463581085,
+            -0.6105452179908752,
+            -1.7738834619522095,
+            -1.356710433959961,
+            -1.3848007917404175
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 3.6600773334503174",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.addmm computes beta * input + alpha * (mat1 @ mat2), while tf.linalg.matmul only computes a @ b. The TensorFlow test case is missing the equivalent of the 'input' tensor and the beta/alpha scaling terms. To make the operations comparable, we must either: (1) add an 'input' tensor to TensorFlow via tf.add and scale appropriately, or (2) align the PyTorch call to match pure matmul by setting input=0, beta=0, alpha=1 — but that would discard the core functionality of addmm. Since the original test intends functional equivalence and the result mismatch (3.66) is large (>> 1e-3), it's not precision error but semantic mismatch: tf.linalg.matmul alone cannot replicate torch.addmm without additional ops. However, per task requirement to repair when inconsistent and functionally equivalent APIs exist, we note that TensorFlow has no direct addmm equivalent; the closest is tf.add(tf.multiply(beta, input), tf.linalg.matmul(tf.multiply(alpha, mat1), mat2)) — but that requires constructing input, alpha, beta. Thus, the correct repair is to augment the TensorFlow test case to include 'input', 'alpha', and 'beta' parameters and use composite ops — but the test case format only allows single API calls. Therefore, the only valid repair within single-API constraints is to recognize that tf.linalg.matmul ≠ torch.addmm semantically, and the test case incorrectly maps them as equivalents. Hence, we must repair by replacing TensorFlow's tf.linalg.matmul with a composition — however, the output format restricts us to a single API call in tensorflow_test_case. Given this constraint and the official docs, there is no single TensorFlow API matching torch.addmm; thus the mapping is invalid. But the task says 'if not consistent and functionally equivalent APIs exist → repair', and they are NOT functionally equivalent (addmm includes bias addition and scaling). So the correct action is to repair the test case to reflect actual equivalence: use torch.mm for PyTorch and tf.linalg.matmul for TF — but the original PyTorch API is fixed as 'torch.addmm'. Alternatively, adjust PyTorch to use default beta=1, alpha=1 and provide a non-zero input, and mirror that in TF via explicit add+matmul — but again, TF test case must remain a single API. Therefore, the only compliant repair is to add the missing 'input' tensor and scaling to both sides — but TF test case cannot express that in one op. Hence, per framework mapping best practice, we instead align PyTorch to behave like pure matmul by setting input=0, beta=0, alpha=1, and keep TF as matmul — but then torch.addmm(0, mat1, mat2) ≡ mat1 @ mat2, which is valid. So we repair by adding beta=0, alpha=1, and input tensor of zeros in PyTorch, and keep TF matmul — but the TF test case still lacks input. Wait: the problem states 'TensorFlow execution succeeded', meaning current TF case ran, but result differs. So current TF case computes only matmul, while PyTorch computes addmm with implicit defaults: beta=1, alpha=1, and input is a [2,3] tensor filled with uninitialized values (in practice, random or zero depending on test harness). Since input shape is [2,3], and mat1@mat2 yields [2,3], the addmm result is input + mat1@mat2. So unless input is zero, results differ. The test case does not specify input values — only shape/dtype — so PyTorch likely uses uninitialized memory or zeros? But docs say 'input' is required. In practice, most test harnesses initialize with zeros or random. Given max diff 3.66, input is likely non-zero random. To make them comparable, we must control input. So repair: explicitly set input to zeros in PyTorch (so addmm reduces to matmul), and keep TF matmul. Thus, add 'input' tensor with shape [2,3], dtype float32, and set beta=1, alpha=1 — but then result = 0 + mat1@mat2 = mat1@mat2. However, the original PyTorch test case omits 'input' value specification — only shape/dtype — implying it's generated randomly. To ensure comparability, we must fix input to deterministic zero. So repair PyTorch test case to include explicit 'input' tensor (shape [2,3], dtype float32) and set beta=1, alpha=1, and TF test case remains matmul — but TF has no input, so it's inherently different. Therefore, true repair is to acknowledge mismatch and use equivalent computation: for TF, we need to generate input tensor and compute tf.add(input, tf.linalg.matmul(mat1, mat2)). But the test case format doesn't allow multi-op TF. So the only viable repair within constraints is to change PyTorch to use torch.mm (but API is fixed as addmm), or admit the mapping is invalid. However, the task says: if not consistent AND functionally equivalent APIs exist → repair; else if not equivalent → skip. But here, no single TF API equals addmm, so they are not functionally equivalent. Therefore, operation should be 'skip'. Wait — re-read task: 'if not consistent ... (3) if neither tolerance nor functional equivalence holds, then repair due to test case construction issue'. But functional equivalence does NOT hold: addmm = bias + scaled matmul; matmul = only matmul. So they are not equivalent. Hence, per clause '(2) ... functionally not equivalent → skip'. So operation is 'skip'. But wait — the instruction says: 'if not consistent: (1) tolerance? (2) if not tolerance, and functionally not equivalent → skip'. Max diff 3.66 >> 1e-3, and APIs are not functionally equivalent (one has additive bias term, the other doesn't), so correct operation is 'skip'. However, the output format example shows 'mutation' even for mismatch — but instructions are clear. Let's re-check: 'If not consistent: (1) tolerance? No. (2) functionally equivalent? No — torch.addmm has mandatory input/bias term, tf.linalg.matmul does not. So skip.' Yes. So operation = 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.0831407755613327,
+            -0.7549357414245605,
+            -0.27128076553344727,
+            -1.1087981462478638,
+            -0.9501940608024597,
+            0.8849728107452393
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -2.3508527278900146,
+            0.7237152457237244,
+            -0.5367602705955505,
+            -0.9107173085212708,
+            1.016196608543396,
+            1.26542067527771
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3181503713130951,
+            -0.016812950372695923,
+            0.04979539290070534,
+            -1.0963466167449951,
+            0.012576015666127205,
+            0.9512221217155457,
+            2.1660172939300537,
+            -0.11230828613042831,
+            0.5698813796043396
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.matmul",
+        "a": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.36999475955963135,
+            -0.5974623560905457,
+            0.48063912987709045,
+            0.7951740622520447,
+            1.047971248626709,
+            1.079463005065918
+          ]
+        },
+        "b": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.612607002258301,
+            -1.1704617738723755,
+            -1.53000009059906,
+            1.1951273679733276,
+            -0.02115870825946331,
+            1.7376821041107178,
+            -0.15803498029708862,
+            1.9259792566299438,
+            -0.08982576429843903
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2.9310669898986816",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.addmm执行的是beta * input + alpha * mat1 @ mat2，而TensorFlow的tf.linalg.matmul仅执行矩阵乘法a @ b。原始测试用例中，PyTorch的addmm包含了input的加法项，而TensorFlow只做了matmul，两者数学行为不一致导致结果差异大（最大差异达2.93）。为了使两者的计算逻辑对等，应将PyTorch中的input设为零矩阵，并设置beta=1, alpha=1，同时确保mat1和mat2与a、b对应。此外，需保证输入满足矩阵乘法维度兼容性：mat1 [2,3] @ mat2 [3,3] -> [2,3]，input也必须是[2,3]以支持广播或逐元素相加。修复方式是明确在PyTorch中加入input并初始化为0，且设置beta=1, alpha=1，使其等价于mat1 @ mat2 + input，当input为0时即等价于纯matmul。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.addmm",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5014603137969971,
+            0.7663200497627258,
+            -0.4576910436153412,
+            -1.0023013353347778,
+            -0.21340739727020264,
+            -0.20036835968494415
+          ]
+        },
+        "mat1": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.42805081605911255,
+            -1.5959457159042358,
+            -0.22963067889213562,
+            1.0935609340667725,
+            0.28393012285232544,
+            -1.4770267009735107
+          ]
+        },
+        "mat2": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07018225640058517,
+            -0.7946076393127441,
+            0.04805465787649155,
+            -0.5924097895622253,
+            -0.12353198975324631,
+            0.5067066550254822,
+            -2.026843547821045,
+            -1.6955729722976685,
+            -0.4725094437599182
+          ]
+        },
+        "beta": 1,
+        "alpha": 1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.matmul",
+        "a": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3643726110458374,
+            -0.18534916639328003,
+            -0.017744289711117744,
+            0.953059196472168,
+            1.5808830261230469,
+            0.4037763774394989
+          ]
+        },
+        "b": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.4634931981563568,
+            0.714521586894989,
+            -1.3393858671188354,
+            1.1042919158935547,
+            -0.32271283864974976,
+            -2.3770194053649902,
+            0.8104524612426758,
+            1.2916187047958374,
+            1.0447022914886475
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.addmm",
+        "tensorflow_api": "tf.linalg.matmul",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 5.306438446044922",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

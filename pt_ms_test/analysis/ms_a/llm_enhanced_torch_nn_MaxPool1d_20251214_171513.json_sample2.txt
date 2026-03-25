@@ -1,0 +1,54 @@
+来源文件: llm_enhanced_torch_nn_MaxPool1d_20251214_171513.json
+样例编号: 2
+mindspore_error 错误信息: for MaxPool3DWithArgmax, shape of out is [1, 1, 1, 1, 0]. It should be not less than zero.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer//max_pool3d_with_argmax.cc:267 mindspore::ops::MaxPool3DWithArgmaxInferShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.MaxPool1d",
+  "input": {
+    "shape": [
+      1,
+      1,
+      0
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "kernel_size": 3,
+  "stride": 3,
+  "return_indices": true
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.MaxPool1d",
+  "input": {
+    "shape": [
+      1,
+      1,
+      0
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "kernel_size": 3,
+  "stride": 3,
+  "return_indices": true,
+  "pad_mode": "pad"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 输入张量的第三个维度为 0（shape=[1, 1, 0]），在 MindSpore 的 `MaxPool1d` 实现中，当输入长度为 0 时，经过 `pad_mode="pad"` 且 `padding=0` 的处理后，输出长度计算公式为：  
+     $ L_{out} = \left\lfloor \frac{0 + 2 \times 0 - 1 \times (3 - 1) - 1}{3} + 1 \right\rfloor = \left\lfloor \frac{-3}{3} + 1 \right\rfloor = \left\lfloor -1 + 1 \right\rfloor = 0 $，  
+     导致输出 shape 为 `[1, 1, 0]`，而 MindSpore 在 `MaxPool3DWithArgmaxInferShape` 中对输出 shape 的合法性检查要求所有维度必须 ≥ 0，**但当前错误提示“shape of out is [1,1,1,1,0]”表明实际调用了 `MaxPool3DWithArgmax` 而非 `MaxPool1d`**，说明底层算子调用存在类型混淆。
+   - 更关键的是：`MaxPool1d` 应用于一维数据，但错误栈指向的是 `MaxPool3DWithArgmaxInferShape`，说明框架内部可能误将 `MaxPool1d` 的调用映射到了三维池化算子，或在处理 `return_indices=True` 时未正确判断维度一致性。
+
+3. 修复建议：
+   - 提交一个 issue 给 MindSpore 官方，指出 `MaxPool1d` 在 `return_indices=True` 且输入长度为 0 时，不应触发 `MaxPool3DWithArgmax` 算子逻辑，应保持维度一致性并提前校验输入合法性。

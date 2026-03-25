@@ -1,0 +1,301 @@
+{
+  "operator": "torch.nn.PReLU",
+  "timestamp": "2026-01-23T20:01:09.671237",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.931674599647522,
+            0.8507714867591858,
+            -0.8899523615837097,
+            -0.9498080611228943,
+            1.351462960243225,
+            0.570982813835144
+          ]
+        },
+        "api": "torch.nn.PReLU"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.931674599647522,
+            0.8507714867591858,
+            -0.8899523615837097,
+            -0.9498080611228943,
+            1.351462960243225,
+            0.570982813835144
+          ]
+        },
+        "api": "tf.keras.layers.PReLU"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.PReLU",
+        "tensorflow_api": "tf.keras.layers.PReLU",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 0.23745201528072357",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.nn.PReLU and TensorFlow's tf.keras.layers.PReLU have different default initialization behaviors and parameter semantics: PyTorch's PReLU initializes the learnable alpha parameter to 0.25 by default and supports per-channel or shared parameters via 'num_parameters'; TensorFlow's PReLU initializes alpha to 0.25 but defaults to 'shared_axes=[1]' for channel-wise sharing in NHWC layout, and crucially — unlike PyTorch — TensorFlow's PReLU *does not support arbitrary num_parameters*; it only supports 'shared_axes' (e.g., [1] for channel axis) and implicitly assumes input is at least 2D with channels last. The original test uses shape [2, 3], which in TF is interpreted as (batch=2, features=3), so shared_axes=[1] applies — but PyTorch treats this as (N=2, C=3) and defaults to num_parameters=1 (shared scalar alpha), while TF’s default shared_axes=None actually means *no sharing* (i.e., per-element alpha) unless explicitly set. This causes functional divergence. To align behavior, we must enforce shared scalar alpha in both: set PyTorch's num_parameters=1 (default, already satisfied), and set TensorFlow's shared_axes=[0,1] (to collapse all axes → scalar) OR more robustly, use shared_axes=[] (TF docs state empty list means scalar alpha). However, TF's PReLU does not accept shared_axes=[]; instead, setting shared_axes=None *and* input rank > 1 leads to per-element alpha. The correct alignment is to explicitly set TF's shared_axes to [0,1] for 2D input to force scalar alpha, matching PyTorch's default. Also, both must use identical initial_alpha=0.25. Since TF's PReLU doesn't expose 'alpha_initializer' in basic usage but allows 'alpha_initializer=tf.keras.initializers.Constant(0.25)', we add that to ensure identical initialization. Thus, repair adds 'alpha_initializer' to TF and ensures scalar sharing."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.PReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8406373262405396,
+            -0.834717333316803,
+            1.6479252576828003,
+            0.594466507434845,
+            -1.307498812675476,
+            0.16553117334842682
+          ]
+        },
+        "params": {
+          "num_parameters": 1,
+          "init": 0.25
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.PReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8406373262405396,
+            -0.834717333316803,
+            1.6479252576828003,
+            0.594466507434845,
+            -1.307498812675476,
+            0.16553117334842682
+          ]
+        },
+        "params": {
+          "shared_axes": [
+            0,
+            1
+          ],
+          "alpha_initializer": {
+            "class_name": "Constant",
+            "config": {
+              "value": 0.25
+            }
+          }
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.PReLU",
+        "tensorflow_api": "tf.keras.layers.PReLU",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "PReLU.__init__() got an unexpected keyword argument 'params'",
+        "tensorflow_error": "Unrecognized keyword arguments passed to PReLU: {'params': {'shared_axes': [0, 1], 'alpha_initializer': {'class_name': 'Constant', 'config': {'value': 0.25}}}}",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 600, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: PReLU.__init__() got an unexpected keyword argument 'params'\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\activations\\prelu.py\", line 42, in __init__\n    super().__init__(**kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\layer.py\", line 291, in __init__\n    raise ValueError(\nValueError: Unrecognized keyword arguments passed to PReLU: {'params': {'shared_axes': [0, 1], 'alpha_initializer': {'class_name': 'Constant', 'config': {'value': 0.25}}}}\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch PReLU does not accept 'params' as a keyword argument — the correct parameter names are 'num_parameters' and 'init'. TensorFlow PReLU does not accept 'params' dict wrapping; it expects top-level parameters 'shared_axes' and 'alpha_initializer', but the original test case incorrectly nests them under a 'params' key. Additionally, PyTorch's 'init' maps to TensorFlow's 'alpha_initializer' (Constant with value=0.25), and 'num_parameters=1' in PyTorch corresponds to scalar alpha (i.e., shared across all channels), which in TensorFlow is achieved by omitting 'shared_axes' or setting it to None (default behavior). However, 'shared_axes=[0,1]' is invalid for 2D input [2,3] because shared_axes must be channel axes — for input shape [2,3], axis 1 is the channel axis (if treating dim=1 as channels), but sharing across batch (axis 0) and feature (axis 1) violates semantics. The correct repair is: (1) Fix PyTorch params to use valid args 'num_parameters' and 'init'; (2) Fix TensorFlow to remove 'params' wrapper, use direct 'alpha_initializer', and omit 'shared_axes' (since default scalar alpha matches num_parameters=1); (3) Ensure both use same initialization value 0.25."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.PReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.17682254314422607,
+            -0.11126076430082321,
+            -0.17803160846233368,
+            -0.6337011456489563,
+            -0.3761037588119507,
+            0.25155171751976013
+          ]
+        },
+        "params": {
+          "num_parameters": 1,
+          "init": 0.25
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.PReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.17682254314422607,
+            -0.11126076430082321,
+            -0.17803160846233368,
+            -0.6337011456489563,
+            -0.3761037588119507,
+            0.25155171751976013
+          ]
+        },
+        "params": {
+          "alpha_initializer": {
+            "class_name": "Constant",
+            "config": {
+              "value": 0.25
+            }
+          }
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.PReLU",
+        "tensorflow_api": "tf.keras.layers.PReLU",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "PReLU.__init__() got an unexpected keyword argument 'params'",
+        "tensorflow_error": "Unrecognized keyword arguments passed to PReLU: {'params': {'alpha_initializer': {'class_name': 'Constant', 'config': {'value': 0.25}}}}",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 600, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: PReLU.__init__() got an unexpected keyword argument 'params'\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\activations\\prelu.py\", line 42, in __init__\n    super().__init__(**kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\layer.py\", line 291, in __init__\n    raise ValueError(\nValueError: Unrecognized keyword arguments passed to PReLU: {'params': {'alpha_initializer': {'class_name': 'Constant', 'config': {'value': 0.25}}}}\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch PReLU does not accept parameter 'params' — the original test case incorrectly wraps parameters under a 'params' key; it should pass them directly. Also, PyTorch uses 'init' (float) for initial alpha value, while TensorFlow uses 'alpha_initializer' with a Constant initializer. The PyTorch test case erroneously has 'params' as a top-level key instead of flattening the parameters. Similarly, the TensorFlow test case is correct in structure but the original execution error indicates the test runner mistakenly passed a nested 'params' dict to TF — the repair removes any wrapper and aligns parameter passing: PyTorch expects 'num_parameters' and 'init' as direct kwargs; TensorFlow expects 'alpha_initializer' as a direct kwarg (not nested). Both APIs support channel-wise or shared alpha, so we retain num_parameters=1 ↔ scalar alpha_initializer."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.PReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.0191764831542969,
+            1.2289389371871948,
+            0.9421941041946411,
+            -0.5029818415641785,
+            0.7555209398269653,
+            -1.6551846265792847
+          ]
+        },
+        "params": {
+          "num_parameters": 1,
+          "init": 0.25
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.PReLU",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.0191764831542969,
+            1.2289389371871948,
+            0.9421941041946411,
+            -0.5029818415641785,
+            0.7555209398269653,
+            -1.6551846265792847
+          ]
+        },
+        "params": {
+          "alpha_initializer": {
+            "class_name": "Constant",
+            "config": {
+              "value": 0.25
+            }
+          }
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.PReLU",
+        "tensorflow_api": "tf.keras.layers.PReLU",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "PReLU.__init__() got an unexpected keyword argument 'params'",
+        "tensorflow_error": "Unrecognized keyword arguments passed to PReLU: {'params': {'alpha_initializer': {'class_name': 'Constant', 'config': {'value': 0.25}}}}",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 600, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: PReLU.__init__() got an unexpected keyword argument 'params'\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\activations\\prelu.py\", line 42, in __init__\n    super().__init__(**kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\layer.py\", line 291, in __init__\n    raise ValueError(\nValueError: Unrecognized keyword arguments passed to PReLU: {'params': {'alpha_initializer': {'class_name': 'Constant', 'config': {'value': 0.25}}}}\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+来源文件: llm_enhanced_torch_nn_BatchNorm1d_20251202_012501.json
+样例编号: 6
+paddle_error 错误信息: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.BatchNorm1d",
+  "input": {
+    "shape": [
+      2,
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.9035796785741456,
+      1.169281363954168,
+      -1.7690603120307304,
+      -0.2949002603590387,
+      -0.5799760323813206,
+      -0.04388393787107765,
+      0.38951047640995295,
+      0.6267405567208479,
+      0.21441254869844792,
+      -1.8009031296210027
+    ]
+  },
+  "num_features": 1,
+  "affine": true
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.BatchNorm1D",
+  "input": {
+    "shape": [
+      2,
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.9035796785741456,
+      1.169281363954168,
+      -1.7690603120307304,
+      -0.2949002603590387,
+      -0.5799760323813206,
+      -0.04388393787107765,
+      0.38951047640995295,
+      0.6267405567208479,
+      0.21441254869844792,
+      -1.8009031296210027
+    ]
+  },
+  "num_features": 1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `BatchNorm1D` 内部对 `running_mean` 和 `running_var` 等统计量的存储类型固定为 `float32`，即使输入为 `float64`，其内部计算和缓冲区仍强制使用 `float32`。当尝试从容器中读取 `float64` 类型数据时（如在某些调试或状态恢复场景下），会触发类型不匹配错误。  
+   - 虽然输入 `dtype` 为 `float64`，但 PaddlePaddle 在实现上并未完全支持 `float64` 的 BatchNorm 运算，其核心变量（如 weight、bias、running_mean/var）默认初始化为 `float32`，导致类型不一致。
+
+3. 修复建议：  
+   - 该问题反映 PaddlePaddle 在 `float64` 支持上的不完整性，建议提交 issue 给官方，反馈 `BatchNorm1D` 对 `float64` 输入的支持不足。

@@ -1,0 +1,66 @@
+来源文件: llm_enhanced_torch_nn_PixelShuffle_20251215_151425.json
+样例编号: 9
+mindspore_error 错误信息: For 'pixel_shuffle', the length of third to last dimension is not divisibleby `upscale_factor` squared.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.PixelShuffle",
+  "input": {
+    "shape": [
+      2,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.05060439556837082,
+      -0.021134693175554276,
+      -0.7256233096122742,
+      -0.0720720961689949,
+      -0.9127917289733887,
+      0.9561266303062439,
+      0.054815616458654404,
+      -0.9042811989784241,
+      -0.2435520887374878,
+      -0.599851131439209
+    ]
+  },
+  "upscale_factor": 2
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.PixelShuffle",
+  "input": {
+    "shape": [
+      2,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.05060439556837082,
+      -0.021134693175554276,
+      -0.7256233096122742,
+      -0.0720720961689949,
+      -0.9127917289733887,
+      0.9561266303062439,
+      0.054815616458654404,
+      -0.9042811989784241,
+      -0.2435520887374878,
+      -0.599851131439209
+    ]
+  },
+  "upscale_factor": 2
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `PixelShuffle` 要求输入的第三到倒数维度（即通道维的扩展部分）长度必须能被 `upscale_factor²` 整除，而本例中输入 shape 为 `[2, 4, 4]`，其“通道”维度为 4，`upscale_factor=2`，则需满足 `4 % (2²) == 0`，但 `4 % 4 == 0` 实际是可整除的。
+   - 然而，根据官方文档，`PixelShuffle` 输入应为 `(*, C × r², H, W)` 形式，即通道数必须是 `r²` 的倍数。当前输入为 `[2, 4, 4]`，意味着 `C × r² = 4`，`r=2`，所以 `C = 1`，这在数学上是合理的，但可能问题出在 **实际 Tensor 维度顺序或数据布局** 上——例如，若 MindSpore 期望的是 `(N, C×r², H, W)`，而当前输入的 channel 维度为 4，符合 `C=1, r=2`，但错误提示却说“third to last dimension not divisible by upscale_factor squared”，说明该维度（即第3个维度，从后往前数）长度为 4，而 `4 % 4 == 0`，理论上应通过。
+   - 因此，**根本原因可能是框架内部对“第三到倒数维度”的理解与实际张量维度索引不一致**，或存在底层实现对某些特定 shape 处理的边界缺陷，属于未预期的行为差异。
+
+3. 修复建议：
+   - 该问题表现为输入合法但被拒绝，且符合框架间语义一致但执行不一致的情况，建议提交 issue 至 MindSpore 官方仓库，指出在 `shape=[2,4,4], upscale_factor=2` 时 `PixelShuffle` 报错“not divisible by 4”，但实际上 4 可被 4 整除，可能存在逻辑判断误判。

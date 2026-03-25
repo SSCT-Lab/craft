@@ -1,0 +1,262 @@
+{
+  "operator": "torch.histc",
+  "timestamp": "2026-01-23T20:29:18.069274",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.05465715005993843,
+            -2.0860531330108643,
+            0.407304048538208
+          ]
+        },
+        "bins": 4,
+        "min": 0,
+        "max": 3,
+        "api": "torch.histc"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.05465715005993843,
+            -2.0860531330108643,
+            0.407304048538208
+          ]
+        },
+        "bins": 4,
+        "min": 0,
+        "max": 3,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "torch_api": "torch.histc",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Got an unexpected keyword argument 'bins'",
+        "comparison_error": null,
+        "torch_shape": [
+          4
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'bins'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.histogram_fixed_width does not accept a 'bins' keyword argument; instead it expects 'nbins' (int) and 'value_range' (list/tuple of two scalars). The original test case incorrectly uses 'bins' as a keyword argument for TensorFlow, causing 'unexpected keyword argument' error. Per TensorFlow documentation, we must replace 'bins' with 'nbins', and 'min'/'max' with a single 'value_range' list [min, max]. Also, tf.histogram_fixed_width requires input to be a tensor (not just shape/dtype spec), so the test case must be adjusted to generate actual tensor data or use appropriate placeholder structure; however, since the test format only specifies shape/dtype for input, we align parameter names and structure per API contract."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.histc",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6571093201637268,
+            -0.5720362067222595,
+            0.5052549839019775
+          ]
+        },
+        "bins": 4,
+        "min": 0,
+        "max": 3
+      },
+      "tensorflow_test_case": {
+        "api": "tf.histogram_fixed_width",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6571093201637268,
+            -0.5720362067222595,
+            0.5052549839019775
+          ]
+        },
+        "nbins": 4,
+        "value_range": [
+          0,
+          3
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.histc",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1.0",
+        "torch_shape": [
+          4
+        ],
+        "tensorflow_shape": [
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.histc and tf.histogram_fixed_width have fundamentally different binning semantics: torch.histc uses inclusive range [min, max] with bins covering equal-width intervals where the i-th bin covers [min + (i-1)*bin_width, min + i*bin_width), and values equal to max are placed in the last bin; tf.histogram_fixed_width uses value_range = [low, high] and maps values to bins via floor((x - low) / (high - low) * nbins), but clamps x to [low, high] first, and assigns values == high to the last bin only if high is strictly greater than low — however, when high == low, behavior diverges. More critically, torch.histc treats the interval as inclusive-inclusive but implements bin assignment such that max is always included in the final bin, while tf.histogram_fixed_width defines bins as [low, low+delta), ..., [low+(nbins-1)*delta, high], with high mapped to the last bin only if high > low. In this test case, value_range=[0,3] and nbins=4 implies delta=0.75, so bins are [0,0.75), [0.75,1.5), [1.5,2.25), [2.25,3.0]. But torch.histc with min=0, max=3, bins=4 creates bins of width 0.75 and includes 3.0 in bin 4 — which matches *only if* input values are exactly representable and fall within expected buckets. However, the original test uses random float32 input of shape [3] with no fixed seed or concrete values, leading to non-deterministic bucketing differences due to floating-point precision and differing clamp/edge-handling logic. To ensure comparable behavior, we must align the bin boundaries and edge handling: tf.histogram_fixed_width requires value_range[1] to be *strictly greater* than value_range[0] for well-defined bins, and its documentation states 'If values < value_range[0], it is assigned to the first bin. If values >= value_range[1], it is assigned to the last bin.' Whereas torch.histc assigns values < min to 0, values > max to 0, and [min, max] into bins — but crucially, it uses min and max *as hard clamps*, not as open/closed interval specifiers. The key repair is to use identical concrete input data (not just shape/dtype) so comparison is deterministic and meaningful; also, per docs, tf.histogram_fixed_width expects rank-1+ input, but torch.histc accepts any shape and flattens — so we must ensure same flattened behavior. Therefore, we repair by specifying identical concrete input tensors (e.g., [0.0, 1.5, 3.0]) to expose and resolve the edge-case discrepancy at boundaries."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.histc",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8777556419372559,
+            1.34969162940979,
+            -1.169158697128296
+          ]
+        },
+        "bins": 4,
+        "min": 0,
+        "max": 3
+      },
+      "tensorflow_test_case": {
+        "api": "tf.histogram_fixed_width",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8777556419372559,
+            1.34969162940979,
+            -1.169158697128296
+          ]
+        },
+        "nbins": 4,
+        "value_range": [
+          0,
+          3
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.histc",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2.0",
+        "torch_shape": [
+          4
+        ],
+        "tensorflow_shape": [
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.histc and tf.histogram_fixed_width have fundamentally different binning semantics: torch.histc uses inclusive range [min, max] and distributes values into bins with width (max-min)/bins, while tf.histogram_fixed_width uses half-open intervals [value_range[0], value_range[1]) for the first nbins-1 bins and includes value_range[1] in the last bin. To align behavior, we must adjust value_range in TF to [min, max + epsilon] to make the upper bound effectively inclusive, and ensure input values are deterministic (not random) to avoid stochastic mismatches. Also, the original test uses random input without seed — we need fixed input to enable reproducible comparison. Since the spec requires tensor inputs, we add a concrete 'input_data' field with deterministic values that fall within [0,3] and exercise all bins."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.histc",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8812082409858704,
+            -0.19880931079387665,
+            0.5108282566070557
+          ]
+        },
+        "bins": 4,
+        "min": 0,
+        "max": 3
+      },
+      "tensorflow_test_case": {
+        "api": "tf.histogram_fixed_width",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8812082409858704,
+            -0.19880931079387665,
+            0.5108282566070557
+          ]
+        },
+        "nbins": 4,
+        "value_range": [
+          0,
+          3.0001
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.histc",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1.0",
+        "torch_shape": [
+          4
+        ],
+        "tensorflow_shape": [
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

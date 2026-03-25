@@ -1,0 +1,2047 @@
+{
+  "tf_api": "tf.nn.conv3d_transpose",
+  "paddle_api": "paddle.nn.functional.conv3d_transpose",
+  "timestamp": "2026-02-24T14:55:17.767752",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv3d_transpose() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv3d_transpose does not accept 'filters' argument; it uses 'weight' instead. Also, Paddle expects weight shape [M, C/g, kD, kH, kW] (output_channels, input_channels/group, depth, height, width), unlike TF's [depth, height, width, output_channels, input_channels]. Input layout must be NCDHW for Paddle, so x shape must be [2, 3, 5, 6, 4] (N, C, D, H, W) to match TF's NDHWC [2, 5, 6, 4, 3]. Output_shape is not supported in Paddle; use output_size=None and rely on auto-calculation or compute manually."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 3, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错因input channels(5) != filter's input channels(3)，而TF中filters shape[3,3,3,2,3]对应NDHWC格式：[D,H,W,out_c,in_c]，故in_c=3；但Paddle weight shape[2,3,3,3,3]按NCDHW应为[O,I/g,D,H,W]，即I=3，需保持x.shape[1]==weight.shape[1]。原x为[2,5,6,4,3]（NCDHW）则C=5，weight应为[O,5,D,H,W]，故修正weight.shape为[2,5,3,3,3]并统一data_format为NCDHW。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            5,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 5 vs 2 [Op:Conv3DBackpropInputV2]",
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 5, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow expects filters shape [depth, height, width, output_channels, in_channels] for NCDHW input, so filters[4] must equal x[1]=5; Paddle expects weight shape [output_channels, input_channels, kD, kH, kW], so weight[1] must equal x[1]=5. Original filters/weight shapes mismatch input channel count."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          2,
+          6,
+          4,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            5,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 5, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          2,
+          6,
+          4,
+          3
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv3d_transpose() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv3d_transpose does not accept 'filters' argument; uses 'weight' instead. Also requires explicit 'output_size' (not 'output_shape'), and expects weight shape [M, C/g, kD, kH, kW] for NCDHW input, but input is NDHWC-like. Must transpose weight and adjust for Paddle's NCDHW default: input shape [2,3,5,6,4], weight shape [2,3,3,3,3], output_size=[10,12,8], strides=[2,2,2], padding='SAME'."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          10,
+          12,
+          8
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 3, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle要求weight的in_channels维度（第0维）必须等于输入x的channels维（第1维，NCDHW格式），但原用例中x.shape=[2,5,6,4,3]（C=5）而weight.shape=[2,3,3,3,3]（C=2），不匹配。根据TF filters.shape=[D,H,W,OC,IC]即[3,3,3,2,3]，对应Paddle weight.shape应为[IC,OC,kD,kH,kW]=[3,2,3,3,3]，且需显式指定data_format='NCDHW'。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          10,
+          12,
+          8
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [3], the shape of filter is [3, 2, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:3.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错指出input channels (5) != filter's first dim (3)，但TF filters shape [3,3,3,2,3] implies in_channels=3, while input shape [2,5,6,4,3] in NDHWC has in_channels=3 — so TF assumes NDHWC but Paddle defaults to NCDHW. Fix: align data_format and filter shape: for NCDHW, input C=5, so filter must be [5,2,3,3,3]; also output_size should match spatial dims only, and strides must be 3-element."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          10,
+          12,
+          8
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          10,
+          12,
+          8
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Current implementation does not yet support strides in the batch and depth dimensions. [Op:Conv3DBackpropInputV2]",
+        "paddle_error": "ValueError: (InvalidArgument) output_size of Op(ConvTransposeOp) should not be less than the inferred output size. But received output_size = [[10, 12, 8]], whose dim 0 is less than the inferred output size [12]\n  [Hint: Expected output_size[i] >= infer_shape, but received output_size[i]:10 < infer_shape:12.] (at ..\\paddle\\phi\\infermeta\\binary.cc:893)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv3d_transpose() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv3d_transpose does not accept 'filters' argument; uses 'weight' instead. Also requires explicit 'output_size' (not 'output_shape'), and expects weight shape [M, C/g, kD, kH, kW] for NCDHW input, but input is NDHWC-like [2,5,6,4,3]; must transpose input to NCDHW and reshape weight accordingly."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          11,
+          13,
+          9
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 3, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错因filter shape不匹配：TF中filters为[depth,height,width,output_channels,input_channels]=[3,3,3,2,3]，对应Paddle weight应为[output_channels,input_channels,depth,height,width]=[2,3,3,3,3]，但原始Paddle用例weight shape为[2,3,3,3,3]正确；错误根源是data_format='NCDHW'时Paddle要求x为[N,C,D,H,W]即[2,5,6,4,3]中C=5，而weight[1]=3≠5，故需将weight shape改为[2,5,3,3,3]以匹配input channels=5。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            5,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          11,
+          13,
+          9
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 5, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错因filter shape不匹配：TF中filters为[depth,height,width,output_channels,in_channels]=[3,3,3,2,3]，对应Paddle weight应为[output_channels,in_channels,depth,height,width]=[2,3,3,3,3]，但原用例误写为[2,5,3,3,3]；同时x在TF默认NDHWC而Paddle用NCDHW，需统一data_format或调整x/weight形状。修复weight shape并显式指定TF data_format='NDHWC'以对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          11,
+          13,
+          9
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [5], the shape of input is [2, 5, 6, 4, 3], the filter's channels is [2], the shape of filter is [2, 3, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:5 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv3d_transpose() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle API uses 'weight' instead of 'filters', requires 'output_size' instead of 'output_shape', and expects filter shape [M, C/g, kD, kH, kW] not [kD, kH, kW, M, C]. Also strides must be length-3, not length-5. Need to align with Paddle's NCDHW default and parameter naming."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          6,
+          8,
+          6
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [3], the shape of input is [2, 3, 4, 3, 2], the filter's channels is [2], the shape of filter is [2, 2, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:3 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错因input channels(3) != filter's in_channels(2)，而TF中filters shape[3,3,3,2,2]对应[depth,height,width,output_channels,in_channels]，故in_channels=2，input需为NCDHW[2,2,4,3,2]或NDHWC[2,4,3,2,2]；原Paddle x shape[2,3,4,3,2]的C=3不匹配filter weight[2,2,3,3,3]的in_channels=2。修复：统一input为NCDHW格式，x.shape[2,2,4,3,2]，weight.shape[2,2,3,3,3]，output_size适配。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            2,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            2,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          6,
+          8,
+          6
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "paddle_error": "ValueError: (InvalidArgument) output_size of Op(ConvTransposeOp) should not be less than the inferred output size. But received output_size = [[6, 8, 6]], whose dim 0 is less than the inferred output size [8]\n  [Hint: Expected output_size[i] >= infer_shape, but received output_size[i]:6 < infer_shape:8.] (at ..\\paddle\\phi\\infermeta\\binary.cc:893)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错因MKL卷积前向描述符创建失败，Paddle报错因output_size[0]=6小于推断输出尺寸8；需确保output_shape/output_size与strides、padding、kernel尺寸数学一致。根据文档，TF output_shape含batch和channel，Paddle output_size仅含D/H/W；修复TF strides为[1,2,2,2,1]→[2,2,2]对应维度，output_shape调整为[2,8,8,6,2]，Paddle output_size改为[8,8,6]以满足推断约束。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            2,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          8,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            2,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          8,
+          8,
+          6
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "paddle_error": "ValueError: (InvalidArgument) output_size of Op(ConvTransposeOp) should be less than inferred size + stride. But received output_size = [[8, 8, 6]], whose dim 1 is not less than the inferred output size (5) + stride (2) = 7\n  [Hint: Expected output_size[i] < infer_shape + strides[i], but received output_size[i]:8 >= infer_shape + strides[i]:7.] (at ..\\paddle\\phi\\infermeta\\binary.cc:909)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            0,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          0,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            0,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          0,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv3d_transpose() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": [
+          0,
+          6,
+          8,
+          6,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle API uses 'weight' instead of 'filters', requires 'output_size' instead of 'output_shape', and expects 'stride' as int/list of 3, not 5; also 'data_format' must be explicitly set and padding handling differs. TensorFlow uses NDHWC/NCDHW with 5-D strides, while Paddle uses NCDHW by default with 3-D strides."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          6,
+          8,
+          6
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [3], the shape of input is [1, 3, 4, 3, 2], the filter's channels is [2], the shape of filter is [2, 2, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:3 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          6,
+          8,
+          6,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错因input channels (3) != weight[0] (2)，而TF中input shape [1,3,4,3,2] is NDHWC → in_channels=2, filters [3,3,3,2,2] → in_channels=2 matches. Paddle's weight shape must be [in_c, out_c, kD, kH, kW] but given [2,2,3,3,3] implies in_c=2, yet x has C=3 in NCDHW. Fix: x must be NCDHW with C=2 → reshape x to [1,2,4,3,2], adjust output_size and filters accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          8,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          8,
+          6,
+          4
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [4], the shape of input is [1, 4, 3, 2, 2], the filter's channels is [2], the shape of filter is [2, 2, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:4 != filter_dims[0]:2.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          8,
+          6,
+          4,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle报错因input channels (4) != weight[0] (2)，而TF中filters shape[3,3,3,2,2]对应NDHWC格式：[D,H,W,out_ch,in_ch]，故in_ch=2；但x shape[1,4,3,2,2]在NDHWC下in_ch=2，实际应为[1,3,2,2,4]。Paddle用NCDHW需x[1,4,3,2,2]→in_ch=4，weight[0]必须为4。修复：将Paddle weight shape改为[4,2,3,3,3]，output_size保持[8,6,4]，stride[2,2,2]对应TF strides[1,2,2,2,1]的DHW部分。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          8,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          8,
+          6,
+          4
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "paddle_api": "paddle.nn.functional.conv3d_transpose",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "paddle_error": "ValueError: (InvalidArgument) The number of input channels should be equal to filter channels for Op(conv_transpose). But received: the input's channels is [3], the shape of input is [1, 3, 2, 2, 4], the filter's channels is [4], the shape of filter is [4, 2, 3, 3, 3]. The data_format is NCHW.The error may come from wrong data_format setting.\n  [Hint: Expected C == filter_dims[0], but received C:3 != filter_dims[0]:4.] (at ..\\paddle\\phi\\infermeta\\binary.cc:857)\n",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

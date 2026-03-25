@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_true_divide_20251125_145234.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [1, 0, 5, 1] and the shape of Y = [2, 1, 0, 5]. Received [5] in X is not equal to [0] in Y at i:2.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.true_divide",
+  "input": {
+    "shape": [
+      1,
+      0,
+      5,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      1,
+      0,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.divide",
+  "input": {
+    "shape": [
+      1,
+      0,
+      5,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      1,
+      0,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.divide` 在广播机制上对维度为 0 的张量（如 `[1, 0, 5, 1]`）存在严格限制，当某维度为 0 时，其广播规则要求对应维度必须相等或为 1，但此处第 2 维度为 5 和 0，不满足广播条件，导致“Broadcast dimension mismatch”错误。
+   - 而 PyTorch 的 `torch.true_divide` 对包含 0 维度的 shape 具有更宽松的处理逻辑（可视为“空张量”在某些操作中被允许），因此在相同输入下不会报错。
+
+3. 修复建议：
+   - 建议提交 issue 至 PaddlePaddle 官方仓库，反馈在含 0 维度张量上的广播行为与 PyTorch 不一致的问题，作为框架行为差异进行记录。

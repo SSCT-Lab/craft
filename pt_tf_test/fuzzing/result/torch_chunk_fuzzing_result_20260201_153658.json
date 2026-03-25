@@ -1,0 +1,696 @@
+{
+  "operator": "torch_chunk",
+  "torch_api": "torch.chunk",
+  "tensorflow_api": "tf.split",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 8,
+  "timestamp": "2026-02-01T15:36:58.534686",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_chunk_20260123_193627.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.8861795663833618,
+            -0.20985935628414154,
+            0.8417298197746277,
+            -1.4201714992523193,
+            -1.3059923648834229,
+            -1.0954478979110718,
+            -0.2866375744342804,
+            1.795406460762024,
+            -1.891645073890686,
+            1.380195140838623
+          ]
+        },
+        "chunks": 3,
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.split",
+        "input": {
+          "shape": [
+            8,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.8861795663833618,
+            -0.20985935628414154,
+            0.8417298197746277,
+            -1.4201714992523193,
+            -1.3059923648834229,
+            -1.0954478979110718,
+            -0.2866375744342804,
+            1.795406460762024,
+            -1.891645073890686,
+            1.380195140838623
+          ]
+        },
+        "num_or_size_splits": 3,
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理差异，如NaN传播规则、无穷大截断逻辑、次正规数舍入等，可能暴露chunk/split实现中边界条件不一致的bug",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                8,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                "nan",
+                "inf",
+                -0.0
+              ]
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                8,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                "nan",
+                "inf",
+                -0.0
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 3]）",
+          "mutation_reason": "空张量是chunk/split的合法输入，但框架对零大小维度的切分逻辑易出现索引越界或返回空列表不一致等实现差异。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=tensor([], size=(0, 1)), tf=[]",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，覆盖半精度边界行为",
+          "mutation_reason": "float16动态范围小（±65504）、精度低（~1e-4），易暴露框架在chunk/split中对舍入、溢出、NaN传播的实现差异",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                8,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                65504.0,
+                65505.0
+              ]
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                8,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                65504.0,
+                65505.0
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_chunk_20260123_193627.json",
+        "iteration": 2,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            389,
+            26496
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3422362506389618,
+            0.045737992972135544,
+            -1.3265502452850342,
+            -0.9258487224578857,
+            0.9035453200340271,
+            -0.46621930599212646,
+            -1.3469932079315186,
+            0.6694519519805908,
+            -1.4419387578964233,
+            2.3199949264526367
+          ]
+        },
+        "chunks": 3,
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.split",
+        "input": {
+          "shape": [
+            389,
+            26496
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3422362506389618,
+            0.045737992972135544,
+            -1.3265502452850342,
+            -0.9258487224578857,
+            0.9035453200340271,
+            -0.46621930599212646,
+            -1.3469932079315186,
+            0.6694519519805908,
+            -1.4419387578964233,
+            2.3199949264526367
+          ]
+        },
+        "num_or_size_splits": 3,
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架对边界情况的处理差异，如NaN传播规则、无穷大分割对齐、次正规数舍入等实现不一致。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                389,
+                26496
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                389,
+                26496
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 26496]）沿dim=1/chunk=3",
+          "mutation_reason": "torch.chunk on empty dim-1 tensor may mishandle chunk count when size==0; tf.split requires exact divisibility or size list, exposing divergence in edge-case chunking logic.",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                0,
+                26496
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                0,
+                26496
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=tensor([], size=(0, 8832)), tf=[]",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，引入次正规数、边界值及特殊浮点值",
+          "mutation_reason": "float16精度低、动态范围小，易暴露框架对inf/nan/-0.0/次正规数的处理差异；torch.chunk与tf.split在边界切分时对舍入和特殊值传播行为可能不一致。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                389,
+                26496
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                389,
+                26496
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_chunk_20260123_193627.json",
+        "iteration": 3,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            0,
+            26496
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "chunks": 3,
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.split",
+        "input": {
+          "shape": [
+            0,
+            26496
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_or_size_splits": 3,
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理差异，尤其在空张量维度上可能暴露chunk/split对边界和NaN传播逻辑的不一致",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                0,
+                26496
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                0,
+                26496
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=tensor([], size=(0, 8832)), tf=[]",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量张量（shape=[]）",
+          "mutation_reason": "标量是维度为0的极端情况，torch.chunk和tf.split对零维输入的处理逻辑易不一致（如是否允许chunk/split标量），可能暴露框架对空维度的实现差异。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 3,
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: chunk expects at least a 1-dimensional tensor",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__Split_num_split_3_device_/job:localhost/replica:0/task:0/device:CPU:0}} -input rank(-0) <= split_dim < input rank (0), but got 0 [Op:Split] name: split",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，注入边界特殊值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float16精度更低、动态范围更小，易暴露框架对极端值处理的不一致；chunk/split在空张量上对NaN/inf的传播行为可能因底层实现差异而不同。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                0,
+                26496
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 3,
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                0,
+                26496
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": 3,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=tensor([], size=(0, 8832), dtype=torch.float16), tf=[]",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

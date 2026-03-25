@@ -1,0 +1,276 @@
+{
+  "operator": "torch_tensor_split",
+  "torch_api": "torch.tensor_split",
+  "tensorflow_api": "tf.split",
+  "total_cases": 1,
+  "total_fuzzing_rounds": 3,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T13:56:46.027736",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_tensor_split_20260123_194114.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.tensor_split",
+        "input": {
+          "shape": [
+            5,
+            6,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0381609201431274,
+            0.3528529703617096,
+            0.3699096441268921,
+            0.5851855278015137,
+            -1.1290428638458252,
+            -0.7412230968475342,
+            -1.1090773344039917,
+            0.3870364725589752,
+            0.39026784896850586,
+            -0.5630499124526978
+          ]
+        },
+        "indices": [
+          2,
+          4
+        ],
+        "dim": 1
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.split",
+        "input": {
+          "shape": [
+            5,
+            6,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0381609201431274,
+            0.3528529703617096,
+            0.3699096441268921,
+            0.5851855278015137,
+            -1.1290428638458252,
+            -0.7412230968475342,
+            -1.1090773344039917,
+            0.3870364725589752,
+            0.39026784896850586,
+            -0.5630499124526978
+          ]
+        },
+        "num_or_size_splits": [
+          2,
+          2,
+          2
+        ],
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理差异，如NaN传播规则、无穷大比较逻辑、次正规数舍入等，暴露实现不一致bug",
+          "torch_test_case": {
+            "api": "torch.tensor_split",
+            "input": {
+              "shape": [
+                5,
+                6,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0381609201431274,
+                0.3528529703617096,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "indices": [
+              2,
+              4
+            ],
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                5,
+                6,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0381609201431274,
+                0.3528529703617096,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": [
+              2,
+              2,
+              2
+            ],
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用含0维的空张量（shape=[0,6,5]）",
+          "mutation_reason": "空张量在split操作中易触发框架对边界条件的不同处理逻辑，如长度为0的维度是否允许切分、索引越界检查差异等，可能暴露实现不一致的bug。",
+          "torch_test_case": {
+            "api": "torch.tensor_split",
+            "input": {
+              "shape": [
+                0,
+                6,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "indices": [
+              2,
+              4
+            ],
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                0,
+                6,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "num_or_size_splits": [
+              2,
+              2,
+              2
+            ],
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=tensor([], size=(0, 2, 5)), tf=[]",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，同时注入边界特殊值（inf, -inf, nan, subnormal）",
+          "mutation_reason": "float16精度低、动态范围小，易暴露框架对NaN/inf传播、舍入、subnormal处理的不一致；tensor_split与split在边界切分时对特殊值的视图语义应严格一致。",
+          "torch_test_case": {
+            "api": "torch.tensor_split",
+            "input": {
+              "shape": [
+                5,
+                6,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "indices": [
+              2,
+              4
+            ],
+            "dim": 1
+          },
+          "tensorflow_test_case": {
+            "api": "tf.split",
+            "input": {
+              "shape": [
+                5,
+                6,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_size_splits": [
+              2,
+              2,
+              2
+            ],
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "tensorflow_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

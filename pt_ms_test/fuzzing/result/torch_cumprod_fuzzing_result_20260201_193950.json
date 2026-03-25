@@ -1,0 +1,714 @@
+{
+  "operator": "torch_cumprod",
+  "torch_api": "torch.cumprod",
+  "mindspore_api": "mindspore.ops.cumprod",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 9,
+  "timestamp": "2026-02-01T19:39:50.420172",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_cumprod_20260126_120916.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.cumprod",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.19234098494052887,
+            -1.4882794618606567,
+            0.6300214529037476,
+            0.5540164709091187,
+            -0.9811133742332458,
+            -0.19265690445899963,
+            -0.5904849767684937,
+            0.8506353497505188,
+            -0.9488523006439209
+          ]
+        },
+        "dim": 0
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.cumprod",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.19234098494052887,
+            -1.4882794618606567,
+            0.6300214529037476,
+            0.5540164709091187,
+            -0.9811133742332458,
+            -0.19265690445899963,
+            -0.5904849767684937,
+            0.8506353497505188,
+            -0.9488523006439209
+          ]
+        },
+        "dim": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发框架底层数值处理差异，如NaN传播规则、无穷大乘法规则、下溢/上溢截断策略不一致，可能暴露cumprod实现bug",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                -0.0,
+                "nan",
+                1e-38,
+                -1.4882794618606567,
+                1e+38,
+                -0.9488523006439209,
+                "-inf"
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                "inf",
+                -0.0,
+                "nan",
+                1e-38,
+                -1.4882794618606567,
+                1e+38,
+                -0.9488523006439209,
+                "-inf"
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[]）和空张量（shape=[0,3]）",
+          "mutation_reason": "单元素张量和空张量是cumprod的数学边界情况，易暴露框架对退化维度的处理差异（如初始累积值、维度广播、空积定义）。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下特殊浮点值（inf, -inf, nan, -0.0）的累积乘积行为",
+          "mutation_reason": "高精度浮点类型更易暴露数值稳定性差异；inf/-inf/nan/-0.0 在累积乘中易触发框架对边界情况的不同处理（如 NaN propagation 规则、-0.0 符号保留、溢出截断策略），是发现实现 bug 的高价值场景。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-300,
+                1e+300
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-300,
+                1e+300
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_cumprod_20260126_120916.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.cumprod",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.1606019735336304,
+            1.2973581552505493,
+            -2.0036842823028564,
+            -1.1818397045135498,
+            -0.07364681363105774,
+            0.3761763870716095,
+            -0.29171159863471985,
+            -0.048617612570524216,
+            -1.7320778369903564
+          ]
+        },
+        "dim": 0
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.cumprod",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.1606019735336304,
+            1.2973581552505493,
+            -2.0036842823028564,
+            -1.1818397045135498,
+            -0.07364681363105774,
+            0.3761763870716095,
+            -0.29171159863471985,
+            -0.048617612570524216,
+            -1.7320778369903564
+          ]
+        },
+        "dim": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf、-inf、nan、-0.0、1e-38、1e38等边界值",
+          "mutation_reason": "这些特殊浮点值易触发框架底层数值处理差异（如NaN传播规则、无穷大乘法规则、次正规数处理），暴露cumprod实现中未对齐的IEEE 754行为",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                -0.0,
+                1e-38,
+                "-inf",
+                "nan",
+                1e+38,
+                1.0,
+                -1.0,
+                0.0
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                -0.0,
+                1e-38,
+                "-inf",
+                "nan",
+                1e+38,
+                1.0,
+                -1.0,
+                0.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）",
+          "mutation_reason": "单元素张量是累积乘法的最简边界情况，易暴露框架对退化维度的处理差异（如dim越界检查、恒等输出逻辑）。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.0
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              1
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下累积乘法对极端浮点值的处理一致性",
+          "mutation_reason": "float64 提供更高精度，可暴露因底层数值实现差异（如累乘顺序、NaN/inf 传播逻辑）导致的框架间结果分歧，尤其在含 inf/nan/-0.0 的序列中",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.1606019735336304,
+                1.2973581552505493,
+                "inf",
+                -1.1818397045135498,
+                -0.0,
+                "nan",
+                -0.29171159863471985,
+                "inf",
+                -1.7320778369903564
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.1606019735336304,
+                1.2973581552505493,
+                "inf",
+                -1.1818397045135498,
+                -0.0,
+                "nan",
+                -0.29171159863471985,
+                "inf",
+                -1.7320778369903564
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_cumprod_20260126_120916.json",
+        "iteration": 4,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.cumprod",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3662387430667877,
+            -1.891904592514038,
+            0.6412696242332458,
+            0.12772634625434875,
+            -1.2385774850845337,
+            -0.3753885328769684,
+            0.09102021902799606,
+            0.7049533128738403,
+            0.5825756788253784,
+            -1.4335618019104004
+          ]
+        },
+        "dim": 0
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.cumprod",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3662387430667877,
+            -1.891904592514038,
+            0.6412696242332458,
+            0.12772634625434875,
+            -1.2385774850845337,
+            -0.3753885328769684,
+            0.09102021902799606,
+            0.7049533128738403,
+            0.5825756788253784,
+            -1.4335618019104004
+          ]
+        },
+        "dim": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层累积乘法的边界处理差异，如NaN传播规则、无穷大符号处理、下溢/上溢截断策略不一致。",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              5,
+              5,
+              5
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])和含零维度(shape=[0,5,5])",
+          "mutation_reason": "单元素张量和空张量是累积操作的边界情况，易暴露框架对退化维度的处理差异（如初始值、循环逻辑、维度广播）",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                1,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                1,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              1,
+              5,
+              5
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型及边界值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float64 提高数值精度，边界值易暴露累积乘法中框架对特殊浮点处理的差异（如 NaN传播、inf符号、-0.0保持）",
+          "torch_test_case": {
+            "api": "torch.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.cumprod",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "TypeError: cumprod() got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              5,
+              5,
+              5
+            ],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

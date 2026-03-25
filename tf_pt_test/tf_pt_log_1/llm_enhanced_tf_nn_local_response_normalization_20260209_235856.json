@@ -1,0 +1,1305 @@
+{
+  "tf_api": "tf.nn.local_response_normalization",
+  "pytorch_api": "torch.nn.functional.local_response_norm",
+  "timestamp": "2026-02-09T23:58:56.590147",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 15,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "api": "tf.nn.local_response_normalization"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "api": "torch.nn.functional.local_response_norm"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: local_response_norm() got an unexpected keyword argument 'depth_radius'",
+        "comparison_error": null,
+        "tf_shape": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's local_response_norm does not accept 'depth_radius'; it uses 'size' (int, must be odd) instead. Also, 'alpha' in PyTorch is scaled by size and corresponds to alpha/(size^2) in TF. We map depth_radius=2 → size=5 (2*depth_radius+1), adjust alpha=0.0→0.0 (preserved), and ensure NCHW layout for PyTorch (TF input is NHWC but shape [4,4,4,4] is symmetric; no transpose needed)."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "size": 5,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "pytorch_shape": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入形状改为边界值[1, 1, 1, 1]，depth_radius设为0（最小合法值），size对应为1；alpha设为极小正数1e-6避免 degenerate normalization，bias/k统一为1e-6以检验数值稳定性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 0,
+        "bias": 1e-06,
+        "alpha": 1e-06,
+        "beta": 1.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "size": 1,
+        "alpha": 1e-06,
+        "beta": 1.0,
+        "k": 1e-06
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入形状从[1,1,1,1]扩展为典型CNN格式[2,32,16,16]（NHWC），增大depth_radius/size并调整alpha/beta至常用范围，验证多通道、局部窗口泛化能力。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            2,
+            32,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0001,
+        "beta": 0.75
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            2,
+            32,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "size": 5,
+        "alpha": 0.0001,
+        "beta": 0.75,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.01167774",
+        "tf_shape": [
+          2,
+          32,
+          16,
+          16
+        ],
+        "pytorch_shape": [
+          2,
+          32,
+          16,
+          16
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.59018219,
+        "alpha": 0.117728651,
+        "beta": 0.404427052,
+        "api": "tf.nn.local_response_normalization"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.59018219,
+        "alpha": 0.117728651,
+        "beta": 0.404427052,
+        "api": "torch.nn.functional.local_response_norm"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: local_response_norm() got an unexpected keyword argument 'depth_radius'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's local_response_norm does not accept 'depth_radius'; it uses 'size' (int, must be odd) instead. TensorFlow's 'depth_radius' corresponds to PyTorch's 'size = 2 * depth_radius + 1'. Also, PyTorch expects NCHW input, so shape must be converted from NHWC [2,3,3,5] to NCHW [2,5,3,3]. Parameter names 'alpha', 'beta', 'bias' are supported but require mapping: alpha → alpha, beta → beta, bias → k."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.59018219,
+        "alpha": 0.117728651,
+        "beta": 0.404427052
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 0.117728651,
+        "beta": 0.404427052,
+        "k": 1.59018219
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.37433672",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "pytorch_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's depth_radius=1 means window size = 2*depth_radius+1 = 3, matching PyTorch's size=3. However, PyTorch's local_response_norm expects NCHW input while TensorFlow's LRN assumes NHWC. The input tensor layout mismatch causes numerical inconsistency. Repair by transposing PyTorch input to NCHW and adjusting size to match effective window."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.59018219,
+        "alpha": 0.117728651,
+        "beta": 0.404427052
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 0.117728651,
+        "beta": 0.404427052,
+        "k": 1.59018219
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.28039873",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "pytorch_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's depth_radius=1 means window size = 2*depth_radius+1 = 3, matching PyTorch's size=3. However, PyTorch's local_response_norm expects NCHW input while TensorFlow's LRN assumes NHWC. The input tensor layout mismatch causes numerical inconsistency. Repair by transposing PyTorch input to NCHW and adjusting size to match effective window."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.59018219,
+        "alpha": 0.117728651,
+        "beta": 0.404427052
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 0.117728651,
+        "beta": 0.404427052,
+        "k": 1.59018219
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.26631594",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "pytorch_shape": [
+          2,
+          3,
+          3,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "api": "tf.nn.local_response_normalization"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "api": "torch.nn.functional.local_response_norm"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: local_response_norm() got an unexpected keyword argument 'depth_radius'",
+        "comparison_error": null,
+        "tf_shape": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's local_response_norm does not accept 'depth_radius'; it uses 'size' (int, window size = 2*depth_radius+1), and expects input in NCHW format. Also, 'alpha' in PyTorch is scaled by size (TF alpha maps to PyTorch alpha / size). Must convert shape from NHWC (TF default) to NCHW and rename/transform parameters accordingly."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0,
+        "beta": 1.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            4,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "size": 5,
+        "alpha": 0.0,
+        "beta": 1.0,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "pytorch_shape": [
+          4,
+          4,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入形状改为边界值[1,1,1,1]，depth_radius设为0（最小合法值），size对应为1，bias/k设为极小正数1e-6避免数值不稳定，alpha设为极小非零值验证数值鲁棒性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 0,
+        "bias": 1e-06,
+        "alpha": 1e-08,
+        "beta": 1.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "size": 1,
+        "alpha": 1e-08,
+        "beta": 1.0,
+        "k": 1e-06
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例使用1x1x1x1单元素张量且depth_radius=0（边界值），应变异为更典型LRN场景：增大空间尺寸、调整depth_radius/size匹配窗口范围，并确保TF的depth_radius与PyTorch的size语义对齐（size = 2*depth_radius + 1）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            2,
+            32,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 2,
+        "bias": 1.0,
+        "alpha": 0.0001,
+        "beta": 0.75
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            2,
+            32,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "size": 5,
+        "alpha": 0.0001,
+        "beta": 0.75,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.00626945",
+        "tf_shape": [
+          2,
+          32,
+          16,
+          16
+        ],
+        "pytorch_shape": [
+          2,
+          32,
+          16,
+          16
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.3,
+        "alpha": 0.7,
+        "beta": 0.51,
+        "api": "tf.nn.local_response_normalization"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.3,
+        "alpha": 0.7,
+        "beta": 0.51,
+        "api": "torch.nn.functional.local_response_norm"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: local_response_norm() got an unexpected keyword argument 'depth_radius'",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's local_response_norm does not accept 'depth_radius'; it uses 'size' (int, window size = 2*depth_radius+1), and expects NCHW input. TensorFlow uses NHWC by default. Need to convert shape to NCHW, replace 'depth_radius' with 'size', and adjust parameters per PyTorch doc: size=3, alpha=0.7*(2*1+1)=2.1 (since PyTorch alpha is scaled by size), while bias and beta remain same."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.3,
+        "alpha": 0.7,
+        "beta": 0.51
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 2.1,
+        "beta": 0.51,
+        "k": 1.3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.28411061",
+        "tf_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "pytorch_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's depth_radius=1 means window size=2*depth_radius+1=3, so PyTorch's size must be 3. But TensorFlow's alpha=0.7 and bias=1.3 correspond to PyTorch's alpha=0.7*(size) and k=bias, not alpha=2.1. PyTorch's alpha is scaled by size: alpha_pytorch = alpha_tensorflow * size. Also input layout: TF uses NHWC, PyTorch uses NCHW; shape must be permuted for equivalent computation."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.3,
+        "alpha": 0.7,
+        "beta": 0.51
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 2.1,
+        "beta": 0.51,
+        "k": 1.3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.32237780",
+        "tf_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "pytorch_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's depth_radius=1 means window size = 2*depth_radius+1 = 3, matching PyTorch's size=3. But alpha/bias/k mapping is incorrect: TF alpha=0.7 should map to PyTorch alpha=0.7 * size (per doc), and TF bias=1.3 maps to PyTorch k=1.3. Current PyTorch alpha=2.1 is wrong; it should be 0.7 * 3 = 2.1 only if TF alpha is per-element scaling factor, but TF alpha is applied before sum, so direct use of 0.7 is correct in PyTorch when size matches. However, official PyTorch doc states alpha is multiplied by window size in denominator, so to match TF's alpha=0.7, PyTorch alpha must be 0.7. Also input layout: TF uses NHWC, PyTorch uses NCHW, so shape must be permuted for equivalent computation."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.3,
+        "alpha": 0.7,
+        "beta": 0.51
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            3,
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 0.7,
+        "beta": 0.51,
+        "k": 1.3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.42039782",
+        "tf_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "pytorch_shape": [
+          3,
+          2,
+          2,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.0,
+        "alpha": 1.0,
+        "beta": 0.5,
+        "api": "tf.nn.local_response_normalization"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.0,
+        "alpha": 1.0,
+        "beta": 0.5,
+        "api": "torch.nn.functional.local_response_norm"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: local_response_norm() got an unexpected keyword argument 'depth_radius'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's local_response_norm does not accept 'depth_radius'; it uses 'size' (int, window size = 2*depth_radius+1), and expects input in NCHW format. TensorFlow's 'depth_radius'=1 corresponds to PyTorch 'size'=3. Also, PyTorch requires explicit 'alpha', 'beta', 'k' (bias) parameters, with 'k' instead of 'bias'."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.0,
+        "alpha": 1.0,
+        "beta": 0.5
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 1.0,
+        "beta": 0.5,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.64511907",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's depth_radius=1 means window size=2*depth_radius+1=3, matching PyTorch's size=3. However, PyTorch's k corresponds to TensorFlow's bias, and PyTorch's alpha is scaled by size (alpha_tf = alpha_pt * size). To align semantics: alpha should be 1.0/3.0 in PyTorch to match TensorFlow's alpha=1.0 with size=3."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.0,
+        "alpha": 1.0,
+        "beta": 0.5
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 0.3333333333333333,
+        "beta": 0.5,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.90551412",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's depth_radius=1 means window size = 2*depth_radius+1 = 3, so PyTorch's size must be 3. However, TensorFlow's alpha is applied per-channel with normalization window, while PyTorch's alpha is scaled by size: TF alpha=1.0 corresponds to PyTorch alpha=1.0/(size^2)=1.0/9≈0.111, not 0.333. Also, TF bias maps to PyTorch k. Fixing alpha to 0.111111 and ensuring consistent interpretation."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.local_response_normalization",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "depth_radius": 1,
+        "bias": 1.0,
+        "alpha": 1.0,
+        "beta": 0.5
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.local_response_norm",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "size": 3,
+        "alpha": 0.1111111111111111,
+        "beta": 0.5,
+        "k": 1.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.local_response_normalization",
+        "pytorch_api": "torch.nn.functional.local_response_norm",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.87157243",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          2,
+          2,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

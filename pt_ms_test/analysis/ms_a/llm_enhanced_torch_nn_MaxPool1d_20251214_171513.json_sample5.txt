@@ -1,0 +1,69 @@
+来源文件: llm_enhanced_torch_nn_MaxPool1d_20251214_171513.json
+样例编号: 5
+mindspore_error 错误信息: For MaxPool1d, the parameter 'padding', 'dilation', 'return_indices', 'ceil_mode' can not be set to non-default value when pad_mode is not 'pad', but got pad_mode:valid.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.MaxPool1d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.0308146476745605,
+      -0.4496580958366394,
+      -0.491057813167572,
+      -0.16358786821365356,
+      -0.6312715411186218,
+      -0.301350861787796,
+      0.23097079992294312,
+      0.8936684131622314,
+      1.4458791017532349,
+      0.5539271831512451
+    ]
+  },
+  "kernel_size": 2,
+  "stride": 2,
+  "return_indices": true
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.MaxPool1d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.0308146476745605,
+      -0.4496580958366394,
+      -0.491057813167572,
+      -0.16358786821365356,
+      -0.6312715411186218,
+      -0.301350861787796,
+      0.23097079992294312,
+      0.8936684131622314,
+      1.4458791017532349,
+      0.5539271831512451
+    ]
+  },
+  "kernel_size": 2,
+  "stride": 2,
+  "return_indices": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `MaxPool1d` 在 `pad_mode` 为 `"valid"` 时，强制要求 `padding`、`dilation`、`return_indices`、`ceil_mode` 必须为默认值（即 `padding=0`, `dilation=1`, `return_indices=False`, `ceil_mode=False`），否则抛出错误。而 PyTorch 的 `MaxPool1d` 在 `padding` 为 0 且 `pad_mode` 非 `"pad"` 时，允许设置非默认的 `return_indices=True` 等参数。
+   - 本样例中，`pad_mode` 默认为 `"valid"`，但设置了 `return_indices=True`，违反了 MindSpore 的约束条件，导致执行失败。
+
+3. 修复建议：
+   - 此为框架实现行为差异，可提交 issue 至 MindSpore 官方仓库，建议放宽在 `pad_mode="valid"` 时对 `return_indices` 等参数的限制以与 PyTorch 更一致。

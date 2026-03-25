@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_copysign_20251202_134856.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 1, 5] and the shape of Y = [10, 1, 5]. Received [0] in X is not equal to [10] in Y at i:0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.copysign",
+  "input": {
+    "shape": [
+      0,
+      1,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      10,
+      1,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.24273476004600525,
+      0.20866698026657104,
+      -0.29109668731689453,
+      0.08073287457227707,
+      -0.31353476643562317,
+      -0.3795497715473175,
+      -0.22578832507133484,
+      -1.544901728630066,
+      -0.7223525047302246,
+      -0.6529504656791687
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.copysign",
+  "input": {
+    "shape": [
+      0,
+      1,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      10,
+      1,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.24273476004600525,
+      0.20866698026657104,
+      -0.29109668731689453,
+      0.08073287457227707,
+      -0.31353476643562317,
+      -0.3795497715473175,
+      -0.22578832507133484,
+      -1.544901728630066,
+      -0.7223525047302246,
+      -0.6529504656791687
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.copysign` 在执行广播时要求对应维度大小必须相等或其一为 1，但当前输入 `x.shape = [0, 1, 5]` 与 `y.shape = [10, 1, 5]` 在第 0 维出现广播不匹配（0 ≠ 10），而 **空形状（含 0 的 shape）在 PaddlePaddle 中通常不被支持用于广播操作**，尤其当涉及非单位维的维度不一致时会直接报错。  
+   - 尽管 PyTorch 允许对包含 0 的 shape 进行广播（如 `torch.copysign` 可处理 `[0,1,5]` 和 `[10,1,5]` 的广播，结果为 `[10,1,5]`），但 PaddlePaddle 明确限制了此类场景，导致该错误。
+
+3. 修复建议：  
+   - 该行为差异属于框架实现层面的不一致，建议提交 issue 至 PaddlePaddle 官方仓库，指出 `copysign` 对含 0 维度的广播支持不足的问题，与 PyTorch 行为不一致。

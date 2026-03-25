@@ -1,0 +1,106 @@
+来源文件: llm_enhanced_torch_gather_20251201_231928.json
+样例编号: 8
+paddle_error 错误信息: (InvalidArgument) The index should be 0D or 1D, when it is not 2D, but we get 3
+
+【PyTorch 测试用例】
+{
+  "api": "torch.gather",
+  "input": {
+    "shape": [
+      10,
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.1426755113466411,
+      0.03021220503739904,
+      -0.4196436760527828,
+      0.36528874238708986,
+      -0.9635496551726301,
+      -1.9149762559767254,
+      -1.2678955212011507,
+      0.32349757816405006,
+      0.7945730790221845,
+      0.7222198667971116
+    ]
+  },
+  "dim": 1,
+  "index": {
+    "shape": [
+      10,
+      5,
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      -2,
+      -8,
+      -6,
+      -7,
+      -2,
+      -5,
+      5,
+      3,
+      1
+    ]
+  },
+  "sparse_grad": false
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.gather",
+  "input": {
+    "shape": [
+      10,
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.1426755113466411,
+      0.03021220503739904,
+      -0.4196436760527828,
+      0.36528874238708986,
+      -0.9635496551726301,
+      -1.9149762559767254,
+      -1.2678955212011507,
+      0.32349757816405006,
+      0.7945730790221845,
+      0.7222198667971116
+    ]
+  },
+  "axis": 1,
+  "index": {
+    "shape": [
+      10,
+      5,
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      -2,
+      -8,
+      -6,
+      -7,
+      -2,
+      -5,
+      5,
+      3,
+      1
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.gather` 要求 `index` tensor 的秩（rank）只能是 0 或 1，而本例中 `index` 的 shape 为 `[10, 5, 5]`，即 3D 张量，违反了官方文档中“index must be 0D or 1D”的限制。
+   - PyTorch 的 `torch.gather` 支持任意维度的 `index`（只要其维度与 input 一致且在非 dim 维度上兼容），因此该用例在 PyTorch 中合法，但在 PaddlePaddle 中因严格限制索引维度而报错。
+
+3. 修复建议：
+   - 当前为框架底层行为差异，不建议强行修改测试用例，可提交 issue 至 PaddlePaddle 官方仓库，建议增强 `paddle.gather` 对多维 index 的支持以提升与 PyTorch 的一致性。

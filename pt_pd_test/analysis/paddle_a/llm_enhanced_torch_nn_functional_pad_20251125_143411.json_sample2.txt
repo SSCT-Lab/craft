@@ -1,0 +1,73 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251125_143411.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Size of paddings should be equal to 6, but received 10.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      32,
+      64,
+      0,
+      8,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.pad",
+  "input": {
+    "shape": [
+      32,
+      64,
+      0,
+      8,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `pad` 参数长度要求在 `mode='reflect'` 时必须为 `2 * (N - 2)`，其中 N 为输入张量维度。本例中输入 shape 为 `[32, 64, 0, 8, 4]`，即 N=5，因此合法的 `pad` 长度应为 `2*(5-2)=6`。但实际传入的 `pad` 长度为 10，违反了此约束。
+   - 虽然 PyTorch 的 `torch.nn.functional.pad` 允许任意偶数长度的 `pad`（只要不超过 2×input_dim），但 PaddlePaddle 在 `mode='reflect'` 时对 `pad` 长度有严格限制，且不支持扩展到更高维度的填充模式。
+
+3. 修复建议：
+   - 该行为差异属于框架实现细节不一致，可提交 issue 给 PaddlePaddle 官方，建议放宽 `reflect` 模式下 `pad` 长度的限制以与 PyTorch 对齐。

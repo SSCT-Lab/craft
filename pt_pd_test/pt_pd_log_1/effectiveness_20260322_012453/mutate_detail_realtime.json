@@ -1,0 +1,149 @@
+{
+  "updated_at": "2026-03-22T01:27:16.131626",
+  "records": [
+    {
+      "operator": "torch.where",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致且均成功，需通过fuzzing增强测试覆盖：引入空张量（shape=[0, 5]）、标量y、混合数据类型（x为int32、y为float32，触发Paddle的auto type promotion机制）、以及1D/3D边界形状，以验证广播行为、类型提升规则和维度兼容性；同时PyTorch torch.where支持标量输入而Paddle paddle.where要求x/y同为Tensor或同为标量，故保持语义等价前提下将y设为标量并确保x也为标量或同shape Tensor；此处选择变异为condition=[0,5]（空batch）、x与y为标量，覆盖空张量场景及标量广播逻辑。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致且均成功，说明当前用例基础功能正常；为提升测试覆盖率和发现潜在边界问题，需进行fuzzing变异。原始用例使用空张量（shape=[0,5]）和标量y=0.0，可变异为：(1) 将condition改为全True/全False的非空边界形状如[1,1]、[2,0]、[0,0]；(2) x和y均升级为同dtype张量以测试广播行为；(3) 引入int64 dtype测试类型兼容性；(4) 使用极端标量值如inf/-inf/nan（需确认框架支持）；综合考虑文档中torch.where和paddle.where均支持标量/张量混合输入、广播、bool condition，且要求x/y dtype需在合法范围内，故选择变异为condition=[1,1]（最小非空二维）、x和y均为float32张量（shape=[]保持标量语义但显式张量化）、并添加dtype=int64变体作为第二组变异。但根据输出格式约束，仅返回单组变异用例，故选取最具压力的组合：condition=[0,0]（零元素二维，比[0,5]更极端）、x为int64标量（扩展dtype覆盖）、y为-1（非零整数标量），确保两框架参数语义等价且符合各自文档dtype要求（paddle支持int32/int64，torch支持int64）。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但仅覆盖了空二维张量（shape=[0,0]）这一单一边界情况；为提升测试鲁棒性与覆盖率，需进行fuzzing变异：引入更丰富的边界场景，包括零维标量条件、一维空张量、三维张量、混合数据类型（x/y为float而condition为bool）、以及broadcasting敏感场景（如condition为[2,1]，x为[2,3]，y为标量），同时确保所有参数语义等价且符合各自文档约束（如paddle.where要求x/y同类型或可promote，torch.where支持scalar广播）。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        }
+      ]
+    },
+    {
+      "operator": "torch.atleast_3d",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致且均成功，说明基础功能等价；为提升测试覆盖率和发现潜在边界问题，需对输入进行变异：原始用例仅测试0维张量（标量），应扩展覆盖1D、2D、3D+、空维度、不同dtype（如int32、bool）、多输入序列等场景。根据文档，torch.atleast_3d和paddle.atleast_3d均支持单个或多个tensor输入，且对≥3D输入保持原样，因此变异应涵盖shape=(), (5,), (3,4), (2,3,4), (1,2,3,4)及dtype=float32/int32/bool，并测试多输入tuple/list形式。",
+          "execute_symbol": "✗",
+          "torch_success": true,
+          "paddle_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "PaddlePaddle的paddle.atleast_3d不接受keyword argument 'inputs' — according to its official documentation, it accepts positional arguments (Tensor or list[Tensor]), not a named 'inputs' parameter. The error 'atleast_3d() got an unexpected keyword argument \"inputs\"' indicates that the Paddle test case incorrectly passes inputs as a keyword argument, while PyTorch's torch.atleast_3d accepts *tensors (varargs). To align semantics and fix the call, Paddle's test case must pass tensors positionally (i.e., as unnamed list), not via keyword 'inputs'. Also, PyTorch uses *tensors (unpacking), so the Paddle equivalent must use positional list input — matching the documented signature: 'inputs(Tensor|list(Tensor))', where 'list(Tensor)' is valid and positional.",
+          "execute_symbol": "✗",
+          "torch_success": true,
+          "paddle_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "PaddlePaddle的paddle.atleast_3d不接受keyword argument 'inputs' — according to its official documentation, it accepts positional arguments (Tensor or list[Tensor]), not a named 'inputs' parameter. The error 'atleast_3d() got an unexpected keyword argument \"inputs\"' indicates that the Paddle test case incorrectly passes inputs as a keyword argument, while PyTorch's torch.atleast_3d accepts *tensors (varargs). To align semantics and fix the call, Paddle's test case must pass tensors positionally (i.e., as unnamed list), not via keyword 'inputs'. Also, PyTorch uses *tensors (unpacking), so the Paddle equivalent must use positional list input — matching the documented signature: 'inputs(Tensor|list(Tensor))', where 'list(Tensor)' is valid and positional.",
+          "execute_symbol": "✗",
+          "torch_success": true,
+          "paddle_success": false
+        }
+      ]
+    },
+    {
+      "operator": "torch.nn.Dropout2d",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "两框架均执行成功但数值不一致，最大差异为3.7889，远超可容忍精度误差（1e-3）。根据API文档，PyTorch's Dropout2d和Paddle's Dropout2D语义一致：均对整个通道（channel）进行Bernoulli随机置零，且p参数含义相同。但实际实现中存在关键差异：PyTorch Dropout2d默认仅支持NCHW格式且内部按channel维度（dim=1）mask；Paddle Dropout2D虽默认NCHW，但其mask生成与应用逻辑在早期版本中存在与PyTorch不一致的随机性或缩放因子偏差（如训练模式下是否正确应用1/(1-p)缩放）。此外，两者随机种子未同步，导致非确定性输出差异。由于功能语义等价且无报错，差异源于随机行为和实现细节，不属于功能不等价，故不应skip；而直接repair无法解决随机性导致的逐值不等（除非固定seed并确保两框架随机数生成器行为完全一致，但测试框架未提供seed控制）。因此选择mutation：通过增加inplace/seed相关可控变量或切换p为边界值（如0.0、1.0）使输出确定化以验证功能一致性。此处选择p=0.0（无dropout）和p=1.0（全置零）两个确定性场景进行变异，确保输出严格一致，从而隔离随机性干扰。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，说明基础功能等价；但原始用例使用p=0.0（无dropout），缺乏对随机性、边界概率（如p=1.0）、不同数据格式（NHWC）、以及非默认参数的覆盖。根据文档，PaddlePaddle支持data_format参数（NCHW/NHWC），而PyTorch Dropout2d仅支持NCHW语义（固定通道维度为dim=1），因此需变异以验证等价行为下的鲁棒性：增加p=1.0（全零）、p=0.5（典型随机）、并引入NHWC格式的Paddle用例（需对应PyTorch中手动转置模拟等效行为）；同时扩展形状至含边界值（如单通道、单空间维）以增强覆盖率。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，说明基础功能等价，但原始用例仅覆盖了最简形状[2,1,1,1]和极端p=1.0情形；为提升鲁棒性测试覆盖率，需变异为更具代表性的边界及典型场景：包括多通道（C>1）、非平凡空间尺寸（H,W>1）、p=0.0（无dropout）、p=0.5（默认行为）、以及NHWC格式（Paddle支持而PyTorch隐式固定NCHW，但需确保语义等价——通过在Paddle中显式指定data_format='NHWC'并调整输入shape顺序，同时PyTorch仍按NCHW处理，故需保持输入shape语义一致，即对NHWC输入，PyTorch仍接收[N,H,W,C]但Dropout2d作用于channel维度C，因此需将Paddle的NHWC输入shape设为[N,H,W,C]，而PyTorch对应输入shape应为[N,C,H,W]以保证相同channel数被drop；但为保持输入张量内容可比，更稳妥的变异是维持NCHW统一，并增加通道数、空间尺寸和p值多样性，避免格式切换引入不必要复杂度。因此选择变异为：shape=[1,3,4,5]（典型CNN特征图），p=0.0、0.5、0.9，dtype扩展为float64以检验精度一致性，同时保留原p=1.0用例的变体以覆盖全零输出边界。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        }
+      ]
+    },
+    {
+      "operator": "torch.diag_embed",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致且均成功，符合API文档描述；为提升测试覆盖率和发现潜在边界问题，需对用例进行变异。原始用例输入为2D张量[2485, 7]，offset=1，dim1=0，dim2=2——注意dim2=2在输入仅2维时会越界（输入rank=2，合法dim索引为-2,-1,0,1），但PyTorch和Paddle均支持负/正混合维度且自动归一化，当前用例虽能运行，但属于边缘情况；应变异为更典型且具压力的高维场景（如3D输入）、极端offset（如等于输入长度）、负offset、以及空维度/单元素等边界形状，同时确保dim1/dim2在有效范围内并保持语义等价。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致且无错误，符合变异条件；为提升测试覆盖率和发现潜在边界问题，对输入形状进行变异：将原[3,4,5]改为包含0维度的[0,4,5]（空张量场景），同时调整offset为边界值-6（小于-min(dim1_size, dim2_size)以触发偏移越界鲁棒性测试），并保持dim1=-3、dim2=-2语义等价；该变异覆盖空输入、极端offset等未测试场景，符合fuzzing原则。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，符合'一致'条件，需进行fuzzing变异以增强边界覆盖。原始用例输入shape为[0,4,5]（含batch维度0），offset=-6（远左偏移），dim1=-3/dim2=-2（跨空维索引）。为提升鲁棒性测试，变异为：(1) 更极端的空形状[0]（标量级空张量）；(2) offset设为极大正值/负值（如100/-100）以触发对角线越界填充逻辑；(3) dim1/dim2切换为正向索引（0,1）验证维度解析一致性；(4) 增加int32 dtype覆盖整型路径；(5) 添加单元素非空case [1]验证最小有效输入。综合选取最富挑战性的变异：shape=[0]（零维空张量）、offset=100（大幅右偏）、dim1=0、dim2=1（正向维度指定），该组合在两框架中均合法（文档明确支持任意int offset及dim1/dim2，且空shape是合法输入），可暴露维度广播或越界处理差异。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "paddle_success": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_nn_functional_pixel_shuffle_20251215_204601.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__DepthToSpace_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input depth dimension 85 should be divisible by: 9 [Op:DepthToSpace] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pixel_shuffle",
+  "input": {
+    "shape": [
+      4,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.04585679620504379,
+      -0.4270145893096924,
+      -0.6269370317459106,
+      -0.5603301525115967,
+      0.202853724360466,
+      -1.176101565361023,
+      1.8328183889389038,
+      0.4434244930744171,
+      -0.023042291402816772,
+      0.17431603372097015
+    ]
+  },
+  "upscale_factor": 3
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.depth_to_space",
+  "input": {
+    "shape": [
+      4,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.04585679620504379,
+      -0.4270145893096924,
+      -0.6269370317459106,
+      -0.5603301525115967,
+      0.202853724360466,
+      -1.176101565361023,
+      1.8328183889389038,
+      0.4434244930744171,
+      -0.023042291402816772,
+      0.17431603372097015
+    ]
+  },
+  "block_size": 3
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.depth_to_space` 要求输入的 depth 维度（即 channel 维度）必须能被 `block_size^2` 整除，而本例中 input shape 为 `[4, 9, 85, 85]`，depth=9，block_size=3，`block_size^2 = 9`，虽然 9 可被 9 整除，但实际错误提示为“Input depth dimension 85 should be divisible by: 9”，说明问题出在 **第 1 个 channel 维度（C×r²）应为 9**，而当前输入的 C×r² = 9，但实际输入张量的 depth 维度是 9，而 `depth_to_space` 的输入要求是 `(N, H, W, C×r²)`，且 `C×r²` 必须能被 `r²` 整除 —— 这里逻辑矛盾。
+   - 更关键的是：**`depth_to_space` 的输入 shape 应为 `(N, H, W, C × r²)`，但本例输入是 `(4, 9, 85, 85)`，即 `C×r² = 9`，`r=3`，则 `C = 1`，但 `depth=9` 是 `C×r²`，所以 `C = 1`，这是合法的。然而，该函数要求 `depth`（即 `C×r²`）必须能被 `r²` 整除，而 9 ÷ 9 = 1，整除成立。但错误信息却说“85 应能被 9 整除”——这表明可能是维度顺序或 API 理解有误。实际上，`depth_to_space` 的输入维度是 `(N, H, W, C×r²)`，而本例输入是 `(4, 9, 85, 85)`，即 `H=85`, `W=85`，`C×r²=9`，此时 `H=85` 不应被 `r=3` 整除？不，`depth_to_space` 并不要求 H、W 被 r 整除，而是要求 `depth=C×r²` 能被 `r²` 整除。因此，根本问题是：**错误信息中的“85”应为“9”**，说明 TensorFlow 内部可能误将 `C×r²` 作为输入深度，并检查其是否可被 `r²` 整除，而 9 ÷ 9 = 1，完全合法。但报错说“depth dimension 85 should be divisible by 9”，说明输入中 **实际的 depth 维度是 85**，而非 9。这与测试用例中 `shape=[4, 9, 85, 85]` 一致，即第二维是 9，第三维是 85 —— 但 `depth_to_space` 的输入要求是 `(N, H, W, C×r²)`，其中 `C×r²` 是最后一个维度。因此，若输入是 `[4, 9, 85, 85]`，那么 `C×r²` 是 85，而不是 9！这就意味着：**维度顺序与 API 要求不符**。
+
+3. 修复建议：
+   - 修正输入维度顺序：TensorFlow `depth_to_space` 要求输入为 `(N, H, W, C×r²)`，即最后一个是 depth 维，而当前输入为 `[4, 9, 85, 85]`，表示 `C×r² = 85`，但 85 不能被 9 整除，导致错误；应确保 `C×r²` 为 9，且放在最后一个维度，即正确输入应为 `[4, 85, 85, 9]`。

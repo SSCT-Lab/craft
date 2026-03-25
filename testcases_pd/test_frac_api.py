@@ -1,0 +1,161 @@
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import numpy as np
+from op_test import get_device_place
+
+import paddle
+from paddle import base
+
+
+def ref_frac(x):
+    return x - np.trunc(x)
+
+
+class TestFracAPI(unittest.TestCase):
+    """Test Frac API"""
+
+    def set_dtype(self):
+        self.dtype = 'float64'
+
+    def setUp(self):
+        self.set_dtype()
+        self.x_np = np.random.uniform(-3, 3, [2, 3]).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_api_static(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out = paddle.frac(input)
+            exe = base.Executor(self.place)
+            (res,) = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = ref_frac(self.x_np)
+        np.testing.assert_allclose(out_ref, res, rtol=1e-05)
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out = paddle.frac(x)
+        out_ref = ref_frac(self.x_np)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+    def test_api_eager(self):
+        with paddle.base.dygraph.guard(self.place):
+            x_tensor = paddle.to_tensor(self.x_np)
+            out = paddle.frac(x_tensor)
+            out_ref = ref_frac(self.x_np)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+
+
+class TestFracInt32(TestFracAPI):
+    """Test Frac API with data type int32"""
+
+    def set_dtype(self):
+        self.dtype = 'int32'
+
+
+class TestFracInt64(TestFracAPI):
+    """Test Frac API with data type int64"""
+
+    def set_dtype(self):
+        self.dtype = 'int64'
+
+
+class TestFracFloat32(TestFracAPI):
+    """Test Frac API with data type float32"""
+
+    def set_dtype(self):
+        self.dtype = 'float32'
+
+
+class TestFracError(unittest.TestCase):
+    """Test Frac Error"""
+
+    def setUp(self):
+        self.x_np = np.random.uniform(-3, 3, [2, 3]).astype('int16')
+        self.place = get_device_place()
+
+    def test_static_error(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', [5, 5], 'bool')
+            self.assertRaises(TypeError, paddle.frac, x)
+
+    def test_dygraph_error(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np, dtype='int16')
+        self.assertRaises(TypeError, paddle.frac, x)
+
+
+class TestFracAPI_ZeroSize(unittest.TestCase):
+    def set_dtype(self):
+        self.dtype = 'float64'
+
+    def setUp(self):
+        self.set_dtype()
+        self.x_np = np.random.random([0, 3]).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_api_dygraph(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        x.stop_gradient = False
+        out = paddle.frac(x)
+        out_ref = ref_frac(self.x_np)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
+        out.sum().backward()
+        np.testing.assert_allclose(x.grad.shape, x.shape)
+
+
+class TestFracAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        self.shape = [5, 6]
+        self.dtype = "float32"
+        np.random.seed(2025)
+        self.x_np = np.random.rand(*self.shape).astype(self.dtype)
+        self.place = get_device_place()
+
+    def test_frac_input_arg(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_ref = ref_frac(self.x_np)
+        out = paddle.frac(input=x)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_frac_output_arg(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_ref = ref_frac(self.x_np)
+        out = paddle.empty([])
+        paddle.frac(x, out=out)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
+
+    def test_frac_tensor_output_arg(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x_np)
+        out_ref = ref_frac(self.x_np)
+        out1 = paddle.empty([])
+        out2 = paddle.frac(x, out=out1)
+        np.testing.assert_allclose(out1.numpy(), out_ref, rtol=1e-05)
+        np.testing.assert_allclose(out2.numpy(), out_ref, rtol=1e-05)
+        paddle.enable_static()
+
+
+if __name__ == '__main__':
+    unittest.main()

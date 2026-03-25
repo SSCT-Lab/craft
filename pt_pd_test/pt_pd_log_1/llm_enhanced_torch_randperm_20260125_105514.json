@@ -1,0 +1,456 @@
+{
+  "operator": "torch.randperm",
+  "timestamp": "2026-01-25T10:55:14.968942",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "n": 60000,
+        "generator": null,
+        "api": "torch.randperm"
+      },
+      "paddle_test_case": {
+        "n": 60000,
+        "generator": null,
+        "api": "paddle.randperm"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "randperm() got an unexpected keyword argument 'generator'",
+        "comparison_error": null,
+        "torch_shape": [
+          60000
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: randperm() got an unexpected keyword argument 'generator'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.randperm does not support the 'generator' parameter, as confirmed by its official documentation which lists only 'n' and 'dtype' (and optional 'name') as valid arguments. The PyTorch version supports 'generator', but this parameter must be removed for PaddlePaddle to avoid 'unexpected keyword argument' error. Since the core functionality (generating random permutation of integers 0 to n-1) is equivalent when generator is not specified, removing 'generator' restores compatibility without affecting correctness."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 60000,
+        "generator": null
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 60000
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 59749",
+        "torch_shape": [
+          60000
+        ],
+        "paddle_shape": [
+          60000
+        ],
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架均执行成功但结果不一致，最大差异达59749，远超可容忍精度误差（1e-3）；但randperm是随机置换操作，其输出本身具有随机性，不固定；因此数值不一致属正常行为，非bug；需通过控制随机种子使结果可复现并一致；PyTorch支持generator参数，PaddlePaddle也支持seed参数（文档未显式列出但实际可用），故应添加相同随机种子进行可控对比；原始用例未设种子，导致不可比；变异目标：引入可复现的随机性，添加相同seed/generator以确保结果一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 60000,
+        "generator": "torch.Generator().manual_seed(42)"
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 60000,
+        "seed": 42
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "randperm() received an invalid combination of arguments - got (n=int, generator=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "paddle_error": "randperm() got an unexpected keyword argument 'seed'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: randperm() received an invalid combination of arguments - got (n=int, generator=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: randperm() got an unexpected keyword argument 'seed'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.randperm does not accept string for 'generator' — it requires a torch.Generator object instance, not a string expression. PaddlePaddle paddle.randperm does not support 'seed' argument; instead, it uses global or generator-based seeding via paddle.seed() or paddle.Generator, but the randperm API itself has no 'seed' parameter. Both frameworks require valid generator handling: PyTorch expects a pre-seeded Generator object passed as 'generator=', while PaddlePaddle lacks direct generator support in randperm and relies on global seed or explicit Generator usage (but current paddle.randperm signature does not accept 'generator' or 'seed'). To align behavior and fix both failures: (1) For PyTorch, replace string with actual Generator object creation (evaluated at test runtime); however, since test cases are static JSON, we must use only serializable parameters — so instead, remove 'generator' and rely on deterministic global state (not ideal but valid), or use supported kwargs like 'dtype'. But per error, 'generator' was passed as string → invalid. So repair: omit 'generator' and add 'dtype=torch.int64' explicitly to match default and ensure compatibility. (2) For Paddle, 'seed' is unsupported → remove it. Both APIs support 'n' and 'dtype'; dtype must be consistent (int64). Also, n=60000 is valid for both. Thus repaired cases use only 'n' and explicit 'dtype' (int64), removing invalid args."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 60000,
+        "dtype": "torch.int64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 60000,
+        "dtype": "int64"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "randperm() received an invalid combination of arguments - got (n=int, dtype=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          60000
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: randperm() received an invalid combination of arguments - got (n=int, dtype=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "n": 11339,
+        "generator": null,
+        "api": "torch.randperm"
+      },
+      "paddle_test_case": {
+        "n": 11339,
+        "generator": null,
+        "api": "paddle.randperm"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "randperm() got an unexpected keyword argument 'generator'",
+        "comparison_error": null,
+        "torch_shape": [
+          11339
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: randperm() got an unexpected keyword argument 'generator'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.randperm does not support the 'generator' parameter, as indicated by the error 'randperm() got an unexpected keyword argument \"generator\"'. According to the PaddlePaddle documentation, only 'n' and 'dtype' (and optional 'name') are supported. Therefore, the 'generator' parameter must be removed from the Paddle test case to align with its API signature, while keeping it in the PyTorch case since it is valid there (even if null/None). This is a parameter mismatch repair, not a skip — the functionality (random permutation of integers 0..n-1) is equivalent; only the RNG control mechanism differs."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 11339,
+        "generator": null
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 11339
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 11308",
+        "torch_shape": [
+          11339
+        ],
+        "paddle_shape": [
+          11339
+        ],
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架均执行成功但结果不一致，最大差异达11308，远超可容忍精度误差（1e-3）；但randperm本质是随机置换，其输出依赖于底层随机数生成器的实现细节和种子状态。PyTorch支持generator参数控制随机源，而PaddlePaddle当前版本（2.6+）的paddle.randperm不支持generator或seed参数，导致无法保证跨框架结果一致。根据API文档，二者功能语义等价（均生成0~n-1的随机排列），但确定性不可比，属预期行为差异，非bug。因此不修复，转为变异以覆盖更多合法输入场景，如边界值、小规模n、显式dtype指定等，增强鲁棒性测试。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 10,
+        "dtype": "torch.int32",
+        "device": "cpu",
+        "requires_grad": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 10,
+        "dtype": "int32"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "randperm() received an invalid combination of arguments - got (n=int, device=str, dtype=str, requires_grad=bool, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          10
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int32",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: randperm() received an invalid combination of arguments - got (n=int, device=str, dtype=str, requires_grad=bool, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.randperm does not accept 'device' and 'requires_grad' as positional or keyword arguments in the same call when dtype is specified; the error shows invalid argument combination. According to PyTorch docs, 'device' and 'requires_grad' are valid kwargs, but they must be used correctly — however, the issue is that 'dtype' must be a torch.dtype (e.g., torch.int32), not a string ('torch.int32'). Also, 'device' must be a torch.device object (e.g., torch.device('cpu')), not a string ('cpu'). The PaddlePaddle version accepts string dtype and has no device/autograd semantics, so we fix PyTorch test case to use proper torch.dtype and torch.device, and remove requires_grad (which is unsupported in randperm's signature unless explicitly allowed — but docs say it's optional and supported; however, the error indicates it's conflicting with string dtype/device). Actually, the root cause is passing dtype as string instead of torch.dtype. Fixing dtype to torch.int32 and device to torch.device('cpu') resolves the error."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 10,
+        "dtype": "torch.int32",
+        "device": "torch.device('cpu')",
+        "requires_grad": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 10,
+        "dtype": "int32"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "randperm() received an invalid combination of arguments - got (n=int, device=str, dtype=str, requires_grad=bool, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          10
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int32",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: randperm() received an invalid combination of arguments - got (n=int, device=str, dtype=str, requires_grad=bool, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "n": 2024,
+        "generator": null,
+        "api": "torch.randperm"
+      },
+      "paddle_test_case": {
+        "n": 2024,
+        "generator": null,
+        "api": "paddle.randperm"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "randperm() got an unexpected keyword argument 'generator'",
+        "comparison_error": null,
+        "torch_shape": [
+          2024
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: randperm() got an unexpected keyword argument 'generator'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.randperm does not support the 'generator' parameter, as confirmed by its official documentation which lists only 'n' and 'dtype' (and optional 'name') as valid arguments. The PyTorch version supports 'generator', but PaddlePaddle lacks this functionality. Therefore, to make the PaddlePaddle test case valid and executable, the unsupported 'generator' parameter must be removed. This is a functional mismatch, not a bug in the test — the correct fix is to omit 'generator' from the PaddlePaddle test case while keeping it in PyTorch for correctness (though null generator has no effect)."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 2024,
+        "generator": null
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 2024
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2004",
+        "torch_shape": [
+          2024
+        ],
+        "paddle_shape": [
+          2024
+        ],
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架均执行成功但结果不一致，最大差异为2004，远超可容忍精度误差（1e-3）；但randperm是随机置换操作，其输出本身具有随机性，不同框架/不同随机数生成器/不同默认种子会导致完全不同的排列结果，属于预期行为而非bug；因此需通过固定随机种子（generator）使两者可比，但PyTorch支持generator参数而PaddlePaddle当前版本（2.6+）的paddle.randperm不支持generator或seed参数，导致功能不等价；根据文档，PaddlePaddle无generator参数，无法保证跨框架结果一致，故不应直接比较原始随机输出；应变异测试用例为固定种子场景下的可比形式：在PyTorch中使用固定generator，在Paddle中虽无法指定generator，但可通过设置全局随机种子（如paddle.seed）实现等效控制；然而测试用例格式仅支持API级参数，不支持全局状态设置，因此更合理的变异是添加dtype一致性校验，并尝试边界值（如n=0, n=1, n=2）和不同dtype，以验证功能覆盖而非数值一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 1,
+        "dtype": "torch.int64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 1,
+        "dtype": "int64"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "randperm() received an invalid combination of arguments - got (n=int, dtype=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          1
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: randperm() received an invalid combination of arguments - got (n=int, dtype=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.randperm does not accept string dtype like 'torch.int64'; it requires a torch.dtype object (e.g., torch.int64). The error indicates invalid argument combination: got (n=int, dtype=str), but expected dtype=torch.dtype. PaddlePaddle accepts string 'int64', but PyTorch requires the actual dtype constant. Therefore, the PyTorch test case must be repaired to use torch.int64 (not string), while keeping PaddlePaddle's string dtype as valid per its doc."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.randperm",
+        "n": 1,
+        "dtype": "torch.int64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.randperm",
+        "n": 1,
+        "dtype": "int64"
+      },
+      "execution_result": {
+        "torch_api": "torch.randperm",
+        "paddle_api": "paddle.randperm",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "randperm() received an invalid combination of arguments - got (n=int, dtype=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          1
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: randperm() received an invalid combination of arguments - got (n=int, dtype=str, ), but expected one of:\n * (int n, *, torch.Generator generator, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (int n, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

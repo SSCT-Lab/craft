@@ -1,0 +1,268 @@
+{
+  "operator": "torch.nn.Hardshrink",
+  "timestamp": "2026-01-23T18:03:17.095209",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5710854530334473,
+            0.1710841804742813,
+            -0.020152727141976357,
+            0.9925888180732727,
+            -0.3342926800251007,
+            -0.08833485841751099
+          ]
+        },
+        "api": "torch.nn.Hardshrink"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5710854530334473,
+            0.1710841804742813,
+            -0.020152727141976357,
+            0.9925888180732727,
+            -0.3342926800251007,
+            -0.08833485841751099
+          ]
+        },
+        "api": "tf.keras.layers.Lambda"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Hardshrink",
+        "tensorflow_api": "tf.keras.layers.Lambda",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Lambda.__init__() missing 1 required positional argument: 'function'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\nTypeError: Lambda.__init__() missing 1 required positional argument: 'function'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.keras.layers.Lambda是一个通用封装层，需要显式传入function参数来定义其行为，而PyTorch的torch.nn.Hardshrink是专用Hardshrink激活函数。原始TF用例缺失必填参数'function'，且未实现Hardshrink逻辑（即：x if |x| > lambd else 0）。根据PyTorch Hardshrink默认lambd=0.5，需在Lambda中构造等价函数。同时，Lambda层不直接接受input shape作为参数，需配合tf.keras.Input和Model构建，但测试用例仅描述层定义，因此修复为提供合法function（lambda x: tf.where(tf.abs(x) > 0.5, x, 0)）并显式指定lambd=0.5以对齐PyTorch默认行为。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.Hardshrink",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5526858568191528,
+            -0.29195359349250793,
+            -0.46524766087532043,
+            0.5729101300239563,
+            0.8719363212585449,
+            -0.34646037220954895
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.Lambda",
+        "function": "lambda x: tf.where(tf.abs(x) > 0.5, x, 0)",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5526858568191528,
+            -0.29195359349250793,
+            -0.46524766087532043,
+            0.5729101300239563,
+            0.8719363212585449,
+            -0.34646037220954895
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Hardshrink",
+        "tensorflow_api": "tf.keras.layers.Lambda",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "unsupported callable",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 1277, in getfullargspec\n    sig = _signature_from_callable(func,\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 2396, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'lambda x: tf.where(tf.abs(x) > 0.5, x, 0)' is not a callable object\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\core\\lambda_layer.py\", line 80, in __init__\n    function_args = inspect.getfullargspec(function).args\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 1287, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow测试用例使用tf.keras.layers.Lambda包装自定义lambda函数，但错误信息'supported callable'表明传入的function参数未被正确识别或序列化；根据TensorFlow文档，Lambda层的function参数必须是可序列化的Python函数（不能是lambda表达式），且需确保在Keras模型中能被正确追踪。此外，PyTorch Hardshrink默认lambd=0.5，但其行为是：y = x if |x| > lambd else 0；当前TF lambda中硬编码0.5虽数值匹配，但lambda表达式不可序列化。修复方式：改用显式定义的、可序列化的函数，并确保输入张量类型兼容（如显式cast）。同时，为保持功能等价，应支持lambd参数可配置，但原PyTorch用例未指定lambd，故保持默认0.5；修复后的TF用例使用def定义函数并避免lambda，同时添加input_shape以满足Lambda层要求。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.Hardshrink",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0257130861282349,
+            -0.1960146576166153,
+            -1.9068011045455933,
+            0.11672503501176834,
+            -0.3810591399669647,
+            0.9531653523445129
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.Lambda",
+        "function": "def hardshrink_fn(x): return tf.where(tf.abs(x) > 0.5, x, 0.0)",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0257130861282349,
+            -0.1960146576166153,
+            -1.9068011045455933,
+            0.11672503501176834,
+            -0.3810591399669647,
+            0.9531653523445129
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Hardshrink",
+        "tensorflow_api": "tf.keras.layers.Lambda",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "unsupported callable",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 1277, in getfullargspec\n    sig = _signature_from_callable(func,\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 2396, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'def hardshrink_fn(x): return tf.where(tf.abs(x) > 0.5, x, 0.0)' is not a callable object\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\core\\lambda_layer.py\", line 80, in __init__\n    function_args = inspect.getfullargspec(function).args\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 1287, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.keras.layers.Lambda要求传入一个可调用对象（callable），但在测试用例中直接传递了函数定义字符串，导致'unsupported callable'错误。根据TensorFlow文档，应将function参数设置为实际的lambda或函数对象，而不是字符串。此外，PyTorch的Hardshrink默认lambd=0.5，而TensorFlow需通过Lambda层模拟相同行为，因此需要修复TensorFlow测试用例中的function字段为合法的lambda表达式。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.Hardshrink",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.08175878971815109,
+            0.20275716483592987,
+            1.1030384302139282,
+            -1.2058851718902588,
+            -0.9740550518035889,
+            -1.1574299335479736
+          ]
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.Lambda",
+        "function": "lambda x: tf.where(tf.abs(x) > 0.5, x, 0.0)",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.08175878971815109,
+            0.20275716483592987,
+            1.1030384302139282,
+            -1.2058851718902588,
+            -0.9740550518035889,
+            -1.1574299335479736
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Hardshrink",
+        "tensorflow_api": "tf.keras.layers.Lambda",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "unsupported callable",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 1277, in getfullargspec\n    sig = _signature_from_callable(func,\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 2396, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'lambda x: tf.where(tf.abs(x) > 0.5, x, 0.0)' is not a callable object\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\core\\lambda_layer.py\", line 80, in __init__\n    function_args = inspect.getfullargspec(function).args\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\inspect.py\", line 1287, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,285 @@
+{
+  "operator": "torch_chunk",
+  "export_time": "2026-01-27T00:52:00.418520",
+  "total_success_cases": 4,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+      "operator": "torch.chunk",
+      "iteration": 3,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            8,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1042499914765358,
+            -0.035470180213451385,
+            2.084299325942993,
+            -0.5324059128761292,
+            -0.10456351190805435,
+            -1.0819859504699707,
+            -0.4147380590438843,
+            -0.28949397802352905,
+            0.6497060060501099,
+            -0.03631725162267685
+          ]
+        },
+        "chunks": 2,
+        "dim": 1
+      },
+      "paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            8,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1042499914765358,
+            -0.035470180213451385,
+            2.084299325942993,
+            -0.5324059128761292,
+            -0.10456351190805435,
+            -1.0819859504699707,
+            -0.4147380590438843,
+            -0.28949397802352905,
+            0.6497060060501099,
+            -0.03631725162267685
+          ]
+        },
+        "num_or_sections": 2,
+        "axis": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.chunk",
+        "paddle_api": "paddle.split",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明基础功能对齐；但需通过fuzzing探索边界和异常情况以增强鲁棒性测试。根据torch.chunk文档，当chunks大于输入在dim维度的大小时，会返回少于指定数量的chunk（如chunks=10, dim_size=4 → 返回4个chunk）；而paddle.split当num_or_sections为int时要求能整除，否则报错（文档明确要求'equal sized sub-Tensors'），但实际测试中发现paddle.split在num_or_sections不能整除时会自动调整最后一份（类似-1语义），需验证该行为一致性。因此变异为chunks/num_or_sections > dim_size的场景（如chunks=5, dim=1, shape=[8,4] → dim_size=4），并补充负axis、0-size tensor等边界case。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+      "operator": "torch.chunk",
+      "iteration": 3,
+      "case_number": 2,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            8,
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9963996410369873,
+            -0.31491580605506897,
+            1.164052128791809,
+            -0.7782449126243591,
+            -0.6651061773300171,
+            -0.38584059476852417,
+            1.192168116569519,
+            -0.4067787230014801,
+            0.5834737420082092,
+            0.06551650911569595
+          ]
+        },
+        "chunks": 2,
+        "dim": 1
+      },
+      "paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            8,
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9963996410369873,
+            -0.31491580605506897,
+            1.164052128791809,
+            -0.7782449126243591,
+            -0.6651061773300171,
+            -0.38584059476852417,
+            1.192168116569519,
+            -0.4067787230014801,
+            0.5834737420082092,
+            0.06551650911569595
+          ]
+        },
+        "num_or_sections": 2,
+        "axis": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.chunk",
+        "paddle_api": "paddle.split",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle上均执行成功且结果一致，但未覆盖边界情况和潜在不等价行为。根据PyTorch文档，torch.chunk may return fewer than the specified number of chunks when dimension size is not divisible by chunks — this is a key behavioral nuance. PaddlePaddle's paddle.split with int num_or_sections requires equal-sized sections and raises error if division is not exact (unlike torch.chunk which silently returns fewer chunks). However, in the original case (dim=1, size=4, chunks=2), 4%2==0 so both behave identically. To expose divergence, we mutate to a case where dim size is not divisible by chunks (e.g., shape=[8,5,1], chunks=2 → dim=1 size=5 → torch.chunk returns 2 chunks of sizes [3,2], while paddle.split with num_or_sections=2 would raise ValueError). To keep test valid and comparable, we instead use paddle.split with list sections ([3,2]) to match torch.chunk's actual output behavior — but per task requirement, mutation must preserve functional equivalence *and* increase coverage. Hence we generate a new valid fuzzed case: shape=[1,0,3] (empty dim), chunks=3, dim=1 — torch.chunk on empty dim returns 3 empty tensors; paddle.split with num_or_sections=3 on axis=1 of shape [1,0,3] is valid and yields 3 empty tensors. Also add negative dim and scalar tensor edge case."
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+      "operator": "torch.chunk",
+      "iteration": 4,
+      "case_number": 2,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "chunks": 3,
+        "dim": -2
+      },
+      "paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_or_sections": 3,
+        "axis": -2
+      },
+      "execution_result": {
+        "torch_api": "torch.chunk",
+        "paddle_api": "paddle.split",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+      "operator": "torch.chunk",
+      "iteration": 2,
+      "case_number": 3,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            389,
+            26496
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.41333305835723877,
+            -0.7824928760528564,
+            0.5133719444274902,
+            -1.7366406917572021,
+            -1.8518136739730835,
+            0.4057822823524475,
+            1.8462010622024536,
+            -0.48738425970077515,
+            0.2680208086967468,
+            0.05550285056233406
+          ]
+        },
+        "chunks": 3,
+        "dim": 1
+      },
+      "paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            389,
+            26496
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.41333305835723877,
+            -0.7824928760528564,
+            0.5133719444274902,
+            -1.7366406917572021,
+            -1.8518136739730835,
+            0.4057822823524475,
+            1.8462010622024536,
+            -0.48738425970077515,
+            0.2680208086967468,
+            0.05550285056233406
+          ]
+        },
+        "num_or_sections": 3,
+        "axis": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.chunk",
+        "paddle_api": "paddle.split",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但需增强测试覆盖边界和极端情况：PyTorch torch.chunk may return fewer than `chunks` if dimension size is not divisible, and paddle.split with int `num_or_sections` requires equal division — however, both support it and behavior matches when divisible. To stress test divergence cases, we mutate to a shape where dim=1 (26496) is NOT divisible by chunks=3 (26496 % 3 == 0 → still divisible), so we instead choose a non-divisible case (e.g., shape [389, 26497]) to trigger torch.chunk's documented 'may return fewer chunks' behavior and verify paddle.split handles it equivalently (but note: paddle.split with int `num_or_sections` raises error if not divisible; thus we must switch to list-based `num_or_sections` to emulate chunking logic robustly). Also add dtype variation (int64) and negative axis for completeness."
+      }
+    }
+  ]
+}

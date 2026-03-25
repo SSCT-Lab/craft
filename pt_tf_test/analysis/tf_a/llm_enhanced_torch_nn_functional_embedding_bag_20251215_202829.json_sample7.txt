@@ -1,0 +1,91 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_bag_20251215_202829.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,0] = 7 is not in [0, 7) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding_bag",
+  "input": {
+    "shape": [
+      1,
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      5,
+      3
+    ]
+  },
+  "weight": {
+    "shape": [
+      7,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.3791800737380981,
+      0.8763242959976196,
+      0.3050485849380493,
+      -0.24356529116630554,
+      -0.3174765706062317,
+      -2.6312501430511475,
+      0.03586900234222412,
+      -0.05155707895755768,
+      -0.7977749705314636,
+      0.6121436357498169
+    ]
+  },
+  "offsets": null,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "mode": "mean",
+  "sparse": false,
+  "per_sample_weights": null,
+  "include_last_offset": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      7,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.6235406398773193,
+      0.42990556359291077,
+      -0.8203759789466858,
+      1.182023286819458,
+      -1.2956594228744507,
+      -0.6447405219078064,
+      0.9737681746482849,
+      1.17608642578125,
+      -0.1018821969628334,
+      -0.3107416033744812
+    ]
+  },
+  "ids": {
+    "shape": [
+      1,
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      1
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求索引值必须在 `[0, embedding_matrix_rows)` 范围内，而测试用例中 `ids` 包含值 `7`，但 `weight` 的行数为 7（即索引范围应为 `[0, 7)`，最大有效索引为 6），因此 `7` 是非法索引，触发了 `indices[0,0] = 7 is not in [0, 7)` 错误。
+   - 尽管 PyTorch 的 `torch.nn.functional.embedding_bag` 允许输入索引超出范围（如超过 `weight.size(0) - 1`）时的行为是未定义的或可能报错，但其语义上通常要求索引在合法范围内；然而，本例中该错误直接暴露了两个框架对边界检查的严格程度不同——TensorFlow 明确抛出运行时错误，而 PyTorch 在某些情况下可能容忍或默认处理越界。
+
+3. 修复建议：
+   - 由于该问题是由于索引越界导致的，应确保输入索引在合法范围内（0 到 6），建议修正测试用例中的 `ids` 为 `[6, 1]` 或其他合法值；该问题属于框架行为差异，不构成 API 映射错误，无需提交 issue。

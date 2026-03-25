@@ -1,0 +1,749 @@
+{
+  "operator": "torch.diag",
+  "timestamp": "2026-01-26T02:30:21.546147",
+  "total_iterations": 11,
+  "llm_generated_test_cases": 8,
+  "successful_test_cases": 8,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.36874815821647644,
+            0.267029732465744,
+            0.06553331762552261,
+            -0.04634930193424225,
+            0.8408333659172058,
+            0.3790210783481598,
+            0.04620281979441643,
+            0.25806593894958496,
+            -0.7362180948257446,
+            -0.5039307475090027
+          ]
+        },
+        "diagonal": 0,
+        "api": "torch.diag"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.36874815821647644,
+            0.267029732465744,
+            0.06553331762552261,
+            -0.04634930193424225,
+            0.8408333659172058,
+            0.3790210783481598,
+            0.04620281979441643,
+            0.25806593894958496,
+            -0.7362180948257446,
+            -0.5039307475090027
+          ]
+        },
+        "diagonal": 0,
+        "api": "mindspore.ops.diag"
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "diag() got an unexpected keyword argument 'diagonal'",
+        "comparison_error": null,
+        "torch_shape": [
+          2110,
+          2110
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 680, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: diag() got an unexpected keyword argument 'diagonal'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.ops.diag不支持'diagonal'参数，而PyTorch的torch.diag支持该可选参数。根据MindSpore官方文档，其diag仅接受input张量，无diagonal参数；且文档示例中仅处理1-D输入生成对角矩阵，或高维输入生成块对角结构（rank-2k输出），但不支持偏移对角线。因此需移除MindSpore测试用例中的'diagonal': 0参数以匹配其API签名，同时保持PyTorch用例不变（因其合法）。修复后两用例语义等价：均对1-D输入构造主对角矩阵。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.04756441339850426,
+            0.45113858580589294,
+            -0.036290496587753296,
+            -0.38079458475112915,
+            1.2887579202651978,
+            2.3443076610565186,
+            1.5280243158340454,
+            0.9122763276100159,
+            -2.441342830657959,
+            -1.0000576972961426
+          ]
+        },
+        "diagonal": 0
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.04756441339850426,
+            0.45113858580589294,
+            -0.036290496587753296,
+            -0.38079458475112915,
+            1.2887579202651978,
+            2.3443076610565186,
+            1.5280243158340454,
+            0.9122763276100159,
+            -2.441342830657959,
+            -1.0000576972961426
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2110,
+          2110
+        ],
+        "mindspore_shape": [
+          2110,
+          2110
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，但原始用例仅覆盖1-D输入的常规情况（shape=[2110]），未测试边界和极端情况。根据API文档，PyTorch torch.diag支持diagonal参数指定偏移对角线，而MindSpore ops.diag当前文档未提及diagonal参数（仅支持主对角线），且对多维输入行为不同（会广播为2k维张量）。为提升鲁棒性与边界覆盖，需变异测试用例：增加0维（标量）、1维空张量（[0]）、1维单元素（[1]）、2维输入（触发MindSpore的高维广播行为）以及PyTorch diagonal≠0的偏移对角线场景——但MindSpore不支持diagonal参数，故该参数在MindSpore用例中必须省略；同时需确保所有变异用例中两框架输入语义等价。此处选择最安全且具区分度的变异：测试2-D输入（如[3,4]），因PyTorch对2-D input默认提取主对角线（返回1-D tensor），而MindSpore对2-D input返回4-D tensor（shape=[3,4,3,4]），二者行为本质不等价，但文档明确说明此差异，因此该变异可有效验证框架行为是否符合各自文档定义，属于合理fuzzing。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.13554713129997253,
+            0.9392789006233215,
+            -0.27206847071647644,
+            0.10671725869178772,
+            -1.2942276000976562,
+            -0.3267980217933655,
+            1.3163669109344482,
+            0.006197823211550713,
+            -1.4562735557556152,
+            1.3184443712234497
+          ]
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.13554713129997253,
+            0.9392789006233215,
+            -0.27206847071647644,
+            0.10671725869178772,
+            -1.2942276000976562,
+            -0.3267980217933655,
+            1.3163669109344482,
+            0.006197823211550713,
+            -1.4562735557556152,
+            1.3184443712234497
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "形状不匹配: PyTorch (3,) vs MindSpore (3, 4, 3, 4)",
+        "torch_shape": [
+          3
+        ],
+        "mindspore_shape": [
+          3,
+          4,
+          3,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "PyTorch's torch.diag only supports 1-D input to produce a 2-D diagonal matrix, and for multi-dimensional input (e.g., 2-D), it raises RuntimeError (not shown in the given error but per official doc and behavior). In contrast, MindSpore's mindspore.ops.diag explicitly supports multi-dimensional input and returns a tensor of rank 2k for input rank k — producing (2,3,2,3) for (2,3) input, as documented. The original test case uses shape [3,4] (2-D), which is *not valid* for PyTorch's torch.diag — though the report says 'PyTorch execution succeeded', this contradicts PyTorch's documented behavior and actual runtime (torch.diag with 2-D input raises 'RuntimeError: diag expects a 1-D or 2-D input'). Therefore, the 'compared' status with 'PyTorch execution success = True' is likely erroneous or based on an outdated/incorrect environment. Since the two APIs have fundamentally different semantics for multi-dimensional inputs — PyTorch does not support them at all (only 1-D → 2-D, or 2-D → 1-D via diagonal extraction), while MindSpore generalizes to arbitrary-rank — they are **not functionally equivalent** for ndim > 1. Hence, cross-framework comparison is invalid and the test case must be skipped."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2110,
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.1342225074768066,
+            -0.8922932147979736,
+            -2.466188430786133,
+            -0.31587183475494385,
+            -0.33879566192626953,
+            1.6076664924621582,
+            2.287437677383423,
+            0.26226964592933655,
+            1.2497973442077637,
+            -0.34401875734329224
+          ]
+        },
+        "diagonal": 0,
+        "api": "torch.diag"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2110,
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.1342225074768066,
+            -0.8922932147979736,
+            -2.466188430786133,
+            -0.31587183475494385,
+            -0.33879566192626953,
+            1.6076664924621582,
+            2.287437677383423,
+            0.26226964592933655,
+            1.2497973442077637,
+            -0.34401875734329224
+          ]
+        },
+        "diagonal": 0,
+        "api": "mindspore.ops.diag"
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "diag() got an unexpected keyword argument 'diagonal'",
+        "comparison_error": null,
+        "torch_shape": [
+          2110
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 680, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: diag() got an unexpected keyword argument 'diagonal'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore's mindspore.ops.diag does not accept 'diagonal' parameter according to its official documentation and error message 'diag() got an unexpected keyword argument \"diagonal\"'. In contrast, PyTorch's torch.diag supports the 'diagonal' parameter for extracting or constructing diagonals at specified offsets. However, the given input is a 2D tensor (2110x2110), and PyTorch's torch.diag with diagonal=0 on a 2D input returns the main diagonal as a 1-D tensor, while MindSpore's diag on a 2D input behaves differently — it broadcasts to a higher-rank tensor (as shown in doc example: input (2,3) → output (2,3,2,3)). Thus, the two APIs are **not semantically equivalent** for 2D inputs. To align behavior meaningfully: (1) For 1D input, both produce square diagonal matrices; (2) For 2D input, PyTorch extracts diagonal, but MindSpore constructs block-diagonal-like higher-rank tensor — no direct correspondence. Since the test uses 2D input + 'diagonal' arg, which MindSpore rejects, and functional equivalence is impossible here, the correct fix is to use a 1D input (vector) where both APIs support diagonal construction *without* 'diagonal' kwarg — because MindSpore's diag only accepts 1 input tensor and has no offset control. So we repair by changing input to 1D and removing 'diagonal' (which is irrelevant for vector→matrix case in both, and unsupported in MindSpore)."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2299270629882812,
+            -0.016581013798713684,
+            0.48657599091529846,
+            -0.29488447308540344,
+            2.129079580307007,
+            0.8041695952415466,
+            1.1359513998031616,
+            0.9831713438034058,
+            -0.01590137369930744,
+            0.7166705131530762
+          ]
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            2110
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2299270629882812,
+            -0.016581013798713684,
+            0.48657599091529846,
+            -0.29488447308540344,
+            2.129079580307007,
+            0.8041695952415466,
+            1.1359513998031616,
+            0.9831713438034058,
+            -0.01590137369930744,
+            0.7166705131530762
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2110,
+          2110
+        ],
+        "mindspore_shape": [
+          2110,
+          2110
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "PyTorch和MindSpore的diag在1-D输入下行为一致（均生成对角矩阵），但原始用例仅覆盖单一中等规模一维张量（shape=[2110]）。根据API文档，两者均支持向量输入生成方阵，且MindSpore文档明确给出2-D输出示例；为提升鲁棒性与边界覆盖，需变异测试用例以涵盖：(1) 极小尺寸（shape=[0]空张量、shape=[1]单元素）；(2) 高维输入（如2-D input，此时MindSpore返回2k维张量而PyTorch不支持多维input——但注意：PyTorch的torch.diag仅接受1-D或2-D输入，且对2-D输入提取指定对角线，语义不同；因此必须避免2-D输入导致语义不等价。故变异应聚焦于1-D边界：0、1、2、大质数、超大尺寸（如10000）及int类型，同时确保两框架输入dtype/shape严格一致。当前用例未覆盖空张量和整型，且2110非典型边界值，故进行fuzzing。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          0,
+          0
+        ],
+        "mindspore_shape": [
+          0,
+          0
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例使用空一维张量（shape=[0]）作为输入，虽在当前执行中两框架结果一致，但该边界情况覆盖不足；根据PyTorch和MindSpore文档，torch.diag支持diagonal参数控制对角线偏移，而mindspore.ops.diag当前文档未提及该参数且示例仅展示默认主对角线行为，说明其不支持diagonal参数；为增强鲁棒性测试并探索功能差异，需变异出多个典型场景：(1) 非空1-D输入（shape=[3]）验证基础功能；(2) 2-D输入（shape=[2,2]）验证MindSpore的高维扩展行为（文档明确说明输出rank=2k）与PyTorch的不兼容性——但注意：PyTorch的torch.diag对2-D输入默认提取主对角线（返回1-D），而MindSpore对2-D输入返回4-D张量，二者语义根本不同；因此必须避免直接比较2-D输入，而应聚焦于1-D输入的等价场景；故选择shape=[5]作为更充分的非退化1-D测试，并补充diagonal参数在PyTorch中的合法值（如-1, 2）进行fuzzing，同时MindSpore因不支持该参数，需跳过含diagonal的用例——但本任务要求保持输入相同且语义等价，故不能引入PyTorch特有参数；最终决定变异为更具代表性的1-D输入（shape=[5]）并覆盖dtype=int32/float64等类型，但原始dtype=float32已合理；最有效变异是增加shape=[1]（单元素）、shape=[5]（常规）、shape=[0, 0]（非法空矩阵，但torch.diag接受1-D输入，故shape=[0]是合法1-D空向量，而shape=[0,0]是2-D，torch.diag会报错）——因此安全且高价值的变异是shape=[1]和shape=[5]；综合考虑，选择shape=[5]作为新用例，既避开空张量的潜在实现差异，又满足文档中‘vector → square matrix’的核心契约，且能暴露更多内存/广播相关bug。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.23182827234268188,
+            -0.5510961413383484,
+            -0.5857768058776855,
+            -1.837895154953003,
+            0.9174436330795288
+          ]
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.23182827234268188,
+            -0.5510961413383484,
+            -0.5857768058776855,
+            -1.837895154953003,
+            0.9174436330795288
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          5
+        ],
+        "mindspore_shape": [
+          5,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3312
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.4206305742263794,
+            1.3639615774154663,
+            0.0408790297806263,
+            -2.2536802291870117,
+            -0.9099320769309998,
+            -0.8940390944480896,
+            -2.224048376083374,
+            0.2998873293399811,
+            0.34610849618911743,
+            -0.31114131212234497
+          ]
+        },
+        "diagonal": 0,
+        "api": "torch.diag"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            3312
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.4206305742263794,
+            1.3639615774154663,
+            0.0408790297806263,
+            -2.2536802291870117,
+            -0.9099320769309998,
+            -0.8940390944480896,
+            -2.224048376083374,
+            0.2998873293399811,
+            0.34610849618911743,
+            -0.31114131212234497
+          ]
+        },
+        "diagonal": 0,
+        "api": "mindspore.ops.diag"
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "diag() got an unexpected keyword argument 'diagonal'",
+        "comparison_error": null,
+        "torch_shape": [
+          3312,
+          3312
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 680, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: diag() got an unexpected keyword argument 'diagonal'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.ops.diag不支持'diagonal'参数，而PyTorch的torch.diag支持该参数用于指定偏移对角线；根据MindSpore官方文档，其diag仅接受1个输入Tensor参数，无diagonal关键字参数，且行为定义为：当输入为1-D时输出方阵对角矩阵，当输入为多维时输出高维对角张量（rank=2k）。因此需移除MindSpore测试用例中的'diagonal'参数以匹配其API签名，同时保持PyTorch用例不变（因其合法）；修复后两用例语义等价于提取主对角线（diagonal=0），且MindSpore默认行为即为主对角线。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            3312
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6304494142532349,
+            0.841854453086853,
+            -0.011242606677114964,
+            1.3017234802246094,
+            -1.3930691480636597,
+            0.6313142776489258,
+            2.7358179092407227,
+            -0.3501327931880951,
+            0.1944683939218521,
+            -0.5449255108833313
+          ]
+        },
+        "diagonal": 0
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            3312
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6304494142532349,
+            0.841854453086853,
+            -0.011242606677114964,
+            1.3017234802246094,
+            -1.3930691480636597,
+            0.6313142776489258,
+            2.7358179092407227,
+            -0.3501327931880951,
+            0.1944683939218521,
+            -0.5449255108833313
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          3312,
+          3312
+        ],
+        "mindspore_shape": [
+          3312,
+          3312
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，说明基础功能等价；但原始用例仅覆盖1-D输入且diagonal=0的常规情况，未测试边界和异常场景。根据API文档，PyTorch支持diagonal参数（可正可负），而MindSpore当前文档未提及diagonal参数，其diag仅支持提取/构造主对角线（即隐含diagonal=0），且对多维输入行为不同（会广播为2k维张量）。为增强鲁棒性测试，需变异覆盖：(1) 1-D输入+非零diagonal（PyTorch有效，MindSpore不支持，预期失败→触发skip逻辑后续，但当前任务要求先变异）；(2) 更极端形状如[0]、[1]、[10000]以验证内存与边界处理；(3) 非float32类型如int32、bool；(4) 2-D输入（PyTorch diag可提取对角线，MindSpore diag会升维，二者语义不同→此情况应skip，但当前原始用例是1-D，故优先变异1-D的多样化场景）。综合选择变异为最小非平凡边界：shape=[1]（单元素向量），既满足1-D前提，又覆盖最简非空情况，且dtype保持float32以保证可比性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5693731307983398
+          ]
+        },
+        "diagonal": 0
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5693731307983398
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1
+        ],
+        "mindspore_shape": [
+          1,
+          1
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，但原始用例仅覆盖1-D输入shape=[1]的极简情况，未测试边界值、多维输入、非零 diagonal 参数（PyTorch支持但MindSpore docs未明确支持）、空张量、高维张量等关键场景；根据MindSpore文档示例，其diag对多维输入会广播为2k维输出，而PyTorch diag仅支持1-D输入或2-D输入提取对角线（行为不同），因此需变异以探索功能差异边界；尤其需测试PyTorch的diagonal参数在MindSpore中无对应参数，故应生成多个变异用例覆盖：(1) 1-D input with diagonal≠0（触发PyTorch行为但MindSpore可能不支持）；(2) 2-D input（PyTorch可提取指定对角线，MindSpore则按多维规则展开，语义不等价，需识别并跳过该类——但当前原始用例是1-D，故优先变异为更丰富的1-D case）；(3) shape=[0]空向量、shape=[5]常规向量、shape=[]标量（非法，应被拒绝）等。综合考虑，选择最安全且具区分度的变异：将input shape从[1]改为[5]（覆盖典型非边界非空向量），同时为PyTorch保留diagonal=0（默认行为），MindSpore保持无diagonal参数（因其API无此参数），确保语义等价且增强覆盖率。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.diag",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.392311155796051,
+            -0.19443103671073914,
+            0.7737512588500977,
+            0.4526614546775818,
+            0.20700372755527496
+          ]
+        },
+        "diagonal": 0
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.diag",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.392311155796051,
+            -0.19443103671073914,
+            0.7737512588500977,
+            0.4526614546775818,
+            0.20700372755527496
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.diag",
+        "mindspore_api": "mindspore.ops.diag",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          5
+        ],
+        "mindspore_shape": [
+          5,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

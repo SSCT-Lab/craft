@@ -1,0 +1,51 @@
+来源文件: llm_enhanced_torch_multinomial_20251202_012420.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) The input of multinomial distribution should be >= 0, but got -0.104454.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.686172604560852,
+      -0.10445438325405121,
+      0.3949888050556183,
+      2.1420998573303223
+    ]
+  },
+  "num_samples": 2,
+  "replacement": true
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.686172604560852,
+      -0.10445438325405121,
+      0.3949888050556183,
+      2.1420998573303223
+    ]
+  },
+  "num_samples": 2,
+  "replacement": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.multinomial` 要求输入张量中每个元素必须 ≥ 0，且不能全为 0（文档明确说明“Each element in x should be larger or equal to 0, but not all 0”），而输入中包含 -0.104454，违反了该约束。  
+   - PyTorch 的 `torch.multinomial` 允许输入为负值，其行为是将输入视为未归一化的概率（即可解释为权重），并通过 softmax 处理后生成分布；而 PaddlePaddle 不支持此语义，要求输入必须为非负概率。
+
+3. 修复建议：  
+   - 此为框架间对输入语义的处理差异，属于合理的行为不一致，无需提交 issue；在迁移时需确保输入先经 softmax 归一化并保证非负性。

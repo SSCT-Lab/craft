@@ -1,0 +1,121 @@
+来源文件: llm_enhanced_torch_logical_xor_20251215_191839.json
+样例编号: 1
+mindspore_error 错误信息: For 'LogicalXor', input1.shape and input2.shape need to broadcast. The value of input1.shape[3] or input2.shape[3] must be 1 or -1 when they are not the same, but got input1.shape = [0, 3, 1] and input2.shape = [2, 1, 4]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.logical_xor",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      1,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "out": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.logical_xor",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      1,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "out": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `logical_xor` 算子要求输入张量在广播时，维度不匹配的轴上必须至少有一个为 1 或 -1，但当前输入 `input1.shape = [0, 3, 1]` 中第一个维度为 0，这在 MindSpore 的广播逻辑中被视为非法（空形状不支持广播），而 PyTorch 允许此类形状进行广播并推导出 `[2, 3, 4]` 的输出。  
+   - 官方文档虽未明文禁止零维形状，但底层实现（`CalBroadCastShape`）在处理 shape 中包含 0 的情况时会触发校验失败，表明 MindSpore 当前对零长度维度的广播支持存在限制。
+
+3. 修复建议：  
+   - 建议提交 issue 至 MindSpore 官方仓库，指出其在处理包含 0 维度的 tensor 广播时与 PyTorch 不一致的问题，尤其在逻辑运算类算子中应明确是否支持或需抛出更清晰的错误提示。

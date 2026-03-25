@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_where_20251215_162257.json
+样例编号: 1
+tensorflow_error 错误信息: {{function_node __wrapped__SelectV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} condition [0,5,1], then [0,1,5,1], and else [0,4,1,1] must be broadcastable [Op:SelectV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.where",
+  "condition": {
+    "shape": [
+      0,
+      5,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "x": {
+    "shape": [
+      0,
+      1,
+      5,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "y": {
+    "shape": [
+      0,
+      4,
+      1,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.where",
+  "condition": {
+    "shape": [
+      0,
+      5,
+      1
+    ],
+    "dtype": "bool",
+    "sample_values": []
+  },
+  "x": {
+    "shape": [
+      0,
+      1,
+      5,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "y": {
+    "shape": [
+      0,
+      4,
+      1,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.where` 在处理包含维度为 0 的张量（如 shape 为 [0,5,1]）时，存在广播规则限制，尤其当 condition、x、y 的形状在非零维度上无法有效广播时会报错。本例中三者形状分别为 [0,5,1]、[0,1,5,1]、[0,4,1,1]，其非零维度的结构不兼容，无法进行合法广播。
+   - 根据 TensorFlow 官方文档，`tf.where` 要求 condition、x、y 的 shape 可以被广播到相同形状，但当任意维度为 0 时，若该维度在不同输入中不一致或无法通过广播对齐（如 5≠4），则会触发“must be broadcastable”错误。
+
+3. 修复建议：
+   - 此问题反映 TensorFlow 对空维度（shape 中含 0）的广播行为与 PyTorch 存在差异，建议提交 issue 至 TensorFlow 官方仓库，指出在空形状张量上的广播一致性问题。

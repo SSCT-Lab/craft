@@ -1,0 +1,94 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_20251215_234632.json
+样例编号: 12
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[1,0] = -6 is not in [0, 1026) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding",
+  "input": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      2,
+      -9,
+      -6,
+      8
+    ]
+  },
+  "weight": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.18820863962173462,
+      -0.9598004221916199,
+      0.4440496861934662,
+      -0.527568519115448,
+      -0.2808220386505127,
+      0.22043509781360626,
+      1.5419762134552002,
+      0.60856693983078,
+      -0.8560361266136169,
+      -0.34879928827285767
+    ]
+  },
+  "padding_idx": 1,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "sparse": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7552894949913025,
+      0.3754897117614746,
+      -0.8696857690811157,
+      -0.4830254018306732,
+      -0.49411672353744507,
+      -1.2256497144699097,
+      -1.3623126745224,
+      0.6867284178733826,
+      -2.14809513092041,
+      0.9133140444755554
+    ]
+  },
+  "ids": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      3,
+      -6,
+      -8,
+      8,
+      -6
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求输入索引（`ids`）必须为非负整数，且在 `[0, vocab_size)` 范围内。错误信息中 `indices[1,0] = -6` 明确指出存在负值索引，这违反了 TensorFlow 的严格约束。
+   - 虽然 PyTorch 的 `torch.nn.functional.embedding` 支持负值索引（如 `-6`），并将其解释为“未定义”或“无效索引”，但其行为是通过 `padding_idx` 机制来处理的，而该机制仅对指定的 `padding_idx` 有效，不支持任意负值索引作为合法输入。
+
+3. 修复建议：
+   - 由于 TensorFlow 对负索引的严格限制是其设计行为，且与 PyTorch 不一致，建议提交一个 issue 给 TensorFlow 官方，指出此行为与 PyTorch 的语义不一致，可能影响模型迁移。

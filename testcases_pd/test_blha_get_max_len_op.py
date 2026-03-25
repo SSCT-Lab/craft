@@ -1,0 +1,250 @@
+# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import numpy as np
+from op_test import get_device_place, is_custom_device
+
+import paddle
+from paddle.base import core
+from paddle.incubate.nn.functional import blha_get_max_len
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    and not core.is_compiled_with_xpu(),
+    "Only support XPU or GPU in CUDA mode.",
+)
+class TestBlhaGetMaxLenOp(unittest.TestCase):
+    def setUp(self):
+        self.name = "TestBlhaGetMaxLenOpDynamic"
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        self.batch_size = 10
+        self.test_encoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+        self.test_decoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+
+    def test_dynamic_api(self):
+        paddle.disable_static()
+        test_encoder_data_res = paddle.to_tensor(
+            np.max(self.test_encoder_data), "int32"
+        )
+        test_decoder_data_res = paddle.to_tensor(
+            np.max(self.test_decoder_data), "int32"
+        )
+        seq_lens_encoder = paddle.to_tensor(
+            self.test_encoder_data,
+            "int32",
+        )
+        seq_lens_decoder = paddle.to_tensor(
+            self.test_decoder_data,
+            "int32",
+        )
+        batch_size_tensor = paddle.ones([self.batch_size])
+        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+            seq_lens_encoder,
+            seq_lens_decoder,
+            batch_size_tensor,
+        )
+        assert (
+            max_enc_len_this_time == test_encoder_data_res
+            and max_dec_len_this_time == test_decoder_data_res
+        )
+
+    def test_static_api(self):
+        paddle.enable_static()
+        test_encoder_data_res = np.max(self.test_encoder_data).astype("int32")
+        test_decoder_data_res = np.max(self.test_decoder_data).astype("int32")
+
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            seq_lens_encoder = paddle.static.data(
+                "seq_lens_encoder", self.test_encoder_data.shape, "int32"
+            )
+            seq_lens_decoder = paddle.static.data(
+                "seq_lens_decoder", self.test_decoder_data.shape, "int32"
+            )
+            batch_size_tensor = paddle.ones([self.batch_size], "int32")
+            max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+                seq_lens_encoder,
+                seq_lens_decoder,
+                batch_size_tensor,
+            )
+            exe = paddle.static.Executor(place)
+            res_max_enc_len_this_time, res_max_dec_len_this_time = exe.run(
+                feed={
+                    "seq_lens_encoder": self.test_encoder_data,
+                    "seq_lens_decoder": self.test_decoder_data,
+                },
+                fetch_list=[max_enc_len_this_time, max_dec_len_this_time],
+            )
+        assert (
+            res_max_enc_len_this_time == test_encoder_data_res
+            and res_max_dec_len_this_time == test_decoder_data_res
+        )
+
+
+@unittest.skipIf(
+    not (
+        (core.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+    )
+    and not core.is_compiled_with_xpu(),
+    "Only support XPU or GPU in CUDA mode.",
+)
+class TestBlhaGetMaxLenOp_ZeroSize(unittest.TestCase):
+    def setUp(self):
+        self.name = "TestBlhaGetMaxLenOpDynamic_ZeroSize"
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        self.batch_size = 0
+        self.test_encoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+        self.test_decoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+
+    def test_dynamic_api(self):
+        paddle.disable_static()
+        seq_lens_encoder = paddle.to_tensor(
+            self.test_encoder_data,
+            "int32",
+        )
+        seq_lens_decoder = paddle.to_tensor(
+            self.test_decoder_data,
+            "int32",
+        )
+        batch_size_tensor = paddle.ones([self.batch_size])
+        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+            seq_lens_encoder,
+            seq_lens_decoder,
+            batch_size_tensor,
+        )
+        assert tuple(max_enc_len_this_time.shape) == (1,) and tuple(
+            max_dec_len_this_time.shape
+        ) == (1,)
+
+    def test_static_api(self):
+        paddle.enable_static()
+
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            seq_lens_encoder = paddle.static.data(
+                "seq_lens_encoder", self.test_encoder_data.shape, "int32"
+            )
+            seq_lens_decoder = paddle.static.data(
+                "seq_lens_decoder", self.test_decoder_data.shape, "int32"
+            )
+            batch_size_tensor = paddle.ones([self.batch_size], "int32")
+            max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+                seq_lens_encoder,
+                seq_lens_decoder,
+                batch_size_tensor,
+            )
+            exe = paddle.static.Executor(place)
+            res_max_enc_len_this_time, res_max_dec_len_this_time = exe.run(
+                feed={
+                    "seq_lens_encoder": self.test_encoder_data,
+                    "seq_lens_decoder": self.test_decoder_data,
+                },
+                fetch_list=[max_enc_len_this_time, max_dec_len_this_time],
+            )
+        assert tuple(res_max_enc_len_this_time.shape) == (1,) and tuple(
+            res_max_dec_len_this_time.shape
+        ) == (1,)
+
+
+@unittest.skipIf(
+    not (
+        (core.is_compiled_with_cuda() or is_custom_device())
+        or is_custom_device()
+    )
+    and not core.is_compiled_with_xpu(),
+    "Only support XPU or GPU in CUDA mode.",
+)
+class TestBlhaGetMaxLenOp_ZeroSize_BatchSizeEmptyTensor(unittest.TestCase):
+    def setUp(self):
+        self.name = "TestBlhaGetMaxLenOpDynamic_ZeroSize_BatchSizeEmptyTensor"
+        if core.is_compiled_with_cuda() or is_custom_device():
+            place = get_device_place()
+        elif paddle.device.is_compiled_with_xpu():
+            place = paddle.device.XPUPlace(0)
+        else:
+            raise ValueError("Only support CUDA or XPU Place.")
+        self.place = place
+        self.batch_size = 10
+        self.test_encoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+        self.test_decoder_data = np.random.randint(
+            1, 100, size=self.batch_size
+        ).astype("int32")
+
+    @unittest.skipIf(
+        not paddle.device.is_compiled_with_xpu(),
+        "This testcase targets XPU empty batch_size tensor behavior.",
+    )
+    def test_dynamic_api_batch_size_empty_tensor(self):
+        paddle.disable_static()
+        seq_lens_encoder = paddle.to_tensor(
+            self.test_encoder_data,
+            "int32",
+            place=self.place,
+        )
+        seq_lens_decoder = paddle.to_tensor(
+            self.test_decoder_data,
+            "int32",
+            place=self.place,
+        )
+        batch_size_tensor = paddle.to_tensor(
+            np.array([], dtype="float32"), place=self.place
+        )
+        max_enc_len_this_time, max_dec_len_this_time = blha_get_max_len(
+            seq_lens_encoder,
+            seq_lens_decoder,
+            batch_size_tensor,
+        )
+        assert (
+            int(max_enc_len_this_time) == 0 and int(max_dec_len_this_time) == 0
+        )
+
+
+if __name__ == '__main__':
+    unittest.main()

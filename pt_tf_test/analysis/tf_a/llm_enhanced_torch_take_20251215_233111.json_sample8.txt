@@ -1,0 +1,61 @@
+来源文件: llm_enhanced_torch_take_20251215_233111.json
+样例编号: 8
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0] = -3 is not in [0, 2) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.take",
+  "input": {
+    "shape": [
+      2
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.9859721909605577,
+      -1.043228197373206
+    ]
+  },
+  "index": {
+    "shape": [
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      1
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.gather",
+  "input": {
+    "shape": [
+      2
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.9859721909605577,
+      -1.043228197373206
+    ]
+  },
+  "indices": {
+    "shape": [
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow `tf.gather` 要求 `indices` 中的索引必须在 `[0, input.shape[axis])` 范围内，而错误信息显示 `indices[0] = -3` 且输入长度为 2（即有效索引范围为 [0, 2)），-3 明显越界，导致运行时错误。  
+   - 相比之下，PyTorch `torch.take` 支持负索引（如 -1 表示倒数第一个元素），且会自动将负索引映射到有效位置（例如 -1 对应 1，-2 对应 0），因此在相同输入下 PyTorch 可以接受 -3（虽然仍可能越界，但其处理逻辑更宽松）。
+
+3. 修复建议：  
+   - 此为框架行为差异，不建议提交 issue，因 TensorFlow 的边界检查是严格设计的行为；应确保测试用例中索引在合法范围内，或在映射层进行负索引转换处理。

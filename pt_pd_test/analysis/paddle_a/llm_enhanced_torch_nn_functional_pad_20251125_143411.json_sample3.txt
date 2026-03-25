@@ -1,0 +1,89 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251125_143411.json
+样例编号: 3
+paddle_error 错误信息: (InvalidArgument) Size of paddings should be equal to 6, but received 10.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      32,
+      64,
+      8,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.721483588218689,
+      -0.15292243659496307,
+      0.9023547172546387,
+      1.1542820930480957,
+      -0.7184301018714905,
+      -1.5417256355285645,
+      0.602995753288269,
+      0.2841868996620178,
+      1.4639698266983032,
+      -1.6579722166061401
+    ]
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.pad",
+  "input": {
+    "shape": [
+      32,
+      64,
+      8,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.721483588218689,
+      -0.15292243659496307,
+      0.9023547172546387,
+      1.1542820930480957,
+      -0.7184301018714905,
+      -1.5417256355285645,
+      0.602995753288269,
+      0.2841868996620178,
+      1.4639698266983032,
+      -1.6579722166061401
+    ]
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.functional.pad` 在 `mode='reflect'` 时，要求 `pad` 的长度必须等于 `2 * (x.ndim - 2)`，而当前输入 tensor 为 4D（shape=[32,64,8,4]），即 `ndim=4`，因此合法的 `pad` 长度应为 `2*(4-2) = 4`。但实际传入的 `pad` 长度为 8（[1,1,0,0,1,1,0,0]），超出限制。
+   - 虽然 PyTorch 的 `torch.nn.functional.pad` 允许任意偶数长度的 `pad`（只要不超过 `2 * input.dim`），但 PaddlePaddle 在 `reflect`/`replicate`/`circular` 模式下对 `pad` 长度有严格约束：必须为 `2*(ndim-2)`，否则抛出“Size of paddings should be equal to 6, but received 10”这类错误（注：此处错误信息中的“6”可能是文档或实现中对 5D tensor 的误算，但核心逻辑是长度需匹配 `2*(ndim-2)`）。
+
+3. 修复建议：
+   - 该行为差异属于框架间语义不一致，可提交 issue 给 PaddlePaddle 官方，建议放宽 `reflect` 模式下 `pad` 长度的限制以与 PyTorch 对齐。

@@ -1,0 +1,2247 @@
+{
+  "pd_api": "paddle.nn.functional.conv3d",
+  "tensorflow_api": "tf.nn.conv3d",
+  "timestamp": "2026-03-04T12:03:16.817024",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 6,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d 不支持 'groups' 参数，该参数在Paddle中用于分组卷积，而TF需通过拆分输入/权重并调用多个conv3d或使用tf.nn.depthwise_conv3d+reshape模拟；但标准conv3d无groups。同时TF要求input为[NDHWC]、filter为[DHWCN]，且strides必须是5维、padding为'SAME'/'VALID'字符串。因此需移除groups，重排weight shape为[depth, height, width, in_channels, out_channels]，strides扩展为5维，padding改为'SAME'或'VALID'，并显式指定data_format。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 4 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错'input and filter must have the same depth: 4 vs 3'表明data_format='NDHWC'时input的in_channels在最后一维（dim=4），filters的in_channels应在倒数第二维（dim=3）；但当前filters shape[3,3,3,3,6]中dim=3=3，而input dim=4=4，不匹配。Paddle用NCDHW格式（in_channels=dim=1=3），故TF filters应为[3,3,3,3,6]→[3,3,3,3,6]正确，但input shape[2,3,4,4,4] in NDHWC means [N,D,H,W,C] → C=4, so filters must have in_channels=4, not 3. Thus fix: adjust filters shape to [3,3,3,4,6] to match input's channel=4."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            4,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 6, 2, 2, 2) vs TF=(2, 1, 2, 2, 6)",
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": [
+          2,
+          1,
+          2,
+          2,
+          6
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv3d uses NCDHW format (batch, channels, depth, height, width), while TF conv3d with data_format='NDHWC' expects input shape [batch, depth, height, width, channels] and filters [depth, height, width, in_channels, out_channels]. Original TF filters shape [3,3,3,4,6] mismatches input channels=3; must be [3,3,3,3,6]. Also, Paddle weight shape [6,3,3,3,3] is correct for (out_c, in_c, d, h, w), so TF filters must be transposed to match semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 4 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d 不支持 'groups' 参数，该参数在Paddle中存在但TF中无对应语义；需移除groups并确保输入/滤波器形状符合TF的NDHWC格式要求（当前shape[2,3,4,4,4]被解释为[N,D,H,W,C]，但weight shape[6,3,3,3,3]不匹配TF要求的[filter_d,filter_h,filter_w,in_channels,out_channels]——in_channels=3需与input的C=3一致，故weight应为[3,3,3,3,6]；同时stride需为5维且strides[0]=strides[4]=1。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 4 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错'input and filter must have the same depth: 4 vs 3'表明data_format='NDHWC'时input的in_channels在最后一维（dim=4），而filters的in_channels应在倒数第二维（dim=3）；当前filters shape[3,3,3,3,6]有in_channels=3，但input shape[2,3,4,4,4]在NDHWC下in_channels=4，不匹配。需将input shape改为[2,4,4,4,3]或filters shape改为[3,3,3,3,6]→[3,3,3,3,6]保持in_channels=3，同时修正input为[2,4,4,4,3]以满足NDHWC：[N,D,H,W,C]，且C=3。Paddle侧x shape需同步改为[2,3,4,4,4]→[2,3,4,4,4]不变（NCDHW），但filters weight shape[6,3,3,3,3]中in_channels=3正确，故只需修正TF input shape为[2,4,4,4,3]并确保filters in_channels=3。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 4 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错'input and filter must have the same depth: 4 vs 3'表明data_format='NDHWC'时input的in_channels在最后一维（dim=4），而filters的in_channels应在倒数第二维（dim=3）；当前filters shape[3,3,3,3,6]有in_channels=3，但input shape[2,3,4,4,4]在NDHWC下in_channels=4，不匹配。需将input shape改为[2,4,4,4,3]或filters shape改为[3,3,3,3,6]→[3,3,3,3,6]保持in_channels=3，同时修正input为[2,4,4,4,3]以满足NDHWC：[N,D,H,W,C]，且C=3。Paddle侧x shape需同步改为[2,3,4,4,4]→[2,3,4,4,4]不变（NCDHW），但filters weight shape[6,3,3,3,3]中in_channels=3正确，故只需修正TF input shape为[2,4,4,4,3]并确保filters in_channels=3。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 4 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 3,
+        "api": "paddle.nn.functional.conv3d"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 3,
+        "api": "tf.nn.conv3d"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.conv3d does not support 'groups' parameter; it must be removed. Also, TensorFlow expects filters in [D,H,W,in_channels,out_channels] format, but Paddle's weight shape [out_channels,in_channels//groups,D,H,W] implies grouped conv. To align semantics, we remove 'groups', adjust weight shape to match TF's expectation (in_channels must equal input's in_channels), and set data_format='NCDHW' in TF to match Paddle's default layout."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 28.94506741",
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d expects filters shape [filter_depth, filter_height, filter_width, in_channels, out_channels] under 'NCDHW' data_format, but input is NCDHW while filters shape [3,3,3,3,6] implies in_channels=3 and out_channels=6 — however Paddle weight shape [6,3,3,3,3] means [out_channels,in_channels,kd,kh,kw], so TF filters must be [3,3,3,3,6] for NCDHW (correct), but stride and padding must match: Paddle uses 3D stride [1,1,1] and padding [0,0,0], while TF strides=[1,1,1,1,1] is correct for NCDHW, but padding='VALID' is equivalent only if explicit padding is zero — however Paddle's padding=[0,0,0] is asymmetric per-dim and requires explicit 'EXPLICIT' or manual pad; to ensure semantic equivalence, align padding mode via explicit zero-padding before TF conv3d or switch both to SAME/VALID consistently — here the core issue is data_format mismatch: Paddle default is NCDHW, TF default is NDHWC; the test forces data_format='NCDHW' in TF but filters shape is correct for it, yet output inconsistency stems from unaligned dilation (Paddle has dilation=[1,1,1], TF has no dilation param — TF lacks native dilation in conv3d, requires space_to_batch + conv3d + batch_to_space), so dilation must be removed from Paddle side or emulated in TF. Since TF tf.nn.conv3d has no dilation argument, the Paddle test case must drop dilation to ensure functional equivalence."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 25.91729736",
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d expects filters shape [filter_depth, filter_height, filter_width, in_channels, out_channels] under 'NCDHW' data_format, but input is given as NCDHW while filters shape [3,3,3,3,6] implies in_channels=3, out_channels=6 — correct for NCDHW. However, Paddle's weight shape [6,3,3,3,3] is [out_channels,in_channels,kd,kh,kw], matching NCDHW. The critical mismatch is padding: Paddle uses explicit [0,0,0] (no padding), TensorFlow uses 'VALID', which is consistent. But stride in TF is [1,1,1,1,1] (5D) while Paddle uses [1,1,1] (3D). Also, TF lacks bias and groups support — must add bias via post-add and ensure groups=1 is enforced via input/filter channel alignment. To achieve semantic equivalence, we must align data format, add bias manually in TF, and verify filter shape order."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 34.76883030",
+        "pd_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "tensorflow_shape": [
+          2,
+          6,
+          2,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            120,
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 3,
+        "api": "paddle.nn.functional.conv3d"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            120,
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 3,
+        "api": "tf.nn.conv3d"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          120,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.conv3d does not support 'groups' parameter; it requires grouped convolutions to be implemented via separate ops or manual channel splitting. Paddle's 'groups=3' implies input channels=3 and output channels=120, so filter shape must be [filter_d, filter_h, filter_w, in_channels//groups, out_channels//groups] for grouped conv, but TF expects full [filter_d, filter_h, filter_w, in_c, out_c] with in_c=3, out_c=120. Thus, remove 'groups' from TF case and adjust filter shape to match ungrouped semantics: [1,1,1,3,120], and set data_format='NCDHW' to align with Paddle's default NCDHW layout."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 3,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            120,
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            1,
+            1,
+            1,
+            3,
+            120
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 13.52705574",
+        "pd_shape": [
+          2,
+          120,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          120,
+          4,
+          4,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d requires filters shape [D, H, W, in_channels, out_channels] and input in 'NCDHW' format implies filters must match in_channels=3, but original filters shape [1,1,1,3,120] is correct; however, Paddle's weight shape [120,1,1,1,1] with groups=3 violates group conv semantics: for groups=3, input channels=3 → each group has 1 channel, so weight should be [120,1,1,1,1] (OK), but TensorFlow has no native 'groups' support — must emulate via depthwise+reshape or split. Since groups≠1 and TF lacks direct equivalent, the test is invalid for cross-framework comparison. Repair: set groups=1 and adjust weight shape to [120,3,1,1,1] in Paddle, and filters to [1,1,1,3,120] in TF — now both represent standard conv, not grouped."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            120,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            1,
+            1,
+            1,
+            3,
+            120
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 16.16765594",
+        "pd_shape": [
+          2,
+          120,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          120,
+          4,
+          4,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d expects filters shape [filter_depth, filter_height, filter_width, in_channels, out_channels] under 'NCDHW' data_format, but input uses NCDHW while filters shape [1,1,1,3,120] implies in_channels=3 and out_channels=120 — correct. However, Paddle's weight shape [120,3,1,1,1] is OIHW(D) (out_channels,in_channels,d,h,w), matching NCDHW. But TensorFlow's 'data_format': 'NCDHW' requires input shape [N,C,D,H,W] and filters [D,H,W,C,out_channels], so filters must be [1,1,1,3,120] — that's correct. The inconsistency arises because Paddle defaults to 'NCDHW' but TF's 'strides' [1,1,1,1,1] is valid, yet padding semantics differ: Paddle's padding=[0,0,0] is per-dimension symmetric, while TF's 'VALID' is equivalent — but bias handling and internal layout alignment may cause numeric drift. Critical mismatch: Paddle test case includes 'bias', but TF test case omits it — must add bias via tf.nn.bias_add after conv3d to match. Also, TF conv3d has no native 'bias' param; bias must be applied separately."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            120,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "bias": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            1,
+            1,
+            3,
+            120
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'bias'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          120,
+          4,
+          4,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          40,
+          6,
+          1,
+          1,
+          1
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.conv3d does not support 'groups' parameter, unlike Paddle's conv3d. Per TF docs, group convolution is not natively supported; must remove 'groups' and ensure input/filter shapes comply with TF's expected format (NDHWC). Also, TF expects 'filters' (not 'weight') with shape [D, H, W, in_channels, out_channels], and 'input' (not 'x') with shape [N, D, H, W, in_channels]. Paddle uses NCDHW, so we transpose input and weight to NDHWC for TF."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            1,
+            1,
+            1,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 1 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          40,
+          6,
+          1,
+          1,
+          1
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错'input and filter must have the same depth: 1 vs 3'，因TF conv3d要求filters[0]（depth）必须匹配input[1]（in_depth）当data_format='NDHWC'时input shape为[batch, depth, height, width, channels]，但filters shape[1,1,1,3,6]中第3维3是in_channels，应与input[4]=1不匹配；实际input shape[40,3,1,1,1]在NDHWC下in_channels=1，故filters应为[1,1,1,1,6]，但Paddle weight[6,3,1,1,1]对应NCDHW格式（out_c,in_c,d,h,w），需将TF filters改为[1,1,1,3,6]并改data_format='NCDHW'以对齐语义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            6,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 3 vs 1 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          40,
+          6,
+          1,
+          1,
+          1
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错'input and filter must have the same depth: 3 vs 1'表明data_format='NCDHW'时input.shape=[40,3,1,1,1]对应[batch,channels,depth,height,width]，而filters.shape=[6,3,1,1,1]应为[depth,channels,height,width,out_channels]，但TF实际要求filters.shape=[filter_depth,filter_height,filter_width,in_channels,out_channels]，即第1维是in_channels，必须等于input的in_channels=3；当前filters.shape[1]=3是正确的，但TF误判说明data_format未被正确识别或filters维度语义错配。修复：将TF filters改为[1,1,1,3,6]（NDHWC格式）并设data_format='NDHWC'，同时调整strides顺序匹配。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d",
+        "x": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "bias": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d",
+        "input": {
+          "shape": [
+            40,
+            3,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            1,
+            1,
+            1,
+            3,
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d",
+        "tensorflow_api": "tf.nn.conv3d",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 1 vs 3 [Op:Conv3D] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          40,
+          6,
+          1,
+          1,
+          1
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

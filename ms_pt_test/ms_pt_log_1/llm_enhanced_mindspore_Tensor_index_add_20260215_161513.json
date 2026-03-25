@@ -1,0 +1,1601 @@
+{
+  "ms_api": "mindspore.Tensor.index_add",
+  "pytorch_api": "torch.Tensor.index_add_",
+  "timestamp": "2026-02-15T16:15:13.739913",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "api": "mindspore.Tensor.index_add",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "api": "torch.Tensor.index_add_",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ expects 'dim' as int (not 'axis'), and requires 'indices' to be torch.int64/int32 but also accepts only int-typed dim; the original test passes 'axis' as key, but PyTorch API uses positional 'dim' and has no 'axis' param. Also, PyTorch index_add_ is in-place and requires x to be a leaf tensor with requires_grad=False or be detached; moreover, y shape must match x.shape except at dim — here x.shape[1]=3, y.shape[1]=2 → invalid. Fix: align dim=1, ensure y.shape[1] == indices.shape[0] == 2, and x.shape[1] >= max(indices)+1; adjust y to [2, 2, 4] → valid only if indices ∈ [0,3), but y.dim=1 size 2 ≠ x.dim=1 size 3 ⇒ mismatch. Correct y shape must be [2, 2, 4] only if indexing into dim=1 of size 3 with 2 indices — that's valid per doc, but PyTorch requires y.size(dim) == indices.size(0), which holds (2==2), and x.size(dim) unchanged — so root cause is parameter name misuse: PyTorch uses 'dim', not 'axis', and it's positional, not keyword. Thus repair: rename 'axis'→'dim' and pass as positional arg in PyTorch call; also ensure indices dtype is torch.int64 (default for torch.tensor)."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "dim": 1,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op3\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore index_add requires indices and y to have matching size along axis: y.shape[axis] must equal indices.shape[0]. Here y.shape[1]=2, indices.shape[0]=2 → OK, but x.shape[axis]=3, so indices values must be in [0,3); however, test doesn't specify indices values — only shape/dtype. PyTorch index_add_ fails because 'dim' is passed as int (correct), but error shows 'dim' was mistakenly passed as Tensor in actual call. The root cause is parameter mismatch: PyTorch expects 'index' (not 'indices'), and MindSpore requires explicit int32 indices tensor with valid values. Repair: add concrete indices values [0,1], ensure y.shape[axis] == len(indices), and fix PyTorch param name to 'index'."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ expects 'dim' as int (correct), but error 'argument dim must be int, not Tensor' indicates test case incorrectly passed a Tensor for 'dim'. However, the provided PyTorch test case already has 'dim': 1 (int). The real issue is that PyTorch's index_add_ is an in-place method requiring the receiver tensor to be mutable and called as x.index_add_(dim, index, source); the test case likely failed due to missing in-place invocation or dtype mismatch in index (MindSpore requires int32, PyTorch accepts int64/int32 but error suggests misuse). Fix: ensure PyTorch index is int64 (correct), and confirm call is x.index_add_(dim, index, source) — but since test case only defines params, the error implies 'dim' was accidentally passed as tensor; thus repair is to validate and align parameter passing: PyTorch test case is actually correct per doc, so the error suggests framework version or calling context issue — safest repair is to add alpha=1.0 (optional but stabilizes behavior) and ensure index dtype consistency, though doc says int64/int32 accepted. Given 'TypeError: dim must be int, not Tensor', the root cause is likely that 'dim' was erroneously wrapped as tensor in actual execution — so repair is to enforce scalar dim and explicit int64 index."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": true,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0,
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op0\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "api": "mindspore.Tensor.index_add",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "api": "torch.Tensor.index_add_",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: For 'Gather', the 'input_indices' should be in the range [0, 3), but got 4, error_code[58]\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/gather_cpu_kernel.cc:119 mindspore::kernel::gather_cpu::GatherCpuKernelMod::LaunchKernel::<lambda_541ada1ce5fc6d5639c49565b5390b1f>::operator ()\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错因indices值越界（需在[0,3)但含4），PyTorch报错因误将axis传为Tensor而非int；需修复indices内容使其合法（如[0,1]），并修正PyTorch参数名：dim=axis，且index=indices（非axis），同时确保y.shape[axis] == indices.shape[0]。原始y.shape[1]=2，x.shape[1]=3，故indices必须为2个∈[0,3)的int，且PyTorch要求dim=int，不能是Tensor。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "dim": 1,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float64",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ expects 'index' (not 'indices') as the second positional argument, and 'dim' must be int — but the current PyTorch test case incorrectly includes both 'index' and 'indices' fields, causing TypeError. Also, 'indices' dtype must be int64/int32 (PyTorch accepts both, but int64 is default and safer); 'y' must be passed as 'source', and the call must be in-place on 'x'. Fix: remove redundant 'indices', rename to 'index', ensure dtype=int64, and use correct in-place call signature."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op4\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore index_add requires indices to be int32 and y's axis-dim must match indices size (2), but y.shape[1]=2 matches indices.shape[0]=2 — correct; however PyTorch index_add_ expects 'dim' as int (not Tensor), but original test mistakenly passed 'dim' as tensor in PyTorch case — actual error shows 'dim' was passed as Tensor instead of int. Also, MindSpore's RuntimeError suggests kernel launch failure likely due to invalid indices values (not just shape) — need to ensure indices values are in [0, x.shape[axis]) i.e., [0,3) for axis=1. So repair: initialize concrete valid indices tensors with values in bounds, and fix PyTorch dim type (already int, but test case structure implies misuse — ensure dim is scalar int, not tensor). Also, PyTorch index_add_ is in-place and requires x to be mutable (requires .requires_grad_(False) or .clone().detach_() if needed), but minimal fix is to use valid indices values and proper dtype."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float64",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "axis": 1,
+        "api": "mindspore.Tensor.index_add",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "axis": 1,
+        "api": "torch.Tensor.index_add_",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op1\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ requires 'dim' as int (not 'axis'), and 'index' (not 'indices') as tensor; MindSpore uses 'axis' and 'indices'. Also, PyTorch index_add_ is in-place and requires x to be float/double for gradient support, but int32 is unsupported. Fix: rename axis→dim, indices→index in PT; ensure y.shape[axis] == indices.shape[0] and y.shape matches x except at axis — current y.shape[1]=2 vs x.shape[1]=3 violates MindSpore's constraint 'y's shape must match self except axis dim'. So y should have shape [2, 2, 4] → invalid for axis=1 (x.dim=3, x.shape[1]=3, so y.shape[1] must be 3). Repair y shape to [2, 3, 4] or adjust indices/y size consistency."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Int32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ expects 'dim' as int (correct), but error 'argument dim must be int, not Tensor' indicates 'dim' was mistakenly passed as tensor in test case construction; also dtype mismatch: MindSpore uses int32 x/y, but PyTorch index_add_ requires same dtype for x and source, and int32 not fully supported — fix by aligning to float32 and ensuring dim is int scalar."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ expects 'dim' as int (correct), but error 'argument dim must be int, not Tensor' indicates test case mistakenly passed a Tensor for 'dim'. However, the provided PyTorch test case already has 'dim': 1 (int). The real issue is that PyTorch's index_add_ is an in-place method requiring the receiver tensor to be mutable and contiguous, and 'x' must be passed as the *caller* (self), not as a standalone arg. The test case incorrectly treats it as functional; it must be called as x.index_add_(dim, index, source). Also, indices dtype must be torch.int64 (not int32) and x must be a leaf tensor with requires_grad=False or be detached for safe in-place op."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op1\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "axis": 1,
+        "api": "mindspore.Tensor.index_add",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "axis": 1,
+        "api": "torch.Tensor.index_add_",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op0\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ requires 'dim' as int (not 'axis'), 'index' tensor (not 'indices'), and is in-place; MindSpore index_add uses 'axis', 'indices', and returns new tensor. Also, PyTorch rejects non-int dim — original 'axis': 1 is int but passed as tensor due to incorrect param mapping. Fix: rename 'axis'→'dim' in PT, 'indices'→'index', ensure y.shape[axis] == indices.size(), and align shapes: y must have same shape as x except at dim — here x[1]=3, y[1]=2 → invalid. So y should be [2,3,4] or indices must map to valid subset; fix y shape to [2,3,4] and indices [2] → but indices size must equal y[dim], so y[dim] must be 2 → adjust x dim=1 to size 2 or y dim=1 to size 2. Per doc, y must match x except at axis/dim → x=(2,3,4), axis=1 ⇒ y must be (2,?,4) with ?=len(indices)=2 ⇒ y=(2,2,4) is valid *only if* indices are within [0,3), which they are. But PyTorch error shows 'dim' received Tensor — indicates param name misuse. Repair: use correct param names and enforce in-place semantics via clone+index_add_ on x.clone()."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": false,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Int16",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ expects 'dim' as int (correct), but error 'argument dim must be int, not Tensor' indicates test case incorrectly passed a Tensor for 'dim'. The provided PyTorch test case has 'dim': 1 (int) — so error suggests actual invocation mistakenly used a tensor. However, the root mismatch is semantic: MindSpore index_add returns new tensor, PyTorch index_add_ is in-place and requires mutable input. To align, PyTorch must call on a cloned tensor and use correct dtype/int64 for index; also 'source' shape [2,2,4] mismatches 'x' dim=1 size=3 → indices [2] implies gathering 2 rows, but y/source must match x.shape except dim — here y.shape[1]=2 ≠ x.shape[1]=3, violating MindSpore's constraint. Repair: fix y.shape to [2,3,4] or adjust indices/y shape per axis=1: y must have same shape as x except axis dim → y.shape should be [2,2,4] only if indices selects 2 out of 3 positions, but MindSpore requires y.shape[axis] == indices.shape[0], and y.shape[i] == x.shape[i] for i≠axis. So y.shape=[2,2,4] is invalid for x.shape=[2,3,4] and axis=1 — must be y.shape=[2,2,4] → axis=1 means y.shape[1] must equal indices.shape[0]=2 (OK), and y.shape[0]==x.shape[0], y.shape[2]==x.shape[2] (both 2 and 4 match). So shape is valid. But PyTorch index_add_ requires source.shape[dim] == index.shape[0], and other dims must match self.shape — so source.shape=[2,2,4] and self.shape=[2,3,4] with dim=1 is valid. The real issue is the error message implies 'dim' was passed as tensor — likely test harness bug. Minimal repair: ensure PyTorch 'index' is int64 (done), 'dim' is int (done), and use .clone() to allow in-place op; also MindSpore use_lock=false is safe, but PyTorch has no equivalent — ignore. So repair is to correct PyTorch invocation to use x.clone().index_add_(dim, index, source)."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": false,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op2\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore index_add requires indices values to be in [0, self.shape[axis]), but y.shape[axis]=2 while x.shape[axis]=3 → valid indices must be <3; PyTorch index_add_ expects 'dim' as int (correct), but original test passed Tensor for 'dim' causing TypeError. Also, MindSpore's 'axis' and PyTorch's 'dim' must align, and indices shape must match y.shape[axis] (2), which it does, but MindSpore kernel launch failed likely due to invalid index values (not provided) — so we fix by ensuring indices are valid (e.g., [0,1]) and correct PyTorch dim type."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": false,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "int16"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Int16",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "axis": 1,
+        "api": "mindspore.Tensor.index_add",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "axis": 1,
+        "api": "torch.Tensor.index_add_",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "UInt8",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的index_add_要求dim为int，但原始用例误将axis传入（且参数名不匹配）；同时PyTorch要求indices dtype为torch.int64/int32，但需显式转换；此外index_add_是in-place操作，x必须为可变tensor（requires_grad=False或非leaf tensor），且y形状需与x在dim维以外一致：x.shape=(2,3,4), dim=1 → y.shape应为(2,2,4)合法，但PyTorch实际报错因参数名错误（dim而非axis）和未正确调用in-place方法。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": true,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "dim": 1,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op2\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch index_add_ requires 'dim' as int (correct), but 'indices' must be torch.int64 or torch.int32 (not Tensor with dtype=int32 in wrong context); MindSpore fails due to kernel launch error likely from shape mismatch: y.shape[axis]=2 but x.shape[axis]=3, and indices=[2] implies indexing into axis dim of size 3 — but y has 2 elements along axis, so indices must be in [0,3) and size=2, which is valid; however, PyTorch error shows 'dim' passed as Tensor — indicating misuse: 'dim' was mistakenly passed as a tensor instead of int in PyTorch test case. Fix: ensure 'dim' is int, and align indices dtype to torch.int64."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": true,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/IndexAdd-op1\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore index_add requires indices values to be in [0, self.shape[axis]), but y.shape[axis]=2 while x.shape[axis]=3 → valid indices must be in [0,3); PyTorch index_add_ expects index dtype int64 (not int32) and dim must be int (not Tensor). Also, MindSpore's y must match x's shape except at axis, but y.shape[1]=2 ≠ x.shape[1]=3 → y should have shape [2,2,4] is invalid; correct y shape must be [2,2,4] only if axis=1 and x.shape[1]>=2 — it is valid, but indices=[0,1] is safe. Primary fix: ensure indices values are in bounds and PyTorch index dtype is int64 (already is), but MindSpore error 'Launch kernel failed' suggests invalid indices tensor values (not just shape/dtype); thus we must provide concrete valid indices values (e.g., [0,1]) and ensure y matches x except axis. Also, PyTorch error 'dim must be int, not Tensor' implies original test passed dim as tensor — but test shows dim: 1 (int), so likely the actual test code incorrectly wrapped dim; however, per given JSON it's correct, so the real issue is MindSpore's kernel launch failure due to uninitialized/invalid indices data — repair by adding concrete 'data' fields to all tensors to avoid undefined behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "axis": 1,
+        "use_lock": true,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "indices": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "check_index_bound": true,
+        "y": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "api": "mindspore.Tensor.index_add"
+      },
+      "pytorch_test_case": {
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "dim": 1,
+        "source": {
+          "shape": [
+            2,
+            2,
+            4
+          ],
+          "dtype": "uint8"
+        },
+        "api": "torch.Tensor.index_add_"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.index_add",
+        "pytorch_api": "torch.Tensor.index_add_",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "TypeError: index_add_(): argument 'dim' (position 1) must be int, not Tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "UInt8",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

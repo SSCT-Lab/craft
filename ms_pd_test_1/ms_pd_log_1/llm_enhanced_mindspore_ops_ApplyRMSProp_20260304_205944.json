@@ -1,0 +1,341 @@
+{
+  "ms_api": "mindspore.ops.ApplyRMSProp",
+  "paddle_api": "paddle.optimizer.RMSProp",
+  "timestamp": "2026-03-04T20:59:44.865889",
+  "total_iterations": 14,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "var": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "rms": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "mom": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "lr": 0.5,
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "decay": 0.8,
+        "momentum": 0.9,
+        "epsilon": 0.001,
+        "api": "mindspore.ops.ApplyRMSProp",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "var": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "rms": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "mom": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "lr": 0.5,
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "decay": 0.8,
+        "momentum": 0.9,
+        "epsilon": 0.001,
+        "api": "paddle.optimizer.RMSProp",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ApplyRMSProp",
+        "paddle_api": "paddle.optimizer.RMSProp",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: got an unexpected keyword argument 'lr'",
+        "paddle_error": "TypeError: RMSProp.__init__() got an unexpected keyword argument 'lr'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ApplyRMSProp is a primitive op that takes tensors (var, mean_square, moment, grad) and scalars (learning_rate, decay, momentum, epsilon) as inputs — not an optimizer class. Paddle RMSProp is an optimizer class requiring parameters list and learning_rate in init, not per-step inputs. The original test incorrectly treats both as identical callable ops. Repair: use MindSpore's ApplyRMSProp correctly (primitive call with tensor args), and for Paddle, use functional RMSProp step via paddle.optimizer.RMSProp.apply_gradients or construct minimal optimizer + manual step; but since Paddle has no direct equivalent primitive, we map to paddle.nn.functional.rmsprop_ (inplace) or emulate via manual computation. However, official paddle.nn.functional.rmsprop_ exists and matches the primitive semantics. So repair: replace paddle.optimizer.RMSProp (class) with paddle.nn.functional.rmsprop_ (function), and rename 'lr' → 'learning_rate' to match both APIs’ expected arg names."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "moment": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "var": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "learning_rate": 0.5,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "mean_square": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ApplyRMSProp",
+        "momentum": 0.9,
+        "epsilon": 0.001,
+        "decay": 0.8
+      },
+      "paddle_test_case": {
+        "moment": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "learning_rate": 0.5,
+        "rho": 0.8,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "mean_square": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.rmsprop_",
+        "momentum": 0.9,
+        "param": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "epsilon": 0.001
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ApplyRMSProp",
+        "paddle_api": "paddle.nn.functional.rmsprop_",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: got an unexpected keyword argument 'learning_rate'",
+        "paddle_error": "AttributeError: 无法找到 PD API: paddle.nn.functional.rmsprop_",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ApplyRMSProp requires instantiation with use_locking before calling, and expects 'var' not 'param'; Paddle has no rmsprop_ in functional module — correct API is paddle.optimizer.RMSProp (class) or paddle.nn.functional.rmsprop (non-inplace, v2.6+), but functional.rmsprop_ does not exist. Must replace Paddle API with paddle.nn.functional.rmsprop and align parameters: rho=decay, epsilon=epsilon, momentum=momentum, learning_rate=learning_rate, and input tensors must be var/mean_square/moment/grad. Also fix MindSpore call to instantiate op first."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "moment": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "var": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "learning_rate": 0.5,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "use_locking": false,
+        "mean_square": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ApplyRMSProp",
+        "momentum": 0.9,
+        "epsilon": 0.001,
+        "decay": 0.8
+      },
+      "paddle_test_case": {
+        "moment": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "learning_rate": 0.5,
+        "rho": 0.8,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "mean_square": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.rmsprop",
+        "momentum": 0.9,
+        "param": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "epsilon": 0.001
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ApplyRMSProp",
+        "paddle_api": "paddle.nn.functional.rmsprop",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: got an unexpected keyword argument 'learning_rate'",
+        "paddle_error": "AttributeError: 无法找到 PD API: paddle.nn.functional.rmsprop",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ApplyRMSProp 不接受 'learning_rate' 作为关键字参数（需传入 Tensor/Number as positional arg in construct），且缺少 required 'var' input in call; Paddle API paddle.nn.functional.rmsprop does not exist — correct API is paddle.optimizer.RMSProp (class) or paddle.nn.functional.rmsprop is deprecated/invalid. Per docs, Paddle uses paddle.optimizer.RMSProp for training, and no functional rmsprop exists. Thus repair: use MindSpore's ApplyRMSProp correctly with all required inputs (var, mean_square, moment, grad, lr, decay, momentum, epsilon), and replace Paddle API with valid paddle.optimizer.RMSProp usage (class-based, not functional)."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "moment": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "var": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "learning_rate": 0.5,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "use_locking": false,
+        "mean_square": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "grad": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ApplyRMSProp",
+        "momentum": 0.9,
+        "epsilon": 0.001,
+        "decay": 0.8
+      },
+      "paddle_test_case": {
+        "parameters": [
+          

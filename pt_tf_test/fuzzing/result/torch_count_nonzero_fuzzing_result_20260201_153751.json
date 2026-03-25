@@ -1,0 +1,676 @@
+{
+  "operator": "torch_count_nonzero",
+  "torch_api": "torch.count_nonzero",
+  "tensorflow_api": "tf.math.count_nonzero",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T15:37:51.472525",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_count_nonzero_20260123_191520.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.count_nonzero",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.631515383720398,
+            0.10329116880893707,
+            -1.0649309158325195,
+            0.2361629605293274,
+            0.9000777006149292,
+            -0.21226626634597778,
+            0.04174503684043884,
+            0.7230275273323059,
+            -0.47693708539009094
+          ]
+        },
+        "dim": 0
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.count_nonzero",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.631515383720398,
+            0.10329116880893707,
+            -1.0649309158325195,
+            0.2361629605293274,
+            0.9000777006149292,
+            -0.21226626634597778,
+            0.04174503684043884,
+            0.7230275273323059,
+            -0.47693708539009094
+          ]
+        },
+        "axis": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层比较逻辑差异（如NaN处理、-0.0等价性、溢出边界），暴露count_nonzero实现中对非有限值的不一致判定",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.631515383720398,
+                "inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                "-inf",
+                0.0,
+                0.10329116880893707
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.631515383720398,
+                "inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                "-inf",
+                0.0,
+                0.10329116880893707
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 1",
+            "torch_shape": [
+              3
+            ],
+            "tensorflow_shape": [
+              3
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用空张量（shape=[0, 3]）和含NaN/inf/-0.0的浮点值",
+          "mutation_reason": "空维度张量易触发框架对axis/dim广播或边界检查逻辑差异；特殊浮点值（NaN/inf/-0.0）在'nonzero'判定中语义敏感，两框架对NaN是否为nonzero、-0.0是否为zero的定义可能存在不一致。",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3
+            ],
+            "tensorflow_shape": [
+              3
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16 dtype及特殊浮点值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float16精度低且对特殊值处理敏感，框架间NaN/inf/-0.0的非零判定逻辑可能存在差异，易暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3
+            ],
+            "tensorflow_shape": [
+              3
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_count_nonzero_20260123_191520.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.count_nonzero",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3,
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": []
+        },
+        "dim": -2
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.count_nonzero",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3,
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": []
+        },
+        "axis": -2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "浮点特殊值在count_nonzero中应统一视为非零（除0.0和-0.0），但框架对NaN/inf的布尔转换逻辑可能存在差异，易暴露底层实现bug",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -2
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              0,
+              4
+            ],
+            "tensorflow_shape": [
+              2,
+              0,
+              4
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量张量（shape=[]）与特殊浮点值组合",
+          "mutation_reason": "标量是维度边界情况，且无dim/axis可降维；两框架对标量的count_nonzero语义应一致（非零则1，否则0），但实现可能忽略标量特殊处理路径导致差异。",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float32 类型下特殊浮点值（inf, -inf, nan, -0.0）的计数一致性",
+          "mutation_reason": "不同框架对特殊浮点值的非零判定逻辑可能不一致，尤其在 float32 下精度和 NaN 处理存在潜在差异",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -2
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                2,
+                0,
+                3,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              0,
+              4
+            ],
+            "tensorflow_shape": [
+              2,
+              0,
+              4
+            ],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_count_nonzero_20260123_191520.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.count_nonzero",
+        "input": {
+          "shape": [
+            0
+          ],
+          "dtype": "bool",
+          "sample_values": []
+        },
+        "dim": null
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.count_nonzero",
+        "input": {
+          "shape": [
+            0
+          ],
+          "dtype": "bool",
+          "sample_values": []
+        },
+        "axis": null
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端浮点值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "NaN/inf/-0.0的布尔语义在框架底层处理（如isnan, isinf, signbit）可能存在差异；count_nonzero应将所有非零浮点数（含inf/-inf）计为1，但NaN是否被视作'non-zero'是常见分歧点。",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致: torch=7.0, tf=6.0, diff=1.0",
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量张量（shape=[]）搭配全特殊浮点值",
+          "mutation_reason": "标量是维度退化边界，且特殊值（inf/nan/-0.0）在计数逻辑中易触发框架对'non-zero'定义差异，如NaN是否被视作非零。",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float32类型含特殊浮点值（inf/-inf/nan/-0.0）的空维张量",
+          "mutation_reason": "特殊浮点值在count_nonzero中应统一视为非零（除nan外），但框架对inf、-0.0、subnormal数的处理可能存在差异，易暴露底层实现bug",
+          "torch_test_case": {
+            "api": "torch.count_nonzero",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.count_nonzero",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.int64",
+            "tensorflow_dtype": "<dtype: 'int64'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

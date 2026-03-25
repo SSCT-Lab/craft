@@ -1,0 +1,57 @@
+来源文件: llm_enhanced_torch_nn_GroupNorm_20251202_010342.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) The Input(Scale)'s first dimension size of Op(group_norm) must be equal to the number of channels. But received: the Input(Scale)'s first dimension size is [6], the channels is [3], the Attr(data_layout) is [NCHW]. The error may come from wrong data_layout setting.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.25213101506233215,
+      0.5034559965133667,
+      -0.429115891456604,
+      -0.9188543558120728,
+      0.6310992240905762,
+      1.3454177379608154
+    ]
+  },
+  "num_groups": 1,
+  "num_channels": 6,
+  "api": "torch.nn.GroupNorm"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.25213101506233215,
+      0.5034559965133667,
+      -0.429115891456604,
+      -0.9188543558120728,
+      0.6310992240905762,
+      1.3454177379608154
+    ]
+  },
+  "num_groups": 1,
+  "num_channels": 6,
+  "api": "torch.nn.GroupNorm"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `GroupNorm` 要求 `Scale` 输入的 channel 维度大小必须等于输入张量的通道数（即 `num_channels`），而错误信息显示 `Scale` 的第一维为 6，但实际 `num_channels` 为 6，且 `data_layout=NCHW`。问题在于：尽管 `num_channels=6`，但输入张量的 shape 是 `[2, 3]`，这意味着它只有 3 个通道，与 `num_channels=6` 不匹配，导致框架内部校验失败。  
+   - 更深层原因是：**PyTorch 的 `GroupNorm` 允许在 `num_groups=1` 时对任意 `C` 维进行分组，其 `num_channels` 表示的是输入通道数；而 PaddlePaddle 在实现中严格要求输入 tensor 的 channels 必须等于 `num_channels`，否则报错。当前输入形状 `[2, 3]` 仅含 3 个通道，却设置 `num_channels=6`，属于不一致的配置，触发了 PaddlePaddle 的运行时检查。**
+
+3. 修复建议：  
+   - 该问题是由于框架对 `num_channels` 与输入 shape 之间一致性校验逻辑不同所致，属于框架行为差异。由于 PyTorch 允许这种“虚拟”通道数（如通过分组方式处理非对齐通道）而 PaddlePaddle 严格校验，建议提交 issue 至 PaddlePaddle 官方仓库，反馈此行为不一致问题，以增强兼容性。

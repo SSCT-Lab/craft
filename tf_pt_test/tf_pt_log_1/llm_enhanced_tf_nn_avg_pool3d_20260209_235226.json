@@ -1,0 +1,1805 @@
+{
+  "tf_api": "tf.nn.avg_pool3d",
+  "pytorch_api": "torch.nn.functional.avg_pool3d",
+  "timestamp": "2026-02-09T23:52:26.748100",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 10,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC",
+        "api": "tf.nn.avg_pool3d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC",
+        "api": "torch.nn.functional.avg_pool3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: avg_pool3d() missing 1 required positional arguments: \"kernel_size\"",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          1,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch avg_pool3d requires explicit kernel_size (3D tuple), not ksize with batch/channel dims; strides must be 3D; padding must be int/tuple, not 'VALID'; input must be NCDHW (channel-first), so shape [1,3,3,3,3] maps to [N,C,D,H,W] → [1,3,3,3,3] is valid but ksize must be [2,2,2], strides [2,2,2], padding=0."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": 0,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 1, 1, 1, 3) vs PT=(1, 3, 1, 1, 1)",
+        "tf_shape": [
+          1,
+          1,
+          1,
+          1,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于TensorFlow使用NDHWC格式（batch, depth, height, width, channels）而PyTorch默认NCDHW（batch, channels, depth, height, width）。TF输出(1,1,1,1,3)对应[batch,d,h,w,c]，PT输出(1,3,1,1,1)对应[batch,c,d,h,w]。需在PyTorch中保持输入为NCDHW并确保通道维度对齐，同时TF的ksize/strides含batch和channel维度（首尾为1），而PT的kernel_size/stride仅作用于d/h/w三轴，故无需修改TF用例，但PyTorch输入shape应调整为[1,3,3,3,3]→[1,3,3,3,3]语义正确，问题在于data_format未对齐：需将PyTorch输入视作NCDHW，但当前TF用例input shape[1,3,3,3,3]按NDHWC解释为depth=3,height=3,width=3,channels=3，而PyTorch同等shape被解释为channels=3,depth=3,height=3,width=3 —— 实际一致，但输出排列不同。修复方式：PyTorch需保持NCDHW输出，TF输出需转置为NCDHW以对齐比较，或统一用TF的NDHWC→转置为NCDHW。但测试用例本身需保证输入张量数据布局等价，因此PyTorch输入shape应改为[1,3,3,3,3]对应NCDHW即(batch,c,d,h,w)，而TF的[1,3,3,3,3]是NDHWC即(batch,d,h,w,c)，二者物理数据不一致。正确修复：TF输入shape应为[1,3,3,3,3]（NDHWC）→ 等价PyTorch输入需为[1,3,3,3,3]但按NCDHW解读，即实际数据需重排。但测试用例只定义shape/dtype，不指定数据值，因此必须使shape语义对齐：将TF input shape改为[1,3,3,3,3]（NDHWC）对应深度3、高3、宽3、通道3；PyTorch input shape应为[1,3,3,3,3]（NCDHW）即通道3、深度3、高3、宽3 —— shape数值相同但维度含义相同（都表示1样本、3通道、3D尺寸3x3x3），因此无需改shape。真正问题是TF的ksize=[1,2,2,2,1]覆盖d,h,w轴（索引1,2,3），而PT kernel_size=[2,2,2]默认覆盖最后三个维度（d,h,w），在NCDHW中即维度2,3,4 —— 正确。输出形状差异是由于TF输出为NDHWC、PT为NCDHW，属于布局差异，非计算错误。因此修复方式：在PyTorch侧不改变参数，但需确保比较前将TF输出从NDHWC转为NCDHW（即transpose(0,4,1,2,3)），但测试用例本身不包含后处理。故必须让两框架输入布局一致：将TF data_format设为'NCDHW'（若支持）或调整PyTorch输入shape以匹配TF的NDHWC解释。查TF文档：data_format='NDHWC'（默认）或'NCDHW'。PyTorch only supports NCDHW. So to align, either set TF data_format='NCDHW' (if supported in v2.16.1) or permute PyTorch input. But TF tf.nn.avg_pool3d supports data_format='NCDHW' per doc. So repair: set TF data_format='NCDHW', then both use [batch,channels,depth,height,width], and ksize/strides become [1,3,2,2,2] for 'NCDHW'? No — doc says for 'NCDHW', ksize must be [1,3,2,2,2]? Actually no: ksize is always 5-element for 5D input regardless of data_format, and indices correspond to the axes in data_format. For 'NCDHW', axes are [N,C,D,H,W], so ksize[0]=N, ksize[1]=C, ksize[2]=D, ksize[3]=H, ksize[4]=W. To pool only D,H,W with size 2, set ksize=[1,1,2,2,2]. Similarly strides=[1,1,2,2,2]. And padding same. So original TF ksize=[1,2,2,2,1] was for NDHWC: [N,D,H,W,C] → indices 1,2,3 are D,H,W → correct for NDHWC, but for NCDHW it would be indices 2,3,4. So to align with PyTorch's NCDHW expectation, change TF to data_format='NCDHW' and ksize=[1,1,2,2,2], strides=[1,1,2,2,2]. Then TF output shape becomes [1,3,1,1,1] matching PT."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": 0,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入shape扩大至边界场景[2, 4, 8, 8, 4]，ksize/stride改为[1,3,3,3,1]对应PyTorch的[3,3,3]，padding改为'SAME'并同步PyTorch的padding=(1,1,1)以验证填充一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            2,
+            4,
+            8,
+            8,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            2,
+            4,
+            8,
+            8,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3,
+          3
+        ],
+        "stride": [
+          3,
+          3,
+          3
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "UnimplementedError: {{function_node __wrapped____MklNativeAvgPool3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} AvgPooling3D supports exactly one of pooling across depth or pooling across depth/width/height. [Op:AvgPool3D] name: ",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          2,
+          4,
+          3,
+          3,
+          2
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC",
+        "api": "tf.nn.avg_pool3d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC",
+        "api": "torch.nn.functional.avg_pool3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: avg_pool3d() missing 1 required positional arguments: \"kernel_size\"",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's avg_pool3d requires 'kernel_size' (3-element tuple/int), not 'ksize'; 'strides' → 'stride'; 'padding' must be integer/tuple, not 'SAME'/'VALID'; input format must be NCDHW (not NDHWC). Fix: convert input shape from [1,3,3,3,3] to [1,3,3,3,3]→reorder to [1,3,3,3,3]→NCDHW means [N,C,D,H,W], so original TF NDHWC [1,3,3,3,3] maps to NCDHW [1,3,3,3,3] only if dims are reordered: [N,D,H,W,C]→[N,C,D,H,W] → [1,3,3,3,3] becomes [1,3,3,3,3] but C=3, D=3,H=3,W=3 → correct NCDHW input shape is [1,3,3,3,3]; kernel_size=[2,2,2], stride=[2,2,2], padding=0."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": 0,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 2, 2, 3) vs PT=(1, 3, 1, 1, 1)",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow使用NDHWC格式（batch, depth, height, width, channels），PyTorch默认NCDHW（batch, channels, depth, height, width）。原始TF输入shape[1,3,3,3,3] implies channels=3, but PyTorch expects input shape [1,3,3,3,3] as [N,C,D,H,W], so C=3, D=H=W=3 — however TF's ksize=[1,2,2,2,1] covers depth,height,width, while PT kernel_size=[2,2,2] only covers D,H,W. The mismatched output shapes (TF: [1,2,2,2,3], PT: [1,3,1,1,1]) arise because TF preserves channel dim (last), but PT preserves channel dim (second) and computes pooling only on dims 2,3,4. To align, PT input must be permuted to NCDHW and TF must be interpreted correctly; thus repair requires reshaping PT input to match TF's logical layout or vice versa. Since TF uses NDHWC, PT input should be [1,3,3,3,3] → permute to [1,3,3,3,3] is already valid, but pooling dims in PT are (2,3,4), so kernel_size/stride apply to dims 2,3,4 — meaning input must be [N,C,D,H,W] = [1,3,3,3,3]. Then output shape is [1,3,floor((3+2*0-2)/2)+1,...] with SAME padding not natively supported in PT avg_pool3d; PT lacks 'SAME' padding — only explicit padding param. So to emulate SAME, we must compute padding manually: for each dim d, pad = ((d-1)//stride)*stride + kernel_size - d; for d=3,stride=2,k=2 → pad=1. Thus padding should be [1,1,1] (not 0). Also count_include_pad=True is correct."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 2, 2, 3) vs PT=(1, 3, 2, 2, 2)",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          2,
+          2,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于TensorFlow NDHWC与PyTorch NCDHW布局差异：TF input [1,3,3,3,3] is [N,D,H,W,C], so channels=3, depth=3; PT input shape [1,3,3,3,3] is interpreted as [N,C,D,H,W], causing channel/depth misalignment. Fix: transpose PT input to [N,C,D,H,W] = [1,3,3,3,3] → keep same shape but ensure TF's 'NDHWC' and PT's implicit 'NCDHW' are aligned by adjusting kernel/stride semantics and padding. Per docs, TF 'SAME' with ksize=[1,2,2,2,1] implies no pooling on batch/channel dims; PT requires kernel_size=[2,2,2] on D,H,W — but TF's depth dim is index 1, while PT's depth dim is index 2 in [N,C,D,H,W]. So PT input must be reshaped to [1,3,3,3,3] with dims (N,C,D,H,W), meaning actual depth=3, so kernel_size [2,2,2] applies to dims 2,3,4 — correct. However, padding='SAME' in TF maps to padding=[1,1,1] in PT only if input layout matches. The real issue is TF's ksize includes batch and channel (1,2,2,2,1), while PT's kernel_size is purely spatial (3D). To align, PT must use input in NCDHW order, but current shape [1,3,3,3,3] is ambiguous. Fix: make TF input shape match NDHWC explicitly, and PT input shape match NCDHW by setting input shape to [1,3,3,3,3] but reinterpret as N,C,D,H,W → then D=3, H=3, W=3, so kernel [2,2,2] is valid. However, output shape mismatch (TF: [1,2,2,2,3], PT: [1,3,2,2,2]) confirms axis order confusion: TF output is [N,D_out,H_out,W_out,C], PT is [N,C,D_out,H_out,W_out]. So to compare outputs, we must permute PT output or adjust input layout. Best repair: keep same numeric shape but make PT input shape [1,3,3,3,3] represent N,C,D,H,W, and TF input [1,3,3,3,3] is N,D,H,W,C — thus they are transposes. Therefore, PT test case input shape should be [1,3,3,3,3] → but to match TF's spatial dims, we need TF's D=3, H=3, W=3, C=3, so PT must have C=3 at dim 1, D=3 at dim 2 → correct. The output shape mismatch is structural (axis order), not bug — so repair by adding torch.permute in PT or adjusting comparison; but per task, we fix test cases to be semantically aligned. Since TF uses NDHWC and PT uses NCDHW, the equivalent PT input tensor must be permuted: from TF's [N,D,H,W,C] = [1,3,3,3,3] → PT expects [N,C,D,H,W], so we set PT input shape to [1,3,3,3,3] but that's already [N,C,D,H,W] if we declare it so — however original PT case uses shape [1,3,3,3,3] and applies kernel to last three dims, which are H,W,? — no, torch.nn.functional.avg_pool3d expects 5D input as [N,C,D,H,W], and pools over D,H,W. So given input shape [1,3,3,3,3], it treats dim1=C=3, dim2=D=3, dim3=H=3, dim4=W=3 — correct. Then output is [1,3,2,2,2] because D_out=floor((3+2*1-2)/2)+1=2, same for H,W. TF output [1,2,2,2,3] means N=1, D_out=2, H_out=2, W_out=2, C=3 — so axes are permuted. To align outputs, PT output must be permuted to [N,D,H,W,C], i.e., permute([0,2,3,4,1]). But test case repair must ensure inputs and parameters yield same logical output *shape and values*, so the fix is to make PT use input in NDHWC order? No — PT doesn't support NDHWC. Therefore, canonical repair is to make TF use 'NCDHW' data_format? But TF's tf.nn.avg_pool3d only supports 'NDHWC' and 'NCDHW' — yes, 'NCDHW' is supported. So set TF data_format='NCDHW', then TF input shape [1,3,3,3,3] means [N,C,D,H,W], matching PT. Then TF ksize must be [1,1,2,2,2] (skip batch and channel, pool D,H,W), strides=[1,1,2,2,2], padding='SAME'. That yields TF output shape [1,3,2,2,2], matching PT."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.54300177",
+        "tf_shape": [
+          1,
+          3,
+          2,
+          2,
+          2
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          2,
+          2,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC",
+        "api": "tf.nn.avg_pool3d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC",
+        "api": "torch.nn.functional.avg_pool3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: avg_pool3d() missing 1 required positional arguments: \"kernel_size\"",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch avg_pool3d requires 'kernel_size' (not 'ksize'), 'stride' (not 'strides'), and 'padding' as integer/tuple (not 'SAME' string); also input must be NCDHW (5D: batch, channels, depth, height, width), not NDHWC. Fix parameter names, convert padding mode to numeric, and transpose input layout."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 2, 2, 1) vs PT=(1, 3, 2, 2, 1)",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          2,
+          2,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch avg_pool3d expects input in NCDHW format (batch, channels, depth, height, width), but TF uses NDHWC. Input shape [1,3,3,3,1] in TF is (N,D,H,W,C), so PyTorch input must be reshaped to [1,1,3,3,3] and kernel/stride/padding adjusted to match SAME padding behavior. Also, TF's ksize=[1,1,1,1,1] includes batch and channel dims; PyTorch only takes spatial dims [1,1,1]. The shape mismatch (TF=(1,2,2,2,1) vs PT=(1,3,2,2,1)) arises because PyTorch computed output depth as ceil(3/2)=2 but used wrong channel placement — actual issue is input layout mismatch and missing SAME-equivalent padding."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "count_include_pad": true,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 2, 2, 1) vs PT=(1, 3, 2, 2, 1)",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          2,
+          2,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch avg_pool3d expects input in NCDHW (batch, channels, depth, height, width), but TF uses NDHWC. Input shape [1,3,3,3,1] in TF means (B,D,H,W,C), so PyTorch must be reshaped to (B,C,D,H,W) = [1,1,3,3,3]. Also, ksize [1,1,1,1,1] in TF corresponds to kernel_size [1,1,1] for spatial dims only; strides [1,2,2,2,1] → stride [2,2,2]; padding 'SAME' requires computing explicit padding to match TF's output shape — here padding should be [0,0,0] is insufficient; using ceil_mode=False and count_include_pad=True is correct, but input layout mismatch causes shape inconsistency."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "count_include_pad": true,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 2, 2, 1) vs PT=(1, 3, 2, 2, 1)",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          2,
+          2,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC",
+        "api": "tf.nn.avg_pool3d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC",
+        "api": "torch.nn.functional.avg_pool3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: avg_pool3d() missing 1 required positional arguments: \"kernel_size\"",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's avg_pool3d requires explicit 'kernel_size', 'stride', 'padding' as positional args, and expects input in NCDHW (batch, channels, depth, height, width), not NDHWC. The original test case uses TF-style ksize/strides/padding names and NDHWC layout, causing TypeError and shape mismatch. Repair: convert input shape to NCDHW, map ksize[1:4]→kernel_size, strides[1:4]→stride, pad='VALID'→0, and add required args."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          3,
+          3,
+          3
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: input image (T: 7 H: 7 W: 1) smaller than kernel size (kT: 2 kH: 2 kW: 2)",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch报错因输入空间维度(T,H,W)=(7,7,7)小于kernel_size=(2,2,2)且padding=0，在VALID模式下无法滑动；而TensorFlow的ksize=[1,2,2,2,1]中首尾1对应batch和channels，仅中间3维参与池化，但PyTorch要求input shape为(N,C,D,H,W)，需将原shape[1,7,7,7,1]转为[1,1,7,7,7]以匹配NCDHW格式，并保持ksize/stride语义一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          3,
+          3,
+          3
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: input image (T: 7 H: 7 W: 1) smaller than kernel size (kT: 2 kH: 2 kW: 2)",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch报错因输入空间维度(T=7,H=7,W=7)小于kernel_size=(2,2,2)且padding=0，在VALID模式下无法滑动；而TensorFlow的ksize=[1,2,2,2,1]中首尾1对应batch和channels，实际pooling维度为[2,2,2]，但TF允许depth/height/width维度略小于ksize时自动截断（行为宽松）。修复：PyTorch需确保每个 spatial dim >= kernel_size；将input shape改为[1,1,7,7,7]并转为NCHW→[1,1,7,7,7]→PyTorch expect [N,C,D,H,W] → [1,1,7,7,7]，但原TF uses NDHWC so input is [N,D,H,W,C]=[1,7,7,7,1] → equivalent PyTorch input must be [N,C,D,H,W]=[1,1,7,7,7]. Also adjust ksize/strides to match spatial dims only."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          3,
+          3,
+          3,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            7,
+            7,
+            7,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          3,
+          3,
+          3
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: input image (T: 7 H: 7 W: 1) smaller than kernel size (kT: 2 kH: 2 kW: 2)",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW",
+        "api": "tf.nn.avg_pool3d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW",
+        "api": "torch.nn.functional.avg_pool3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "UnimplementedError: {{function_node __wrapped____MklNativeAvgPool3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} AvgPooling3D supports exactly one of pooling across depth or pooling across depth/width/height. [Op:AvgPool3D] name: ",
+        "pytorch_error": "TypeError: avg_pool3d() missing 1 required positional arguments: \"kernel_size\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错因ksize/strides含5个元素但data_format='NCDHW'不被tf.nn.avg_pool3d原生支持（仅支持'NDHWC'）；PyTorch报错因缺少kernel_size参数且不接受'data_format'，需改为kernel_size=strides=padding元组且输入shape适配NCDHW→NC(D,H,W)。修复：TF用'NDHWC'并调整input shape；PT用4D input+3D kernel/stride/padding。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 1, 1, 1, 3) vs PT=(1, 3, 1, 1, 1)",
+        "tf_shape": [
+          1,
+          1,
+          1,
+          1,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow使用NDHWC格式（batch, depth, height, width, channels），PyTorch默认NCDHW（batch, channels, depth, height, width）。原始PyTorch输入shape[1,3,3,3,3]被解释为[batch, C, D, H, W]，但TF的[1,3,3,3,3]是[batch, D, H, W, C]，导致通道维错位。需将PyTorch输入reshape为[1,3,3,3,3]→[1,3,3,3,3]但语义对齐：TF的C=3在最后，故PyTorch应为[1,3,3,3,3]→[1,3,3,3,3]不匹配；正确做法是PyTorch输入shape应为[1,3,3,3,3]对应NCDHW即[batch, C, D, H, W]，而TF的[1,3,3,3,3]是[batch, D, H, W, C]，因此PyTorch输入shape必须改为[1,3,3,3,3]→[1,3,3,3,3]不等价；实际应将TF输入视为[1,3,3,3,3] = [B,D,H,W,C]，则对应PyTorch需为[1,C,D,H,W] = [1,3,3,3,3] → 但原始两者shape相同却输出形状不一致，根本原因是PyTorch未转置输入。修复：PyTorch输入shape保持[1,3,3,3,3]但需明确其为NCDHW，而TF为NDHWC，因此TF输入数据需在测试中按NDHWC构造，PyTorch需将输入从[1,3,3,3,3]（NDHWC）转为[1,3,3,3,3]（NCDHW）即permute(0,4,1,2,3)。但测试用例只定义shape，不定义值，因此必须调整PyTorch input shape为[1,3,3,3,3]→[1,3,3,3,3]无意义；正确修复是：TF输入shape[1,3,3,3,3]表示[NDHWC]，即D=3,H=3,W=3,C=3；PyTorch同语义输入应为[N,C,D,H,W] = [1,3,3,3,3]，但此时kernel_size,stride等参数作用于D,H,W维度，与TF一致。然而输出形状差异TF=(1,1,1,1,3), PT=(1,3,1,1,1)表明PyTorch将C维保留在第1维，TF将C维保留在第4维，因此二者输出shape维度顺序不同，属于data_format差异，非计算错误。修复方式：PyTorch测试用例无需改变shape，但需确保其输入张量在运行时按NCDHW布局，而TF按NDHWC；但测试用例仅声明shape，无法指定layout，因此必须使PyTorch input shape反映NCDHW，即[1,3,3,3,3]是正确的，但TF的[1,3,3,3,3]是NDHWC，意味着其D=3,H=3,W=3,C=3，所以对应PyTorch的NCDHW应为[1,3,3,3,3] —— 这与当前一致，但输出shape仍不一致，说明问题在于PyTorch avg_pool3d不支持NDHWC，只支持NCDHW，因此TF的ksize=[1,2,2,2,1]中第一个1对应N，最后一个1对应C，中间[2,2,2]对应D,H,W；PyTorch kernel_size=[2,2,2]对应D,H,W，隐含N和C维度不参与pooling，因此TF ksize[1,2,2,2,1]与PT kernel_size[2,2,2]语义一致。输出shape不一致的根本原因是TF输出保持NDHWC格式（即[1,1,1,1,3]），而PT输出保持NCDHW格式（即[1,3,1,1,1]）。因此两个输出数值相同，只是维度顺序不同，属于格式差异，不可容忍的‘不一致’实为格式错位。修复方法：在PyTorch侧将输出permute(0,2,3,4,1)以匹配TF的NDHWC，但测试用例不能包含permute操作；因此唯一合规修复是调整PyTorch测试用例的input shape为与TF语义对齐的NCDHW等效形式——但TF输入shape[1,3,3,3,3]作为NDHWC，其D=3,H=3,W=3,C=3，故PyTorch input shape应为[1,C,D,H,W] = [1,3,3,3,3]，这正是当前值，所以问题不在shape定义而在框架默认布局。结论：该不一致源于data_format差异，属设计差异，不可修复为数值一致，故应跳过？但任务要求若功能不完全等价则skip。然而avg_pool3d核心功能完全等价，仅输出布局不同，这是跨框架常见现象，应通过调整PyTorch输出view或permute来对齐，但测试用例层面无法体现。根据任务要求第5条'构造两个框架的用例时必须保证输入相同(必要时进行张量形状的转换，如NHWC与NCHW转换)'，因此必须转换：TF输入shape[1,3,3,3,3] (NDHWC) 对应的数据，在PyTorch中应以NCDHW布局提供，即把原TF的[batch, D, H, W, C] reshape为[batch, C, D, H, W]，所以PyTorch input shape应为[1,3,3,3,3] → 但[1,3,3,3,3]已经是[1,C,D,H,W]当C=3,D=3,H=3,W=3，而TF的[1,3,3,3,3]是[1,D=3,H=3,W=3,C=3]，所以PyTorch shape正确。那么为何输出shape不同？因为TF输出[1,1,1,1,3] = [B,D',H',W',C]，PT输出[1,3,1,1,1] = [B,C,D',H',W']，所以只要将PT输出permute(0,2,3,4,1)就等于TF输出。但测试用例不执行permute，因此要使二者输出shape一致，唯一办法是让PyTorch也输出NDHWC，但它不支持。故该差异是固有布局差异，不属于bug，但测试比较要求shape一致，因此必须修复测试用例使其输出shape一致——这只能通过在PyTorch侧添加permute，但测试用例不允许。因此，根据任务要求第2条'如果执行出错...或者跳过（当你认为这两个跨框架算子的功能不完全等价时）'，此处功能等价但布局不同，属于框架设计差异，应skip？但题目中执行状态是inconsistent且结果不一致，而原因仅为shape顺序不同，数值可能一致。但错误信息只提shape不匹配，未提数值误差，因此最稳妥修复是：保持TF用例不变，修改PyTorch用例，使其输入shape改为[1,3,3,3,3]对应NDHWC的等效NCDHW，即TF的[1,D,H,W,C] = [1,3,3,3,3] → PyTorch需输入[1,C,D,H,W] = [1,3,3,3,3]，这已是当前值；所以问题在PyTorch未对齐输出格式。查阅PyTorch文档，avg_pool3d only supports NCDHW input and output. Therefore, to match TensorFlow's NDHWC output shape, we must transpose PyTorch's output, but test case cannot include that. Hence, the only valid repair is to adjust PyTorch's input to be logically equivalent by permuting dimensions before pooling — but test case only defines shape, not data. Therefore, the correct repair is to change PyTorch input shape to reflect that the *logical* D,H,W dimensions are the 2nd,3rd,4th in TF but 2nd,3rd,4th in PT only if input is NCDHW. Since TF input shape [1,3,3,3,3] has D=3,H=3,W=3,C=3, then for PT NCDHW, we need [1,C,D,H,W] = [1,3,3,3,3], which is correct. So the shape mismatch is expected and unavoidable. Thus, per task requirement: 'if you think the two cross-framework operators are not fully equivalent, choose skip'. But they are equivalent; the difference is merely memory layout. However, the test comparison fails on shape, so to satisfy the test, we must make outputs have same shape. The only way is to use data_format='NCDHW' in TF? But TF's tf.nn.avg_pool3d supports data_format='NCDHW' since v2.10. So repair: set TF data_format='NCDHW', then TF input shape should be [1,3,3,3,3] meaning [B,C,D,H,W], and ksize=[1,1,2,2,2] (since first dim B, second dim C, then D,H,W), but ksize must cover D,H,W only, so ksize=[1,1,2,2,2] with data_format='NCDHW' means pool over dims 2,3,4 (D,H,W). Then TF output shape = [1,3,1,1,1] matching PT. Yes! So repair: change TF data_format to 'NCDHW', adjust ksize to [1,1,2,2,2], strides to [1,1,2,2,2], keep padding='VALID'. Then both outputs will be [1,3,1,1,1]."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          1,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入形状扩大至边界场景[1,4,8,8,8]，ksize/strides调整为[1,2,3,3,3]和[1,2,3,3,3]以验证非对称参数；PyTorch对应kernel_size/stride设为[2,3,3]、padding为[0,0,0]，保持语义等价并启用count_include_pad确保与TF VALID行为对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          3,
+          3,
+          3
+        ],
+        "strides": [
+          1,
+          2,
+          3,
+          3,
+          3
+        ],
+        "padding": "VALID",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.avg_pool3d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          3,
+          3
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool3d",
+        "pytorch_api": "torch.nn.functional.avg_pool3d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "UnimplementedError: {{function_node __wrapped____MklNativeAvgPool3D_device_/job:localhost/replica:0/task:0/device:CPU:0}} AvgPooling3D supports exactly one of pooling across depth or pooling across depth/width/height. [Op:AvgPool3D] name: ",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          1,
+          4,
+          4,
+          2,
+          2
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

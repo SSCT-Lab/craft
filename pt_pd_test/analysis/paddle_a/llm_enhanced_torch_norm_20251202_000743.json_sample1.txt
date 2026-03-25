@@ -1,0 +1,51 @@
+来源文件: llm_enhanced_torch_norm_20251202_000743.json
+样例编号: 1
+paddle_error 错误信息: object of type 'int' has no len()
+
+【PyTorch 测试用例】
+{
+  "api": "torch.norm",
+  "input": {
+    "shape": [
+      3,
+      0,
+      5,
+      6
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "p": "inf",
+  "dim": 2,
+  "keepdim": true,
+  "dtype": null
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.norm",
+  "input": {
+    "shape": [
+      3,
+      0,
+      5,
+      6
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "p": "inf",
+  "dim": 2,
+  "keepdim": true,
+  "dtype": null
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - 输入张量形状为 `[3, 0, 5, 6]`，其中第1维为0，表示该维度为空（即无元素）。  
+   - 在 PyTorch 中，`torch.norm` 能够处理这种包含0维度的输入（如 `dim=2` 时对空维度求范数返回全0或适当形状的张量），但根据 PaddlePaddle 官方文档及实现逻辑，当输入张量在指定维度上长度为0时，`paddle.norm` 会尝试对空序列调用 `len()` 操作，从而触发 `object of type 'int' has no len()` 错误，表明其内部实现未正确处理零长度维度的边界情况。
+
+3. 修复建议：  
+   - 该问题反映 PaddlePaddle 在处理含0维度的张量范数计算时存在边界处理缺陷，建议提交 issue 至 PaddlePaddle 官方仓库，报告 `paddle.norm` 对 shape 包含0维度的输入支持不完善的问题。

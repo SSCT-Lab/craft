@@ -1,0 +1,57 @@
+来源文件: llm_enhanced_torch_nn_ConstantPad2d_20251202_004222.json
+样例编号: 2
+paddle_error 错误信息: (PreconditionNotMet) The meta data must be valid when call the mutable data function.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.ConstantPad2d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "padding": [
+    -1,
+    0,
+    -1,
+    0
+  ],
+  "value": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.Pad2D",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "padding": [
+    -1,
+    0,
+    -1,
+    0
+  ],
+  "value": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.nn.Pad2D` 在处理输入张量维度为 0（如 shape 为 `[2, 3, 0, 4]`）时，会检查 padding 参数的有效性，尤其在 `mode='constant'` 下要求元数据（meta data）有效。当某维大小为 0 时，某些内部逻辑可能无法正确初始化张量的 meta 信息，导致触发 `(PreconditionNotMet) The meta data must be valid when call the mutable data function.` 错误。  
+   - 而 PyTorch 的 `torch.nn.ConstantPad2d` 对零维输入（如 height=0）具有更宽松的容忍度，允许此类形状进行填充操作。
+
+3. 修复建议：  
+   - 此问题反映 PaddlePaddle 对零长度维度的 padding 处理比 PyTorch 更严格，属于框架行为差异；建议提交 issue 至 PaddlePaddle 官方仓库，指出其在零维 input shape（如 dim=0）下对 Pad2D 的 meta data 验证过于严格，影响与 PyTorch 的兼容性。

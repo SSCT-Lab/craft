@@ -1,0 +1,73 @@
+来源文件: llm_enhanced_torch_nn_InstanceNorm2d_20251216_012022.json
+样例编号: 1
+mindspore_error 错误信息: For primitive[InstanceNorm], the gamma shape must be equal to (C, ) which is 3 , but got 32.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\core\include\utils/check_convert_utils.h:250 mindspore::CheckAndConvertUtils::CheckValue
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.9184554219245911,
+      -0.7764779329299927,
+      -1.363637089729309,
+      -1.0492738485336304,
+      -0.9878490567207336,
+      -0.10239400714635849,
+      -1.6787652969360352,
+      -0.003347020596265793,
+      1.1363272666931152,
+      -0.23904651403427124
+    ]
+  },
+  "num_features": 32,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm2d"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.9184554219245911,
+      -0.7764779329299927,
+      -1.363637089729309,
+      -1.0492738485336304,
+      -0.9878490567207336,
+      -0.10239400714635849,
+      -1.6787652969360352,
+      -0.003347020596265793,
+      1.1363272666931152,
+      -0.23904651403427124
+    ]
+  },
+  "num_features": 32,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm2d"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 错误信息明确指出：`gamma shape must be equal to (C, ) which is 3, but got 32`，说明 MindSpore 的 `InstanceNorm` 实现中，`gamma`（即仿射参数）的维度被预期为通道数 `C=3`，但实际输入的 `num_features=32` 与之矛盾。
+   - 根据 PyTorch 官方文档，`InstanceNorm2d` 的 `num_features` 对应的是输入张量的通道数 `C`，而该样例中输入形状为 `[2, 3, 4, 4]`，即 `C=3`，因此 `num_features` 应为 3 而非 32。这表明测试用例中 `num_features` 参数与输入数据的实际通道数不一致，但更深层原因是：MindSpore 的 `InstanceNorm2d` 在实现时可能对 `num_features` 的解释与 PyTorch 不同——它可能将 `num_features` 视为“期望的通道数”，但内部强制要求其必须等于输入实际通道数，且未进行动态推断或容错处理。
+
+3. 修复建议：
+   - 此问题暴露了框架在 `InstanceNorm` 中对 `num_features` 与输入通道数一致性校验的严格性差异，建议提交 issue 给 MindSpore 官方，指出其在 `InstanceNorm2d` 上的行为与 PyTorch 不一致，特别是在 `num_features` 与实际输入通道数不匹配时应支持自动推断或给出更清晰的错误提示。

@@ -1,0 +1,944 @@
+{
+  "operator": "torch.nn.ConstantPad1d",
+  "timestamp": "2026-01-25T01:11:25.771038",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 8,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7312690019607544,
+            -0.9839452505111694,
+            0.11817166954278946,
+            -1.5263391733169556,
+            -0.3266175091266632,
+            0.11998608708381653,
+            -0.24182043969631195,
+            0.7447394132614136,
+            0.006622341927140951,
+            -0.25587692856788635
+          ]
+        },
+        "padding": 2,
+        "value": 3.5,
+        "api": "torch.nn.ConstantPad1d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7312690019607544,
+            -0.9839452505111694,
+            0.11817166954278946,
+            -1.5263391733169556,
+            -0.3266175091266632,
+            0.11998608708381653,
+            -0.24182043969631195,
+            0.7447394132614136,
+            0.006622341927140951,
+            -0.25587692856788635
+          ]
+        },
+        "padding": 2,
+        "value": 3.5,
+        "api": "paddle.nn.Pad1D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          14
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          14
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明基础功能对齐；但原始用例仅覆盖了padding为int的简单场景，未测试tuple形式的padding（如(pad_left, pad_right)）、边界值（如padding=0、负padding不支持需避免）、不同data_format（NLC vs NCL）、以及value为整数/极小值/极大值等情形。根据Paddle文档，Pad1D支持mode参数默认为'constant'，而torch.nn.ConstantPad1d隐式固定为constant模式，因此可安全添加mode='constant'以增强一致性；同时应变异padding为非对称tuple以验证左右填充独立性，并尝试value=0（默认值）和value=-1e6（极端值）以提升鲁棒性测试覆盖率。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2051820755004883,
+            0.9609267115592957,
+            0.37987610697746277,
+            -0.6816417574882507
+          ]
+        },
+        "padding": [
+          0,
+          5
+        ],
+        "value": -1000000.0
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2051820755004883,
+            0.9609267115592957,
+            0.37987610697746277,
+            -0.6816417574882507
+          ]
+        },
+        "padding": [
+          0,
+          5
+        ],
+        "value": -1000000.0,
+        "mode": "constant"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          4,
+          6
+        ],
+        "paddle_shape": [
+          1,
+          4,
+          6
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，符合功能等价性；为提升鲁棒性和边界覆盖，需进行fuzzing变异。根据文档，padding支持int或2-tuple，value支持任意float（包括极值、NaN、inf），input shape可扩展至边界情况（如单元素、零维、大尺寸、NLC格式等）。此处选择：(1) 将input shape从[1,4,1]变异为[2,0,3]（含0维度，测试空序列pad行为）；(2) padding保持[0,5]合法范围；(3) value使用float64极值-3.4028235e+38（接近float32最小正正规数负值，但实际float32范围是±3.4028235e+38，该值在float32可表示，用于压力测试）；(4) Paddle中显式保留mode='constant'，并补充data_format='NLC'以验证格式兼容性（因PyTorch无此参数，但Paddle支持且文档明确说明NCL/NLC，需确保不因默认值差异导致隐式不一致）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "padding": [
+          0,
+          5
+        ],
+        "value": -3.4028235e+38
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "padding": [
+          0,
+          5
+        ],
+        "value": -3.4028235e+38,
+        "mode": "constant",
+        "data_format": "NLC"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "value cannot be converted to type float without overflow",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          5,
+          3
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 618, in execute_test_case\n    torch_result = torch_instance(input_data)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1751, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1762, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\padding.py\", line 215, in forward\n    return F.pad(input, self.padding, \"constant\", self.value)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\functional.py\", line 5209, in pad\n    return torch._C._nn.pad(input, pad, mode, value)\nRuntimeError: value cannot be converted to type float without overflow\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.nn.ConstantPad1d fails with 'value cannot be converted to type float without overflow' because the provided value -3.4028235e+38 equals IEEE 754 float32's negative min (i.e., -FLT_MAX), which triggers overflow/underflow handling in PyTorch's C++ backend during constant padding initialization. According to PyTorch documentation, 'value' must be representable as a finite float32; while -3.4028235e+38 is technically the exact bit representation of float32 min, some PyTorch versions reject it as non-finite or overflow-prone in padding contexts. PaddlePaddle accepts it, but for cross-framework consistency and validity, we must use a safe finite value within float32 range (e.g., -3.4028234e+38, which is FLT_MIN + epsilon). Also, PyTorch ConstantPad1d expects input shape [N, C, L] (NCL), but the test uses shape [2, 0, 3] → N=2, C=0, L=3: having C=0 (channel dim = 0) is valid per PyTorch (empty tensor allowed), but padding along L-dim (dim=-1) is well-defined. However, the root cause is the extreme value. Repair: clamp 'value' to a safe float32 finite value just inside the representable range."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "padding": [
+          0,
+          5
+        ],
+        "value": -3.4028234e+38
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            2,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "padding": [
+          0,
+          5
+        ],
+        "value": -3.4028234e+38,
+        "mode": "constant",
+        "data_format": "NLC"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 0, 8) vs PaddlePaddle (2, 5, 3)",
+        "torch_shape": [
+          2,
+          0,
+          8
+        ],
+        "paddle_shape": [
+          2,
+          5,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6112303733825684,
+            1.8234806060791016,
+            0.34917154908180237,
+            -0.49956271052360535,
+            -1.096738576889038,
+            -0.4150509238243103,
+            0.5409038066864014,
+            0.2747032940387726,
+            -0.6808443069458008,
+            -0.9435938596725464
+          ]
+        },
+        "padding": 2,
+        "value": 3.5,
+        "api": "torch.nn.ConstantPad1d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6112303733825684,
+            1.8234806060791016,
+            0.34917154908180237,
+            -0.49956271052360535,
+            -1.096738576889038,
+            -0.4150509238243103,
+            0.5409038066864014,
+            0.2747032940387726,
+            -0.6808443069458008,
+            -0.9435938596725464
+          ]
+        },
+        "padding": 2,
+        "value": 3.5,
+        "api": "paddle.nn.Pad1D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          14
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          14
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle上均执行成功且结果一致，符合功能等价性；为提升鲁棒性和边界覆盖，需进行fuzzing变异。根据文档，padding可为int或2-tuple，value可为任意float，input shape需满足NCL格式（batch, channel, length）；因此变异为：(1) 使用非对称padding元组(1, 4)替代标量2，验证左右padding独立性；(2) 将input shape改为[1, 1, 0]（空序列长度），测试零维边界；(3) value保持3.5不变以维持语义一致性；(4) dtype扩展为int64以验证整数类型支持（两框架均支持int输入的constant pad）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            0
+          ],
+          "dtype": "int64",
+          "sample_values": []
+        },
+        "padding": [
+          1,
+          4
+        ],
+        "value": 3.5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            0
+          ],
+          "dtype": "int64",
+          "sample_values": []
+        },
+        "padding": [
+          1,
+          4
+        ],
+        "value": 3.5
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1,
+          5
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          5
+        ],
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但输入张量形状为[1, 1, 0]（即序列长度为0的1D数据）属于边界情况；为进一步验证框架对空维度、极端padding值、非默认data_format及value类型鲁棒性，需进行fuzzing：将shape改为[2, 3, 0]以增加batch和channel维度，padding扩展为[0, 0]（无填充）、[5, 0]（单侧填充）和[100, 100]（大值填充）组合，并测试value为int（0）、float（-1.0）及dtype为float32/int32/bool的多种情况；此处选取最具代表性的变异——shape=[2, 3, 0]（更一般化的空序列）、padding=[0, 0]（退化情况）、value=0（整型常量，适配int64输入），同时显式添加PaddlePaddle的data_format='NCL'（默认值但显式指定以增强可读性和兼容性），确保覆盖文档中强调的data_format参数约束。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            0
+          ],
+          "dtype": "int64",
+          "sample_values": []
+        },
+        "padding": [
+          0,
+          0
+        ],
+        "value": 0
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            0
+          ],
+          "dtype": "int64",
+          "sample_values": []
+        },
+        "padding": [
+          0,
+          0
+        ],
+        "value": 0,
+        "mode": "constant",
+        "data_format": "NCL"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          0
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          0
+        ],
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例执行成功且结果一致，但输入张量形状为[2, 3, 0]（第三维为0）属于空张量边界情况，覆盖度不足；为增强鲁棒性测试，需变异为更具挑战性的非空但含极小维度的形状（如[1, 1, 1]）、不同数据类型（float32更符合pad常用场景）、非零padding及非默认value，同时确保PaddlePaddle中mode和data_format显式指定以匹配PyTorch constant padding语义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.29368099570274353,
+            -0.4994416832923889,
+            -1.4074857234954834,
+            0.8296312689781189,
+            0.38836196064949036,
+            0.11065909266471863,
+            0.2594895362854004,
+            0.04037369042634964,
+            -0.6656100153923035,
+            0.025094013661146164
+          ]
+        },
+        "padding": [
+          2,
+          3
+        ],
+        "value": -1.5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            1,
+            2,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.29368099570274353,
+            -0.4994416832923889,
+            -1.4074857234954834,
+            0.8296312689781189,
+            0.38836196064949036,
+            0.11065909266471863,
+            0.2594895362854004,
+            0.04037369042634964,
+            -0.6656100153923035,
+            0.025094013661146164
+          ]
+        },
+        "padding": [
+          2,
+          3
+        ],
+        "value": -1.5,
+        "mode": "constant",
+        "data_format": "NCL"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          2,
+          10
+        ],
+        "paddle_shape": [
+          1,
+          2,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5496406555175781,
+            -2.4546115398406982,
+            -2.0358500480651855,
+            -0.7965960502624512,
+            -0.7029746174812317,
+            0.26769864559173584,
+            0.32162192463874817,
+            -1.2492533922195435,
+            -0.7025086283683777,
+            0.4614401161670685
+          ]
+        },
+        "padding": [
+          3,
+          1
+        ],
+        "value": 3.5,
+        "api": "torch.nn.ConstantPad1d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5496406555175781,
+            -2.4546115398406982,
+            -2.0358500480651855,
+            -0.7965960502624512,
+            -0.7029746174812317,
+            0.26769864559173584,
+            0.32162192463874817,
+            -1.2492533922195435,
+            -0.7025086283683777,
+            0.4614401161670685
+          ]
+        },
+        "padding": [
+          3,
+          1
+        ],
+        "value": 3.5,
+        "api": "paddle.nn.Pad1D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          14
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          14
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle上均执行成功且结果一致，说明基础功能对齐。为提升鲁棒性测试覆盖率，需进行fuzzing变异：1) 尝试边界值padding=[0, 0]（零填充，验证无操作一致性）；2) 尝试单通道极小尺寸输入shape=[1, 1, 1]以检验边界处理；3) 尝试int64输入dtype以覆盖整数类型场景；4) 保留value=3.5保持常量填充语义不变，符合两框架constant模式默认行为。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            4
+          ]
+        },
+        "padding": [
+          0,
+          0
+        ],
+        "value": 3.5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            4
+          ]
+        },
+        "padding": [
+          0,
+          0
+        ],
+        "value": 3.5
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1,
+          1
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          1
+        ],
+        "torch_dtype": "torch.int64",
+        "paddle_dtype": "paddle.int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例执行成功且结果一致，但覆盖场景过于简单（padding=[0,0]即无实际填充，input为1x1x1极小张量，dtype=int64与value=float32存在隐式类型转换风险）。为提升鲁棒性测试覆盖率，需进行fuzzing：增大输入尺寸以验证多通道处理；使用非零padding（左1右2）触发实际填充逻辑；将dtype改为float32以匹配value的浮点类型，避免PyTorch/Paddle在整数张量上对float value的处理差异；同时验证边界值（如padding_left=0, padding_right较大）和非默认data_format（NLC）在Paddle中的兼容性。根据Paddle文档，Pad1D支持data_format='NLC'，而PyTorch ConstantPad1d默认按NCL（batch, channel, length）处理，故需确保输入shape适配——当data_format='NLC'时，padding作用于最后一个维度，因此输入shape应调整为[1, 1, 1]→[1, 1, 1]仍合法，但为明确验证data_format影响，将input shape设为[1, 3, 5]（NLC: batch, length, channel），此时padding=[1,2]作用于length维，符合语义一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.16726939380168915,
+            -0.05344348028302193,
+            -0.17447595298290253,
+            -0.11946175992488861,
+            -0.7877089381217957,
+            -0.26924988627433777,
+            -0.9527612924575806,
+            0.19772832095623016,
+            -0.9295498728752136,
+            0.21350708603858948
+          ]
+        },
+        "padding": [
+          1,
+          2
+        ],
+        "value": 3.5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            1,
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.16726939380168915,
+            -0.05344348028302193,
+            -0.17447595298290253,
+            -0.11946175992488861,
+            -0.7877089381217957,
+            -0.26924988627433777,
+            -0.9527612924575806,
+            0.19772832095623016,
+            -0.9295498728752136,
+            0.21350708603858948
+          ]
+        },
+        "padding": [
+          1,
+          2
+        ],
+        "value": 3.5,
+        "mode": "constant",
+        "data_format": "NLC"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (1, 3, 8) vs PaddlePaddle (1, 6, 5)",
+        "torch_shape": [
+          1,
+          3,
+          8
+        ],
+        "paddle_shape": [
+          1,
+          6,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的Pad1D默认data_format='NCL'，即[N, C, L]，而测试用例中指定data_format='NLC'（[N, L, C]），导致padding维度被错误地应用在L维（第2维）上，但输入shape=[1,3,5]在NLC格式下L=3、C=5，pad=[1,2]作用于L维，输出L变为3+1+2=6，故输出shape为[1,6,5]；而PyTorch的ConstantPad1d始终作用于最后一个维度（L维），输入shape=[1,3,5]中L=5，pad=[1,2]→L'=5+1+2=8，输出shape=[1,3,8]。二者不一致的根本原因是data_format配置错误：Paddle应使用'data_format':'NCL'以对齐PyTorch的通道优先约定（batch, channel, length），且文档明确说明ConstantPad1d pads the last dimension — equivalent to NCL layout. 因此需将Paddle的data_format修正为'NCL'，并移除冗余的mode='constant'（默认值），保持语义等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.ConstantPad1d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.26523539423942566,
+            1.2064002752304077,
+            -0.6720490455627441,
+            0.8722916841506958,
+            0.7143062353134155,
+            -1.939144253730774,
+            1.0474296808242798,
+            0.6497232913970947,
+            -0.775270938873291,
+            -1.3889210224151611
+          ]
+        },
+        "padding": [
+          1,
+          2
+        ],
+        "value": 3.5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.Pad1D",
+        "input": {
+          "shape": [
+            1,
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.26523539423942566,
+            1.2064002752304077,
+            -0.6720490455627441,
+            0.8722916841506958,
+            0.7143062353134155,
+            -1.939144253730774,
+            1.0474296808242798,
+            0.6497232913970947,
+            -0.775270938873291,
+            -1.3889210224151611
+          ]
+        },
+        "padding": [
+          1,
+          2
+        ],
+        "value": 3.5,
+        "data_format": "NCL"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ConstantPad1d",
+        "paddle_api": "paddle.nn.Pad1D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          3,
+          8
+        ],
+        "paddle_shape": [
+          1,
+          3,
+          8
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

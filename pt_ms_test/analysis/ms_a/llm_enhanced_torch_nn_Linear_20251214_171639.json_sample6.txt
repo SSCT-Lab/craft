@@ -1,0 +1,73 @@
+来源文件: llm_enhanced_torch_nn_Linear_20251214_171639.json
+样例编号: 6
+mindspore_error 错误信息: For 'Dense', the type of 'x2' should be same as 'x1', but got 'x1' with type Tensor[Float64] and 'x2' with type Tensor[Float32].
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//dense.cc:127 mindspore::ops::DenseFuncImpl::InferType
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.Linear",
+  "input": {
+    "shape": [
+      2,
+      3,
+      64
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.6583331443494642,
+      -0.0342593826067581,
+      2.70527409304455,
+      1.012827998850014,
+      -0.18032334632994698,
+      0.3726696184539393,
+      0.3120457504288899,
+      1.4365835172129915,
+      -1.2320990018286249,
+      -0.29705255233486444
+    ]
+  },
+  "in_features": 64,
+  "out_features": 128,
+  "bias": true
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.nn.Linear",
+  "input": {
+    "shape": [
+      2,
+      3,
+      64
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.6583331443494642,
+      -0.0342593826067581,
+      2.70527409304455,
+      1.012827998850014,
+      -0.18032334632994698,
+      0.3726696184539393,
+      0.3120457504288899,
+      1.4365835172129915,
+      -1.2320990018286249,
+      -0.29705255233486444
+    ]
+  },
+  "in_features": 64,
+  "out_features": 128,
+  "bias": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `mindspore.mint.nn.Linear` 在初始化时，若未显式指定 `dtype`，默认使用 `float32`（根据文档中“dtype is set to mstype.float32 when initializing the method”）。  
+   - 但本测试用例输入为 `float64`，而权重和偏置在未指定初始化时会继承该 `dtype`，导致 `x1`（输入）为 `Float64`，而 `x2`（权重/偏置）为 `Float32`，从而触发类型不一致错误：“the type of 'x2' should be same as 'x1'”。
+
+3. 修复建议：  
+   - 应在 `mindspore_test_case` 中显式添加 `dtype=mindspore.float64` 参数，以确保所有参数类型对齐；或在框架层面考虑支持输入 dtype 自动传播至内部参数。此问题反映的是默认 dtype 与输入 dtype 不一致的潜在行为差异，建议提交 issue 至官方，作为框架一致性改进项。

@@ -1,0 +1,854 @@
+{
+  "operator": "torch_nn_BatchNorm1d",
+  "torch_api": "torch.nn.BatchNorm1d",
+  "paddle_api": "paddle.nn.BatchNorm1D",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 4,
+  "timestamp": "2026-02-01T17:46:02.836470",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_BatchNorm1d_20260125_092744.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.BatchNorm1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2785533666610718,
+            -1.7126153707504272,
+            1.8581970930099487,
+            0.7461273074150085,
+            -0.8661596179008484,
+            0.7731034159660339,
+            0.7210161089897156,
+            1.3393162488937378,
+            -2.2645459175109863,
+            -1.1725670099258423
+          ]
+        },
+        "num_features": 3,
+        "affine": false
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.BatchNorm1D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2785533666610718,
+            -1.7126153707504272,
+            1.8581970930099487,
+            0.7461273074150085,
+            -0.8661596179008484,
+            0.7731034159660339,
+            0.7210161089897156,
+            1.3393162488937378,
+            -2.2645459175109863,
+            -1.1725670099258423
+          ]
+        },
+        "num_features": 3,
+        "weight_attr": false,
+        "bias_attr": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "BatchNorm对非有限值（inf/nan）和极值的处理易出现框架差异，如NaN传播规则、无穷大归一化、极小方差下数值稳定性等。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.2785533666610718,
+                -1.7126153707504272,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.7461273074150085,
+                -0.8661596179008484
+              ]
+            },
+            "num_features": 3,
+            "affine": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.2785533666610718,
+                -1.7126153707504272,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.7461273074150085,
+                -0.8661596179008484
+              ]
+            },
+            "num_features": 3,
+            "weight_attr": false,
+            "bias_attr": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              10
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              10
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1, 3, 1]）",
+          "mutation_reason": "单元素批次（batch_size=1）触发 BatchNorm 的数值稳定性边界，易暴露方差为0时的除零处理、epsilon应用差异或mean/var计算偏差。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                1,
+                3,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.2785533666610718
+              ]
+            },
+            "num_features": 3,
+            "affine": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                1,
+                3,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.2785533666610718
+              ]
+            },
+            "num_features": 3,
+            "weight_attr": false,
+            "bias_attr": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": true,
+            "torch_error": "ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 3, 1])",
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "paddle_shape": [
+              1,
+              3,
+              1
+            ],
+            "torch_dtype": null,
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，并在sample_values中加入inf,-inf,nan,-0.0等边界值",
+          "mutation_reason": "float64下数值精度和特殊值（inf/nan）处理更敏感，可暴露框架对NaN传播、无穷大归一化或方差计算的实现差异，且两框架均完全支持CPU float64",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.2785533666610718,
+                -1.7126153707504272,
+                1.8581970930099487,
+                0.7461273074150085,
+                -0.8661596179008484,
+                0.7731034159660339,
+                0.7210161089897156,
+                1.3393162488937378,
+                -2.2645459175109863,
+                -1.1725670099258423,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "num_features": 3,
+            "affine": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.2785533666610718,
+                -1.7126153707504272,
+                1.8581970930099487,
+                0.7461273074150085,
+                -0.8661596179008484,
+                0.7731034159660339,
+                0.7210161089897156,
+                1.3393162488937378,
+                -2.2645459175109863,
+                -1.1725670099258423,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "num_features": 3,
+            "weight_attr": false,
+            "bias_attr": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: mixed dtype (CPU): all inputs must share same datatype.",
+            "paddle_error": "ValueError: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.\n  [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():10 != phi::CppTypeToDataType<T>::Type():11.] (at ..\\paddle\\phi\\core\\dense_tensor.cc:160)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_BatchNorm1d_20260125_092744.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.BatchNorm1d",
+        "input": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7511509656906128,
+            -1.2030367851257324,
+            0.0543869249522686,
+            0.3690039813518524,
+            -2.248102903366089,
+            -0.41976630687713623,
+            1.0818161964416504,
+            -0.7496002316474915,
+            -0.8405380845069885,
+            1.2860305309295654
+          ]
+        },
+        "num_features": 5,
+        "eps": 1e-08,
+        "momentum": 0.0,
+        "affine": false,
+        "track_running_stats": false
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.BatchNorm1D",
+        "input": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7511509656906128,
+            -1.2030367851257324,
+            0.0543869249522686,
+            0.3690039813518524,
+            -2.248102903366089,
+            -0.41976630687713623,
+            1.0818161964416504,
+            -0.7496002316474915,
+            -0.8405380845069885,
+            1.2860305309295654
+          ]
+        },
+        "num_features": 5,
+        "epsilon": 1e-08,
+        "momentum": 0.0,
+        "weight_attr": false,
+        "bias_attr": false,
+        "use_global_stats": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值处理差异，如NaN传播规则、inf/zero division处理、次正规数精度丢失等，暴露BN实现中未对齐的边界逻辑。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.7511509656906128,
+                "inf",
+                -0.0,
+                1e-38,
+                "nan",
+                -1.2030367851257324,
+                "inf",
+                0.0543869249522686,
+                1e+38,
+                "-inf"
+              ]
+            },
+            "num_features": 5,
+            "eps": 1e-08,
+            "momentum": 0.0,
+            "affine": false,
+            "track_running_stats": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.7511509656906128,
+                "inf",
+                -0.0,
+                1e-38,
+                "nan",
+                -1.2030367851257324,
+                "inf",
+                0.0543869249522686,
+                1e+38,
+                "-inf"
+              ]
+            },
+            "num_features": 5,
+            "epsilon": 1e-08,
+            "momentum": 0.0,
+            "weight_attr": false,
+            "bias_attr": false,
+            "use_global_stats": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              4,
+              5
+            ],
+            "paddle_shape": [
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1, 1]）",
+          "mutation_reason": "单元素输入是BatchNorm的退化边界，此时batch mean/var计算易因维度约简或数值稳定性差异暴露框架实现分歧（如方差分母用m vs m-1、inf/nan传播逻辑不一致）",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "num_features": 1,
+            "eps": 1e-08,
+            "momentum": 0.0,
+            "affine": false,
+            "track_running_stats": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "num_features": 1,
+            "epsilon": 1e-08,
+            "momentum": 0.0,
+            "weight_attr": false,
+            "bias_attr": false,
+            "use_global_stats": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": true,
+            "torch_error": "ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 1])",
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "paddle_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": null,
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，并注入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "float64 提升数值精度，暴露浮点边界处理差异；inf/nan/-0.0 是 BatchNorm 分母 sqrt(var + eps) 和均值计算的敏感点，易触发框架间 NaN 传播或符号处理不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.7511509656906128,
+                -1.2030367851257324,
+                0.0543869249522686,
+                0.3690039813518524,
+                -2.248102903366089,
+                -0.41976630687713623,
+                1.0818161964416504,
+                -0.7496002316474915,
+                -0.8405380845069885,
+                1.2860305309295654,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_features": 5,
+            "eps": 1e-08,
+            "momentum": 0.0,
+            "affine": false,
+            "track_running_stats": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.7511509656906128,
+                -1.2030367851257324,
+                0.0543869249522686,
+                0.3690039813518524,
+                -2.248102903366089,
+                -0.41976630687713623,
+                1.0818161964416504,
+                -0.7496002316474915,
+                -0.8405380845069885,
+                1.2860305309295654,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_features": 5,
+            "epsilon": 1e-08,
+            "momentum": 0.0,
+            "weight_attr": false,
+            "bias_attr": false,
+            "use_global_stats": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": false,
+            "torch_error": null,
+            "paddle_error": "ValueError: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.\n  [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():10 != phi::CppTypeToDataType<T>::Type():11.] (at ..\\paddle\\phi\\core\\dense_tensor.cc:160)\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [
+              4,
+              5
+            ],
+            "paddle_shape": null,
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_BatchNorm1d_20260125_092744.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.BatchNorm1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.18432769179344177,
+            1.1053965091705322,
+            1.207436203956604,
+            0.39367371797561646,
+            0.44161128997802734,
+            -0.15657304227352142,
+            -0.14744390547275543,
+            -2.5834429264068604,
+            -1.340912103652954,
+            0.6201378107070923
+          ]
+        },
+        "num_features": 3,
+        "affine": false
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.BatchNorm1D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.18432769179344177,
+            1.1053965091705322,
+            1.207436203956604,
+            0.39367371797561646,
+            0.44161128997802734,
+            -0.15657304227352142,
+            -0.14744390547275543,
+            -2.5834429264068604,
+            -1.340912103652954,
+            0.6201378107070923
+          ]
+        },
+        "num_features": 3,
+        "weight_attr": false,
+        "bias_attr": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在数值稳定性、NaN传播、无穷大处理、极小值下溢/溢出等方面的实现差异，尤其影响batch mean/var计算和分母sqrt(σ²+ε)分支。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.18432769179344177,
+                1.1053965091705322,
+                1.207436203956604,
+                0.39367371797561646,
+                0.44161128997802734,
+                -0.15657304227352142,
+                -0.14744390547275543,
+                -2.5834429264068604,
+                -1.340912103652954,
+                0.6201378107070923,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_features": 3,
+            "affine": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.18432769179344177,
+                1.1053965091705322,
+                1.207436203956604,
+                0.39367371797561646,
+                0.44161128997802734,
+                -0.15657304227352142,
+                -0.14744390547275543,
+                -2.5834429264068604,
+                -1.340912103652954,
+                0.6201378107070923,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_features": 3,
+            "weight_attr": false,
+            "bias_attr": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              10
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              10
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1, 3, 1]）",
+          "mutation_reason": "单元素批次（batch=1）是BatchNorm的临界场景，均值/方差计算易因数值精度或无偏校正逻辑差异暴露框架bug。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                1,
+                3,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.18432769179344177
+              ]
+            },
+            "num_features": 3,
+            "affine": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                1,
+                3,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.18432769179344177
+              ]
+            },
+            "num_features": 3,
+            "weight_attr": false,
+            "bias_attr": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": true,
+            "torch_error": "ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 3, 1])",
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "paddle_shape": [
+              1,
+              3,
+              1
+            ],
+            "torch_dtype": null,
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持所有参数一致并注入边界特殊值",
+          "mutation_reason": "float64下数值精度更高，可暴露因浮点累积误差、momentum更新截断或epsilon处理差异导致的微小偏差；特殊值（inf/nan）易触发框架异常分支，揭示NaN传播逻辑不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.BatchNorm1d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.18432769179344177,
+                1.1053965091705322,
+                1.207436203956604,
+                0.39367371797561646,
+                0.44161128997802734,
+                -0.15657304227352142,
+                -0.14744390547275543,
+                -2.5834429264068604,
+                -1.340912103652954,
+                0.6201378107070923
+              ]
+            },
+            "num_features": 3,
+            "affine": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.BatchNorm1D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.18432769179344177,
+                1.1053965091705322,
+                1.207436203956604,
+                0.39367371797561646,
+                0.44161128997802734,
+                -0.15657304227352142,
+                -0.14744390547275543,
+                -2.5834429264068604,
+                -1.340912103652954,
+                0.6201378107070923
+              ]
+            },
+            "num_features": 3,
+            "weight_attr": false,
+            "bias_attr": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: mixed dtype (CPU): all inputs must share same datatype.",
+            "paddle_error": "ValueError: (InvalidArgument) The type of data we are trying to retrieve (float64) does not match the type of data (float32) currently contained in the container.\n  [Hint: Expected dtype() == phi::CppTypeToDataType<T>::Type(), but received dtype():10 != phi::CppTypeToDataType<T>::Type():11.] (at ..\\paddle\\phi\\core\\dense_tensor.cc:160)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

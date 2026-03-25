@@ -1,0 +1,47 @@
+{
+  "operator": "torch_range",
+  "export_time": "2026-01-26T17:08:11.498255",
+  "total_success_cases": 1,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_range_20260123_211404.json",
+      "operator": "torch.range",
+      "iteration": 3,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 1,
+        "end": 20
+      },
+      "tensorflow_test_case": {
+        "api": "tf.range",
+        "start": 1,
+        "limit": 21
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "tensorflow_api": "tf.range",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          20
+        ],
+        "tensorflow_shape": [
+          20
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例执行一致，但覆盖范围有限（仅整数start/end、默认step=1）；根据PyTorch文档，torch.range支持float start/end/step且dtype推断规则明确，而tf.range支持float start/limit/delta且语义等价；为提升鲁棒性与边界覆盖，需变异为浮点参数、负步长、小数步长、跨零区间等场景，同时确保tf.range的limit参数仍满足等价映射（即torch.range(start, end, step) ≡ tf.range(start, end if step>0 else end-1, step)需修正为正确对齐逻辑：torch.range(start, end, step)生成包含start、不超过end（step>0）或不低于end（step<0）的序列，其上界在tf.range中需用limit = end + (step>0 ? 0 : 0) 调整，但实际等价映射应为tf.range(start, end + (step>0 ? step : -step), step)不成立；正确等价是：torch.range(start, end, step) has floor((end-start)/step)+1 elements, ending at start + step*floor((end-start)/step); tf.range(start, limit, delta) produces elements start, start+delta, ..., < limit. So to match torch.range(start, end, step), we need limit = end + (step > 0 ? (step - 1e-6) : (step + 1e-6)) — but that's unstable. Instead, safest mutation is using exact same numeric logic: use step=2.5, start=0.5, end=10.5 → torch produces [0.5,3.0,5.5,8.0], length=floor((10.5-0.5)/2.5)+1=floor(10/2.5)+1=4+1=5? Wait: (10.5-0.5)=10.0, 10.0/2.5=4.0 → floor(4.0)+1=5, values: 0.5,3.0,5.5,8.0,10.5 — yes, inclusive of end if divisible. So tf.range must use limit = 10.5 + (2.5 if step>0? no — tf.range is exclusive of limit, so to include 10.5, limit must be >10.5, e.g., 10.5+eps. But per doc, tf.range with float is inclusive of start and exclusive of limit, while torch.range is inclusive of both start and end *if end is reachable*. Therefore, to ensure equivalence, we set limit = end + (step * 1e-6) for positive step — however, for fuzzing we prioritize diversity over fragile alignment: use non-divisible end (e.g., end=10.6) to trigger floor behavior, and test dtype=float32 explicitly. Also add negative step case: start=10, end=0, step=-3 → torch: [10,7,4,1], length=floor((0-10)/(-3))+1=floor(10/3)+1=3+1=4; tf.range(10, 0-1, -3) is wrong — correct is tf.range(10, -1, -3) → [10,7,4,1], so limit must be end - (step>0?0:abs(step)) for strict inclusivity. But per task, since original is consistent and we only need fuzzing (not perfect alignment for all edge cases), we mutate to three diverse cases: (1) float args + explicit dtype=torch.float32/tf.float32, (2) negative step, (3) step smaller than 1. We choose one representative high-coverage mutation: start=0.1, end=1.0, step=0.3, dtype=float32 — this triggers floating point precision sensitivity and floor division behavior in both."
+      }
+    }
+  ]
+}

@@ -1,0 +1,1249 @@
+{
+  "pd_api": "paddle.nn.functional.cross_entropy",
+  "ms_api": "mindspore.ops.cross_entropy",
+  "timestamp": "2026-03-02T23:07:48.092073",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 15,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: cross_entropy() got an unexpected keyword argument 'label'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy does not accept 'label' parameter; it uses 'target' instead. Also, MindSpore expects input to be log-probabilities (or logits only if combined with LogSoftmax externally), and dtype float64 is not supported — only float16/float32. PaddlePaddle uses 'label' and supports float64. Thus, rename 'label'→'target', change dtype to float32, and remove unsupported 'soft_label' (not present in MindSpore API)."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.20072842",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy expects input to be log-probabilities when target is class indices, while PaddlePaddle's cross_entropy (with use_softmax=True by default) expects raw logits. To align semantics, we must set use_softmax=False in Paddle and ensure both frameworks receive same pre-softmax inputs; also MindSpore requires int32 for target, but Paddle accepts int64 — we unify to int32 for label/target and add use_softmax=False to Paddle to match MindSpore's expectation of log-probs."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy",
+        "use_softmax": false
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy expects input to be log-probabilities when target is class indices, while PaddlePaddle with use_softmax=False expects pre-softmax logits (i.e., raw scores). To align semantics, Paddle must set use_softmax=True (default) and remove use_softmax=False; MindSpore requires input to be log-probabilities, so we must apply log(softmax(input)) in MindSpore test case. Also, Paddle's 'label' corresponds to MindSpore's 'target', but Paddle's use_softmax=False makes it incompatible — repair by enabling softmax in Paddle and matching MindSpore's expected log-prob input via preprocessing."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.29322314",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: cross_entropy() got an unexpected keyword argument 'label'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy does not accept 'label' parameter; it uses 'target' instead. Also, MindSpore requires input dtype float16/float32 (not float64), and 'soft_label' is not a valid parameter — it only supports integer labels or probability targets, with no soft_label flag. Must rename 'label'→'target', change dtype to float32, and remove 'soft_label'."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.29555559",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy expects input to be log-probabilities, while PaddlePaddle's default use_softmax=True expects raw logits. To ensure functional equivalence, we must align inputs: either disable softmax in Paddle (use_softmax=False) and provide softmax outputs, or enable log_softmax in MindSpore — but MindSpore's cross_entropy does not accept logits directly. Per docs, MindSpore requires log-probabilities, so Paddle must match by setting use_softmax=False and feeding log-softmax output. However, original test feeds raw logits to both. Fix: add use_softmax=False to Paddle and ensure both use same pre-softmax/log-softmax input. But since test uses integer labels and no explicit logits/logprobs, the core mismatch is that Paddle applies softmax+log internally when use_softmax=True, while MindSpore applies log_softmax internally (as it expects log-probs). So to align, Paddle must use use_softmax=False AND input must be log-probs — but original input is random float32 (logits). Therefore, repair is to make Paddle use_softmax=False and generate log-prob input (via log(softmax(logits))) — but test case only specifies shape/dtype, not values. Hence, the correct repair is to add use_softmax=False in Paddle and ensure MindSpore receives same log-prob input semantics. However, test case generation doesn’t control values — so the minimal repair is to set use_softmax=False in Paddle to disable internal softmax, matching MindSpore’s expectation of log-probs. Also, MindSpore target dtype must be int32 (it is), and Paddle label dtype int64 is acceptable per doc (int32/int64 allowed), but to reduce dtype-related numerical variance, align to int32. Also, Paddle’s ignore_index=-100 is valid only when soft_label=False (default), which holds."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.nn.functional.cross_entropy",
+        "use_softmax": false
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy expects input to be log-probabilities when use_softmax=False in Paddle, but Paddle with use_softmax=False expects softmax output (probabilities), while MindSpore does not apply softmax internally and requires logits. To align semantics, we must set use_softmax=True in Paddle (default) and ensure MindSpore input is logits; however, current test sets use_softmax=False in Paddle but provides raw logits — causing inconsistency. Repair: remove use_softmax=False from Paddle to use default True, and keep MindSpore as-is (logits input), which matches standard cross-entropy behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.20363569",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: cross_entropy() got an unexpected keyword argument 'label'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy does not accept 'label' parameter; it uses 'target' instead. Also, MindSpore expects 'input' to be log-probabilities (not raw logits) when soft_label=True, and dtype float64 is not supported — only float16/float32. PaddlePaddle uses 'label' and supports float64. So we rename 'label'→'target', change dtype to float32, and remove unsupported 'soft_label' (MindSpore infers soft target from target's dtype/shape: float tensor → soft label)."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "soft_label": true,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 12.87419128",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle要求soft_label=True时label应为软标签（概率分布，每行和为1），但原始用例中label形状[5,37]与input相同且未保证行和为1；MindSpore将同形float32 target解释为概率标签，但其cross_entropy要求概率标签需满足sum-to-1语义。不一致源于label未归一化，需修复为合法软标签输入。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "soft_label": true,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.22214472",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle要求soft_label=True时label应为soft targets（概率分布，每行和为1），而MindSpore要求target为float类型时也需是概率分布；但原始用例中label/target均为随机float32且未归一化，导致语义不一致。需修复为合法软标签：对label/target沿类别维softmax归一化。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "soft_label": true,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 6.99757886",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float64"
+        },
+        "soft_label": true,
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: cross_entropy() got an unexpected keyword argument 'label'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy does not accept 'label' parameter; it uses 'target' instead. Also, MindSpore expects 'input' to be log-probabilities (not raw logits) when soft_label=True, and dtype float64 is not supported — only float16/float32. PaddlePaddle uses 'label' and supports float64. So we rename 'label'→'target', change dtype to float32, and remove unsupported 'soft_label' (MindSpore infers soft target from target's dtype/shape: float tensor → soft label)."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "soft_label": true,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 23.21559143",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle要求soft_label=True时label需为概率分布（每行和为1），而MindSpore要求target为概率时shape与input一致且dtype兼容，但当前用例中label/target为[5,37] float32未归一化，导致语义不等价；应改为整型标签或确保soft_label场景下label满足概率约束。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.09929132",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致（最大差异0.099）超出可容忍精度误差（1e-3），但根本原因是MindSpore.cross_entropy要求input为log-probabilities，而PaddlePaddle.cross_entropy默认use_softmax=True处理logits；两者语义不同：Paddle输入是raw logits，MindSpore输入需是log(softmax(logits))。为对齐语义，应使MindSpore输入与Paddle等效——即在MindSpore侧显式添加log_softmax预处理，但当前测试用例未体现该差异。因此需变异用例，统一输入为logits并显式控制softmax逻辑，或改用soft_label=True/label_smoothing>0等双方均支持的等价模式。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "label": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy",
+        "use_softmax": true
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            5,
+            37
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": -100,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.61714506",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": 3,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "label": {
+          "shape": [
+            30,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "ignore_index": 3,
+        "api": "mindspore.ops.cross_entropy"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": "TypeError: cross_entropy() got an unexpected keyword argument 'label'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "ms_shape": null,
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy does not accept 'label' parameter; it uses 'target' instead. Also, MindSpore requires input to be log-probabilities (or logits) but expects target to be int32 for class indices, and does not support 'soft_label' parameter. The dtype float64 is unsupported — must be float16 or float32. ignore_index=3 is valid but input dtype and param name must be fixed."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": 3,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy"
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": 3,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.26555824",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy expects log-probabilities (i.e., pre-softmax logits are NOT accepted unless manually softmax+log applied), while Paddle's default use_softmax=True expects raw logits. To align semantics, we must ensure both compute cross-entropy on same input interpretation: Paddle with use_softmax=True (default) expects unscaled logits; MindSpore expects log-probabilities (i.e., log(softmax(logits))). So MindSpore test case must be updated to use log_softmax(input) or switch to compatible mode — but since MindSpore's cross_entropy does NOT auto-apply softmax, the input must be log-probs. Thus, to make outputs comparable, we must either (a) disable softmax in Paddle (use_softmax=False) and provide softmax output as input, or (b) apply log_softmax to input for MindSpore. However, docs show MindSpore cross_entropy *does not* auto-softmax, and Paddle does by default — so inconsistency arises from fundamental semantic mismatch. The correct repair is to set use_softmax=False in Paddle and provide softmax(input) as input, and keep MindSpore input as log(softmax(input)) — but that breaks input equivalence. Instead, standard practice is to let both consume logits and apply softmax internally — but MindSpore lacks that. Therefore, per doc, MindSpore cross_entropy only supports log-prob inputs for class-index targets, meaning Paddle must match by setting use_softmax=False AND providing softmax(input), but then label dtype/shape must still match. However, original Paddle case uses soft_label=False + int64 label — valid. The root cause is: Paddle computes -log(softmax(x)[y]) with internal softmax; MindSpore computes -x[y] + log(sum(exp(x))) — i.e., it *does* compute softmax internally *only if input is logits*, but its doc says 'input is expected to be log-probabilities' — contradiction. Checking MindSpore r2.6 doc carefully: it says 'input is expected to be log-probabilities', so passing raw logits to MindSpore is wrong. Hence, to align, we must transform input for MindSpore to log_softmax(logits), but test case generator cannot inject ops. So repair is to make Paddle also use log-prob input by setting use_softmax=False and soft_label=False — but then input must be log-probs, same as MindSpore. So both should receive log_softmax(logits). Since test case only specifies shape/dtype of input, not values, the *numerical inconsistency* (0.265) stems from Paddle applying softmax+log internally while MindSpore expects pre-applied log-probs. Therefore, fix: in Paddle, set use_softmax=False and ensure input tensor values are log-probabilities (but test case doesn't control values); however, framework-agnostic test generation assumes same random input. So the only sound repair is to make Paddle *not* apply softmax — i.e., add use_softmax=False — and rely on identical log-prob input. But MindSpore requires log-probs, so Paddle must match that behavior. Thus, add use_softmax=False to Paddle and keep MindSpore as-is. Also, MindSpore target dtype must be int32 (not int64) — already satisfied. No other param mismatch. So repair: add 'use_softmax': false to Paddle test case."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": 3,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy",
+        "use_softmax": false
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": 3,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: nan",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore cross_entropy expects input to be log-probabilities when target is class indices, but PaddlePaddle's use_softmax=False expects pre-softmax logits (i.e., raw scores). To align semantics, Paddle must set use_softmax=True (default) and MindSpore must apply softmax+log manually or use a different op; however, since MindSpore's cross_entropy does NOT apply softmax internally (requires log-probs), the Paddle input must be converted to log-probs. But original Paddle case uses use_softmax=False → inconsistent behavior. Fix: set use_softmax=True in Paddle and ensure both compute -log(softmax(input)[target]), matching MindSpore's expectation of log-probabilities input."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": 3,
+        "label": {
+          "shape": [
+            30
+          ],
+          "dtype": "int64"
+        },
+        "soft_label": false,
+        "api": "paddle.nn.functional.cross_entropy",
+        "use_softmax": true
+      },
+      "ms_test_case": {
+        "reduction": "mean",
+        "input": {
+          "shape": [
+            30,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ignore_index": 3,
+        "api": "mindspore.ops.cross_entropy",
+        "target": {
+          "shape": [
+            30
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.cross_entropy",
+        "ms_api": "mindspore.ops.cross_entropy",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.11242676",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

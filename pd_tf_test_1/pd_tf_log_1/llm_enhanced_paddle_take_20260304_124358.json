@@ -1,0 +1,1244 @@
+{
+  "pd_api": "paddle.take",
+  "tensorflow_api": "tf.gather_nd",
+  "timestamp": "2026-03-04T12:43:58.253705",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 10,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "paddle.take"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.gather_nd does not have a 'mode' parameter; it raises IndexError for out-of-bounds indices by default (equivalent to paddle's 'raise' mode). The 'mode' key must be removed from TensorFlow test case to avoid TypeError. Also, tf.gather_nd requires indices to be rank-2 with last dimension equal to rank of params, so index shape [2,3] is invalid for params shape [3,4] (rank=2); it must be [N,2]. We fix index shape to [6,2] to gather 6 scalars, matching paddle.take's flattened indexing behavior."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather_nd",
+        "indices": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherNd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[5] = [4, 7] does not index into param shape [3,4], node name: GatherNd [Op:GatherNd] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input to 1D and uses linear indices, while tf.gather_nd requires multi-dimensional indices matching params rank. The original TF test case uses [6,2] indices for a [3,4] tensor (rank-2), which is correct for gather_nd, but the paddle 'index' is 1D with shape [6] — implying linear indices in [0, 11]. To align semantics, TF must simulate linear indexing: reshape params to 1D and use same 1D indices. Thus repair: change TF 'indices' to shape [6] (not [6,2]) and reshape 'params' to [12] before gather_nd, or use tf.gather instead. Since tf.gather matches paddle.take's 1D indexing behavior, we replace tf.gather_nd with tf.gather and adjust indices accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.53618452",
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": [
+          6
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input 'x' to 1-D before indexing, so x.shape=[3,4] implies 12 elements; tf.gather expects params.shape=[12] to match. However, original TF case uses 'tf.gather' but paddle.take's semantic equivalent is 'tf.gather' (not tf.gather_nd) with 1-D params — but current TF test uses params.shape=[12], which is correct. Inconsistency arises because index values likely exceed bounds or differ in generation; to ensure semantic equivalence, we must align index values (not just shape/dtype) and enforce same random seed or deterministic indices. Since test only specifies shapes, not actual tensor values or index content, the root cause is missing value specification — repair by adding concrete index values within valid range [0,11] and matching flattened x."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "mode": "raise",
+        "index": {
+          "value": [
+            0,
+            5,
+            11,
+            3,
+            7,
+            1
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "value": [
+            0,
+            5,
+            11,
+            3,
+            7,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: The type of 'index' must be Tensor, but got <class 'dict'>",
+        "tensorflow_error": "ValueError: Attempt to convert a value ({'value': [0, 5, 11, 3, 7, 1], 'dtype': 'int64'}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "paddle.take"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.gather_nd 不支持 'mode' 参数，该参数是 paddle.take 特有的索引越界处理机制；而 tf.gather_nd 默认行为类似 paddle.take 的 'raise' 模式（即越界报错），因此需移除 mode 参数以实现语义对齐。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather_nd",
+        "indices": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherNd_device_/job:localhost/replica:0/task:0/device:CPU:0}} index innermost dimension length must be <= params rank; saw: 3 vs. 2 [Op:GatherNd] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "tf.gather_nd requires indices innermost dimension length <= params rank; here indices shape [2,3] implies rank-3 indexing but params rank is 2. To align semantics with paddle.take (which flattens x and uses 1D indexing), we must use tf.gather with flattened params and 1D indices instead of tf.gather_nd."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "int32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 8.00000000",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input 'x' to 1-D implicitly, so 'x' must be flattened to [12] for tf.gather to match semantics; current TF params shape [12] is correct but paddle x shape [3,4] is not flattened in the test case construction — however the real issue is parameter misalignment: tf.gather expects 1-D params, while paddle.take accepts N-D but treats it as 1-D; thus TF test case is correct but paddle test case must ensure index values are valid for flattened size (12), and both must use identical index values. Since original test only specifies shapes without concrete data, inconsistency arises from implicit indexing behavior divergence. Repair: align by enforcing same flattened semantics — keep paddle x=[3,4], but ensure TF params=[12] and use tf.gather (not tf.gather_nd) with axis=0, and add explicit value consistency via deterministic initialization."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int32"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "axis": 0,
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "int32"
+        },
+        "indices": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 8.00000000",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int64"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "paddle.take"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int64"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.gather_nd does not have a 'mode' parameter; it always raises error on out-of-bounds indices by default. The 'mode' argument in paddle.take is framework-specific and must be removed from TensorFlow test case to align semantics. Also, tf.gather_nd requires indices to be coordinate vectors (last dim size = rank of params), so index shape [2,3] is invalid for x shape [3,4] (rank=2); correct index shape must be [N, 2]. We fix index shape to [6, 2] to gather 6 scalars, matching paddle.take's flattened indexing behavior."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather_nd",
+        "indices": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherNd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[5] = [8, 3] does not index into param shape [3,4], node name: GatherNd [Op:GatherNd] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input 'x' to 1-D and uses 1-D indices, while tf.gather_nd requires multi-dimensional indices matching params rank. To align semantics, we must replace tf.gather_nd with tf.gather (which gathers along first dim of flattened params) or manually flatten params and use tf.gather. Here, repair uses tf.gather on flattened params with same 1-D indices as paddle.take."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 5.00000000",
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": [
+          6
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input 'x' to 1-D before indexing, so x.shape=[3,4] → 12 elements; tf.gather expects params.shape=[12], but original TF case uses params.shape=[12] correctly. However, paddle.take's 'index' must be within [0, 12) for mode='raise', but test doesn't specify index values — inconsistency arises from unspecified index content. To ensure semantic equivalence, we must align index values explicitly and fix TF to use tf.gather (not tf.gather_nd) with axis=0 and same flattened semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "axis": 0,
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "int64"
+        },
+        "indices": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "batch_dims": 0
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 6.00000000",
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": [
+          6
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "paddle.take"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "mode": "raise",
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.gather_nd does not have a 'mode' parameter; it always raises error on out-of-bounds indices (equivalent to paddle's 'raise' mode). The 'mode' key must be removed from TensorFlow test case to avoid TypeError. Also, tf.gather_nd requires indices to be rank-2 with last dimension equal to rank of params, so index shape [2,3] is invalid for params shape [3,4] (rank=2) — must reshape index to [2,2] or flatten params and use tf.gather instead."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.21252816",
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": [
+          6
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input 'x' to 1D before indexing, so x.shape=[3,4] implies 12 elements; tf.gather expects params.shape=[12] to match. But original TF case uses params.shape=[12], while paddle x is [3,4] — this is semantically aligned. However, tf.gather does not support 'mode' like 'raise/wrap/clip'; inconsistency arises from index values possibly out-of-bounds in one framework but not the other. To ensure strict equivalence, we must fix index values to be valid [0,11] and use identical concrete data (not just shapes) for fair comparison. Also, tf.gather (not tf.gather_nd) is correct for 1D indexing, matching paddle.take's flattened semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.40307665",
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": [
+          6
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input 'x' to 1-D before indexing, so x.shape=[3,4] implies 12 elements; tf.gather expects params.shape=[12] to match. However, original TF case uses params.shape=[12] but paddle's x is 2D — while semantically equivalent, the index values must be valid for both. The inconsistency arises because paddle.take with mode='raise' raises error on out-of-bounds indices, but TF's tf.gather does not (it wraps/throws differently). To align behavior, we must ensure indices are in [0, 11] and use same concrete data. Also, tf.gather (not tf.gather_nd) is correct for 1-D indexing, but params must be 1-D. So repair: make paddle.x 1-D [12], and tf.params [12], same shape/dtype, and constrain index values to valid range."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        },
+        "mode": "raise",
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "indices": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.67580527",
+        "pd_shape": [
+          6
+        ],
+        "tensorflow_shape": [
+          6
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            5,
+            8
+          ],
+          "dtype": "int64"
+        },
+        "mode": "wrap",
+        "api": "paddle.take"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "index": {
+          "shape": [
+            5,
+            8
+          ],
+          "dtype": "int64"
+        },
+        "mode": "wrap",
+        "api": "tf.gather_nd"
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "pd_shape": [
+          5,
+          8
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.gather_nd 不支持 'mode' 参数，该参数是 paddle.take 特有的边界处理机制；而 tf.gather_nd 默认行为类似 'raise'（越界报错），无 wrap/clip 等效选项。为语义对齐，需移除 mode 参数，并确保 index 在合法范围内（0 <= index < x.numel()），故将 index 值域约束为 [0, 11]（x.shape=[3,4] → numel=12），同时 tf.gather_nd 要求 indices 为 2D 且最后一维长度等于 params 的 rank（即 2），因此需将原 index 形状 [5,8] 重塑为 [40,2] 并保证每个索引合法。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "mode": "wrap",
+        "index": {
+          "shape": [
+            40
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather_nd",
+        "indices": {
+          "shape": [
+            40,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__GatherNd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[39] = [6, 2] does not index into param shape [3,4], node name: GatherNd [Op:GatherNd] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          40
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "tf.gather_nd requires indices to be coordinate vectors indexing into params' shape, but paddle.take flattens x and uses 1D indices. To align semantics, we must replace tf.gather_nd with tf.gather (which supports 1D indexing into flattened params) and reshape params to 1D. Also, 'wrap' mode in paddle.take has no direct tf.gather equivalent, so we use tf.math.floormod for wrapping behavior manually."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "mode": "wrap",
+        "index": {
+          "shape": [
+            40
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather",
+        "axis": 0,
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float64"
+        },
+        "indices": {
+          "shape": [
+            40
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.73486968",
+        "pd_shape": [
+          40
+        ],
+        "tensorflow_shape": [
+          40
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.take flattens input x to 1-D implicitly, so x must have same total size as tf.gather's params (3*4=12). But tf.gather does not support 'wrap' mode; it only supports 'clip' via tf.clip_by_value + gather or default out-of-bound error. To align semantics, we must use tf.gather with validate_indices=False and manually wrap indices using modulo, but since test harness only supports direct API calls, we instead align by changing TF to tf.gather_nd with wrapped indices computed as (indices % 12), and reshape x to [12] in both frameworks."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "api": "paddle.take",
+        "x": {
+          "shape": [
+            12
+          ],
+          "dtype": "float64"
+        },
+        "mode": "wrap",
+        "index": {
+          "shape": [
+            40
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.gather_nd",
+        "indices": {
+          "shape": [
+            40,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            12
+          ],
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.take",
+        "tensorflow_api": "tf.gather_nd",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.71493148",
+        "pd_shape": [
+          40
+        ],
+        "tensorflow_shape": [
+          40
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

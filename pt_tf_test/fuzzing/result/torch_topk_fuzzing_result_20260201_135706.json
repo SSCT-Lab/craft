@@ -1,0 +1,503 @@
+{
+  "operator": "torch_topk",
+  "torch_api": "torch.topk",
+  "tensorflow_api": "tf.math.top_k",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 6,
+  "timestamp": "2026-02-01T13:57:06.172965",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_topk_20260123_132608.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.topk",
+        "input": {
+          "shape": [
+            1,
+            156160
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.2839563190937042,
+            0.0799318328499794,
+            -0.36317235231399536,
+            0.22166313230991364,
+            0.5806512236595154,
+            -1.311828851699829,
+            1.0510450601577759,
+            -0.8104164004325867,
+            0.02433757483959198,
+            0.6600403785705566
+          ]
+        },
+        "k": 10,
+        "dim": 1,
+        "largest": true,
+        "sorted": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.top_k",
+        "input": {
+          "shape": [
+            1,
+            156160
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.2839563190937042,
+            0.0799318328499794,
+            -0.36317235231399536,
+            0.22166313230991364,
+            0.5806512236595154,
+            -1.311828851699829,
+            1.0510450601577759,
+            -0.8104164004325867,
+            0.02433757483959198,
+            0.6600403785705566
+          ]
+        },
+        "k": 10,
+        "sorted": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层排序稳定性、NaN传播规则或边界处理差异，暴露实现不一致bug",
+          "torch_test_case": {
+            "api": "torch.topk",
+            "input": {
+              "shape": [
+                1,
+                156160
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.5,
+                0.0
+              ]
+            },
+            "k": 10,
+            "dim": 1,
+            "largest": true,
+            "sorted": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.top_k",
+            "input": {
+              "shape": [
+                1,
+                156160
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.5,
+                0.0
+              ]
+            },
+            "k": 10,
+            "sorted": true,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.topk'>",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）与特殊浮点值",
+          "mutation_reason": "单元素输入下topk应退化为恒等操作，但框架对inf/nan/-0.0的排序稳定性、索引返回逻辑可能存在差异，易暴露实现不一致。",
+          "torch_test_case": {
+            "api": "torch.topk",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "k": 1,
+            "dim": 0,
+            "largest": true,
+            "sorted": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.top_k",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "k": 1,
+            "sorted": true,
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.topk'>",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将输入dtype从float32变异为float16，保留全部参数和特殊浮点值",
+          "mutation_reason": "float16精度更低、动态范围更小，易暴露框架在边界值（inf/nan/-0.0）排序稳定性、舍入处理或NaN传播规则上的不一致",
+          "torch_test_case": {
+            "api": "torch.topk",
+            "input": {
+              "shape": [
+                1,
+                156160
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "k": 10,
+            "dim": 1,
+            "largest": true,
+            "sorted": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.top_k",
+            "input": {
+              "shape": [
+                1,
+                156160
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "k": 10,
+            "sorted": true,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.topk'>",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_topk_20260123_132608.json",
+        "iteration": 3,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.topk",
+        "input": {
+          "shape": [
+            1,
+            158200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0188366174697876,
+            0.5073471665382385,
+            -1.2336907386779785,
+            -1.4639370441436768,
+            -0.747664749622345,
+            -1.3227996826171875,
+            0.4140561521053314,
+            -1.0026260614395142,
+            -1.775841474533081,
+            -0.38340434432029724
+          ]
+        },
+        "k": 10,
+        "dim": 1,
+        "largest": true,
+        "sorted": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.math.top_k",
+        "input": {
+          "shape": [
+            1,
+            158200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0188366174697876,
+            0.5073471665382385,
+            -1.2336907386779785,
+            -1.4639370441436768,
+            -0.747664749622345,
+            -1.3227996826171875,
+            0.4140561521053314,
+            -1.0026260614395142,
+            -1.775841474533081,
+            -0.38340434432029724
+          ]
+        },
+        "k": 10,
+        "sorted": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架对NaN排序、无穷大比较、次正规数处理的不一致，导致topk结果顺序或值差异",
+          "torch_test_case": {
+            "api": "torch.topk",
+            "input": {
+              "shape": [
+                1,
+                158200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0188366174697876,
+                0.5073471665382385,
+                "-inf",
+                "inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.2336907386779785,
+                -1.4639370441436768
+              ]
+            },
+            "k": 10,
+            "dim": 1,
+            "largest": true,
+            "sorted": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.top_k",
+            "input": {
+              "shape": [
+                1,
+                158200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0188366174697876,
+                0.5073471665382385,
+                "-inf",
+                "inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.2336907386779785,
+                -1.4639370441436768
+              ]
+            },
+            "k": 10,
+            "sorted": true,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.topk'>",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）与特殊浮点值混合",
+          "mutation_reason": "单元素输入是topk的退化边界，易暴露框架对k==1、dim处理、inf/nan排序逻辑的不一致；数学上唯一解应完全相同。",
+          "torch_test_case": {
+            "api": "torch.topk",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "k": 1,
+            "dim": 0,
+            "largest": true,
+            "sorted": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.top_k",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "k": 1,
+            "sorted": true,
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.topk'>",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，引入次正规数、inf、-inf、nan和负零边界值",
+          "mutation_reason": "float16精度低、动态范围小，易暴露框架对特殊浮点值（如nan/inf）排序稳定性、tie-breaking策略或下溢处理的不一致，且两框架底层实现差异在此类型下更敏感",
+          "torch_test_case": {
+            "api": "torch.topk",
+            "input": {
+              "shape": [
+                1,
+                158200
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "k": 10,
+            "dim": 1,
+            "largest": true,
+            "sorted": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.math.top_k",
+            "input": {
+              "shape": [
+                1,
+                158200
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "k": 10,
+            "sorted": true,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": false,
+            "torch_error": null,
+            "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis'",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.topk'>",
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

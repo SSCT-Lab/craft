@@ -1,0 +1,264 @@
+{
+  "operator": "torch.exp2",
+  "timestamp": "2026-01-26T14:25:53.358343",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 2,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6755290031433105,
+            -0.8080247044563293,
+            -0.8667335510253906,
+            0.3895711898803711
+          ]
+        },
+        "api": "torch.exp2"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6755290031433105,
+            -0.8080247044563293,
+            -0.8667335510253906,
+            0.3895711898803711
+          ]
+        },
+        "api": "mindspore.ops.pow"
+      },
+      "execution_result": {
+        "torch_api": "torch.exp2",
+        "mindspore_api": "mindspore.ops.pow",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "pow() missing 1 required positional argument: 'exponent'",
+        "comparison_error": null,
+        "torch_shape": [
+          4
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: pow() missing 1 required positional argument: 'exponent'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.exp2 computes 2^x element-wise, while mindspore.ops.pow computes x^y; to emulate torch.exp2(x), we need pow(2.0, x), not pow(x, y). The current MindSpore test case is missing the 'exponent' argument and incorrectly assumes unary input like torch.exp2. Per MindSpore docs, pow requires two arguments: 'input' (base) and 'exponent' (power). To match torch.exp2 semantics, we must set base=2.0 (scalar) and exponent=input_tensor. Also, input dtype must be float for stable exponentiation. Thus, repair: add 'exponent' as the input tensor, set 'input'=2.0 (scalar base), and ensure dtype compatibility."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.exp2",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3708763122558594,
+            0.29631853103637695,
+            -0.14949578046798706,
+            -0.03478849679231644
+          ]
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.pow",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3708763122558594,
+            0.29631853103637695,
+            -0.14949578046798706,
+            -0.03478849679231644
+          ]
+        },
+        "input_base": 2.0
+      },
+      "execution_result": {
+        "torch_api": "torch.exp2",
+        "mindspore_api": "mindspore.ops.pow",
+        "torch_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": "pow() got an unexpected keyword argument 'input_base'",
+        "comparison_error": null,
+        "torch_shape": [
+          4
+        ],
+        "mindspore_shape": null,
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": null,
+        "status": "mindspore_failed",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 666, in execute_test_case\n    mindspore_result = mindspore_func(*args, **kwargs)\nTypeError: pow() got an unexpected keyword argument 'input_base'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore的mindspore.ops.pow不接受'input_base'参数，该参数名不符合其API签名；根据文档，pow(input, exponent)中第一个参数是底数（base），第二个是指数（exponent）。而torch.exp2(x)等价于2^x，即base=2, exponent=x。因此MindSpore侧应将输入张量作为exponent，固定base=2，并交换参数顺序或使用正确参数名。原始MindSpore用例错误地将2.0作为'input_base'（非标准参数），且未传入实际的exponent张量；正确做法是：令input=2.0（标量base），exponent=随机float32张量（shape=[4]），或使用broadcasting支持的tensor base。但注意pow(2.0, x)要求x为exponent，故MindSpore测试用例中应去掉'input_base'，改为'input'=2.0（base）和'exponent'=张量，或更规范地使用两个参数位置调用。由于原始PyTorch用例仅定义了输入张量x（即exponent），MindSpore需构造等价调用：pow(2.0, x)，其中2.0是base（第一个参数），x是exponent（第二个参数）。因此修复MindSpore用例：移除非法参数'input_base'，添加标准参数'exponent'指向输入张量，并显式指定base=2.0作为第一个参数（即'input'=2.0）。但mindspore.ops.pow签名是pow(input, exponent)，所以正确传参应为input=2.0, exponent=tensor([..])。因此MindSpore测试用例中'input'字段应表示base（2.0），而'exponent'字段应为shape=[4], dtype=float32的张量。但原始用例中'input'被定义为张量，与语义冲突。故必须重构：MindSpore侧'input'设为标量2.0，'exponent'设为待测张量；而PyTorch侧保持torch.exp2(x)作用于该张量。因此需同步修改PyTorch用例的input定义为实际张量值（而非仅shape/dtype），但根据任务要求，输入必须用{'shape': [...], 'dtype': '...'}格式，且保证两框架输入相同——即都生成shape=[4], dtype=float32的随机张量x，PyTorch对x调用exp2，MindSpore对x调用pow(2.0, x)。因此MindSpore用例中不能将'input'设为2.0（因'input'字段在原始用例中代表x），而应引入新字段'exponent'并保留'input'为x，同时将base=2.0作为独立参数。但mindspore.ops.pow不支持'input_base'，只支持位置参数input和exponent，或关键字参数input和exponent。因此合法写法是：input=2.0, exponent=x 或 input=x, exponent=2.0 —— 但后者是x^2，错误。必须是pow(2.0, x)。所以MindSpore测试用例中'input'应为2.0（标量），'exponent'应为shape=[4], dtype=float32张量。因此原始MindSpore用例中'input'字段含义错误，需重定义：'input'=2.0（标量），新增'exponent'字段为{'shape':[4],'dtype':'float32'}。同时PyTorch用例虽只声明shape/dtype，但实际执行时需生成该张量并调用exp2，语义一致。综上，修复MindSpore用例：移除非法'input_base'，设置'input'=2.0（标量），添加'exponent'={'shape':[4],'dtype':'float32'}。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.exp2",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.8345537185668945,
+            -0.11637209355831146,
+            0.37610092759132385,
+            0.08960489183664322
+          ]
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.pow",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.8345537185668945,
+            -0.11637209355831146,
+            0.37610092759132385,
+            0.08960489183664322
+          ]
+        },
+        "exponent": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5297644734382629,
+            2.046074151992798,
+            0.9848405718803406,
+            0.08182422816753387
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.exp2",
+        "mindspore_api": "mindspore.ops.pow",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: nan",
+        "torch_shape": [
+          4
+        ],
+        "mindspore_shape": [
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.exp2 computes 2^x element-wise, while mindspore.ops.pow computes x^y; to make them semantically equivalent, MindSpore's 'input' must be the constant tensor [2.0] broadcasted or repeated to match input shape, and 'exponent' must be the PyTorch input tensor. The current MindSpore test case uses two random float32 tensors of shape [4], which incorrectly computes (input_i)^(exponent_i) instead of 2^(input_i). Per PyTorch doc, torch.exp2(x) ≡ pow(2, x). Thus, MindSpore should fix 'input' to be a scalar or tensor of 2s, and 'exponent' to be the original input tensor."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.exp2",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6294804215431213,
+            -0.9031367897987366,
+            -1.502770185470581,
+            -0.4250244200229645
+          ]
+        }
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.pow",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6294804215431213,
+            -0.9031367897987366,
+            -1.502770185470581,
+            -0.4250244200229645
+          ]
+        },
+        "exponent": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.06482994556427002,
+            0.6318751573562622,
+            -0.12140779942274094,
+            0.7449400424957275
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.exp2",
+        "mindspore_api": "mindspore.ops.pow",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: nan",
+        "torch_shape": [
+          4
+        ],
+        "mindspore_shape": [
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

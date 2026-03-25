@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_bitwise_and_20251202_010448.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [3, 0, 4] and the shape of Y = [3, 5, 1]. Received [0] in X is not equal to [5] in Y at i:1.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bitwise_and",
+  "input": {
+    "shape": [
+      3,
+      0,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      4,
+      0,
+      -5,
+      -9,
+      -10,
+      4,
+      5,
+      -1,
+      4,
+      3
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.bitwise_and",
+  "input": {
+    "shape": [
+      3,
+      0,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      4,
+      0,
+      -5,
+      -9,
+      -10,
+      4,
+      5,
+      -1,
+      4,
+      3
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.bitwise_and` 在广播时要求所有维度必须能对齐，且当某维为 0（如 shape `[3, 0, 4]`）时，该维度在广播中被视为“空维度”，而另一张量对应维为 5，导致广播维度不匹配（Received [0] in X is not equal to [5] in Y at i:1），PaddlePaddle 不允许此类广播。
+   - 相比之下，PyTorch 的 `torch.bitwise_and` 在处理包含 0 维的 tensor 时，会将其视为“空数组”并支持广播规则下的兼容性处理（例如形状为 `[3, 0, 4]` 和 `[3, 5, 1]` 的张量在 PyTorch 中可广播为 `[3, 5, 4]`，尽管结果为空），但此行为在 PaddlePaddle 中被严格禁止。
+
+3. 修复建议：
+   - 该问题反映 PaddlePaddle 对含 0 维张量的广播处理比 PyTorch 更严格，建议提交 issue 至 PaddlePaddle 官方仓库，指出其与 PyTorch 在空维度广播行为上的不一致，尤其在 bitwise 操作中应考虑对空张量的兼容性。

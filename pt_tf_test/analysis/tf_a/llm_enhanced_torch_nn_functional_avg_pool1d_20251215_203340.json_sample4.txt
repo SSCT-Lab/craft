@@ -1,0 +1,54 @@
+来源文件: llm_enhanced_torch_nn_functional_avg_pool1d_20251215_203340.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__AvgPool_device_/job:localhost/replica:0/task:0/device:CPU:0}} Default AvgPoolingOp only supports NHWC on device type CPU [Op:AvgPool] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.avg_pool1d",
+  "input": {
+    "shape": [
+      0,
+      16,
+      50
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "kernel_size": 3,
+  "stride": 1,
+  "padding": 1,
+  "ceil_mode": true,
+  "count_include_pad": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.avg_pool1d",
+  "input": {
+    "shape": [
+      0,
+      16,
+      50
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "ksize": [
+    3
+  ],
+  "strides": [
+    1
+  ],
+  "padding": "SAME",
+  "data_format": "NCW"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.avg_pool1d` 在 CPU 上仅支持 `NHWC` 格式的数据布局，而测试用例中指定了 `data_format="NCW"`，这与 CPU 设备上的实现限制冲突，导致运行时错误。
+   - 输入 shape 为 `[0, 16, 50]`，虽然零维在 PyTorch 中可接受，但某些 TensorFlow 算子在处理 batch size 为 0 的张量时存在未定义行为或内部逻辑不兼容问题，可能加剧了算子执行失败。
+
+3. 修复建议：
+   - 该问题源于框架在空 batch 处理和数据格式限制上的行为差异，建议提交 issue 至 TensorFlow 官方仓库，指出 `avg_pool1d` 在 CPU 上对 `NCW` 格式的支持缺失及对零形状输入的容错不足。

@@ -1,0 +1,1356 @@
+{
+  "pd_api": "paddle.matmul",
+  "tensorflow_api": "tf.matmul",
+  "timestamp": "2026-03-04T11:54:07.217801",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 12,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false,
+        "transpose_y": false,
+        "api": "paddle.matmul"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false,
+        "transpose_y": false,
+        "api": "tf.matmul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'transpose_y'",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul does not accept 'transpose_x' or 'transpose_y' parameters; instead it uses 'transpose_a' and 'transpose_b'. The original test case passed invalid kwargs to tf.matmul, causing TypeError. Repair by renaming parameters to match TF's API while preserving semantic equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatMul_device_/job:localhost/replica:0/task:0/device:CPU:0}} In[0] and In[1] ndims must be == 2: 1 [Op:MatMul] name: ",
+        "comparison_error": null,
+        "pd_shape": [],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul requires both inputs to have ndim >= 2, but the test case passes two 1D tensors (shape [100]), causing InvalidArgumentError. Paddle supports 1D dot product per np.matmul semantics, while TF does not. To achieve semantic equivalence, we must reshape inputs to 2D: x→[1,100], y→[100,1] for outer product, or use tf.tensordot/tf.reduce_sum for true dot product. We choose tf.tensordot with axes=1 for faithful 1D dot product emulation."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.tensordot",
+        "axes": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.tensordot",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 7.24405632",
+        "pd_shape": [],
+        "tensorflow_shape": [],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.matmul of two 1D tensors computes dot product (scalar), while tf.tensordot with axes=1 also computes dot product, but the original TF case uses 'a' and 'b' correctly; however, paddle.matmul does not support broadcasting or reduction axes specification — it strictly follows np.matmul semantics. The inconsistency (max diff 7.24) suggests mismatched computation: likely TF tensordot is applied correctly but paddle.matmul expects 1D inputs to yield scalar, yet test may have used non-matching data values or shape interpretation. To ensure semantic equivalence, we must align both to compute dot product of two 1D vectors — but tf.tensordot(axes=1) is correct, and paddle.matmul is also correct for 1D×1D. However, the documented behavior says: 'If both tensors are 1-dimensional, the dot product result is obtained.' So inconsistency implies input data generation differs. Since no data values are specified, the issue is *parameter alignment*: tf.tensordot is correct, but paddle.matmul has no 'axes' — so no repair needed on structure. But wait: the error magnitude (7.24) is large → indicates actual functional mismatch. Rechecking docs: tf.tensordot(..., axes=1) on two (100,) tensors yields scalar; paddle.matmul((100,), (100,)) also yields scalar. So they *should* match. The root cause is that paddle.matmul does NOT accept two 1D tensors unless one is transposed implicitly — but per doc: 'If both tensors are 1-dimensional, the dot product result is obtained.' So it's valid. However, TensorFlow's tf.matmul does *not* support 1D×1D — it requires at least 2D. But the test uses tf.tensordot, not tf.matmul. So the API mismatch is real: paddle.matmul ≠ tf.tensordot — they are different operators. The correct TF equivalent for paddle.matmul (which mimics np.matmul) is tf.linalg.matvec or tf.reduce_sum(x*y) for 1D, but for general case, tf.linalg.matmul only supports >=2D. Thus, using tf.tensordot for equivalence is acceptable *only if axes match contraction*. However, the current TF case uses axes=1 — correct for dot. But the inconsistency implies implementation divergence (e.g., different BLAS backends or accumulation order). Since max diff > 1e-3 and operator semantics *are* equivalent for this shape, the issue is test instability due to lack of controlled input values. To fix: enforce identical random seed and value initialization — but test cases only define shape/dtype, not values. Therefore, the test is under-specified. Per task requirement: when frameworks compute same math but yield numerically divergent results *beyond tolerance*, and operators are semantically matched, the proper fix is to use a deterministic, small, controlled input — i.e., switch to fixed small shapes with explicit values. However, output format forbids adding 'value' field. So instead, we repair by choosing a shape where numerical stability is guaranteed and equivalence is unambiguous: use [2] instead of [100] to reduce floating-point accumulation variance, and ensure both sides compute exact same operation. Also, verify axes in tensordot: for 1D×1D, axes=1 is correct. So repair is minimal: shrink shape to [2] for better reproducibility."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            2
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            2
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.tensordot",
+        "axes": 1
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.tensordot",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.24616817",
+        "pd_shape": [],
+        "tensorflow_shape": [],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            3,
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false,
+        "transpose_y": true,
+        "api": "paddle.matmul"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            3,
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false,
+        "transpose_y": true,
+        "api": "tf.matmul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'transpose_y'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          3,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul does not accept 'transpose_y' parameter; it uses 'transpose_b' instead. Per TF docs, transpose flags are named 'transpose_a' and 'transpose_b', not 'transpose_x'/'transpose_y'. Must rename parameters for semantic equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "transpose_y": true,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            3,
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            1,
+            3,
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": true,
+        "a": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__BatchMatMulV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} In[0] ndims must be >= 2: 1 [Op:BatchMatMulV2] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          3,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul requires both inputs to have ndim >= 2, but x is 1D [100]. Per TF docs, 1D tensors are not supported directly; must reshape x to [1, 100] or [100, 1] depending on transpose logic. Paddle supports implicit 1D handling (treated as [1, D] for x), so to align semantics and fix TF error, reshape x to [1, 100] and adjust transpose_a accordingly: since transpose_y=true in Paddle means last two dims of y ([2,100]) are transposed → [100,2], and x=[100] is treated as [1,100], matmul([1,100], [1,3,2,100]) with transpose_y=True becomes matmul([1,100], [1,3,100,2]) → broadcastable. So in TF, set a=[1,100], transpose_a=false, b=[1,3,2,100], transpose_b=true → b becomes [1,3,100,2], then matmul([1,100], [1,3,100,2]) works via broadcasting."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "transpose_y": true,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            3,
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            1,
+            3,
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": true,
+        "a": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(1, 3, 2) vs TF=(1, 3, 1, 2)",
+        "pd_shape": [
+          1,
+          3,
+          2
+        ],
+        "tensorflow_shape": [
+          1,
+          3,
+          1,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle将1D x=[100]与4D y=[1,3,2,100]做matmul(transpose_y=True)，按文档视为x=[1,100]→[1,1,1,100]广播后与y转置([1,3,100,2])相乘，得[1,3,1,2]；而TF要求a和b维度兼容，原TF用例a=[1,100]未广播，导致输出shape不一致。需使x在Paddle中显式为[1,100]，TF中a=[1,100]保持一致，且y在Paddle中应为[1,3,100,2]（因transpose_y=True等价于使用y_transposed），故修复为双方输入x=[1,100], y=[1,3,100,2]，均不transpose，语义等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            3,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            1,
+            3,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 12.32296593",
+        "pd_shape": [
+          1,
+          3,
+          1,
+          2
+        ],
+        "tensorflow_shape": [
+          1,
+          3,
+          1,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false,
+        "transpose_y": false,
+        "api": "paddle.matmul"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false,
+        "transpose_y": false,
+        "api": "tf.matmul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'transpose_y'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          1,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul does not accept 'transpose_x' or 'transpose_y' parameters; instead it uses 'transpose_a' and 'transpose_b'. The original test case passes unsupported kwargs, causing TypeError. Repair by renaming parameters to match TF's API signature while preserving semantic equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__BatchMatMulV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} In[0] ndims must be >= 2: 1 [Op:BatchMatMulV2] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          1,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul requires both inputs to have rank >= 2, but x has shape [100] (rank 1). Per TF docs, 1D tensors are not supported directly; must reshape x to [1, 100] or use tf.linalg.matvec for vector-matrix. Paddle supports 1D x with broadcast semantics, so we align by reshaping x to [1, 100] in TF and adjusting y's broadcast logic equivalently — matching Paddle's implicit [1,100] × [1,1,100,2] → [1,1,1,2] behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(1, 1, 2) vs TF=(1, 1, 1, 2)",
+        "pd_shape": [
+          1,
+          1,
+          2
+        ],
+        "tensorflow_shape": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.matmul treats 1D x=[100] as [1,100] when broadcasting with y=[1,1,100,2], yielding output shape (1,1,2); TensorFlow tf.matmul requires a to be at least 2D for batch matmul, so x must be reshaped to [1,100] to match semantics. Original TF case used a=[1,100] but Paddle used x=[100], causing shape mismatch in broadcast behavior. Repair aligns input dimensions semantically: Paddle x becomes [1,100], TF a remains [1,100], and y/b both [1,1,100,2]."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            1,
+            1,
+            100,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            1,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 14.84438421",
+        "pd_shape": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "tensorflow_shape": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": false,
+        "transpose_y": false,
+        "api": "paddle.matmul"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": false,
+        "transpose_y": false,
+        "api": "tf.matmul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'transpose_y'",
+        "comparison_error": null,
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul does not accept 'transpose_x' or 'transpose_y' parameters; instead it uses 'transpose_a' and 'transpose_b'. The original test case incorrectly used Paddle parameter names. Repair by renaming to TensorFlow's expected parameter names while preserving semantics."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 6.68206000",
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": [
+          3,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致且最大差异6.682远超可容忍精度误差(1e-3)，但两框架matmul语义一致；原始用例为标准2D矩阵乘，差异可能源于随机初始化导致数值不同。需变异为确定性输入（如全1或单位阵）以排除随机性，并增加高维batch场景验证广播一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.88114607",
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": [
+          3,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致且最大差异4.88114607远超可容忍精度误差（1e-3），但两框架matmul语义一致；原始用例为标准2D矩阵乘，需变异以排查潜在实现差异，如引入随机初始化、高维batch、转置组合等边界场景。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "transpose_y": true,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": false
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            2,
+            5,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "transpose_b": true,
+        "a": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.matmul",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 7.41467953",
+        "pd_shape": [
+          2,
+          3,
+          5
+        ],
+        "tensorflow_shape": [
+          2,
+          3,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": true,
+        "transpose_y": false,
+        "api": "paddle.matmul"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": true,
+        "transpose_y": false,
+        "api": "tf.matmul"
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'transpose_y'",
+        "comparison_error": null,
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.matmul does not accept 'transpose_x' or 'transpose_y' parameters; instead it uses 'transpose_a' and 'transpose_b'. The original test case uses incorrect parameter names for TensorFlow, causing TypeError. Repair by renaming parameters to match TF's API while preserving semantic equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": true
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.matmul",
+        "transpose_a": true
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.41471624",
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": [
+          3,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle中paddle.matmul(x=[4,3], y=[4,5], transpose_x=True)计算的是x.T @ y，即[3,4] @ [4,5] → [3,5]；TensorFlow中tf.matmul(a=[4,3], b=[4,5], transpose_a=True)同样计算a.T @ b → [3,4] @ [4,5] → [3,5]，语义一致。但原始用例未指定输入值，导致随机初始化差异放大（最大差4.41），需固定相同随机种子和初始化方式以保证可比性。修复：添加'x_value'和'a_value'为相同随机种子生成的确定性数据。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": true
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.matmul",
+        "transpose_a": true
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.30404752",
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": [
+          3,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.matmul(x, y, transpose_x=True) computes (x^T) @ y where x is [4,3], so x^T is [3,4], and result shape is [3,5]. TensorFlow tf.matmul(a, b, transpose_a=True) does same: a^T @ b = [3,4] @ [4,5] = [3,5]. But original test cases use identical random seeds? No — the inconsistency (max diff 4.3) implies non-identical input values. To ensure functional equivalence, inputs must be identical; thus we add 'seed' control via explicit value initialization. However, since no seed is exposed in API, we must align by using deterministic small constant tensors to eliminate numerical randomness."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "transpose_y": false,
+        "api": "paddle.matmul",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_x": true
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            4,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "transpose_b": false,
+        "a": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.matmul",
+        "transpose_a": true
+      },
+      "execution_result": {
+        "pd_api": "paddle.matmul",
+        "tensorflow_api": "tf.matmul",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 7.29998541",
+        "pd_shape": [
+          3,
+          5
+        ],
+        "tensorflow_shape": [
+          3,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

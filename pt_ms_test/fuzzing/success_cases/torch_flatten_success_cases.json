@@ -1,0 +1,606 @@
+{
+  "operator": "torch_flatten",
+  "export_time": "2026-01-27T12:54:20.958443",
+  "total_success_cases": 8,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 1,
+      "case_number": 1,
+      "is_llm_generated": false,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            2
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -6,
+            2,
+            4,
+            -4,
+            -6,
+            1,
+            -3,
+            -9
+          ]
+        },
+        "start_dim": 1,
+        "api": "torch.flatten"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            2
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -6,
+            2,
+            4,
+            -4,
+            -6,
+            1,
+            -3,
+            -9
+          ]
+        },
+        "start_dim": 1,
+        "api": "mindspore.ops.flatten"
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          4
+        ],
+        "mindspore_shape": [
+          2,
+          4
+        ],
+        "torch_dtype": "torch.int64",
+        "mindspore_dtype": "Int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "PyTorch and MindSpore both execute successfully and produce consistent results for the original test case. However, the MindSpore API supports additional parameters not present in the original test case — specifically 'order' ('C' or 'F') and 'end_dim', while PyTorch's torch.flatten also supports 'end_dim' (but not 'order'). To improve coverage and detect potential divergence in behavior (e.g., Fortran-order flattening, edge cases with start_dim/end_dim bounds, or 0-dim/1-dim tensors), we perform fuzzing: (1) add 'end_dim=2' to align flattening range explicitly; (2) introduce 'order=\"F\"' in MindSpore (which has no PyTorch equivalent, so we must omit it there — but since PyTorch lacks 'order', we keep only semantically equivalent parameters; thus, instead, we mutate to a more challenging shape with dimensionality where start_dim/end_dim boundary conditions matter, e.g., 4D tensor with start_dim=0, end_dim=1); (3) use shape [1, 0, 3, 4] to cover empty-dimension handling (valid per both docs: PyTorch allows dim=0, MindSpore supports shape with 0 and canonicalizes dims in [-ndim, ndim-1]); (4) change dtype to float32 to verify numerical consistency beyond int64; (5) set start_dim=-3 and end_dim=-2 to stress negative index handling — both frameworks support negative dims per docs, but edge cases may diverge."
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 2,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.flatten",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "start_dim": -3,
+        "end_dim": -2
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.flatten",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "start_dim": -3,
+        "end_dim": -2
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          0,
+          4
+        ],
+        "mindspore_shape": [
+          1,
+          0,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例在PyTorch和MindSpore中均执行成功且结果一致,但存在可探索的边界与变异空间：(1) MindSpore文档明确要求start_dim <= end_dim（canonicalized），而原始用例中start_dim=-3, end_dim=-2满足该条件，但可进一步测试更极端的负索引组合（如start_dim=-1, end_dim=-1即单维不flatten，或start_dim=0, end_dim=0）；(2) 输入含0维（shape=[1,0,3,4]）已覆盖空维度，但可增加全零维度（如[0,0,0]）、高维（6D+）、跨平台易出错的order参数（MindSpore支持'C'/'F'，PyTorch无此参数，需通过等价语义规避——即仅当start_dim/end_dim相同时才语义一致，否则MindSpore的order影响结果而PyTorch无对应行为，故当前用例虽一致，但为提升鲁棒性应变异出order敏感场景并确保PyTorch侧仍等价；然而PyTorch flatten无order参数，因此任何引入order的MindSpore用例都需保证其默认'C'且与PyTorch行为一致；故本次变异聚焦于更严苛的维度边界：使用shape=[0, 1, 0, 2, 0]（多处0维）、start_dim=0, end_dim=4（展平全部维度），验证两框架对全0维张量的展平一致性；同时MindSpore要求start_dim <= end_dim，且范围在[-ndim, ndim-1]，该变异仍在合法范围内；PyTorch同样支持该范围，且文档明确支持负索引和0维输入。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 3,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.flatten",
+        "input": {
+          "shape": [
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "start_dim": 0,
+        "end_dim": 4
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.flatten",
+        "input": {
+          "shape": [
+            0,
+            1,
+            0,
+            2,
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "start_dim": 0,
+        "end_dim": 4
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          0
+        ],
+        "mindspore_shape": [
+          0
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始用例使用了含多个0的退化形状[0,1,0,2,0]，该形状在PyTorch和MindSpore中虽均合法（支持空维度），但属于边界场景；为进一步提升鲁棒性测试覆盖率，需进行fuzzing：替换为更典型的高维非退化形状（如[2,3,4,5]），同时覆盖start_dim/end_dim的多种组合（包括负索引、单维不扁平、跨0维边界等）；此外，MindSpore文档明确要求start_dim <= end_dim且范围在[-ndim, ndim-1]内，而PyTorch同理，因此变异应保持语义等价并探索更多合法边界——例如新增用例：start_dim=-3, end_dim=-1（对应倒数第三到倒数第一维），以及start_dim=1, end_dim=1（不实际扁平，应返回view）；但根据任务要求，仅输出一个变异后的用例，故选择最具代表性的非退化+负索引组合，确保两框架参数解释一致且触发不同内部路径。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 4,
+      "case_number": 1,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.flatten",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.32167282700538635,
+            -1.1233888864517212,
+            -0.1759667545557022,
+            0.4952331781387329,
+            0.5814932584762573,
+            -0.8863973617553711,
+            -0.650759756565094,
+            -0.5024039149284363,
+            1.541122317314148,
+            -0.8314934968948364
+          ]
+        },
+        "start_dim": -3,
+        "end_dim": -1
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.flatten",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.32167282700538635,
+            -1.1233888864517212,
+            -0.1759667545557022,
+            0.4952331781387329,
+            0.5814932584762573,
+            -0.8863973617553711,
+            -0.650759756565094,
+            -0.5024039149284363,
+            1.541122317314148,
+            -0.8314934968948364
+          ]
+        },
+        "start_dim": -3,
+        "end_dim": -1
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          60
+        ],
+        "mindspore_shape": [
+          2,
+          60
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 1,
+      "case_number": 2,
+      "is_llm_generated": false,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            2
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -1,
+            -6,
+            -5,
+            0,
+            -10,
+            0,
+            5,
+            5
+          ]
+        },
+        "start_dim": 1,
+        "api": "torch.flatten"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            2
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -1,
+            -6,
+            -5,
+            0,
+            -10,
+            0,
+            5,
+            5
+          ]
+        },
+        "start_dim": 1,
+        "api": "mindspore.ops.flatten"
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          4
+        ],
+        "mindspore_shape": [
+          2,
+          4
+        ],
+        "torch_dtype": "torch.int64",
+        "mindspore_dtype": "Int64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "PyTorch and MindSpore both execute successfully and produce consistent results for the original test case. However, the MindSpore API supports additional parameters not present in the original test case — specifically 'order' ('C' or 'F') and 'end_dim', while PyTorch's torch.flatten also supports 'end_dim' but lacks 'order'. To ensure functional equivalence coverage and stress-test dimensional flattening behavior (especially order-dependent memory layout effects), we mutate the test case to include 'end_dim' and explore boundary values: use start_dim=0 and end_dim=-1 (flattening all dimensions) with a rank-1 input (shape=[5]) to trigger edge-case view/copy semantics; also add 'order=\"C\"' to MindSpore to maintain default compatibility, though PyTorch has no order parameter — this is acceptable since 'C' is implicit and semantically aligned. Additionally, we introduce a 0-dimensional tensor case (shape=[]) to verify handling of scalars, as MindSpore docs explicitly state it returns a 1D tensor, while PyTorch flattens 0D → 1D as well — this is a meaningful equivalence check."
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 2,
+      "case_number": 2,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.flatten",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5945777297019958,
+            1.0755130052566528,
+            1.0841985940933228,
+            2.122946262359619,
+            -1.0862820148468018
+          ]
+        },
+        "start_dim": 0,
+        "end_dim": -1
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.flatten",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5945777297019958,
+            1.0755130052566528,
+            1.0841985940933228,
+            2.122946262359619,
+            -1.0862820148468018
+          ]
+        },
+        "start_dim": 0,
+        "end_dim": -1,
+        "order": "C"
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5
+        ],
+        "mindspore_shape": [
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，说明基础功能等价；但原始用例仅测试一维张量（shape=[5]）且start_dim=0, end_dim=-1（即全展平），未覆盖多维、边界维度索引（如start_dim=end_dim）、负索引越界、0维张量、空张量、不同order（MindSpore特有参数）、以及高维/极端形状等场景。根据文档，MindSpore flatten默认start_dim=1、end_dim=-1，而PyTorch默认start_dim=0、end_dim=-1，当前用例显式指定start_dim=0已对齐语义；为提升鲁棒性与覆盖率，需变异出更具挑战性的用例：使用4D张量（2,3,4,5），设置start_dim=1, end_dim=2（仅展平中间两维），并验证MindSpore的order='F'行为是否在等价语义下可被合理忽略或对齐——但注意PyTorch无order参数，故order必须固定为'C'以保证语义一致；同时增加0维张量和空张量（shape=[0,3,4]）测试，因文档明确提及0维输入返回1维输出，且MindSpore对start_dim/end_dim范围校验更严格（需在[-ndim, ndim-1]内），故需确保变异后参数仍在双方合法范围内。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 3,
+      "case_number": 2,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.flatten",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.12986300885677338,
+            -0.4428516626358032,
+            -1.130457878112793,
+            1.8860094547271729,
+            2.1245574951171875,
+            -1.0173581838607788,
+            -0.7549244165420532,
+            -0.6855818033218384,
+            -0.3600640296936035,
+            1.5920369625091553
+          ]
+        },
+        "start_dim": 1,
+        "end_dim": 2
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.flatten",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.12986300885677338,
+            -0.4428516626358032,
+            -1.130457878112793,
+            1.8860094547271729,
+            2.1245574951171875,
+            -1.0173581838607788,
+            -0.7549244165420532,
+            -0.6855818033218384,
+            -0.3600640296936035,
+            1.5920369625091553
+          ]
+        },
+        "start_dim": 1,
+        "end_dim": 2,
+        "order": "C"
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          12,
+          5
+        ],
+        "mindspore_shape": [
+          2,
+          12,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明当前用例已通过基础功能验证；根据任务要求，需进行fuzzing变异以提升测试覆盖率。考虑边界和极端情况：(1) 尝试0维张量（标量），MindSpore文档明确说明0维输入会返回1维Tensor，而PyTorch flatten对0维tensor默认不flatten（start_dim=0 > ndim-1=-1，实际无维度可flatten），但需验证行为一致性；(2) 尝试start_dim > end_dim的非法组合（应触发MindSpore ValueError，而PyTorch会静默调整或报错，需探测差异）；(3) 更稳妥的变异是使用合法但具挑战性的边界值：如start_dim = -4（等价于 0），end_dim = -1（等价于 3），即全维度flatten，同时引入dtype为int64以覆盖整型路径；但为确保语义严格等价且避免框架异常，选择更安全的高维+负索引+单元素轴变异：shape=[1, 1, 8, 1]，start_dim=-3（→1），end_dim=-2（→2），flatten middle two dims [1,8] → [1,8,1]，该用例能检验负索引处理、单维度压缩及内存布局鲁棒性。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_flatten_20260126_134521.json",
+      "operator": "torch.flatten",
+      "iteration": 4,
+      "case_number": 2,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.flatten",
+        "input": {
+          "shape": [
+            1,
+            1,
+            8,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5704199075698853,
+            -1.364919900894165,
+            -1.099541187286377,
+            0.34025776386260986,
+            -0.40181976556777954,
+            0.02395656332373619,
+            -0.5542430877685547,
+            0.6440261602401733
+          ]
+        },
+        "start_dim": -3,
+        "end_dim": -2
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.flatten",
+        "input": {
+          "shape": [
+            1,
+            1,
+            8,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5704199075698853,
+            -1.364919900894165,
+            -1.099541187286377,
+            0.34025776386260986,
+            -0.40181976556777954,
+            0.02395656332373619,
+            -0.5542430877685547,
+            0.6440261602401733
+          ]
+        },
+        "start_dim": -3,
+        "end_dim": -2,
+        "order": "C"
+      },
+      "execution_result": {
+        "torch_api": "torch.flatten",
+        "mindspore_api": "mindspore.ops.flatten",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          8,
+          1
+        ],
+        "mindspore_shape": [
+          1,
+          8,
+          1
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      }
+    }
+  ]
+}

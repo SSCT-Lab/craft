@@ -1,0 +1,101 @@
+来源文件: llm_enhanced_torch_gather_20251201_231928.json
+样例编号: 3
+paddle_error 错误信息: (InvalidArgument) The last dim of index should be 0 or 1 when it is 2D, but we get 10
+
+【PyTorch 测试用例】
+{
+  "api": "torch.gather",
+  "input": {
+    "shape": [
+      10,
+      10
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.7166762065384219,
+      -0.08991324050347463,
+      -0.9768851984075434,
+      1.1208248912113499,
+      0.14625798901418163,
+      -0.4298662554053429,
+      0.3249813479466601,
+      0.6356731008487384,
+      -2.069228692006361,
+      0.6320559658459685
+    ]
+  },
+  "dim": 0,
+  "index": {
+    "shape": [
+      5,
+      10
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      3,
+      8,
+      -10,
+      -4,
+      7,
+      -9,
+      3,
+      4,
+      -9,
+      7
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.gather",
+  "input": {
+    "shape": [
+      10,
+      10
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.7166762065384219,
+      -0.08991324050347463,
+      -0.9768851984075434,
+      1.1208248912113499,
+      0.14625798901418163,
+      -0.4298662554053429,
+      0.3249813479466601,
+      0.6356731008487384,
+      -2.069228692006361,
+      0.6320559658459685
+    ]
+  },
+  "axis": 0,
+  "index": {
+    "shape": [
+      5,
+      10
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      3,
+      8,
+      -10,
+      -4,
+      7,
+      -9,
+      3,
+      4,
+      -9,
+      7
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.gather` 要求 `index` 为 0-D 或 1-D 张量，而本样例中 `index` 的形状为 `[5, 10]`（即 2D），违反了文档中“index must have rank=0 or rank=1”的限制。  
+   - 尽管 PyTorch `torch.gather` 支持任意维度的 `index`（只要其维度与输入对齐），但 PaddlePaddle 严格限制 `index` 只能是标量或一维张量，因此在传入二维 `index` 时会报错：“The last dim of index should be 0 or 1 when it is 2D, but we get 10”。
+
+3. 修复建议：  
+   - 此为框架间行为不一致，应提交 issue 至 PaddlePaddle 官方仓库，建议增强 `paddle.gather` 对多维 `index` 的支持以对齐 PyTorch 行为，目前可视为一个兼容性改进点。

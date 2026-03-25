@@ -1,0 +1,121 @@
+{
+  "updated_at": "2026-03-21T23:42:23.311341",
+  "records": [
+    {
+      "operator": "torch.atleast_3d",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": true,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "skip",
+          "reason": "torch.atleast_3d and tf.ensure_shape are fundamentally different operators with incompatible semantics: torch.atleast_3d is a shape-promotion utility that broadcasts 0D/1D/2D tensors to at least 3D (e.g., [] → [1,1,1], [5] → [1,5,1], [2,3] → [2,3,1]), while tf.ensure_shape is a static/dynamic shape assertion operator that *does not modify tensor values or shapes* — it only validates or refines the known shape metadata and raises an error if incompatible. The TensorFlow test case incorrectly attempts to use tf.ensure_shape as a functional equivalent of torch.atleast_3d, but tf.ensure_shape requires both 'x' and 'shape' arguments, has no broadcasting behavior, and cannot transform scalar/1D/2D inputs into 3D. There is no TensorFlow API that directly matches torch.atleast_3d's behavior (closest alternatives like tf.expand_dims or tf.reshape require manual logic per input rank). Therefore, cross-framework equivalence testing is invalid and must be skipped.",
+          "execute_symbol": "-"
+        }
+      ]
+    },
+    {
+      "operator": "torch.symeig",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": true,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "skip",
+          "reason": "torch.symeig has been removed since PyTorch 1.9 and is no longer available; the recommended replacement is torch.linalg.eigh, which is not equivalent to the original torch.symeig in parameter naming and default behavior. Meanwhile, tf.linalg.eigh does not accept 'eigenvectors' as a keyword argument — it always computes both eigenvalues and eigenvectors, and its 'UPLO' parameter (not 'upper') controls triangular part usage. Since the original APIs are deprecated/removed and their replacements have incompatible signatures (e.g., torch.linalg.eigh vs tf.linalg.eigh both exist but the test case incorrectly targets the obsolete torch.symeig), and no faithful cross-framework mapping exists for the given test structure, the test case cannot be meaningfully repaired or mutated while preserving intent across frameworks.",
+          "execute_symbol": "-"
+        }
+      ]
+    },
+    {
+      "operator": "torch.nn.Dropout2d",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow's tf.keras.layers.SpatialDropout2D does not accept parameter 'p'; instead it uses 'rate' (float between 0 and 1) with identical semantic meaning. The error 'got an unexpected keyword argument 'p'' confirms this parameter name mismatch. Per TensorFlow documentation, the correct parameter is 'rate', not 'p'. Also, SpatialDropout2D expects input format consistent with Keras data_format config — default is 'channels_last', but the input shape [2,3,4,4] assumes 'channels_first' (NCHW). To ensure compatibility without relying on global config, we explicitly set data_format='channels_first' to match PyTorch's NCHW convention.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "PyTorch's Dropout2d operates on NCHW tensors and drops entire channels (dim=1), while TensorFlow's SpatialDropout2D also drops entire feature maps, but its behavior depends critically on the data_format. The original TF test case uses data_format='channels_first', which matches PyTorch's NCHW layout — however, SpatialDropout2D in TensorFlow *by default* expects input in 'channels_last' format unless explicitly configured, and more importantly: SpatialDropout2D drops *spatial slices* (i.e., entire (H,W) planes per channel) *only when data_format='channels_last'* — but documentation and implementation confirm that in 'channels_first' mode, it drops the channel dimension (dim=1), same as Dropout2d. However, the key functional divergence is that PyTorch Dropout2d applies dropout *only during training* (requires model.train() or explicit training=True), whereas tf.keras.layers.SpatialDropout2D requires explicit training=True flag at call time to activate dropout; in inference mode (training=False), it returns input unchanged. The original test likely ran both in default (inference) mode, causing TF to bypass dropout entirely → leading to deterministic zero-difference failure. To ensure functional equivalence, both must be evaluated under identical training-mode semantics. Also, TF's SpatialDropout2D does not support inplace operation, but that's not a comparison issue here. The repair ensures both are invoked with training=True and uses identical random seed for reproducibility; additionally, we align input tensor generation (same random init) and enforce deterministic behavior via torch.manual_seed and tf.random.set_seed.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "PyTorch's Dropout2d operates on NCHW format and drops entire channels (dim=1), while TensorFlow's SpatialDropout2D also drops entire feature maps, but its behavior depends on data_format. However, the current TF test case uses 'channels_first' which matches PyTorch's NCHW layout. The numerical mismatch (max diff ~3.25) is far beyond floating-point tolerance (1e-3), indicating a semantic inconsistency likely due to differing dropout masks: Dropout2d applies the same dropout mask across all spatial locations per channel, whereas SpatialDropout2D in 'channels_first' mode should do the same — but TensorFlow's implementation may default to training=False unless explicitly called in training mode. Crucially, tf.keras.layers.SpatialDropout2D only applies dropout when training=True during call; otherwise it's identity. The original test case omits 'training=True', causing TF to return input unchanged while PyTorch's Dropout2d defaults to training mode (no explicit training flag). To ensure functional equivalence, we must invoke TF layer with training=True. Also, both frameworks require identical random seed for deterministic comparison; however, since seed control isn't part of the test case spec and reproducibility isn't guaranteed across frameworks without synchronized RNG, the minimal fix is to enforce training mode in TF.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        }
+      ]
+    },
+    {
+      "operator": "torch.diag_embed",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow's tf.linalg.diag does not accept 'offset', 'dim1', or 'dim2' parameters — it only supports 'diagonal', 'k', 'num_rows', 'num_cols', and 'padding'. The PyTorch torch.diag_embed with offset=1, dim1=0, dim2=2 embeds the input vector along a super-diagonal in a non-default 2D plane (axes 0 and 2), which is fundamentally different from tf.linalg.diag’s behavior: tf.linalg.diag only places the diagonal along the last two dimensions (i.e., implicit dim1=-2, dim2=-1) and supports only k for diagonal offset. To repair: (1) remove unsupported params 'offset', 'dim1', 'dim2' from TF case; (2) map torch.diag_embed(input, offset=1, dim1=0, dim2=2) to an equivalent TF construction — but since dim1/dim2 ≠ [-2,-1], direct equivalence is impossible without manual transposition + tf.linalg.diag + transpose. However, per task requirement, we must produce *semantically aligned* test cases. The minimal valid repair is to align both to default behavior: use dim1=-2, dim2=-1 (PyTorch default) and k=1 (TF equivalent of offset=1), and infer num_rows/num_cols from input shape. Input shape [2485, 7] means 2485 vectors of length 7 → tf.linalg.diag expects diagonal of shape [..., M], outputs [..., M, M]; so for k=1, we need num_rows = num_cols = 7+1 = 8 to accommodate super-diagonal. Thus, repaired TF case uses k=1, num_rows=8, num_cols=8, and reshapes input to [..., 7] (already satisfied). Also, TF requires 'diagonal' arg name, not 'input'.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "PyTorch torch.diag_embed and TensorFlow tf.linalg.diag have fundamentally different semantics: torch.diag_embed embeds 1D diagonals into higher-rank tensors by placing input vectors along specified diagonals of the last two dimensions (default dim1=-2, dim2=-1), expanding output rank by 1; while tf.linalg.diag constructs a batched diagonal matrix where each input vector becomes the main diagonal of a square matrix — but crucially, it only supports k=0 (main diagonal) for single-diagonal mode when num_rows/num_cols are provided. The given test uses k=1 (super-diagonal) in TF, but tf.linalg.diag with k≠0 requires diagonal to be rank-r and outputs rank-(r+1) tensor with explicit num_rows/num_cols, and the offset behavior does not match torch.diag_embed's offset semantics: torch.diag_embed(input=[N,M]) with offset=1 produces output shape [N, M+1, M+1] (or [N, M+1, M+1] depending on dim1/dim2), whereas tf.linalg.diag(diagonal=[N,M], k=1, num_rows=8, num_cols=8) pads into fixed 8x8 matrices — mismatching shapes and padding logic. To align semantics, we must use tf.linalg.set_diag or tf.linalg.diag_part + manual embedding, but neither is equivalent. However, the closest valid equivalence is using k=0 and setting num_rows=num_cols=input.shape[-1] for main diagonal, and for offset=1, TF has no direct equivalent without manual index construction. Since the original TF usage with k=1 and fixed num_rows/num_cols does not emulate torch.diag_embed(offset=1) behavior (which increases matrix size), and the max diff 6.19 indicates structural mismatch (not precision), the correct repair is to align both to main diagonal (offset=0/k=0) and infer num_rows/num_cols from input length, i.e., num_rows = num_cols = input.shape[-1] for PyTorch's default behavior. Also, torch.diag_embed(input=[2485,7]) with offset=0 yields shape [2485,7,7]; thus TF must use k=0, num_rows=7, num_cols=7.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "PyTorch's torch.diag_embed creates a tensor of shape (*input.shape[:-1], N, N) where N = input.shape[-1], embedding the input diagonals along the last two dimensions. For input shape [2485, 7], output is [2485, 7, 7]. TensorFlow's tf.linalg.diag with k=0, num_rows=7, num_cols=7 expects diagonal of shape [..., min(num_rows, num_cols)] = [..., 7], but crucially: tf.linalg.diag requires the diagonal to have rank r and produces rank r+1 output — however, when diagonal has shape [2485, 7], tf.linalg.diag interprets it as batched diagonals of length 7, producing output [2485, 7, 7] — *this matches*. But the observed large numerical mismatch (max diff ~5.45) indicates semantic divergence: torch.diag_embed places input[i] on the main diagonal of output[i], while tf.linalg.diag does the same *only if diagonal is 1D per matrix* — but here diagonal is 2D [2485,7], and tf.linalg.diag treats each row as a separate diagonal vector for a single matrix only when rank=1; for rank>1, it broadcasts incorrectly unless explicitly batched. The correct TF equivalent requires diagonal of shape [2485, 7] and no num_rows/num_cols override — because tf.linalg.diag infers matrix size from diagonal length when num_rows/num_cols are not provided. Providing num_rows=7 and num_cols=7 forces fixed-size matrices but may conflict with broadcasting semantics. Per TF docs: 'Let diagonal have r dimensions [I, J, ..., L, M, N]. Output has shape [I, J, ..., L, M, num_rows, num_cols]'. So [2485,7] → r=2, N=7 ⇒ output [2485, 7, num_rows, num_cols]. But torch.diag_embed([2485,7]) → [2485,7,7]. Thus num_rows and num_cols must both be 7, *but* TF’s behavior diverges when diagonal rank > 1 and k=0: it expects diagonal to be [..., M] and constructs [..., M, M] — however, the documented behavior confirms that for diagonal shape [2485, 7], output is [2485, 7, 7] *only if num_rows and num_cols are omitted or both equal to 7*. Yet the mismatch implies incorrect alignment: PyTorch embeds input[i,j] at output[i,j,j], while TF may misinterpret batch dim. The fix is to ensure TF uses explicit batch-compatible call: remove num_rows/num_cols (let TF infer) OR use tf.linalg.diagflat + reshape, but per doc, the canonical equivalent is tf.linalg.diag(diagonal, k=0) *without* num_rows/num_cols — because when omitted, TF sets num_rows=num_cols=diagonal.shape[-1]. So repair: remove num_rows and num_cols from TF case to align semantics.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        }
+      ]
+    }
+  ]
+}

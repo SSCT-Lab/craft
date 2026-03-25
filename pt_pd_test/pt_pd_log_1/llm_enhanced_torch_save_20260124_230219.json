@@ -1,0 +1,596 @@
+{
+  "operator": "torch.save",
+  "timestamp": "2026-01-24T23:02:19.991669",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 9,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "obj": "modelNet",
+        "f": "model_epoch_1.pth",
+        "_use_new_zipfile_serialization": false,
+        "api": "torch.save"
+      },
+      "paddle_test_case": {
+        "obj": "modelNet",
+        "f": "model_epoch_1.pth",
+        "_use_new_zipfile_serialization": false,
+        "api": "paddle.save"
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "save() missing 1 required positional argument: 'path'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: save() missing 1 required positional argument: 'path'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.save requires 'path' as a positional argument, but the test case incorrectly uses 'f' (PyTorch's parameter name). According to PaddlePaddle documentation, the second parameter must be named 'path' (str or BytesIO), and '_use_new_zipfile_serialization' is not a valid parameter for paddle.save — it's PyTorch-specific. Also, paddle.save does not accept '_use_new_zipfile_serialization', so it must be removed. The repaired Paddle test case uses 'path' instead of 'f', drops the unsupported parameter, and aligns with paddle.save's signature: (obj, path, protocol=4, **configs)."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": "modelNet",
+        "f": "model_epoch_1.pth",
+        "_use_new_zipfile_serialization": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": "modelNet",
+        "path": "model_epoch_1.pth"
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "比较错误 'ufunc isfinite not supported' 表明在后续加载/验证阶段尝试对保存的文件内容做数值比较（如isfinite）时类型不匹配，根源在于paddle.save默认使用protocol=4且可能启用二进制格式（尤其对Tensor/StateDict），而torch.save默认使用pickle protocol 3（或4）但纯Python序列化；且PyTorch测试用例中显式指定'_use_new_zipfile_serialization': false，对应旧版pickle序列化，而Paddle未对齐该行为。此外，Paddle文档明确要求state_dict推荐后缀.pdparams/.pdopt，而双方均使用.pth后缀导致加载逻辑可能误判格式；同时Paddle的paddle.save不支持'_use_new_zipfile_serialization'参数，需移除该非标准参数并显式对齐protocol=3（因PyTorch旧序列化默认protocol=2/3，且protocol=4在跨框架兼容性上易出问题）。另，'modelNet'为模型对象，PyTorch torch.save支持任意Python对象，但Paddle paddle.save仅官方支持Layer.state_dict、Optimizer.state_dict、Tensor、Program及嵌套结构，直接保存模型实例（非state_dict）属于未定义行为，应修复为保存state_dict以保证功能等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": "modelNet.state_dict()",
+        "f": "model_epoch_1.pdparams",
+        "_use_new_zipfile_serialization": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": "modelNet.state_dict()",
+        "path": "model_epoch_1.pdparams",
+        "protocol": 3
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的paddle.save不支持.pdparams后缀用于通用state_dict保存（仅约定推荐，但实际无限制），但核心问题是原始测试用例中PyTorch使用torch.save保存state_dict到.pdparams文件，而PaddlePaddle虽能保存成功，但后续加载/比较时因文件格式不兼容（PyTorch用pickle+zip，Paddle默认用pickle+protocol=3但可能含自定义序列化逻辑）导致二进制内容不可比；且比较错误'ufunc isfinite not supported'表明比较逻辑误将序列化后的字节流或非Tensor对象当作数值张量进行isfinite检查——说明测试框架在结果比对阶段错误地尝试数值比较而非字节/结构一致性校验。根据文档，torch.save和paddle.save均为通用序列化API，但二者序列化格式互不兼容，因此直接比较文件内容或反序列化后对象结构是合理的，但不能用数值比较函数。然而，当前任务要求‘结果是否一致’，而两个API语义均为‘保存对象到磁盘’，功能等价，输出应为成功写入文件，不应比较文件内容数值。但报错发生在比较过程，说明测试框架错误地试图数值比较保存结果（如误将返回值当Tensor）。修复方向：避免触发数值比较，改为验证文件存在性与可加载性；但本任务仅修改测试用例。关键修复点：PyTorch侧应使用标准.pth后缀（非.pdparams）以符合惯例，且明确指定pickle_protocol；Paddle侧应移除protocol=3（因文档注明protocol必须>1且<5，3合法，但为对齐PyTorch默认protocol=4，且避免潜在协议差异），并确保使用相同后缀；此外，_use_new_zipfile_serialization=False在PyTorch中已弃用且影响序列化格式，应移除以使用默认安全行为。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": "modelNet.state_dict()",
+        "f": "model_epoch_1.pth"
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": "modelNet.state_dict()",
+        "path": "model_epoch_1.pth",
+        "protocol": 4
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "obj": "argparseNamespace",
+        "f": "pathlibPosixPath",
+        "_use_new_zipfile_serialization": false,
+        "api": "torch.save"
+      },
+      "paddle_test_case": {
+        "obj": "argparseNamespace",
+        "f": "pathlibPosixPath",
+        "_use_new_zipfile_serialization": false,
+        "api": "paddle.save"
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "save() missing 1 required positional argument: 'path'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: save() missing 1 required positional argument: 'path'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.save requires 'path' as a positional argument, but the test case incorrectly uses 'f' (PyTorch's parameter name). According to PaddlePaddle documentation, the second parameter must be named 'path' (str or BytesIO), not 'f'. Additionally, '_use_new_zipfile_serialization' is a PyTorch-specific parameter and does not exist in paddle.save — it must be removed. The 'obj' (argparse.Namespace) is supported by both, but PaddlePaddle requires a valid string path (not pathlib.Path object) for file saving; however, pathlib.Path is generally accepted as str-like in practice, but to ensure compatibility and avoid ambiguity, we replace it with a plain string path. Also, paddle.save does not accept '_use_new_zipfile_serialization', so it must be omitted."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": "argparseNamespace",
+        "f": "pathlibPosixPath",
+        "_use_new_zipfile_serialization": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": "argparseNamespace",
+        "path": "test_save.pdparams"
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例中PyTorch使用argparse.Namespace对象和pathlib.PosixPath路径，而PaddlePaddle的paddle.save虽支持任意Python对象（通过pickle），但其文档明确强调主要用例为state_dict、Tensor、Program等，并且不保证与torch.save在任意自定义对象（如argparse.Namespace）上的序列化格式兼容性；更重要的是，比较失败的根本原因是'ufunc isfinite not supported'——表明后续加载/比较逻辑试图对非数值对象（Namespace）调用数值校验（如isfinite），这属于测试框架误用：save操作本身无返回值，不应直接比较保存后的文件内容或对象。修复方向是：1) 统一使用合法且可比的obj类型（如Tensor或dict of tensors）；2) 确保路径参数为str（Paddle不接受pathlib.Path，PyTorch虽支持但为避免路径解析差异应统一为str）；3) 移除PyTorch私有参数'_use_new_zipfile_serialization'（非公开API，且Paddle无对应参数，导致测试不等价）；4) 显式指定protocol=4以对齐Paddle默认行为。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.46379727125167847,
+            0.4050295948982239,
+            -0.9692791700363159,
+            0.8439892530441284,
+            0.8990415334701538,
+            2.397023916244507
+          ]
+        },
+        "f": "test_save.pt"
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.46379727125167847,
+            0.4050295948982239,
+            -0.9692791700363159,
+            0.8439892530441284,
+            0.8990415334701538,
+            2.397023916244507
+          ]
+        },
+        "path": "test_save.pdparams",
+        "protocol": 4
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "比较失败的根本原因是'ufunc isfinite not supported'，表明后续的数值比较逻辑试图对保存后的文件内容（二进制序列化数据）直接调用isfinite等数值操作，这是不合理的——torch.save和paddle.save均输出序列化文件（非张量），不能直接数值比较。原始测试用例未生成实际Tensor对象，而是传入了shape/dtype描述字典，导致框架内部行为不一致：PyTorch会报错或静默失败（但实际执行成功说明可能被隐式处理），而PaddlePaddle要求obj必须是可序列化的具体对象（如Tensor、state_dict等）。根据文档，两个API均要求obj为实际Python对象（如Tensor），而非元数据字典。因此需修复为创建真实Tensor，并统一使用合法路径后缀（.pt vs .pdparams），同时确保PaddlePaddle的protocol在[2,3,4]范围内（4合法），且避免比较二进制文件内容；修复后应生成同构Tensor以保证语义等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.48203980922698975,
+            0.7240942120552063,
+            -0.47083038091659546,
+            0.5413793921470642,
+            -0.37989121675491333,
+            0.11586076021194458
+          ]
+        },
+        "f": "test_save.pt"
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.48203980922698975,
+            0.7240942120552063,
+            -0.47083038091659546,
+            0.5413793921470642,
+            -0.37989121675491333,
+            0.11586076021194458
+          ]
+        },
+        "path": "test_save.pdparams",
+        "protocol": 4
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "obj": "torchFloatStorage",
+        "f": "_ioBytesIO",
+        "_use_new_zipfile_serialization": false,
+        "api": "torch.save"
+      },
+      "paddle_test_case": {
+        "obj": "torchFloatStorage",
+        "f": "_ioBytesIO",
+        "_use_new_zipfile_serialization": false,
+        "api": "paddle.save"
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "save() missing 1 required positional argument: 'path'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: save() missing 1 required positional argument: 'path'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.save requires 'path' as a mandatory positional argument, while PyTorch's torch.save uses 'f' (file-like object or path). The original test case incorrectly reuses 'f' for paddle.save, but paddle.save does not accept 'f' — it expects 'path'. Additionally, paddle.save does not support '_use_new_zipfile_serialization' (a PyTorch-specific flag), and 'obj' must be a Paddle Tensor/state_dict/Program, not a PyTorch storage object like 'torchFloatStorage'. Thus, the test case must be repaired to use a valid Paddle Tensor, replace 'f' with 'path', remove unsupported args, and ensure compatibility."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.17451566457748413,
+            -0.3523048758506775,
+            0.06294509768486023,
+            -0.37529516220092773,
+            -0.37973111867904663,
+            1.076664686203003,
+            0.17541363835334778,
+            0.3470662832260132,
+            -1.4573047161102295,
+            0.4234583377838135
+          ]
+        },
+        "f": "_ioBytesIO",
+        "_use_new_zipfile_serialization": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.17451566457748413,
+            -0.3523048758506775,
+            0.06294509768486023,
+            -0.37529516220092773,
+            -0.37973111867904663,
+            1.076664686203003,
+            0.17541363835334778,
+            0.3470662832260132,
+            -1.4573047161102295,
+            0.4234583377838135
+          ]
+        },
+        "path": "test_save.pdtensor"
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "比较错误 'ufunc isfinite not supported' 表明测试框架在加载/比较保存后的对象时尝试对非数值类型（如BytesIO或文件内容）调用 isfinite，说明原始用例未正确构造可比对象：PyTorch用 _ioBytesIO（即 io.BytesIO）作为 f 参数，但 paddle.save 的 path 参数不支持 BytesIO 缓冲区（文档明确 path 类型为 str|BytesIO，但实际 v2.6+ 支持 BytesIO；然而比较逻辑失败的根本原因是：两个 API 保存后返回的是文件/缓冲区内容，而非张量本身，因此直接比较 obj（shape/dtype 描述）无意义——必须先 save 再 load 才能比数据。原始用例缺失 load 步骤，且 PyTorch 的 f='io.BytesIO' 需实例化，而 paddle.path='test_save.pdtensor' 是文件路径，二者 I/O 模式不匹配导致后续比较崩溃。修复方式：统一使用 BytesIO 缓冲区进行 save+load，确保比较的是相同语义的 tensor 数据；同时修正参数值：torch.save 的 f 必须是 io.BytesIO 实例（非字符串 '_ioBytesIO'），paddle.save 的 path 也应传入 BytesIO 实例（文档支持），并显式指定 protocol=4 以对齐。此外，obj 应为真实 Tensor 而非 shape/dtype 描述，否则 save 无实际数据。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5304234623908997,
+            -0.3983386158943176,
+            2.0850296020507812,
+            -2.289227247238159,
+            0.7843671441078186,
+            0.7128047943115234,
+            0.5415829420089722,
+            0.17621269822120667,
+            0.5506793260574341,
+            0.8681755065917969
+          ]
+        },
+        "f": "io.BytesIO",
+        "_use_new_zipfile_serialization": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5304234623908997,
+            -0.3983386158943176,
+            2.0850296020507812,
+            -2.289227247238159,
+            0.7843671441078186,
+            0.7128047943115234,
+            0.5415829420089722,
+            0.17621269822120667,
+            0.5506793260574341,
+            0.8681755065917969
+          ]
+        },
+        "path": "io.BytesIO",
+        "protocol": 4
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例中，PyTorch使用 'f': 'io.BytesIO'（即字符串字面量），但 torch.save 的 'f' 参数需为实际的 file-like object 实例（如 io.BytesIO()），而非字符串；同理，PaddlePaddle 的 'path' 参数若为 'io.BytesIO' 字符串，也无法被识别为 BytesIO buffer —— 官方文档明确要求 path 为 str 或 BytesIO 实例。错误 'ufunc isfinite not supported' 源于后续加载/比较阶段尝试对未正确序列化的 bytes buffer 或无效文件内容做数值校验，根本原因是两个框架均未真正执行 save 操作（因传入了字符串而非实例），导致返回空/非法二进制数据，进而使比较器在解析时崩溃。修复方式：将 'f' 和 'path' 均替换为真实的 io.BytesIO() 实例，并确保 obj 是可序列化的 Tensor（而非 shape/dtype 描述字典）；根据文档，torch.save 和 paddle.save 均要求 obj 为实际对象（如 Tensor），不能是元数据字典。因此需构造真实 Tensor 输入。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.save",
+        "obj": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7258875966072083,
+            0.29919561743736267,
+            -0.18331684172153473,
+            -1.0937683582305908,
+            0.717170000076294,
+            -0.5643604397773743,
+            -1.4978586435317993,
+            -0.5391106605529785,
+            -0.7988988757133484,
+            1.028478980064392
+          ]
+        },
+        "f": "io.BytesIO()",
+        "_use_new_zipfile_serialization": false
+      },
+      "paddle_test_case": {
+        "api": "paddle.save",
+        "obj": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7258875966072083,
+            0.29919561743736267,
+            -0.18331684172153473,
+            -1.0937683582305908,
+            0.717170000076294,
+            -0.5643604397773743,
+            -1.4978586435317993,
+            -0.5391106605529785,
+            -0.7988988757133484,
+            1.028478980064392
+          ]
+        },
+        "path": "io.BytesIO()",
+        "protocol": 4
+      },
+      "execution_result": {
+        "torch_api": "torch.save",
+        "paddle_api": "paddle.save",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

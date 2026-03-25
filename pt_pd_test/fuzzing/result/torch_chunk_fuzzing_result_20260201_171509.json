@@ -1,0 +1,710 @@
+{
+  "operator": "torch_chunk",
+  "torch_api": "torch.chunk",
+  "paddle_api": "paddle.split",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 8,
+  "timestamp": "2026-02-01T17:15:09.275179",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            8,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1042499914765358,
+            -0.035470180213451385,
+            2.084299325942993,
+            -0.5324059128761292,
+            -0.10456351190805435,
+            -1.0819859504699707,
+            -0.4147380590438843,
+            -0.28949397802352905,
+            0.6497060060501099,
+            -0.03631725162267685
+          ]
+        },
+        "chunks": 2,
+        "dim": 1
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            8,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1042499914765358,
+            -0.035470180213451385,
+            2.084299325942993,
+            -0.5324059128761292,
+            -0.10456351190805435,
+            -1.0819859504699707,
+            -0.4147380590438843,
+            -0.28949397802352905,
+            0.6497060060501099,
+            -0.03631725162267685
+          ]
+        },
+        "num_or_sections": 2,
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf、-inf、nan、-0.0、1e-38、1e38等特殊浮点值",
+          "mutation_reason": "这些值易触发框架底层数值处理差异（如NaN传播规则、无穷大截断、次正规数舍入），暴露chunk/split在边界情况下的实现不一致。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                8,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                "nan",
+                -0.0,
+                "inf",
+                -1e-38,
+                1e+38,
+                "nan",
+                -0.0
+              ]
+            },
+            "chunks": 2,
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                8,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                "nan",
+                -0.0,
+                "inf",
+                -1e-38,
+                1e+38,
+                "nan",
+                -0.0
+              ]
+            },
+            "num_or_sections": 2,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1, 1]）和极端浮点值",
+          "mutation_reason": "单元素张量在 chunk/split 中易触发边界处理逻辑差异（如余数分配、空chunk生成），结合inf/nan可暴露数值稳定性或维度校验bug",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "chunks": 2,
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "num_or_sections": 2,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": false,
+            "torch_error": null,
+            "paddle_error": "ValueError: (InvalidArgument) The input's size along the split dimension must be evenly divisible by Attr(num_or_sections). But received Attr(num_or_sections) = 2, input(X)'s shape = [1, 1], Attr(dim) = 1.\n  [Hint: Expected input_axis_dim % num == 0, but received input_axis_dim % num:1 != 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:5001)\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，同时注入inf/-inf/nan/-0.0等边界浮点值",
+          "mutation_reason": "float64下数值精度更高，但框架对特殊浮点值（inf/nan/-0.0）的chunk/split切片行为可能存在实现差异，易暴露边界处理bug",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                8,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.1042499914765358,
+                -0.035470180213451385
+              ]
+            },
+            "chunks": 2,
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                8,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.1042499914765358,
+                -0.035470180213451385
+              ]
+            },
+            "num_or_sections": 2,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+        "iteration": 3,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            8,
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9963996410369873,
+            -0.31491580605506897,
+            1.164052128791809,
+            -0.7782449126243591,
+            -0.6651061773300171,
+            -0.38584059476852417,
+            1.192168116569519,
+            -0.4067787230014801,
+            0.5834737420082092,
+            0.06551650911569595
+          ]
+        },
+        "chunks": 2,
+        "dim": 1
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            8,
+            4,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9963996410369873,
+            -0.31491580605506897,
+            1.164052128791809,
+            -0.7782449126243591,
+            -0.6651061773300171,
+            -0.38584059476852417,
+            1.192168116569519,
+            -0.4067787230014801,
+            0.5834737420082092,
+            0.06551650911569595
+          ]
+        },
+        "num_or_sections": 2,
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架对边界条件处理差异，如NaN传播规则、无穷大分割行为、次正规数舍入不一致等潜在实现bug",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                8,
+                4,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                "nan"
+              ]
+            },
+            "chunks": 2,
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                8,
+                4,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                "nan"
+              ]
+            },
+            "num_or_sections": 2,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape包含0）",
+          "mutation_reason": "空张量是chunk/split的边界情况，框架对零大小维度的切分逻辑易不一致（如返回空列表vs含空tensor列表），可能暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                0,
+                4,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "chunks": 2,
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                0,
+                4,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "num_or_sections": 2,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "切换为 float64 类型并注入边界特殊值（inf/nan/-0.0）",
+          "mutation_reason": "float64 提高数值精度敏感度，inf/nan/-0.0 可暴露框架对异常浮点值的处理差异，如截断、传播规则或NaN语义不一致。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                8,
+                4,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 2,
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                8,
+                4,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_sections": 2,
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_chunk_20260125_090202.json",
+        "iteration": 4,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.chunk",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "chunks": 3,
+        "dim": -2
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.split",
+        "input": {
+          "shape": [
+            1,
+            0,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_or_sections": 3,
+        "axis": -2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架边界处理差异，尤其在零-size维度上chunk/split的数值传播逻辑可能不一致。",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "chunks": 3,
+            "dim": -2
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "num_or_sections": 3,
+            "axis": -2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量张量（shape=[]）测试chunk/split在0维输入下的行为",
+          "mutation_reason": "标量是极端边界情况，torch.chunk(dim)在标量上应报错或返回合理结果，而paddle.split(axis)可能未正确定义标量axis语义，易暴露实现不一致",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "chunks": 1,
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "num_or_sections": 1,
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: chunk expects at least a 1-dimensional tensor",
+            "paddle_error": "ValueError: (InvalidArgument) The axis is expected to be in range of [0, 0), but got 0\n  [Hint: Expected axis_value >= -rank && axis_value < rank == true, but received axis_value >= -rank && axis_value < rank:0 != true:1.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4808)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为int64，覆盖整数类型边界行为",
+          "mutation_reason": "int64可能暴露两框架在零维切分、空维度处理及整数除法/截断逻辑上的实现差异，尤其当dim=-2且size=0时chunk/split对空轴的分块策略可能不一致",
+          "torch_test_case": {
+            "api": "torch.chunk",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                0,
+                1,
+                -1,
+                9223372036854775807,
+                -9223372036854775808
+              ]
+            },
+            "chunks": 3,
+            "dim": -2
+          },
+          "paddle_test_case": {
+            "api": "paddle.split",
+            "input": {
+              "shape": [
+                1,
+                0,
+                3
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                0,
+                1,
+                -1,
+                9223372036854775807,
+                -9223372036854775808
+              ]
+            },
+            "num_or_sections": 3,
+            "axis": -2
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 比较过程出错: (InvalidType) __eq__(): argument (position 1) must be int, float, bool or Tensor, but got Tensor (at ..\\paddle\\fluid\\pybind\\eager_utils.cc:2504)\n",
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": "<class 'tuple'>",
+            "paddle_dtype": "<class 'list'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

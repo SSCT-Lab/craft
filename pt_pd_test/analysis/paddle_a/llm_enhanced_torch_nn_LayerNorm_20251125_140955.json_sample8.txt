@@ -1,0 +1,60 @@
+来源文件: llm_enhanced_torch_nn_LayerNorm_20251125_140955.json
+样例编号: 8
+paddle_error 错误信息: Given normalized_shape is [1024], expected input with shape [*, 1024], but got input shape [2, 3]
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.layer_norm",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.9609024524688721,
+      0.5955514907836914,
+      0.8110992908477783,
+      -1.203597068786621,
+      -1.2196177244186401,
+      1.1334357261657715
+    ]
+  },
+  "normalized_shape": [
+    1024
+  ],
+  "eps": 1e-12
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.layer_norm",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.9609024524688721,
+      0.5955514907836914,
+      0.8110992908477783,
+      -1.203597068786621,
+      -1.2196177244186401,
+      1.1334357261657715
+    ]
+  },
+  "normalized_shape": [
+    1024
+  ]
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.functional.layer_norm` 要求输入张量的最后 `normalized_shape` 维度必须与输入形状匹配，即输入应为 `[*, 1024]`，但实际输入是 `[2, 3]`，其最后一个维度仅为 3，远小于 1024，不满足 `normalized_shape=[1024]` 的约束。
+   - 该错误在官方文档中明确说明：`normalized_shape` 对应输入的最后若干维，且这些维度的大小必须与输入一致。因此，当 `normalized_shape` 为 `[1024]` 时，输入的最后一个维度必须是 1024，否则会触发“shape mismatch”错误。
+
+3. 修复建议：
+   - 该问题属于框架对输入 shape 的严格校验行为差异，非映射错误；但由于 PyTorch 的 `layer_norm` 允许 `normalized_shape` 大于输入维度（会自动广播或报错），而 PaddlePaddle 直接拒绝此类输入，此行为可视为框架间语义不一致，建议提交 issue 至 PaddlePaddle 官方仓库以讨论是否应放宽检查或增加兼容性处理。

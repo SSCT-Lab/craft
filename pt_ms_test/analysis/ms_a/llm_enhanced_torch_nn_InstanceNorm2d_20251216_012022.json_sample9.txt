@@ -1,0 +1,74 @@
+来源文件: llm_enhanced_torch_nn_InstanceNorm2d_20251216_012022.json
+样例编号: 9
+mindspore_error 错误信息: For primitive[InstanceNorm], the gamma shape must be equal to (C, ) which is 3 , but got 2.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\core\include\utils/check_convert_utils.h:250 mindspore::CheckAndConvertUtils::CheckValue
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.7542893886566162,
+      -0.3086840510368347,
+      0.570643424987793,
+      1.3885730504989624,
+      0.6474270820617676,
+      -0.8559544086456299,
+      -0.40561211109161377,
+      -1.2778733968734741,
+      -0.4784911572933197,
+      -0.4310484528541565
+    ]
+  },
+  "num_features": 2,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm2d"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.7542893886566162,
+      -0.3086840510368347,
+      0.570643424987793,
+      1.3885730504989624,
+      0.6474270820617676,
+      -0.8559544086456299,
+      -0.40561211109161377,
+      -1.2778733968734741,
+      -0.4784911572933197,
+      -0.4310484528541565
+    ]
+  },
+  "num_features": 2,
+  "affine": true,
+  "api": "torch.nn.InstanceNorm2d"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 该错误信息 `For primitive[InstanceNorm], the gamma shape must be equal to (C, ) which is 3, but got 2` 明确指出：MindSpore 的 InstanceNorm 算子要求 affine 参数 `gamma`（即缩放参数）的形状必须为 `(C,)`，即通道数维度与输入特征通道数一致。
+   - 但测试用例中 `num_features=2`，而输入张量的 shape 为 `[2, 3, 4, 4]`，意味着实际通道数 `C=3`，因此 `gamma` 应为长度为 3 的向量，但传入的却是长度为 2 的参数，造成不匹配。
+   - 这表明在 MindSpore 实现中，`num_features` 应与输入 tensor 的 channel 维度 `C` 保持一致；而 PyTorch 的 `InstanceNorm2d` 可以接受 `num_features` 作为定义通道数的参数，其行为是“预期输入的 C”，因此在本例中，**用户意图是 C=3，但设置 num_features=2，导致语义冲突**。这反映出两个框架在 `num_features` 含义上的不一致：PyTorch 中它应等于输入的 C，而 MindSpore 要求该值必须与输入 C 严格对齐。
+
+3. 修复建议：
+   - 由于此问题源于框架对 `num_features` 与输入 shape 之间关系的处理逻辑不一致，属于潜在的行为差异，建议提交 issue 至 MindSpore 官方仓库，说明 `InstanceNorm2d` 在 `num_features` 与输入通道数不一致时未进行合理校验或报错信息不够清晰。

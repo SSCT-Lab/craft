@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_polar_20251216_013210.json
+样例编号: 1
+mindspore_error 错误信息: For 'Polar, shape of inputs should be the same, but get shape of input[0] : [const vector]{1, 5} , shape of input[1] : [const vector]{5} .
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//polar.cc:40 mindspore::ops::PolarFuncImpl::InferShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.polar",
+  "abs": {
+    "shape": [
+      1,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.7880100011825562,
+      -1.100511074066162,
+      0.19189749658107758,
+      1.4682472944259644,
+      1.0465039014816284
+    ]
+  },
+  "angle": {
+    "shape": [
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.04302797093987465,
+      0.23503486812114716,
+      -0.24040283262729645,
+      -1.1760213375091553,
+      0.11696084588766098
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.polar",
+  "abs": {
+    "shape": [
+      1,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.7880100011825562,
+      -1.100511074066162,
+      0.19189749658107758,
+      1.4682472944259644,
+      1.0465039014816284
+    ]
+  },
+  "angle": {
+    "shape": [
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.04302797093987465,
+      0.23503486812114716,
+      -0.24040283262729645,
+      -1.1760213375091553,
+      0.11696084588766098
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `mindspore.mint.polar` 要求两个输入张量的 shape 完全相同（或可广播），但当前测试用例中 `abs` 的 shape 为 `[1, 5]`，`angle` 的 shape 为 `[5]`，二者在维度上不兼容且无法通过广播对齐。  
+   - 尽管 PyTorch 的 `torch.polar` 支持这种非匹配 shape（会自动广播 `angle` 到 `[1, 5]`），但 MindSpore 在实现中未启用类似广播逻辑，直接要求 shape 一致，导致执行时抛出 shape 不匹配错误。
+
+3. 修复建议：  
+   - 可提交 issue 给 MindSpore 官方，建议增强 `polar` 算子对广播的支持以与 PyTorch 保持语义一致性；当前应调整测试用例使 `angle` 也具有 `[1, 5]` 形状以满足当前框架限制。

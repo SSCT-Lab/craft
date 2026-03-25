@@ -1,0 +1,164 @@
+{
+  "operator": "torch.nn.TransformerDecoderLayer",
+  "timestamp": "2026-01-23T21:28:51.925859",
+  "total_iterations": 2,
+  "llm_generated_test_cases": 1,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.857633113861084,
+            -0.8186145424842834,
+            0.48891976475715637,
+            -1.3674143552780151,
+            2.553004503250122,
+            0.9592759609222412
+          ]
+        },
+        "d_model": 512,
+        "nhead": 8,
+        "api": "torch.nn.TransformerDecoderLayer"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.857633113861084,
+            -0.8186145424842834,
+            0.48891976475715637,
+            -1.3674143552780151,
+            2.553004503250122,
+            0.9592759609222412
+          ]
+        },
+        "d_model": 512,
+        "nhead": 8,
+        "api": "tf.keras.layers.TransformerDecoder"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.TransformerDecoderLayer",
+        "tensorflow_api": "tf.keras.layers.TransformerDecoder",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "TransformerDecoderLayer.forward() missing 1 required positional argument: 'memory'",
+        "tensorflow_error": "TensorFlow算子 tf.keras.layers.TransformerDecoder 未找到",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 612, in execute_test_case\n    torch_result = torch_instance(input_data)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1751, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1762, in _call_impl\n    return forward_call(*args, **kwargs)\nTypeError: TransformerDecoderLayer.forward() missing 1 required positional argument: 'memory'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch TransformerDecoderLayer.forward() requires 'memory' tensor (encoder output) as mandatory positional argument, but original test case only provides input (tgt) without memory. TensorFlow tf.keras.layers.TransformerDecoder does not exist — the correct equivalent is tf.keras.layers.MultiHeadAttention used within a custom decoder layer, or more accurately, the documented and available API is tf.keras.layers.TransformerEncoder (no native TransformerDecoder in core TF/Keras as of TF 2.15); however, tf.keras.layers.TransformerDecoder is *not* a valid built-in layer — the correct comparable high-level decoder component is absent, so we must use tf.keras.layers.MultiHeadAttention + feedforward + layer norm manually, or skip. But per error 'TensorFlow算子 tf.keras.layers.TransformerDecoder 未找到', the API string is invalid. Official TF docs confirm no tf.keras.layers.TransformerDecoder exists; instead, users build decoders from lower-level components or use tf.keras.layers.Attention + tf.keras.layers.Dense etc. Therefore, the TensorFlow test case must be repaired to use a valid, functionally aligned construct: tf.keras.layers.Attention (cross-attention) + self-attention + FFN, but since the test framework expects a single-layer API mapping, and no direct equivalent exists, the only sound repair is to replace with tf.keras.layers.MultiHeadAttention configured for cross-attention (which matches the 'memory' dependency), and provide both 'query' (tgt) and 'value/key' (memory). Also, PyTorch requires memory tensor of shape (seq_len_mem, batch, d_model) when batch_first=False (default), so input shapes must be aligned accordingly. We repair both cases: (1) PyTorch: add memory tensor matching expected dims and pass it in forward; (2) TensorFlow: replace invalid API with tf.keras.layers.MultiHeadAttention (cross-attention mode), and provide query=input, value=memory, key=memory, with proper shapes and d_model/nhead alignment."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.TransformerDecoderLayer",
+        "input": {
+          "shape": [
+            3,
+            2,
+            512
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7960423231124878,
+            -0.013680991716682911,
+            1.1971408128738403,
+            -1.0525773763656616,
+            -1.1363067626953125,
+            0.6885473132133484,
+            -0.6875751614570618,
+            -0.929958164691925,
+            1.120367407798767,
+            -0.36870646476745605
+          ]
+        },
+        "memory": {
+          "shape": [
+            4,
+            2,
+            512
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -2.3285365104675293,
+            2.079038381576538,
+            0.40362802147865295,
+            2.7198703289031982,
+            0.04284181818366051,
+            -0.13997729122638702,
+            -2.8846561908721924,
+            -1.4231553077697754,
+            0.489204078912735,
+            -1.0128494501113892
+          ]
+        },
+        "d_model": 512,
+        "nhead": 8
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.MultiHeadAttention",
+        "query_shape": [
+          3,
+          2,
+          512
+        ],
+        "key_shape": [
+          4,
+          2,
+          512
+        ],
+        "value_shape": [
+          4,
+          2,
+          512
+        ],
+        "num_heads": 8,
+        "key_dim": 64
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.TransformerDecoderLayer",
+        "tensorflow_api": "tf.keras.layers.TransformerDecoder",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "TransformerDecoderLayer.__init__() got an unexpected keyword argument 'memory'",
+        "tensorflow_error": "TensorFlow算子 tf.keras.layers.TransformerDecoder 未找到",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 600, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: TransformerDecoderLayer.__init__() got an unexpected keyword argument 'memory'\n"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "PyTorch的API为torch.nn.TransformerDecoderLayer，而TensorFlow中对应的API应为tf.keras.layers.TransformerDecoder，但该API在TensorFlow中不存在或命名不同，导致无法正确比较。根据错误信息，TensorFlow中未找到tf.keras.layers.TransformerDecoder，且PyTorch测试用例中传入了非法参数'memory'到__init__方法中，这表明原始测试用例存在构造错误。此外，两个框架中的Transformer解码器实现可能存在结构差异，参数设计不一致（如TensorFlow使用key_dim，而PyTorch使用d_model和nhead推导），直接对应困难。因此判定为功能不完全等价或API映射关系不成立，选择跳过。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    }
+  ]
+}

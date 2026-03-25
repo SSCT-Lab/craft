@@ -1,0 +1,105 @@
+来源文件: llm_enhanced_torch_ge_20251215_205856.json
+样例编号: 2
+tensorflow_error 错误信息: cannot compute GreaterEqual as input #1(zero-based) was expected to be a float tensor but is a int32 tensor [Op:GreaterEqual] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.ge",
+  "input": {
+    "shape": [
+      3,
+      1,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7135213613510132,
+      -0.46239015460014343,
+      -1.8559845685958862,
+      -1.1376087665557861,
+      -0.5638484358787537,
+      0.6210100054740906,
+      -0.7595586180686951,
+      0.6763898134231567,
+      -0.1652413308620453,
+      1.6424016952514648
+    ]
+  },
+  "other": {
+    "shape": [
+      1,
+      4,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -2,
+      -4,
+      8,
+      -7,
+      6,
+      5,
+      2,
+      -9,
+      9,
+      1
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.greater_equal",
+  "input": {
+    "shape": [
+      3,
+      1,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7135213613510132,
+      -0.46239015460014343,
+      -1.8559845685958862,
+      -1.1376087665557861,
+      -0.5638484358787537,
+      0.6210100054740906,
+      -0.7595586180686951,
+      0.6763898134231567,
+      -0.1652413308620453,
+      1.6424016952514648
+    ]
+  },
+  "other": {
+    "shape": [
+      1,
+      4,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -2,
+      -4,
+      8,
+      -7,
+      6,
+      5,
+      2,
+      -9,
+      9,
+      1
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.math.greater_equal` 要求两个输入张量具有相同的数据类型（dtype），否则会抛出类型不匹配错误。尽管在 PyTorch 中 `torch.ge` 支持跨类型比较（如 float32 与 int32 自动广播并比较），但 TensorFlow 严格要求输入类型一致，不允许直接对 `float32` 与 `int32` 执行 `GreaterEqual` 操作。  
+   - 错误信息 `cannot compute GreaterEqual as input #1(zero-based) was expected to be a float tensor but is a int32 tensor` 明确指出第二个输入应为 float 但实际是 int32，说明框架内部未进行隐式类型转换。
+
+3. 修复建议：  
+   - 该行为差异属于框架设计层面的不一致，值得提交一个 issue 给 TensorFlow 官方，建议增强 `tf.math.greater_equal` 对混合类型输入的支持以对齐 PyTorch 的语义兼容性。

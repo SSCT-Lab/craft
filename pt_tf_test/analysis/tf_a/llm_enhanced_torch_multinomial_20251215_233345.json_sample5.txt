@@ -1,0 +1,50 @@
+来源文件: llm_enhanced_torch_multinomial_20251215_233345.json
+样例编号: 5
+tensorflow_error 错误信息: {{function_node __wrapped__Multinomial_device_/job:localhost/replica:0/task:0/device:CPU:0}} logits should be a matrix, got shape [4] [Op:Multinomial] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.6007040739059448,
+      0.9306803345680237,
+      1.8280986547470093,
+      -1.181389331817627
+    ]
+  },
+  "num_samples": 4,
+  "replacement": true
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.random.categorical",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.6007040739059448,
+      0.9306803345680237,
+      1.8280986547470093,
+      -1.181389331817627
+    ]
+  },
+  "num_samples": 4
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.random.categorical` 要求输入 logits 必须是二维张量（shape `[batch_size, num_classes]`），即至少有两个维度，而本例中输入 shape 为 `[4]`，是一维张量，违反了该 API 的形状要求。
+   - 尽管 PyTorch 的 `torch.multinomial` 支持一维输入（将输入视为单个概率分布），但 TensorFlow 的 `tf.random.categorical` 明确要求输入为矩阵（至少二维），因此在传入一维张量时会触发“logits should be a matrix”错误。
+
+3. 修复建议：
+   - 该问题属于框架间对输入形状的严格性要求不一致，建议提交 issue 至 TensorFlow 官方仓库，指出其 `tf.random.categorical` 对一维输入缺乏兼容性支持，而 PyTorch 已支持，存在语义对齐问题。

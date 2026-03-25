@@ -1,0 +1,87 @@
+来源文件: llm_enhanced_torch_repeat_interleave_20251215_211233.json
+样例编号: 4
+tensorflow_error 错误信息: Dimensions 4 and 3 are not compatible
+
+【PyTorch 测试用例】
+{
+  "api": "torch.repeat_interleave",
+  "input": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.9783108234405518,
+      -0.5966523289680481,
+      -1.1875861883163452,
+      0.9516186118125916,
+      -0.9923166036605835,
+      -0.23630763590335846,
+      0.8351292610168457,
+      0.7653475403785706,
+      0.20996524393558502,
+      0.12345396727323532
+    ]
+  },
+  "repeats": {
+    "shape": [
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      1,
+      4,
+      0
+    ]
+  },
+  "dim": -1
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.repeat",
+  "input": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.9783108234405518,
+      -0.5966523289680481,
+      -1.1875861883163452,
+      0.9516186118125916,
+      -0.9923166036605835,
+      -0.23630763590335846,
+      0.8351292610168457,
+      0.7653475403785706,
+      0.20996524393558502,
+      0.12345396727323532
+    ]
+  },
+  "repeats": {
+    "shape": [
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      1,
+      4,
+      0
+    ]
+  },
+  "axis": -1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.repeat` 在 `axis=-1` 且 `repeats=[1,4,0]` 时，会尝试对输入张量的最后一个维度（大小为 4）进行重复操作，但 `repeats` 的长度为 3，与 `axis` 维度大小不匹配，导致广播失败。虽然文档未明确禁止，但实际执行中要求 `repeats` 的长度必须等于 `axis` 上的元素个数（即 4），否则报错“Dimensions 4 and 3 are not compatible”。
+   - PyTorch 的 `torch.repeat_interleave` 允许 `repeats` 长度小于或大于 `dim` 维度大小，通过广播机制自动适配，而 TensorFlow 要求严格对齐，这是两框架在行为上的关键差异。
+
+3. 修复建议：
+   - 该问题属于框架间行为不一致，值得提交 issue 给 TensorFlow 官方，说明其 `tf.repeat` 在 `axis` 维度上对 `repeats` 长度的严格校验与 PyTorch 不一致，且缺乏清晰文档提示。

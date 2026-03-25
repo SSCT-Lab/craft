@@ -1,0 +1,721 @@
+{
+  "operator": "torch.nn.ZeroPad2d",
+  "timestamp": "2026-01-23T13:39:09.471869",
+  "total_iterations": 8,
+  "llm_generated_test_cases": 6,
+  "successful_test_cases": 6,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1939552277326584,
+            0.1307946890592575,
+            -0.02855176106095314,
+            0.7566511034965515,
+            1.420520544052124,
+            0.7647508978843689,
+            -0.06858506798744202,
+            -1.6450320482254028,
+            0.09585412591695786,
+            -1.0529704093933105
+          ]
+        },
+        "padding": 2,
+        "api": "torch.nn.ZeroPad2d"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.1939552277326584,
+            0.1307946890592575,
+            -0.02855176106095314,
+            0.7566511034965515,
+            1.420520544052124,
+            0.7647508978843689,
+            -0.06858506798744202,
+            -1.6450320482254028,
+            0.09585412591695786,
+            -1.0529704093933105
+          ]
+        },
+        "padding": 2,
+        "api": "tf.keras.layers.ZeroPadding2D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 3, 8, 8) vs TensorFlow (2, 7, 8, 4)",
+        "torch_shape": [
+          2,
+          3,
+          8,
+          8
+        ],
+        "tensorflow_shape": [
+          2,
+          7,
+          8,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.nn.ZeroPad2d with scalar padding=2 interprets it as (left=2, right=2, top=2, bottom=2), resulting in output shape (2,3,4+2+2,4+2+2)=(2,3,8,8). TensorFlow tf.keras.layers.ZeroPadding2D with scalar padding=2 interprets it as ((top=2,bottom=2),(left=2,right=2)), but its default data_format='channels_last' expects input shape (batch, height, width, channels), i.e., (2,4,4,3), not (2,3,4,4). The provided input shape [2,3,4,4] is channels_first for PyTorch but channels_last is expected by TF's ZeroPadding2D. To align semantics, TF test case must either transpose input to (2,4,4,3) and set data_format='channels_last', or explicitly specify data_format='channels_first' and adjust padding order. Per TF docs, when data_format='channels_first', padding format is ((top,bottom),(left,right)) — same as PyTorch's (left,right,top,bottom) but applied to different axis order. However, the shape mismatch (2,3,4,4) → (2,7,8,4) indicates TF interpreted input as (N,H,W,C)=(2,3,4,4), then padded H by 2+2=4 → 3+4=7, W by 2+2=4 → 4+4=8, C unchanged=4 — confirming TF assumed channels_last on wrong layout. Fix: set data_format='channels_first' in TF and ensure padding is specified as tuple matching PyTorch's implicit order, or better: use explicit 2-tuple padding ((top,bottom),(left,right)) = ((2,2),(2,2)) with data_format='channels_first'. Since PyTorch uses (left,right,top,bottom) and TF with data_format='channels_first' uses ((top,bottom),(left,right)), they are equivalent only if we reorder. But simplest repair is to make TF use same logical layout: set data_format='channels_first' and padding=((2,2),(2,2)). However, note that TF ZeroPadding2D does NOT accept scalar padding under channels_first — it requires tuple. So scalar padding=2 is invalid for channels_first; it only supports scalar when data_format='channels_last'. Therefore, correct repair is to change TF input shape to channels_last (2,4,4,3) and keep padding=2, which yields output (2,4+2+2,4+2+2,3)=(2,8,8,3), then transpose to match PyTorch's (2,3,8,8). But test cases must be comparable in same layout. Standard practice is to align input layout: convert PyTorch-style (N,C,H,W) to TF-style (N,H,W,C) before feeding to TF layer. Hence, repair: TF input shape becomes [2,4,4,3], padding=2, and no transpose needed in output since comparison should be value-wise after layout normalization — but the error shows TF output is (2,7,8,4), meaning it treated [2,3,4,4] as (N,H,W,C) → H=3→3+4=7, W=4→4+4=8, C=4. So TF mistakenly took channel dim as last but input had C=3 at index 1. Thus the root cause is layout mismatch. Repair: for TF, use input shape [2,4,4,3] and padding=2; for PyTorch, keep [2,3,4,4] and padding=2 — outputs will be (2,3,8,8) and (2,8,8,3), which are transposes. To compare correctly, either transpose TF output or use consistent layout. But per task, test cases must produce same shape for direct comparison. Therefore, best repair is to make both use channels_last layout in TF and channels_first in PyTorch is unavoidable, so instead adjust TF to use data_format='channels_first' and explicit padding=((2,2),(2,2)), which accepts input shape [2,3,4,4] and produces (2,3,4+2+2,4+2+2)=(2,3,8,8). Yes — TF ZeroPadding2D supports data_format='channels_first' and padding as tuple of two tuples. So repair TF test case: set 'padding': [[2, 2], [2, 2]] and 'data_format': 'channels_first'. This matches PyTorch's behavior exactly."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.ZeroPad2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.4042376279830933,
+            -0.3509753346443176,
+            -0.5128148794174194,
+            0.8895867466926575,
+            -1.083867073059082,
+            -1.5012880563735962,
+            1.3996890783309937,
+            -0.22010362148284912,
+            -2.1872241497039795,
+            0.4285014569759369
+          ]
+        },
+        "padding": 2
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.ZeroPadding2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.4042376279830933,
+            -0.3509753346443176,
+            -0.5128148794174194,
+            0.8895867466926575,
+            -1.083867073059082,
+            -1.5012880563735962,
+            1.3996890783309937,
+            -0.22010362148284912,
+            -2.1872241497039795,
+            0.4285014569759369
+          ]
+        },
+        "padding": [
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            2
+          ]
+        ],
+        "data_format": "channels_first"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          8,
+          8
+        ],
+        "tensorflow_shape": [
+          2,
+          3,
+          8,
+          8
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且无错误，符合预期功能等价性；根据任务要求，需对用例进行变异（fuzzing）以提升测试覆盖率。原始用例使用对称padding=2和channels_first格式，变异方向包括：(1) 使用非对称padding（PyTorch支持4-tuple，TensorFlow对应非对称二维列表）；(2) 改为channels_last格式以验证data_format鲁棒性；(3) 调整输入shape为更典型的CNN格式（batch, height, width, channels）并适配TensorFlow默认data_format；(4) 引入边界值——最小有效尺寸（如1x1特征图）和单通道输入，增强边界场景覆盖。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.ZeroPad2d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.41066303849220276,
+            -1.3691681623458862
+          ]
+        },
+        "padding": [
+          1,
+          2,
+          0,
+          3
+        ]
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.ZeroPadding2D",
+        "input": {
+          "shape": [
+            2,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.41066303849220276,
+            -1.3691681623458862
+          ]
+        },
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            2
+          ]
+        ],
+        "data_format": "channels_last"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 1, 4, 4) vs TensorFlow (2, 4, 4, 1)",
+        "torch_shape": [
+          2,
+          1,
+          4,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          4,
+          4,
+          1
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch和TensorFlow的输出形状不一致，原因是TensorFlow的data_format默认为'channels_last'，而PyTorch的通道维度在第二位（NCHW），TensorFlow在此测试中使用了默认的NHWC格式，导致填充后形状解释不同。为了对齐行为，应将TensorFlow的data_format设置为'channels_first'以匹配PyTorch的NCHW布局。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.ZeroPad2d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3991938829421997,
+            -0.5310940146446228
+          ]
+        },
+        "padding": [
+          1,
+          2,
+          0,
+          3
+        ]
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.ZeroPadding2D",
+        "input": {
+          "shape": [
+            2,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.3991938829421997,
+            -0.5310940146446228
+          ]
+        },
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            1,
+            2
+          ]
+        ],
+        "data_format": "channels_first"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          1,
+          4,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          1,
+          4,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5892170071601868,
+            -0.3748584985733032,
+            -0.4285050630569458,
+            -0.3580988943576813,
+            0.37128373980522156,
+            0.8287146687507629,
+            -0.9422985315322876,
+            -1.5568132400512695,
+            -1.0460255146026611,
+            1.068132996559143
+          ]
+        },
+        "padding": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "api": "torch.nn.ZeroPad2d"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5892170071601868,
+            -0.3748584985733032,
+            -0.4285050630569458,
+            -0.3580988943576813,
+            0.37128373980522156,
+            0.8287146687507629,
+            -0.9422985315322876,
+            -1.5568132400512695,
+            -1.0460255146026611,
+            1.068132996559143
+          ]
+        },
+        "padding": [
+          1,
+          1,
+          2,
+          0
+        ],
+        "api": "tf.keras.layers.ZeroPadding2D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "`padding` should have two elements. Received: padding=[1, 1, 2, 0].",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          6,
+          6
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 638, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\keras\\src\\layers\\reshaping\\zero_padding2d.py\", line 78, in __init__\n    raise ValueError(\nValueError: `padding` should have two elements. Received: padding=[1, 1, 2, 0].\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.keras.layers.ZeroPadding2D expects 'padding' to be a 2-element tuple/list specifying (height_pad, width_pad), where each element can be a 2-tuple for asymmetric padding, i.e., ((top, bottom), (left, right)). The original [1, 1, 2, 0] is invalid for TF but valid for PyTorch's ZeroPad2d which accepts 4-tuple (left, right, top, bottom). To align semantics, we must convert the 4-tuple into TF's expected format: ((top, bottom), (left, right)) = ((2, 0), (1, 1)). Also, TF requires explicit tuple/list of tuples, not flat list."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.ZeroPad2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2756000757217407,
+            -0.12376460433006287,
+            0.7211630940437317,
+            -0.27454283833503723,
+            0.7336766123771667,
+            1.4356516599655151,
+            -0.8846900463104248,
+            1.111517310142517,
+            1.2469481229782104,
+            -0.7033743858337402
+          ]
+        },
+        "padding": [
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.ZeroPadding2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2756000757217407,
+            -0.12376460433006287,
+            0.7211630940437317,
+            -0.27454283833503723,
+            0.7336766123771667,
+            1.4356516599655151,
+            -0.8846900463104248,
+            1.111517310142517,
+            1.2469481229782104,
+            -0.7033743858337402
+          ]
+        },
+        "padding": [
+          [
+            2,
+            0
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 3, 6, 6) vs TensorFlow (2, 5, 6, 4)",
+        "torch_shape": [
+          2,
+          3,
+          6,
+          6
+        ],
+        "tensorflow_shape": [
+          2,
+          5,
+          6,
+          4
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.nn.ZeroPad2d takes padding as (left, right, top, bottom), while TensorFlow's tf.keras.layers.ZeroPadding2D takes padding as ((top, bottom), (left, right)) — i.e., the order of spatial dimensions is (height, width) for TF, corresponding to (top/bottom, left/right), whereas PyTorch's 4-tuple is (left, right, top, bottom). In the original test case, PyTorch padding [1, 1, 2, 0] means left=1, right=1, top=2, bottom=0 → output shape: (2,3,4+2+0,4+1+1) = (2,3,6,6). TensorFlow padding [[2,0],[1,1]] correctly matches this: (top,bottom)=(2,0), (left,right)=(1,1) → same output shape (2,3,6,6). However, the observed TF output shape is (2,5,6,4), which indicates the input tensor was interpreted in NHWC format instead of NCHW. By default, tf.keras.layers.ZeroPadding2D assumes NHWC layout unless data_format='channels_first' is explicitly set. PyTorch uses NCHW. To align semantics, we must set data_format='channels_first' in TF to match PyTorch's channel-first convention. Without it, TF treats input shape [2,3,4,4] as NHWC → batch=2, height=3, width=4, channels=4, leading to wrong padding application and shape (2,5,6,4). Fixing by adding data_format='channels_first' ensures consistent NCHW interpretation."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.ZeroPad2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7518553137779236,
+            0.8240951895713806,
+            -0.6206610798835754,
+            0.9597139954566956,
+            2.0069618225097656,
+            -0.9163585305213928,
+            0.9445000886917114,
+            0.9695758819580078,
+            0.5423961877822876,
+            1.1825194358825684
+          ]
+        },
+        "padding": [
+          1,
+          1,
+          2,
+          0
+        ]
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.ZeroPadding2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7518553137779236,
+            0.8240951895713806,
+            -0.6206610798835754,
+            0.9597139954566956,
+            2.0069618225097656,
+            -0.9163585305213928,
+            0.9445000886917114,
+            0.9695758819580078,
+            0.5423961877822876,
+            1.1825194358825684
+          ]
+        },
+        "padding": [
+          [
+            2,
+            0
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "data_format": "channels_first"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          6,
+          6
+        ],
+        "tensorflow_shape": [
+          2,
+          3,
+          6,
+          6
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和TensorFlow中均执行成功且结果一致，符合功能等价性验证要求；为提升测试鲁棒性和边界覆盖能力，需进行fuzzing变异。根据PyTorch文档，padding支持int或4-tuple（left, right, top, bottom），而TensorFlow ZeroPadding2D的padding参数为2D list/tuple形式[[top, bottom], [left, right]]，且data_format='channels_first'与PyTorch默认NCHW布局对齐。变异策略：1) 将输入shape扩展至极端尺寸[1, 1, 1, 1]（单通道单像素）以测试最小边界；2) padding改为全0元组[0,0,0,0]验证零填充退化行为；3) 同时保持data_format一致；该变异覆盖了维度退化、无填充等关键边界场景，符合fuzzing目标。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.ZeroPad2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.085578203201294
+          ]
+        },
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.ZeroPadding2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.085578203201294
+          ]
+        },
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "channels_first"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.ZeroPad2d",
+        "tensorflow_api": "tf.keras.layers.ZeroPadding2D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "tensorflow_shape": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    }
+  ]
+}

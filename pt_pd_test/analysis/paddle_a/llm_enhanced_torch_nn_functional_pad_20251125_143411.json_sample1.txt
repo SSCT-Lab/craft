@@ -1,0 +1,93 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251125_143411.json
+样例编号: 1
+paddle_error 错误信息: input tensor dimension must be in [3, 4, 5] but got 6
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      2,
+      1,
+      64,
+      64,
+      1,
+      8
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.3490350350395637,
+      -2.17549721352332,
+      -1.237001002136676,
+      1.2871456325371704,
+      -1.7824894311029582,
+      0.5840490571921506,
+      2.022064621475715,
+      2.107395323474891,
+      -1.9537308526383321,
+      0.2044307650873729
+    ]
+  },
+  "pad": [
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    2,
+    2
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.pad",
+  "input": {
+    "shape": [
+      2,
+      1,
+      64,
+      64,
+      1,
+      8
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.3490350350395637,
+      -2.17549721352332,
+      -1.237001002136676,
+      1.2871456325371704,
+      -1.7824894311029582,
+      0.5840490571921506,
+      2.022064621475715,
+      2.107395323474891,
+      -1.9537308526383321,
+      0.2044307650873729
+    ]
+  },
+  "pad": [
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    2,
+    2
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.functional.pad` 在 `mode` 为 `'reflect'`、`'replicate'` 或 `'circular'` 时，**仅支持输入张量维度为 3、4 或 5**（即 N=3,4,5），而本样例输入维度为 6（shape=[2,1,64,64,1,8]），超出支持范围。
+   - 错误信息 `input tensor dimension must be in [3, 4, 5] but got 6` 直接来源于此限制，说明 PaddlePaddle 在非 `constant` 模式下对高维张量的 padding 实现有限制，而 PyTorch 的 `torch.nn.functional.pad` 支持任意维度。
+
+3. 修复建议：
+   - 此为框架实现上的行为差异，属于 PaddlePaddle 当前设计限制；建议提交 issue 给官方，反馈希望扩展 `pad` 在 reflect/replicate/circular 模式下的高维支持（如支持 6D 张量）。

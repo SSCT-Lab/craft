@@ -1,0 +1,764 @@
+{
+  "operator": "torch_nn_functional_softplus",
+  "torch_api": "torch.nn.functional.softplus",
+  "mindspore_api": "mindspore.ops.softplus",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 7,
+  "timestamp": "2026-02-01T19:59:28.658591",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softplus_20260126_141952.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            784,
+            1200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.33081185817718506,
+            -0.46916839480400085,
+            -0.255158007144928,
+            0.9114344716072083,
+            1.7043592929840088,
+            0.3888397812843323,
+            -0.6360164284706116,
+            -0.31823232769966125,
+            -0.4625765383243561,
+            -0.036082811653614044
+          ]
+        },
+        "beta": 1,
+        "threshold": 20,
+        "api": "torch.nn.functional.softplus"
+      },
+      "original_mindspore_test_case": {
+        "input": {
+          "shape": [
+            784,
+            1200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.33081185817718506,
+            -0.46916839480400085,
+            -0.255158007144928,
+            0.9114344716072083,
+            1.7043592929840088,
+            0.3888397812843323,
+            -0.6360164284706116,
+            -0.31823232769966125,
+            -0.4625765383243561,
+            -0.036082811653614044
+          ]
+        },
+        "beta": 1,
+        "threshold": 20,
+        "api": "mindspore.ops.softplus"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值易触发数值稳定性分支差异、边界条件处理不一致或NaN传播逻辑bug，尤其在softplus的threshold切换和log(1+exp)实现中",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              784,
+              1200
+            ],
+            "mindspore_shape": [
+              784,
+              1200
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量(shape=[])和空张量(shape=[0])",
+          "mutation_reason": "标量和空张量易暴露框架对退化维度的处理差异，如广播、梯adients、数值稳定性逻辑分支是否一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下边界值（inf/-inf/nan/±0.0）对softplus数值稳定性的影响",
+          "mutation_reason": "float64可暴露更高精度下的实现差异；inf/-inf/nan/±0.0是softplus数学定义的临界点，两框架对这些值的处理（如log(1+exp(beta*x))分支逻辑、渐近线截断）易出现不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              784,
+              1200
+            ],
+            "mindspore_shape": [
+              784,
+              1200
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softplus_20260126_141952.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softplus",
+        "input": {
+          "shape": [],
+          "dtype": "float32",
+          "sample_values": [
+            1.0
+          ]
+        },
+        "beta": 10,
+        "threshold": 15
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.softplus",
+        "input": {
+          "shape": [],
+          "dtype": "float32",
+          "sample_values": [
+            1.0
+          ]
+        },
+        "beta": 10,
+        "threshold": 15
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：覆盖inf、-inf、nan、-0.0、1e-38、1e38等边界值",
+          "mutation_reason": "softplus在beta*input远大于threshold时应退化为线性函数，而inf/-inf/NaN处的数值稳定性实现易出现框架差异，尤其在渐近行为和分支判断上。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 10,
+            "threshold": 15
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 10,
+            "threshold": 15
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              8
+            ],
+            "mindspore_shape": [
+              8
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用5维张量（2,1,3,1,4）测试高维一致性",
+          "mutation_reason": "高维张量可能暴露框架在广播、内存布局或逐元素计算路径上的实现差异，尤其在beta/threshold数值稳定逻辑中",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                2,
+                1,
+                3,
+                1,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 10,
+            "threshold": 15
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                2,
+                1,
+                3,
+                1,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 10,
+            "threshold": 15
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              1,
+              3,
+              1,
+              4
+            ],
+            "mindspore_shape": [
+              2,
+              1,
+              3,
+              1,
+              4
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下边界值和特殊浮点值的数值稳定性差异",
+          "mutation_reason": "float64比float32具有更高精度，可暴露两框架在log(1+exp(beta*x))近似策略、阈值切换逻辑或inf/nan传播上的实现差异，尤其在beta*x接近threshold时。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 10,
+            "threshold": 15
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 10,
+            "threshold": 15
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              8
+            ],
+            "mindspore_shape": [
+              8
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softplus_20260126_141952.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softplus",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8130260705947876,
+            -0.3215371370315552,
+            -0.7515366077423096,
+            -1.6040440797805786,
+            -0.8731686472892761,
+            -0.4341370463371277,
+            -0.6396467685699463,
+            -1.677234172821045,
+            -0.5843852162361145,
+            0.7486099600791931
+          ]
+        },
+        "beta": 100,
+        "threshold": 5
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.softplus",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8130260705947876,
+            -0.3215371370315552,
+            -0.7515366077423096,
+            -1.6040440797805786,
+            -0.8731686472892761,
+            -0.4341370463371277,
+            -0.6396467685699463,
+            -1.677234172821045,
+            -0.5843852162361145,
+            0.7486099600791931
+          ]
+        },
+        "beta": 100,
+        "threshold": 5
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值易触发数值稳定性分支差异或未定义行为，尤其在softplus的threshold截断逻辑和log(1+exp)计算中，可能暴露框架间实现不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                5.0,
+                -5.0
+              ]
+            },
+            "beta": 100,
+            "threshold": 5
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                5.0,
+                -5.0
+              ]
+            },
+            "beta": 100,
+            "threshold": 5
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3,
+              4
+            ],
+            "mindspore_shape": [
+              2,
+              3,
+              4
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试空张量（shape=[0]）和标量（shape=[]）",
+          "mutation_reason": "空张量和标量是易触发框架边界处理逻辑差异的场景，尤其在softplus的threshold分支和梯度计算中可能暴露数值稳定性或形状广播bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "beta": 100,
+            "threshold": 5
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "beta": 100,
+            "threshold": 5
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下边界值和特殊浮点值的数值稳定性",
+          "mutation_reason": "float64可暴露因精度截断、渐近线处理或inf/nan传播逻辑差异导致的框架实现bug；softplus在beta*input接近threshold时对精度敏感。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.8130260705947876,
+                -0.3215371370315552,
+                -0.7515366077423096,
+                -1.6040440797805786,
+                -0.8731686472892761,
+                -0.4341370463371277,
+                -0.6396467685699463,
+                -1.677234172821045,
+                -0.5843852162361145,
+                0.7486099600791931,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 100,
+            "threshold": 5
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.softplus",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.8130260705947876,
+                -0.3215371370315552,
+                -0.7515366077423096,
+                -1.6040440797805786,
+                -0.8731686472892761,
+                -0.4341370463371277,
+                -0.6396467685699463,
+                -1.677234172821045,
+                -0.5843852162361145,
+                0.7486099600791931,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 100,
+            "threshold": 5
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3,
+              4
+            ],
+            "mindspore_shape": [
+              2,
+              3,
+              4
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

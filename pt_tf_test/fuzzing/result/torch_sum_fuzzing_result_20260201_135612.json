@@ -1,0 +1,258 @@
+{
+  "operator": "torch_sum",
+  "torch_api": "torch.sum",
+  "tensorflow_api": "tf.reduce_sum",
+  "total_cases": 1,
+  "total_fuzzing_rounds": 3,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T13:56:12.595158",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_sum_20260123_192709.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.sum",
+        "input": {
+          "shape": [
+            64,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6690223217010498,
+            -0.09590307623147964,
+            0.591052770614624,
+            -0.6706766486167908,
+            -0.279034823179245,
+            -1.966346025466919,
+            -1.2636483907699585,
+            0.7553244233131409,
+            0.2827087938785553,
+            1.9982365369796753
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.reduce_sum",
+        "input": {
+          "shape": [
+            64,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6690223217010498,
+            -0.09590307623147964,
+            0.591052770614624,
+            -0.6706766486167908,
+            -0.279034823179245,
+            -1.966346025466919,
+            -1.2636483907699585,
+            0.7553244233131409,
+            0.2827087938785553,
+            1.9982365369796753
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊浮点值易暴露框架在累加顺序、NaN传播、无穷大处理或下溢/上溢保护上的实现差异，导致数学等价但结果不一致。",
+          "torch_test_case": {
+            "api": "torch.sum",
+            "input": {
+              "shape": [
+                64,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.6690223217010498,
+                -0.09590307623147964,
+                0.591052770614624,
+                -0.6706766486167908,
+                -0.279034823179245,
+                -1.966346025466919,
+                -1.2636483907699585,
+                0.7553244233131409,
+                0.2827087938785553,
+                1.9982365369796753,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_sum",
+            "input": {
+              "shape": [
+                64,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.6690223217010498,
+                -0.09590307623147964,
+                0.591052770614624,
+                -0.6706766486167908,
+                -0.279034823179245,
+                -1.966346025466919,
+                -1.2636483907699585,
+                0.7553244233131409,
+                0.2827087938785553,
+                1.9982365369796753,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "结果不一致: torch=nan, tf=nan",
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 64]）和含NaN/inf的sample_values",
+          "mutation_reason": "空张量求和在数学上定义为0，但框架可能因边界处理差异返回NaN或报错；结合inf/NaN可暴露累加顺序、初始值或early-return逻辑不一致。",
+          "torch_test_case": {
+            "api": "torch.sum",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_sum",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "变异为float16 dtype并注入特殊浮点值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float16精度低、动态范围小，易暴露框架在特殊值处理、舍入、NaN传播或inf算术上的实现差异，且数学上sum语义完全等价。",
+          "torch_test_case": {
+            "api": "torch.sum",
+            "input": {
+              "shape": [
+                64,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_sum",
+            "input": {
+              "shape": [
+                64,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "结果不一致: torch=nan, tf=nan",
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

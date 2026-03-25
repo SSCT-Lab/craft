@@ -1,0 +1,77 @@
+来源文件: llm_enhanced_torch_tensordot_20251125_141922.json
+样例编号: 7
+paddle_error 错误信息: tensordot() got an unexpected keyword argument 'a'
+
+【PyTorch 测试用例】
+{
+  "api": "torch.tensordot",
+  "a": {
+    "shape": [
+      5,
+      0,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "b": {
+    "shape": [
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dims": [
+    [
+      1,
+      0
+    ],
+    [
+      0,
+      1
+    ]
+  ]
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.tensordot",
+  "a": {
+    "shape": [
+      5,
+      0,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "b": {
+    "shape": [
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dims": [
+    [
+      1,
+      0
+    ],
+    [
+      0,
+      1
+    ]
+  ]
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.tensordot` 在处理包含维度为 0 的张量（如 `shape=[5, 0, 3]`）时存在未定义行为，官方文档虽未明确禁止，但实际执行中会因空维度导致轴索引或内存布局异常，引发参数解析错误。  
+   - 错误信息 `tensordot() got an unexpected keyword argument 'a'` 是典型的参数解析失败表现，说明传入的 `a` 参数在内部被错误地当作关键字参数处理，极可能是因为框架在处理零维形状时触发了底层张量构造异常，导致 API 接收逻辑崩溃。
+
+3. 修复建议：  
+   - 此问题反映 PaddlePaddle 对空维度（0 维度）张量的支持不完整，建议提交 issue 至 PaddlePaddle 官方仓库，指出 `tensordot` 在输入包含 0 维度时应正确处理或给出明确错误提示。

@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_nn_LSTMCell_20251201_233813.json
+样例编号: 4
+paddle_error 错误信息: When Variable is used as the condition of if/while , Variable can only contain one element.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.LSTMCell",
+  "input": {
+    "shape": [
+      2,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7056307196617126,
+      -1.2896904945373535,
+      -1.7085610628128052,
+      0.8332932591438293,
+      0.03727167472243309,
+      0.9319847822189331,
+      -0.20603029429912567,
+      0.20208941400051117,
+      0.9104170799255371,
+      -0.719490647315979
+    ]
+  },
+  "hidden_size": 20
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.LSTMCell",
+  "input": {
+    "shape": [
+      2,
+      10
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.7056307196617126,
+      -1.2896904945373535,
+      -1.7085610628128052,
+      0.8332932591438293,
+      0.03727167472243309,
+      0.9319847822189331,
+      -0.20603029429912567,
+      0.20208941400051117,
+      0.9104170799255371,
+      -0.719490647315979
+    ]
+  },
+  "hidden_size": 20
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `LSTMCell` 在执行时要求输入的 `states` 参数（即前一时刻的隐藏状态和细胞状态）必须是两个张量，且其形状为 `[batch_size, hidden_size]`。但在当前测试用例中，`input` 的形状为 `[2, 10]`，而 `hidden_size=20`，若未显式提供 `states`，则默认使用零初始化状态，但此时在动态图执行中若存在条件判断（如 `if x.shape[0] > 1`）对 `Variable` 进行非标量比较，会触发错误。
+   - 错误信息“When Variable is used as the condition of if/while, Variable can only contain one element”明确指出：在 `if/while` 条件中使用了非单元素的变量。这通常出现在 PaddlePaddle 动态图中对张量形状进行直接布尔判断（如 `if x.shape[0] == 2:`），但 `x.shape` 是一个包含多个维度的 `Tensor`，不能作为条件表达式。
+
+3. 修复建议：
+   - 避免在条件语句中直接对 `Tensor` 形状进行布尔判断；应先调用 `.item()` 转换为 Python 标量，或使用 `paddle.equal` 等函数配合 `paddle.static` 或 `paddle.jit` 控制流处理。该问题反映 PaddlePaddle 在动态图中对形状判断的严格性高于 PyTorch，值得提交 issue 反馈此类不一致行为。

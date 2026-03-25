@@ -1,0 +1,399 @@
+#   Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import numpy as np
+from op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_device_place,
+    is_custom_device,
+)
+
+import paddle
+from paddle import base
+from paddle.base import core
+
+
+class TestExpandAsBasic(OpTest):
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
+        self.init_dtype()
+        self.init_inputs_and_outputs()
+        self.if_enable_cinn()
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(100).astype(self.dtype)
+        target_tensor = np.random.rand(2, 100).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [2, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output(check_prim=False, check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=False, check_pir=True)
+
+
+class TestExpandAs_ZeroDim1(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random(()).astype(self.dtype)
+        target_tensor = np.random.random(1).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
+class TestExpandAs_ZeroDim2(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random(()).astype(self.dtype)
+        target_tensor = np.random.random(()).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = []
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+
+class TestExpandAs_ZeroSize(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.random([2, 1]).astype(self.dtype)
+        target_tensor = np.random.random([2, 0]).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        output = np.random.random([2, 0]).astype(self.dtype)
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+
+class TestExpandAs_ZeroSize2(TestExpandAs_ZeroSize):
+    def init_inputs_and_outputs(self):
+        x = np.random.random([3, 0]).astype(self.dtype)
+        target_tensor = np.random.random([3, 0]).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        output = np.random.random([3, 0]).astype(self.dtype)
+        self.outputs = {'Out': output}
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(100).astype(np.float32)
+        target_tensor = np.random.rand(2, 100).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [2, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def test_check_output(self):
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            get_device_place(), ['X'], 'Out', check_prim=False, check_pir=True
+        )
+
+
+class TestExpandAsOpRank2(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(10, 12).astype(self.dtype)
+        target_tensor = np.random.rand(10, 12).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank2BFP16OP(TestExpandAsBasicBFP16OP):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(10, 12).astype(np.float32)
+        target_tensor = np.random.rand(10, 12).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+
+class TestExpandAsOpRank3(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(2, 3, 20).astype(self.dtype)
+        target_tensor = np.random.rand(2, 3, 20).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank3BFP16OP(TestExpandAsBasicBFP16OP):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(2, 3, 20).astype(np.float32)
+        target_tensor = np.random.rand(2, 3, 20).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [1, 1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+
+class TestExpandAsOpRank4(TestExpandAsBasic):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(1, 1, 7, 16).astype(self.dtype)
+        target_tensor = np.random.rand(4, 6, 7, 16).astype(self.dtype)
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank4BFP16OP(TestExpandAsBasicBFP16OP):
+    def init_inputs_and_outputs(self):
+        x = np.random.rand(1, 1, 7, 16).astype(np.float32)
+        target_tensor = np.random.rand(4, 6, 7, 16).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+
+class TestExpandAsOpRank5(TestExpandAsBasic):
+    no_need_check_grad = True
+
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
+        x = np.random.rand(1, 1, 7, 16).astype("int64")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("float64")
+        self.inputs = {'X': x, "Y": target_tensor}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(self.inputs['X'], bcast_dims)
+        self.outputs = {'Out': output}
+
+    def test_check_grad(self):
+        pass
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
+    def setUp(self):
+        self.op_type = "expand_as_v2"
+        self.prim_op_type = "comp"
+        self.python_api = paddle.expand_as
+        self.public_python_api = paddle.expand_as
+        x = np.random.rand(1, 1, 7, 16).astype("int64")
+        target_tensor = np.random.rand(4, 6, 7, 16).astype("float32")
+        self.inputs = {'X': x, "Y": convert_float_to_uint16(target_tensor)}
+        self.attrs = {'target_shape': target_tensor.shape}
+        bcast_dims = [4, 6, 1, 1]
+        output = np.tile(x, bcast_dims)
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        self.check_output_with_place(place=get_device_place(), check_pir=True)
+
+    def test_check_grad(self):
+        pass
+
+
+class TestExpandAsV2Error(unittest.TestCase):
+    def test_errors(self):
+        with base.program_guard(base.Program(), base.Program()):
+            x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="uint8")
+            x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
+            self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
+            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype="bool")
+            x3.stop_gradient = False
+            self.assertRaises(ValueError, paddle.tensor.expand_as, x3, x2)
+
+
+# Test python API
+class TestExpandAsV2API(unittest.TestCase):
+    def test_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            input1 = np.random.random([12, 14]).astype("float32")
+            input2 = np.random.random([2, 12, 14]).astype("float32")
+            x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
+
+            y = paddle.static.data(
+                name='target_tensor',
+                shape=[2, 12, 14],
+                dtype="float32",
+            )
+
+            out_1 = paddle.expand_as(x, y=y)
+
+            exe = base.Executor(place=base.CPUPlace())
+            res_1 = exe.run(
+                paddle.static.default_main_program(),
+                feed={"x": input1, "target_tensor": input2},
+                fetch_list=[out_1],
+            )
+            np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+
+
+class TestExpandAsAPI_Compatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(123)
+        paddle.enable_static()
+        self.x_shape = [5, 6]
+        self.y_shape = [3, 5, 6]
+        self.dtype = 'float32'
+        self.init_data()
+        self.np_ref_out = np.tile(self.np_input, (3, 1, 1))
+
+    def init_data(self):
+        self.np_input = np.random.randint(0, 8, self.x_shape).astype(self.dtype)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_input)
+        y = paddle.empty(self.y_shape)
+        paddle_dygraph_out = []
+        # Position args (args)
+        out1 = paddle.expand_as(x, y)
+        paddle_dygraph_out.append(out1)
+        # Keywords args (kwargs) for paddle
+        out2 = paddle.expand_as(x=x, y=y)
+        paddle_dygraph_out.append(out2)
+        # Keywords args for torch
+        out3 = paddle.expand_as(input=x, other=y)
+        paddle_dygraph_out.append(out3)
+        # Combined args and kwargs
+        out4 = paddle.expand_as(x, y=y)
+        paddle_dygraph_out.append(out4)
+        # Tensor method args
+        out5 = x.expand_as(y)
+        paddle_dygraph_out.append(out5)
+        # Tensor method kwargs
+        out6 = x.expand_as(other=y)
+        paddle_dygraph_out.append(out6)
+
+        # Check
+        for out in paddle_dygraph_out:
+            np.testing.assert_allclose(self.np_ref_out, out.numpy())
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.x_shape, dtype=self.dtype
+            )
+            y = paddle.empty(self.y_shape)
+            paddle_dygraph_out = []
+            # Position args (args)
+            out1 = paddle.expand_as(x, y)
+            paddle_dygraph_out.append(out1)
+            # Keywords args (kwargs) for paddle
+            out2 = paddle.expand_as(x=x, y=y)
+            paddle_dygraph_out.append(out2)
+            # Keywords args for torch
+            out3 = paddle.expand_as(input=x, other=y)
+            paddle_dygraph_out.append(out3)
+            # Combined args and kwargs
+            out4 = paddle.expand_as(x, y=y)
+            paddle_dygraph_out.append(out4)
+            # Tensor method args
+            out5 = x.expand_as(y)
+            paddle_dygraph_out.append(out5)
+            # Tensor method kwargs
+            out6 = x.expand_as(other=y)
+            paddle_dygraph_out.append(out6)
+            exe = paddle.static.Executor(base.CPUPlace())
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_input},
+                fetch_list=[out1, out2, out3, out4, out5, out6],
+            )
+            for out in fetches:
+                np.testing.assert_allclose(out, self.np_ref_out)
+
+
+if __name__ == "__main__":
+    paddle.enable_static()
+    unittest.main()

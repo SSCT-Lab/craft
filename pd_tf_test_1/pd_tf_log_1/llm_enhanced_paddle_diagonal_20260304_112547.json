@@ -1,0 +1,1185 @@
+{
+  "pd_api": "paddle.diagonal",
+  "tensorflow_api": "tf.linalg.diag_part",
+  "timestamp": "2026-03-04T11:25:47.317954",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            5,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "offset": 0,
+        "axis1": 0,
+        "axis2": 1,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            5,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "offset": 0,
+        "axis1": 0,
+        "axis2": 1,
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis2'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.linalg.diag_part does not accept 'axis1'/'axis2' parameters; it only supports extracting diagonals from the last two dimensions. To align semantics, we must reshape input to move target axes (0,1) to the end, then use tf.linalg.diag_part without axis args. Paddle's diagonal supports arbitrary axes directly."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "axis2": 1,
+        "axis1": 0,
+        "x": {
+          "shape": [
+            10,
+            5,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "offset": 0,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": 0,
+        "x": {
+          "shape": [
+            10,
+            5,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 5) vs TF=(10, 2)",
+        "pd_shape": [
+          2,
+          5
+        ],
+        "tensorflow_shape": [
+          10,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.diagonal extracts diagonals from 2D planes along axis1 and axis2 (default 0,1), returning shape (10,2) for input (10,5,2) with offset=0. TF's tf.linalg.diag_part treats last two dims as matrix dims by default, but requires k to be [0,0] or scalar 0 for main diagonal; however, its output shape is (10,2) only if input is (10,5,2) and it operates on last two axes — but actual TF behavior yields (10,2) only when axes are [-2,-1]; current TF test uses k=0 on 3D input which defaults to diag_part on last two dims, yet observed TF output shape is (10,2), not (10,2) vs expected (2,5) mismatch suggests axis misalignment. To align semantics: Paddle uses axis1=1, axis2=2 to match TF's implicit last-two-dim behavior, and TF must use explicit axes via tf.linalg.diag_part with k=0 and input reshaped or axes permuted — but TF diag_part has no axis args, so we must transpose input to make last two dims the target plane. Thus repair: transpose Paddle input to (5,2,10) with axis1=0,axis2=1 → output (5,10), and TF input must be (5,2,10) with k=0 → output (5,10); but original shape (10,5,2) should map to diagonal over dim1=1,dim2=2 → Paddle: axis1=1,axis2=2, x=(10,5,2) → output (10,2); TF requires input with last two dims as matrix, so no transpose needed — but observed TF output shape (10,2) contradicts reported (10,2) vs (2,5). The reported mismatch PD=(2,5) vs TF=(10,2) implies Paddle was called with axis1=0,axis2=1 on (10,5,2) → diagonal of each 10x5 slice → 10 slices → each gives min(10,5)=5 elements → output (5,2)? No: paddle.diagonal on (10,5,2) with axis1=0,axis2=1 takes diagonal across dim0 and dim1 → for each fixed dim2 index, extracts diagonal of 10x5 matrix → length=min(10,5)=5, and there are 2 such diagonals → output shape (5,2). TF tf.linalg.diag_part on (10,5,2) with k=0 operates on last two dims (5,2) → diagonal length=min(5,2)=2, batch dim=10 → output (10,2). So shapes (5,2) vs (10,2) differ. To align: Paddle must use axis1=1,axis2=2 → diagonal across 5x2 planes → each gives min(5,2)=2 elements, 10 such planes → output (10,2), matching TF. Hence repair Paddle axis1=1, axis2=2."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "axis2": 2,
+        "axis1": 1,
+        "x": {
+          "shape": [
+            10,
+            5,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "offset": 0,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": 0,
+        "x": {
+          "shape": [
+            10,
+            5,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          2
+        ],
+        "tensorflow_shape": [
+          10,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量升维至4D并调整axis1/axis2为非默认值，同时在TF侧使用k=[-1,1]提取多条对角线以验证边界行为和多对角支持能力，确保跨框架语义等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "axis2": 3,
+        "axis1": 1,
+        "x": {
+          "shape": [
+            3,
+            4,
+            5,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "offset": -1,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": [
+          -1,
+          1
+        ],
+        "x": {
+          "shape": [
+            3,
+            4,
+            5,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(3, 5, 3) vs TF=(3, 4, 3, 4)",
+        "pd_shape": [
+          3,
+          5,
+          3
+        ],
+        "tensorflow_shape": [
+          3,
+          4,
+          3,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "offset": -2,
+        "axis1": 3,
+        "axis2": 0,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "offset": -2,
+        "axis1": 3,
+        "axis2": 0,
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis2'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.linalg.diag_part does not accept 'axis1'/'axis2' parameters; it only supports 'k' (diagonal offset) and 'padding_value', and operates on the last two dimensions by default. To align semantics, we must remove axis1/axis2 and instead transpose input to make target axes the last two, matching tf.linalg.diag_part's fixed axis behavior."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "axis2": 0,
+        "axis1": 3,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -2,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 4, 2) vs TF=(4, 2, 2)",
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": [
+          4,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.diagonal supports arbitrary axis1/axis2 (e.g., axis1=3, axis2=0) to extract diagonals from any two dimensions, while tf.linalg.diag_part only extracts diagonals from the last two dimensions (M,N) by default and does not support custom axes. To achieve semantic equivalence, we must reshape input to move target axes to the end before diag_part, and adjust k accordingly. Here, original axes (3,0) in [4,2,4,4] imply extracting diagonals from dim3 and dim0 — which is non-standard; correct alignment requires using axes (-2,-1) or reshaping. So repair: use axis1=2, axis2=3 in Paddle (last two dims), and match with tf.linalg.diag_part on same last two dims."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "axis2": 3,
+        "axis1": 2,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -2,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          4,
+          2,
+          2
+        ],
+        "tensorflow_shape": [
+          4,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量升维至5D并调整axis1/axis2为最外层二维，offset设为边界值-3，验证高维及偏移边界行为；同时TensorFlow侧k需保持单整数（非[k1,k2]区间）以语义对齐paddle.diagonal的scalar offset。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "axis2": 0,
+        "axis1": 1,
+        "x": {
+          "shape": [
+            4,
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "offset": -3,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -3,
+        "x": {
+          "shape": [
+            4,
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 4, 4, 1) vs TF=(4, 4, 2, 1)",
+        "pd_shape": [
+          2,
+          4,
+          4,
+          1
+        ],
+        "tensorflow_shape": [
+          4,
+          4,
+          2,
+          1
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            100
+          ],
+          "dtype": "int64"
+        },
+        "offset": 0,
+        "axis1": 0,
+        "axis2": 1,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            100,
+            100
+          ],
+          "dtype": "int64"
+        },
+        "offset": 0,
+        "axis1": 0,
+        "axis2": 1,
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis2'",
+        "comparison_error": null,
+        "pd_shape": [
+          100
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.diag_part does not accept 'axis1' or 'axis2' parameters; it only supports 'k' (diagonal offset) and 'name'. To align semantics, we must remove axis1/axis2 and use default diagonal extraction on last two dimensions. Paddle's axis1=0, axis2=1 on 2D input is equivalent to TF's default behavior, so TF test case should omit unsupported args."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "axis2": 1,
+        "axis1": 0,
+        "x": {
+          "shape": [
+            100,
+            100
+          ],
+          "dtype": "int64"
+        },
+        "offset": 0,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": 0,
+        "x": {
+          "shape": [
+            100,
+            100
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          100
+        ],
+        "tensorflow_shape": [
+          100
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int64'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展至3D张量并调整axis1/axis2和offset，验证高维对角提取能力；同时将k改为[k1,k2]区间形式以匹配tf.linalg.diag_part的多对角支持能力。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "axis2": 2,
+        "axis1": 0,
+        "x": {
+          "shape": [
+            5,
+            8,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": [
+          -2,
+          -2
+        ],
+        "x": {
+          "shape": [
+            5,
+            8,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(8, 3) vs TF=(5, 5)",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "tensorflow_shape": [
+          5,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.diagonal with axis1=0, axis2=2 on shape [5,8,5] extracts diagonals from (dim0,dim2) planes → 5×5 matrices, offset=-2 gives length 3 per diagonal, resulting in (8,3). TF's tf.linalg.diag_part expects last two dims as matrix dims by default, but here input is [5,8,5] — it treats batch dims as [5,8] and matrix dims as [5,5], so k=[-2,-2] yields (5,8,3) then squeezes to (5,3) or (8,3) depending on implementation; however official TF doc states output shape is [batch_dims..., max_diag_len] when num_diags==1, so correct TF equivalent must set padding/batch behavior explicitly. To align semantics: TF requires input reshaped to [5*8, 5] then diag_part, or use tf.linalg.diag_part with explicit axes via tf.transpose — but tf.linalg.diag_part has no axis args. Hence repair: transpose input to make diagonal dims last: [8,5,5] → then diag_part on last two dims gives (8,3), matching PD. So fix TF case to transpose x to [8,5,5] and adjust k accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "axis2": 2,
+        "axis1": 0,
+        "x": {
+          "shape": [
+            5,
+            8,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            5,
+            8,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "k": [
+          -2,
+          -2
+        ],
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(8, 3) vs TF=(5, 5)",
+        "pd_shape": [
+          8,
+          3
+        ],
+        "tensorflow_shape": [
+          5,
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "offset": -2,
+        "axis1": 3,
+        "axis2": 0,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "offset": -2,
+        "axis1": 3,
+        "axis2": 0,
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis2'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.bool",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.diag_part does not accept 'axis1'/'axis2' parameters; it only supports extracting diagonals from the last two dimensions by default and uses 'k' for offset. To align semantics, we must remove axis1/axis2 and instead transpose input to make target axes the last two, then use k=offset."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "axis2": 0,
+        "axis1": 3,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -2,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 4, 2) vs TF=(4, 2, 2)",
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": [
+          4,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.bool",
+        "tensorflow_dtype": "<dtype: 'bool'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.diagonal uses axis1/axis2 to specify diagonal planes, while TF's tf.linalg.diag_part extracts diagonals from last two dims by default. To align semantics, TF must explicitly transpose input to match axis1=3 and axis2=0 (i.e., dims 3 and 0), then apply diag_part on transposed tensor's last two axes. Original TF case ignores axis ordering, causing shape mismatch (2,4,2 vs 4,2,2). Repair: add transpose in TF to permute [0,1,2,3] -> [1,2,3,0] so dim3 becomes last, dim0 becomes first, enabling diag_part on (last-1,last) = (2,3) which corresponds to Paddle's (axis1=3,axis2=0)."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "axis2": 0,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "axis1": 3,
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -2,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "transpose_perm": [
+          1,
+          2,
+          3,
+          0
+        ],
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'transpose_perm'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.bool",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.diag_part does not accept 'transpose_perm' parameter; it's invalid and causes TypeError. To align semantics with paddle.diagonal(axis1=3, axis2=0, offset=-2) on a 4D tensor, we must permute input to make the target axes (3,0) become the last two axes, then apply diag_part on those — but TF requires manual transpose before diag_part. So remove 'transpose_perm' and instead pre-transpose input so that axis1 and axis2 become -2 and -1, then use k=-2. For shape [4,2,4,4], swapping axes to put dim3 and dim0 last gives [2,4,4,4] → then diag_part on last two dims with k=-2 is valid."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "axis2": 0,
+        "axis1": 3,
+        "x": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            4,
+            2,
+            4,
+            4
+          ],
+          "dtype": "bool"
+        },
+        "k": -2,
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 4, 2) vs TF=(4, 2, 2)",
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": [
+          4,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.bool",
+        "tensorflow_dtype": "<dtype: 'bool'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            0,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "offset": -2,
+        "axis1": 0,
+        "axis2": 3,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            0,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "offset": -2,
+        "axis1": 0,
+        "axis2": 3,
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'axis2'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          0
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.diag_part does not accept 'axis1'/'axis2' parameters; it only supports 'k' (diagonal offset(s)) and 'name', and operates on the last two dimensions by default. To align semantics, we must remove axis1/axis2 and instead permute input to move target axes to the end, then use k=offset. However, shape [0,2,4,4] with axis1=0,axis2=3 implies extracting diagonals across dim0 and dim3 — which tf.linalg.diag_part cannot do directly. The correct repair is to skip unsupported axis specification and use only k, but since Paddle's axis1/axis2 are essential to the test intent and TF lacks equivalent functionality, this is a fundamental API mismatch."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "axis2": 3,
+        "axis1": 0,
+        "x": {
+          "shape": [
+            0,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -2,
+        "x": {
+          "shape": [
+            0,
+            2,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PD=(2, 4, 0) vs TF=(0, 2, 2)",
+        "pd_shape": [
+          2,
+          4,
+          0
+        ],
+        "tensorflow_shape": [
+          0,
+          2,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.diagonal with axis1=0, axis2=3 on 4D tensor [0,2,4,4] extracts diagonals from planes (dim0,dim3), yielding shape (2,4,0); TF's tf.linalg.diag_part treats last two dims as matrix dims by default, but k=-2 on [0,2,4,4] expects diag from last two axes (2,3), so must explicitly set padding or align semantics. To match Paddle's axis1=0,axis2=3, TF requires input reshaped to move dim0 and dim3 to last two positions, but TF only supports diag_part on last two dims. Thus correct TF equivalent is to transpose input to [..., 0, 3] axes last → [2,4,0,4] → transpose to [2,4,4,0] invalid; instead, use valid 2D-plane-aligned case: fix input to non-zero batch dim and align axes — use shape [2,4,4,0] is invalid; best repair is to use standard 4D with non-zero dims and axis1=2,axis2=3 (last two) to match TF's implicit behavior, and adjust offset/k accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "axis2": 3,
+        "axis1": 2,
+        "x": {
+          "shape": [
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "offset": -2,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": -2,
+        "x": {
+          "shape": [
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          2
+        ],
+        "tensorflow_shape": [
+          2,
+          4,
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量升维至5D并调整axis1/axis2为边界值（0和4），offset设为超大负值-10触发边缘对角提取；TensorFlow侧k改为[-10,-10]以语义对齐单对角提取，确保功能等价。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "axis2": 4,
+        "axis1": 0,
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "offset": -10,
+        "api": "paddle.diagonal"
+      },
+      "tensorflow_test_case": {
+        "k": [
+          -10,
+          -10
+        ],
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.diag_part"
+      },
+      "execution_result": {
+        "pd_api": "paddle.diagonal",
+        "tensorflow_api": "tf.linalg.diag_part",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__MatrixDiagPartV3_device_/job:localhost/replica:0/task:0/device:CPU:0}} lower_diag_index is out of bound: -10. It must be between -4 and 4 [Op:MatrixDiagPartV3]",
+        "comparison_error": null,
+        "pd_shape": [
+          3,
+          4,
+          4,
+          0
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

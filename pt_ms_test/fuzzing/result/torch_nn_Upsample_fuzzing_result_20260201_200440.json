@@ -1,0 +1,818 @@
+{
+  "operator": "torch_nn_Upsample",
+  "torch_api": "torch.nn.Upsample",
+  "mindspore_api": "mindspore.nn.Upsample",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T20:04:40.666411",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_Upsample_20260125_230925.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.Upsample",
+        "input": {
+          "shape": [
+            1,
+            1,
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8977145552635193,
+            -0.7985034584999084,
+            -0.07931412756443024,
+            0.4947980046272278,
+            0.0524185374379158,
+            -0.9150913953781128
+          ]
+        },
+        "size": null,
+        "scale_factor": 2.0,
+        "mode": "bilinear",
+        "align_corners": false
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.nn.Upsample",
+        "input": {
+          "shape": [
+            1,
+            1,
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8977145552635193,
+            -0.7985034584999084,
+            -0.07931412756443024,
+            0.4947980046272278,
+            0.0524185374379158,
+            -0.9150913953781128
+          ]
+        },
+        "size": [
+          4,
+          6
+        ],
+        "scale_factor": null,
+        "mode": "bilinear",
+        "align_corners": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发边界处理差异，如NaN传播规则、无穷大插值行为、次正规数舍入，暴露两框架在bilinear插值中对异常值的数学实现不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "size": null,
+            "scale_factor": 2.0,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1,1]）",
+          "mutation_reason": "单元素张量是插值算子的极端边界情况，易暴露框架对退化坐标映射、align_corners处理或scale_factor解析的实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.5
+              ]
+            },
+            "size": null,
+            "scale_factor": 2.0,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.5
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，保持数学等价性",
+          "mutation_reason": "float64 更高精度可暴露因浮点舍入策略差异（如插值权重计算顺序、边界处理）导致的框架实现 bug，且两框架均完全支持该类型",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.8977145552635193,
+                -0.7985034584999084,
+                -0.07931412756443024,
+                0.4947980046272278,
+                0.0524185374379158,
+                -0.9150913953781128
+              ]
+            },
+            "size": null,
+            "scale_factor": 2.0,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.8977145552635193,
+                -0.7985034584999084,
+                -0.07931412756443024,
+                0.4947980046272278,
+                0.0524185374379158,
+                -0.9150913953781128
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_Upsample_20260125_230925.json",
+        "iteration": 3,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.Upsample",
+        "input": {
+          "shape": [
+            1,
+            1,
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2180140018463135,
+            -0.6008206009864807,
+            -0.6731964945793152,
+            0.5861372351646423,
+            -1.2144734859466553,
+            0.9149059653282166
+          ]
+        },
+        "size": [
+          4,
+          6
+        ],
+        "scale_factor": null,
+        "mode": "bilinear",
+        "align_corners": false
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.nn.Upsample",
+        "input": {
+          "shape": [
+            1,
+            1,
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2180140018463135,
+            -0.6008206009864807,
+            -0.6731964945793152,
+            0.5861372351646423,
+            -1.2144734859466553,
+            0.9149059653282166
+          ]
+        },
+        "size": [
+          4,
+          6
+        ],
+        "scale_factor": null,
+        "mode": "bilinear",
+        "align_corners": false
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架边界处理差异，如NaN传播规则、无穷大插值行为、次正规数舍入、负零符号保持等，暴露底层实现不一致",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.2180140018463135,
+                "nan",
+                -0.6731964945793152,
+                "inf",
+                "-inf",
+                -0.0
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.2180140018463135,
+                "nan",
+                -0.6731964945793152,
+                "inf",
+                "-inf",
+                -0.0
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（1,1,1,1）与极端浮点值",
+          "mutation_reason": "单元素输入是插值算子的退化边界，易暴露框架对零步长/单点采样逻辑的实现差异；结合inf/nan/-0.0可检验数值鲁棒性。",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持所有参数一致",
+          "mutation_reason": "高精度浮点下数值稳定性差异更易暴露插值实现中的舍入策略、边界处理或梯度计算bug，且float64在两框架均被完整支持",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.2180140018463135,
+                -0.6008206009864807,
+                -0.6731964945793152,
+                0.5861372351646423,
+                -1.2144734859466553,
+                0.9149059653282166
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.2180140018463135,
+                -0.6008206009864807,
+                -0.6731964945793152,
+                0.5861372351646423,
+                -1.2144734859466553,
+                0.9149059653282166
+              ]
+            },
+            "size": [
+              4,
+              6
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": false
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_Upsample_20260125_230925.json",
+        "iteration": 4,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.Upsample",
+        "input": {
+          "shape": [
+            2,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.35783761739730835,
+            -0.4770914316177368,
+            1.6096954345703125,
+            0.3587919771671295,
+            0.24082018435001373,
+            -0.4341937303543091
+          ]
+        },
+        "size": [
+          2,
+          2
+        ],
+        "scale_factor": null,
+        "mode": "bilinear",
+        "align_corners": true
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.nn.Upsample",
+        "input": {
+          "shape": [
+            2,
+            3,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.35783761739730835,
+            -0.4770914316177368,
+            1.6096954345703125,
+            0.3587919771671295,
+            0.24082018435001373,
+            -0.4341937303543091
+          ]
+        },
+        "size": [
+          2,
+          2
+        ],
+        "scale_factor": null,
+        "mode": "bilinear",
+        "align_corners": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发边界处理差异，如NaN传播逻辑、无穷大插值行为、对齐corner时的数值稳定性问题，暴露底层实现不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                2,
+                3,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                2,
+                3,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1,1]）并填充极端浮点值",
+          "mutation_reason": "单元素输入在双线性插值中退化为常数填充，对align_corners和坐标映射逻辑极其敏感，易暴露框架间网格采样偏移或边界处理差异。",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，保持所有参数一致",
+          "mutation_reason": "float64 更高精度可暴露浮点累积误差差异；两框架在双精度插值中对边界/对齐的数值实现可能不一致，尤其 align_corners=true 时易触发舍入分歧",
+          "torch_test_case": {
+            "api": "torch.nn.Upsample",
+            "input": {
+              "shape": [
+                2,
+                3,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.35783761739730835,
+                -0.4770914316177368,
+                1.6096954345703125,
+                0.3587919771671295,
+                0.24082018435001373,
+                -0.4341937303543091
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": true
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.Upsample",
+            "input": {
+              "shape": [
+                2,
+                3,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.35783761739730835,
+                -0.4770914316177368,
+                1.6096954345703125,
+                0.3587919771671295,
+                0.24082018435001373,
+                -0.4341937303543091
+              ]
+            },
+            "size": [
+              2,
+              2
+            ],
+            "scale_factor": null,
+            "mode": "bilinear",
+            "align_corners": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "ValueError: either size or scale_factor should be defined",
+            "mindspore_error": "ValueError: For 'interpolate', 'size' and 'scale_factor' cannot be both empty",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

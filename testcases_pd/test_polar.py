@@ -1,0 +1,173 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+# import torch
+import numpy as np
+from op_test import get_places
+
+import paddle
+
+np.random.seed(10)
+
+
+def numpy_polar(abs, angle):
+    real = np.multiply(abs, np.cos(angle))
+    imag = np.multiply(abs, np.sin(angle))
+    return real + imag * 1j
+
+
+class TestPolarAPI(unittest.TestCase):
+    def setUp(self):
+        self.abs = np.array([1, 2]).astype("float64")
+        self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
+        self.place = get_places()
+
+    def test_api_static(self):
+        paddle.enable_static()
+
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                abs = paddle.static.data(
+                    'abs',
+                    shape=self.abs.shape,
+                    dtype="float64",
+                )
+                angle = paddle.static.data(
+                    'angle', shape=self.angle.shape, dtype="float64"
+                )
+                out1 = paddle.polar(abs, angle)
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    feed={'abs': self.abs, 'angle': self.angle},
+                    fetch_list=[out1],
+                )
+            out_ref = numpy_polar(self.abs, self.angle)
+            np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
+
+        for place in self.place:
+            run(place)
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            abs = paddle.to_tensor(self.abs)
+            angle = paddle.to_tensor(self.angle)
+            out1 = paddle.polar(abs, angle)
+
+            out_ref1 = numpy_polar(self.abs, self.angle)
+            np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_out_complex64(self):
+        paddle.disable_static()
+        abs = paddle.to_tensor(self.abs, dtype=paddle.float32)
+        angle = paddle.to_tensor(self.angle, dtype=paddle.float32)
+        out = paddle.polar(abs, angle)
+        self.assertTrue(out.type, 'complex64')
+
+    def test_out_complex128(self):
+        paddle.disable_static()
+        abs = paddle.to_tensor(self.abs, dtype=paddle.float64)
+        angle = paddle.to_tensor(self.angle, dtype=paddle.float64)
+        out = paddle.polar(abs, angle)
+        self.assertTrue(out.type, 'complex128')
+
+    def test_empty_input_error(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            abs = paddle.to_tensor(self.abs)
+            angle = paddle.to_tensor(self.angle)
+            self.assertRaises(AttributeError, paddle.polar, None, angle)
+            self.assertRaises(AttributeError, paddle.polar, abs, None)
+
+
+class TestPolarAPI_ZeroSize(unittest.TestCase):
+    def init_input(self):
+        self.abs = np.random.random([0, 2])
+        self.angle = np.array([np.pi / 2, 5 * np.pi / 4]).astype("float64")
+
+    def setUp(self):
+        self.init_input()
+        self.place = get_places()
+
+    def test_api_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            abs = paddle.to_tensor(self.abs)
+            abs.stop_gradient = False
+            angle = paddle.to_tensor(self.angle)
+            out1 = paddle.polar(abs, angle)
+
+            out_ref1 = numpy_polar(self.abs, self.angle)
+            np.testing.assert_allclose(out_ref1, out1.numpy(), rtol=1e-05)
+            loss = paddle.sum(out1)
+            loss.backward()
+            np.testing.assert_allclose(abs.grad.shape, abs.shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+class TestPolarAPI_ZeroSize2(TestPolarAPI_ZeroSize):
+    def init_input(self):
+        self.abs = np.random.random([0, 0])
+        self.angle = np.random.random([0, 1])
+
+
+class TestPolarOut(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.shape = [3, 4]
+        self.abs_np = np.random.rand(*self.shape).astype(np.float32)
+        self.angle_np = np.random.rand(*self.shape).astype(np.float32)
+        self.test_types = ["out"]
+
+    def do_test(self, test_type):
+        abs_t = paddle.to_tensor(self.abs_np, stop_gradient=False)
+        angle_t = paddle.to_tensor(self.angle_np, stop_gradient=False)
+
+        if test_type == 'raw':
+            result = paddle.polar(abs_t, angle_t)
+            result.real().mean().backward()
+            return result, abs_t.grad, angle_t.grad
+        elif test_type == 'out':
+            out = paddle.empty(self.shape, dtype='complex64')
+            out.stop_gradient = False
+            paddle.polar(abs_t, angle_t, out=out)
+            out.real().mean().backward()
+            return out, abs_t.grad, angle_t.grad
+        else:
+            raise ValueError(f"Unknown test type: {test_type}")
+
+    def test_out(self):
+        out_std, abs_grad_std, angle_grad_std = self.do_test('raw')
+        for test_type in self.test_types:
+            out, abs_grad, angle_grad = self.do_test(test_type)
+            np.testing.assert_allclose(out.numpy(), out_std.numpy(), rtol=1e-6)
+            np.testing.assert_allclose(
+                abs_grad.numpy(), abs_grad_std.numpy(), rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                angle_grad.numpy(), angle_grad_std.numpy(), rtol=1e-6
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

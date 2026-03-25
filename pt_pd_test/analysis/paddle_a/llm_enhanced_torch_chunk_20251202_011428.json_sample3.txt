@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_chunk_20251202_011428.json
+样例编号: 3
+paddle_error 错误信息: (InvalidArgument) The input's size along the split dimension must be evenly divisible by Attr(num_or_sections). But received Attr(num_or_sections) = 2, input(X)'s shape = [8, 3, 1], Attr(dim) = 1.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      8,
+      3,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.5890466570854187,
+      0.07740233093500137,
+      0.9066061973571777,
+      0.5116668939590454,
+      -1.6891884803771973,
+      -0.1617494523525238,
+      -0.3311023712158203,
+      2.0572831630706787,
+      0.3764258325099945,
+      -1.0230562686920166
+    ]
+  },
+  "chunks": 2,
+  "dim": 1,
+  "api": "torch.chunk"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [
+      8,
+      3,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.5890466570854187,
+      0.07740233093500137,
+      0.9066061973571777,
+      0.5116668939590454,
+      -1.6891884803771973,
+      -0.1617494523525238,
+      -0.3311023712158203,
+      2.0572831630706787,
+      0.3764258325099945,
+      -1.0230562686920166
+    ]
+  },
+  "chunks": 2,
+  "dim": 1,
+  "api": "torch.chunk"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `torch.chunk` 要求输入在指定维度上的尺寸必须能被 `chunks` 整除，否则抛出错误；而 PyTorch 的 `torch.chunk` 允许非整除情况，会自动调整各分块大小（最后一个块可能略大），即“可能返回少于指定数量的块”。
+   - 本例中输入 shape 为 [8, 3, 1]，dim=1，即沿第1维（size=3）分割为2个chunk，3不能被2整除，因此 PaddlePaddle 报错，而 PyTorch 可以正常执行。
+
+3. 修复建议：
+   - 该行为差异属于框架实现不一致，可提交 issue 给 PaddlePaddle 官方，建议其对 `torch.chunk` 的语义与 PyTorch 保持一致，允许非整除情况。

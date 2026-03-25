@@ -1,0 +1,398 @@
+{
+  "operator": "torch.lu_solve",
+  "timestamp": "2026-01-23T18:01:11.409243",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "b": {
+          "shape": [
+            2,
+            3,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.09562835842370987,
+            0.231288880109787,
+            1.7845252752304077,
+            -1.1675294637680054,
+            -0.5635356307029724,
+            -0.3047032058238983
+          ]
+        },
+        "LU_data": {
+          "shape": [
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.3434240818023682,
+            0.41082555055618286,
+            1.1109179258346558,
+            -0.7840932011604309,
+            1.1817504167556763,
+            -1.9389535188674927,
+            0.277950644493103,
+            0.15803863108158112,
+            0.06524559110403061,
+            -0.3121345639228821
+          ]
+        },
+        "LU_pivots": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int32",
+          "sample_values": [
+            9,
+            3,
+            -3,
+            3,
+            7,
+            -8
+          ]
+        },
+        "api": "torch.lu_solve"
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            2,
+            3,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.09562835842370987,
+            0.231288880109787,
+            1.7845252752304077,
+            -1.1675294637680054,
+            -0.5635356307029724,
+            -0.3047032058238983
+          ]
+        },
+        "LU_data": {
+          "shape": [
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.3434240818023682,
+            0.41082555055618286,
+            1.1109179258346558,
+            -0.7840932011604309,
+            1.1817504167556763,
+            -1.9389535188674927,
+            0.277950644493103,
+            0.15803863108158112,
+            0.06524559110403061,
+            -0.3121345639228821
+          ]
+        },
+        "LU_pivots": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int32",
+          "sample_values": [
+            9,
+            3,
+            -3,
+            3,
+            7,
+            -8
+          ]
+        },
+        "api": "tf.linalg.lu_solve"
+      },
+      "execution_result": {
+        "torch_api": "torch.lu_solve",
+        "tensorflow_api": "tf.linalg.lu_solve",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"",
+        "tensorflow_error": "Got an unexpected keyword argument 'b'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'b'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.lu_solve requires three positional arguments: 'b', 'LU_data', 'LU_pivots' — but the original test case only provides kwargs, causing 'missing 3 required positional arguments' error. TensorFlow tf.linalg.lu_solve does not accept 'b' as a keyword argument; its signature is (lower_upper, perm, rhs, validate_args=False, name=None), where 'rhs' corresponds to 'b', and 'lower_upper' and 'perm' correspond to LU decomposition outputs — but 'LU_data' and 'LU_pivots' from PyTorch's lu_factor() are not directly compatible: TF expects 'lower_upper' to be a packed LU matrix (same shape as LU_data), and 'perm' to be a permutation vector of dtype int32 with shape [m] per batch (not [* , m] like LU_pivots — note PyTorch LU_pivots are 1-indexed and require conversion). Also, TF's 'perm' must be rank-1 per batch or broadcastable, while PyTorch LU_pivots has batch dims. Thus, the original test case fails due to parameter name mismatch, signature incompatibility, and missing required args. Repair involves: (1) for PyTorch: ensure positional call or correct kwarg names (but torch.lu_solve does NOT support kwargs 'b', 'LU_data', 'LU_pivots' — it only accepts positional args); (2) for TensorFlow: replace 'b' → 'rhs', 'LU_data' → 'lower_upper', 'LU_pivots' → 'perm', and adjust 'perm' shape to match TF expectation (remove batch dim prefix if needed, or squeeze to [m] for single-batch, but here batch=2 so perm must be shape [2, 3] — which TF supports since it accepts batched perm). However, critical issue: TF's tf.linalg.lu_solve expects 'perm' to be int32 with values in [0, m), while PyTorch's LU_pivots are 1-indexed. So repair must convert pivots: subtract 1. Also, TF requires 'validate_args=False' to avoid assertion failures on invalid permutations. Finally, both frameworks require valid LU inputs — so we add minimal valid data generation logic implicitly via shape/dtype, but test case only declares specs; thus repair focuses on correct parameter mapping and mandatory args."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.lu_solve",
+        "args": [
+          {
+            "shape": [
+              2,
+              3,
+              1
+            ],
+            "dtype": "float32"
+          },
+          {
+            "shape": [
+              2,
+              3,
+              3
+            ],
+            "dtype": "float32"
+          },
+          {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "int32"
+          }
+        ],
+        "kwargs": {}
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.lu_solve",
+        "args": [],
+        "kwargs": {
+          "lower_upper": {
+            "shape": [
+              2,
+              3,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "perm": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "int32"
+          },
+          "rhs": {
+            "shape": [
+              2,
+              3,
+              1
+            ],
+            "dtype": "float32"
+          },
+          "validate_args": false
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.lu_solve",
+        "tensorflow_api": "tf.linalg.lu_solve",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"",
+        "tensorflow_error": "Got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.lu_solve要求三个位置参数b、LU_data和LU_pivots，但原始测试用例中args为空导致缺少必要参数；TensorFlow的tf.linalg.lu_solve不接受args，所有输入应通过kwargs传递，但原始调用中错误地使用了args字段。根据文档，PyTorch端需将生成的张量按正确顺序放入args中作为位置参数，而TensorFlow端应确保所有参数为关键字参数且名称匹配（lower_upper、perm、rhs）。因此需要修复参数传递方式以符合各自框架的API规范。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.lu_solve",
+        "args": [
+          {
+            "shape": [
+              2,
+              3,
+              1
+            ],
+            "dtype": "float32"
+          },
+          {
+            "shape": [
+              2,
+              3,
+              3
+            ],
+            "dtype": "float32"
+          },
+          {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "int32"
+          }
+        ],
+        "kwargs": {}
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.lu_solve",
+        "args": [],
+        "kwargs": {
+          "lower_upper": {
+            "shape": [
+              2,
+              3,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "perm": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "int32"
+          },
+          "rhs": {
+            "shape": [
+              2,
+              3,
+              1
+            ],
+            "dtype": "float32"
+          },
+          "validate_args": false
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.lu_solve",
+        "tensorflow_api": "tf.linalg.lu_solve",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"",
+        "tensorflow_error": "Got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.lu_solve requires three positional arguments: 'b', 'LU_data', and 'LU_pivots', but the original test case passes shape/dtype dicts as args without constructing actual tensors or respecting argument order and naming. TensorFlow tf.linalg.lu_solve expects 'lower_upper', 'perm', 'rhs' as kwargs, but the original case incorrectly omits required tensor construction and uses placeholder dicts instead of real tensors; also 'validate_args' is a boolean flag, not a tensor. Both frameworks fail because inputs are not valid tensor objects — they're just metadata dicts. Repair must replace dict placeholders with proper tensor generation logic (implied by test harness), but per output format requirement, we fix the *specification*: ensure PyTorch args match positional signature (b, LU_data, LU_pivots), and TensorFlow kwargs match documented names and types. Also, LU_pivots in PyTorch must be int32/int64 and perm in TF must be int32 — dtype aligns. Shape compatibility: b=(*,m,k), LU_data=(*,m,m), LU_pivots=(*,m) → all batch size 2, m=3, k=1 is valid. No mutation needed — the issue is structural misuse of API, not input values."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.lu_solve",
+        "args": [
+          {
+            "shape": [
+              2,
+              3,
+              1
+            ],
+            "dtype": "float32"
+          },
+          {
+            "shape": [
+              2,
+              3,
+              3
+            ],
+            "dtype": "float32"
+          },
+          {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "int32"
+          }
+        ],
+        "kwargs": {}
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.lu_solve",
+        "args": [],
+        "kwargs": {
+          "lower_upper": {
+            "shape": [
+              2,
+              3,
+              3
+            ],
+            "dtype": "float32"
+          },
+          "perm": {
+            "shape": [
+              2,
+              3
+            ],
+            "dtype": "int32"
+          },
+          "rhs": {
+            "shape": [
+              2,
+              3,
+              1
+            ],
+            "dtype": "float32"
+          },
+          "validate_args": false
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.lu_solve",
+        "tensorflow_api": "tf.linalg.lu_solve",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"",
+        "tensorflow_error": "Got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: lu_solve() missing 3 required positional argument: \"input\", \"LU_data\", \"LU_pivots\"\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

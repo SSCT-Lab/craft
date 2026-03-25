@@ -1,0 +1,49 @@
+来源文件: llm_enhanced_torch_bincount_20251125_142855.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) The elements in input tensor must be non-negative ints
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bincount",
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -1,
+      -10,
+      -3,
+      1,
+      -6
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.bincount",
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -1,
+      -10,
+      -3,
+      1,
+      -6
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.bincount` 要求输入张量的元素必须为非负整数（non-negative ints），而本测试用例中输入包含 `-1, -10, -3, -6` 等负值，违反了该限制，因此抛出错误 `(InvalidArgument) The elements in input tensor must be non-negative ints`。  
+   - PyTorch 的 `torch.bincount` 也要求输入为非负整数，但实际在某些版本中对负数会报错或产生未定义行为；然而本样例中两者行为一致：均不支持负数输入，故错误根源在于输入数据本身不符合两个框架的共同语义要求，但问题出现在执行阶段——说明该测试用例设计上就存在输入非法的问题，属于框架对非法输入的严格一致性处理，而非映射错误。
+
+3. 修复建议：  
+   - 无需修复映射，但应确保测试用例输入符合 API 语义要求（如使用非负整数）；若需验证负数处理逻辑，需选择其他语义兼容的 API。

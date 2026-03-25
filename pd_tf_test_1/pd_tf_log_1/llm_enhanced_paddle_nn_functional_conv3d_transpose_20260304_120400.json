@@ -1,0 +1,2177 @@
+{
+  "pd_api": "paddle.nn.functional.conv3d_transpose",
+  "tensorflow_api": "tf.nn.conv3d_transpose",
+  "timestamp": "2026-03-04T12:04:00.357516",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.nn.conv3d_transpose不支持'groups'参数，而PaddlePaddle支持。需移除TensorFlow侧的groups参数，并调整weight形状以匹配TF要求：TF要求filters shape为[depth, height, width, output_channels, in_channels]，当前weight[3,6,3,3,3]应改为[3,3,3,6,3]；同时x需为NDHWC格式[2,5,5,5,3]以匹配TF默认data_format。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          2,
+          5,
+          5,
+          5,
+          6
+        ],
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错源于MKL后端无法创建primitive descriptor，常见于output_shape与输入、滤波器、stride、padding组合不兼容。Paddle用NCDHW格式(x:[2,3,5,5,5], weight:[3,6,3,3,3])对应TF应使用NCDHW data_format且filters需为[3,3,3,6,3]→但TF要求filters shape为[depth,height,width,output_channels,input_channels]，而input是NCDHW时input_channels=3，故filters应为[3,3,3,6,3]正确；但output_shape[2,5,5,5,6]在VALID下不匹配：输入D=5，kernel=3，stride=1 → output_depth = (5-1)*1 + 3 = 7，非5。需重算output_shape或改padding=SAME。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          2,
+          5,
+          5,
+          5,
+          6
+        ],
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          5,
+          5,
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错因ONEDNN底层primitive创建失败，常见于output_shape与input/filters/strides/padding不兼容；原始TF output_shape[2,5,5,5,6]在NDHWC下对应输入[2,3,5,5,5]、filters[3,3,3,6,3]、SAME padding、strides[1,1,1,1,1]时，理论输出深度应为5（非5），需按conv3d_transpose数学定义重算output_shape；Paddle使用NCDHW默认格式，TF用NDHWC，故TF input shape应为[2,5,5,5,3]，filters应为[3,3,3,6,3]→正确，但output_shape必须显式匹配：NDHWC下output_shape=[2,5,5,5,6]仅当stride=1且padding=SAME时成立，但实际SAME padding在转置卷积中需满足输入尺寸可被stride整除，此处5%1==0成立，但ONEDNN对SAME有严格约束；修复：改用VALID padding并显式计算output_shape=[2,7,7,7,6]以规避ONEDNN SAME缺陷，同时统一data_format为NCDHW避免格式混淆。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "VALID",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          2,
+          7,
+          7,
+          7,
+          6
+        ],
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          5,
+          5,
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.conv3d_transpose does not support 'groups' parameter, unlike Paddle's conv3d_transpose. Per TF docs, grouped convolution is not natively supported; must remove 'groups' and ensure filter shape matches TF's expected [depth, height, width, output_channels, in_channels] format, while Paddle uses [C, M/g, kD, kH, kW]. Also, TF requires explicit output_shape and data_format."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          5,
+          5,
+          5,
+          6
+        ],
+        "input": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          5,
+          5,
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错因ONEDNN底层primitive创建失败，主因是output_shape与input/filters/strides/padding不兼容；Paddle用padding=[1,1,1]对应VALID/SAME语义模糊，而TF要求明确指定padding='SAME'或'VALID'且output_shape必须严格满足计算公式。需将Paddle padding改为'SAME'并同步调整TF output_shape为理论推导值[1,5,5,5,6]→实际应为[1,7,7,7,6]（NCDHW: D_out = (D_in-1)*stride - 2*pad + kD = (5-1)*1 - 2*1 + 3 = 5 →但TF NDHWC下input=[1,5,5,5,2], filters=[3,3,3,6,2], stride=1, padding='SAME' ⇒ output_shape must be [1,5,5,5,6] is invalid; correct is [1,5,5,5,6] only for 'VALID', so switch both to 'VALID' and fix output_shape to [1,7,7,7,6]."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "VALID",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          7,
+          7,
+          7,
+          6
+        ],
+        "input": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错因output_shape与input/filters/strides/padding不兼容导致oneDNN内核创建失败；需根据conv3d_transpose输出尺寸公式反推合法output_shape，Paddle中VALID模式下输出尺寸为(5-1)*1+3=7，故output_shape应为[1,7,7,7,6]正确，但TF要求NDHWC格式下input shape应为[1,5,5,5,2]而非[1,2,5,5,5]，需修正data_format和input/filters形状以语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "VALID",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          7,
+          7,
+          7,
+          6
+        ],
+        "input": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          1,
+          0,
+          1,
+          2
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          1,
+          0,
+          1,
+          2
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          6,
+          6,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.conv3d_transpose does not support 'groups' parameter, unlike Paddle's conv3d_transpose. Per TF docs, grouped convolution is not natively supported; must remove 'groups' and ensure filter shape matches TF's expected [depth, height, width, output_channels, in_channels] format. Also, input must be in NDHWC or NCDHW, and output_shape must be explicitly provided."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          1,
+          0,
+          1,
+          0,
+          1,
+          2
+        ],
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          5,
+          5,
+          5,
+          6
+        ],
+        "input": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          6,
+          6,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow failed with ONEDNN primitive creation error due to invalid output_shape and padding mismatch. Paddle uses explicit asymmetric padding [1,0,1,0,1,2] while TF only supports 'SAME'/'VALID' or symmetric padding via explicit shape calculation. Need to compute correct output_shape for NDHWC format and replace padding with 'VALID' or consistent explicit padding."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          1,
+          0,
+          1,
+          0,
+          1,
+          2
+        ],
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          7,
+          7,
+          7,
+          6
+        ],
+        "input": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          6,
+          6,
+          4
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错源于MKL后端无法创建primitive descriptor，常见于padding与output_shape不匹配或data_format/shape不兼容。Paddle用NCDHW格式（x:[1,2,5,5,5], weight:[2,6,3,3,3]）对应TF应为NCDHW data_format，但TF测试用例错误使用NDHWC且filters形状[3,3,3,6,2]与input[1,2,5,5,5]通道维不匹配；需统一为NCDHW，修正filters为[3,3,3,6,2]→[3,3,3,6,2]保持in_channels=2，output_shape按NCDHW计算为[1,6,7,7,7]，padding改为'VALID'语义等价的显式计算值。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "VALID",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "input": {
+          "shape": [
+            1,
+            2,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 30.89964485",
+        "pd_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          2
+        ],
+        "padding": "SAME",
+        "dilation": [
+          1,
+          2,
+          1
+        ],
+        "groups": 1,
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          2
+        ],
+        "padding": "SAME",
+        "dilation": [
+          1,
+          2,
+          1
+        ],
+        "groups": 1,
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          4,
+          4,
+          8
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.conv3d_transpose does not support 'groups' parameter, unlike Paddle's conv3d_transpose. Per TF docs, grouped convolution must be emulated via manual channel splitting or using tf.nn.depthwise_conv2d for 2D; for 3D, no native groups support exists. Also, TF expects filters shape [depth, height, width, output_channels, in_channels], but current weight shape [2,6,3,3,3] assumes Paddle's [C_in, C_out/groups, kD,kH,kW] — must transpose and reshape to [kD,kH,kW,C_out,C_in] = [3,3,3,6,2]. Input format must be NDHWC ([N,D,H,W,C]) in TF, but current x shape [1,2,4,4,4] is NCDHW — needs reshaping to [1,4,4,4,2]. Stride/dilation must be 5-element or 3-element per TF doc, and output_shape is mandatory in TF but missing."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          2,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          2
+        ]
+      },
+      "tensorflow_test_case": {
+        "dilations": [
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          2,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          4,
+          4,
+          8,
+          6
+        ],
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'weight'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          4,
+          4,
+          8
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv3d_transpose does not accept 'weight' argument; it expects 'filters'. Also, 'output_shape' is mandatory and must be a 1-D tensor of length 5. Input 'x' in TF must match data_format: for 'NDHWC', shape is [N,D,H,W,C], but original x shape [1,2,4,4,4] assumes NCDHW. We fix by reordering x to [1,4,4,4,2], filters to [3,3,3,6,2] (D,H,W,OUT_C,IN_C), output_shape=[1,4,4,8,6], and using correct parameter names."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          2,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          2
+        ]
+      },
+      "tensorflow_test_case": {
+        "dilations": [
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          2,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          4,
+          4,
+          8,
+          6
+        ],
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          4,
+          4,
+          8
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错源于dilations/strides维度顺序与data_format不匹配：TF要求5维dilations/strides for NDHWC=[N,D,H,W,C]，但原用例dilations[1,1,2,1,1]对应NDHWC正确，而strides[1,1,1,2,1]将stride_W=2放在第4位（W位置），但input shape[1,2,4,4,4] in NDHWC means [N,D,H,W,C] => D=2,H=4,W=4,C=4，故stride should apply to D/H/W => positions 1/2/3; also output_shape must be consistent with stride/dilation/padding math. Fixed by aligning strides to [1,1,1,2,1] → [1,1,1,2,1] is actually correct for NDHWC, but output_shape [1,4,4,8,6] is invalid: with input D=2, kernel D=3, stride D=1, padding SAME → output D = ceil(2/1)=2, not 4. Recomputed valid output_shape using TF's formula and fixed filters shape to match NDHWC: [kD,kH,kW,out_ch,in_ch] = [3,3,3,6,2]."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "SAME",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          2,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          2
+        ]
+      },
+      "tensorflow_test_case": {
+        "dilations": [
+          1,
+          1,
+          2,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "strides": [
+          1,
+          1,
+          1,
+          2,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            2,
+            4,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          4,
+          4,
+          8,
+          6
+        ],
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          6,
+          4,
+          4,
+          8
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 2,
+        "api": "paddle.nn.functional.conv3d_transpose"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 2,
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'groups'",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          12,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.nn.conv3d_transpose不支持'groups'参数，而PaddlePaddle支持；需移除TensorFlow侧的groups参数，并调整weight形状以语义等价：TF要求weight shape [kD,kH,kW,output_channels,in_channels]，且groups需通过拆分输入/权重并手动调用多次conv3d_transpose或使用tf.nn.depthwise_conv2d等替代，但标准conv3d_transpose无groups。因此修复为移除groups，并修正weight shape为[3,3,3,6,4]（NDHWC格式下：depth,height,width,out_c,in_c），同时确保input为NDHWC格式[1,5,5,5,4]。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "groups": 2,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          5,
+          5,
+          5,
+          6
+        ],
+        "input": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NDHWC",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "comparison_error": null,
+        "pd_shape": [
+          1,
+          12,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错因ONEDNN底层primitive创建失败，常见于groups>1时TF不支持分组转置卷积；Paddle支持groups=2但TF tf.nn.conv3d_transpose无groups参数且不支持分组语义。需移除groups并调整weight/filters形状以匹配单组等价计算，同时统一data_format为NCDHW并修正output_shape推导。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "input": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 44.37514114",
+        "pd_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle和TensorFlow的conv3d_transpose在padding语义和output_shape计算上不一致：Paddle的padding=[0,0,0]对应'VALID'但需显式对齐；TensorFlow要求output_shape精确指定且filters形状为[depth,height,width,output_channels,input_channels]，而Paddle weight为[input_channels,output_channels/groups,kD,kH,kW]。原始TF output_shape [1,6,7,7,7]是错的——输入NCDHW[1,4,5,5,5]，kernel[3,3,3]，stride[1,1,1]，VALID下输出应为[1,6,5+3-1,5+3-1,5+3-1]=[1,6,7,7,7]正确，但Paddle默认无output_shape参数，其隐式输出尺寸由公式推导，而TF必须严格匹配。关键差异在于Paddle weight shape [4,6,3,3,3]对应input_c=4, output_c=6，TF filters shape应为[3,3,3,6,4]（已满足），但data_format=NCDHW时TF input=[1,4,5,5,5]与Paddle x=[1,4,5,5,5]一致，然而Paddle默认data_format='NCDHW'，TF需确保strides为5维且首尾为1，当前[1,1,1,1,1]正确。最大误差44.37远超1e-3，属功能对齐失败，需修复TF output_shape计算逻辑并统一padding语义：将Paddle padding设为'VALID'（字符串）以对齐TF，并补全TF output_shape为动态可推导值——但TF强制要求output_shape，故必须精确计算。经验证：NCDHW下，out_d = (in_d-1)*stride_d - 2*pad_d + k_d = (5-1)*1 - 0 + 3 = 7，同理h/w=7，故output_shape=[1,6,7,7,7]正确；但Paddle实际输出shape为[1,6,7,7,7]，说明尺寸一致，差异源于内部实现偏差。根本原因是Paddle weight顺序与TF filters顺序虽已调整，但Paddle conv3d_transpose默认使用'NCDHW'且无data_format参数，而TF需显式指定且其梯度/实现细节不同。最可靠修复是强制双方使用相同padding模式和显式output_size推导：将Paddle padding改为字符串'VALID'，TF保持'VALID'，并确保weight/filters数值初始化一致（测试中未提供init，故需保证shape语义1:1）。因此修复点为：Paddle端padding='VALID'（而非[0,0,0]），TF端保持'VALID'，其他参数不变。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "groups": 1,
+        "padding": "VALID",
+        "api": "paddle.nn.functional.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            6,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1,
+          1
+        ]
+      },
+      "tensorflow_test_case": {
+        "padding": "VALID",
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "api": "tf.nn.conv3d_transpose",
+        "output_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "input": {
+          "shape": [
+            1,
+            4,
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "data_format": "NCDHW",
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.conv3d_transpose",
+        "tensorflow_api": "tf.nn.conv3d_transpose",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 47.45125771",
+        "pd_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "tensorflow_shape": [
+          1,
+          6,
+          7,
+          7,
+          7
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

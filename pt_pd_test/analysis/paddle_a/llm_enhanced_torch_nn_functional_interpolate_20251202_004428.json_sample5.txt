@@ -1,0 +1,79 @@
+来源文件: llm_enhanced_torch_nn_functional_interpolate_20251202_004428.json
+样例编号: 5
+paddle_error 错误信息: Only one of size or scale_factor should be defined.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.interpolate",
+  "input": {
+    "shape": [
+      1,
+      128,
+      32,
+      32
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.03959439140893113,
+      1.5790932435730556,
+      -1.0805657203123094,
+      0.3608723451280368,
+      -2.128689747681449,
+      -1.444766897049274,
+      2.112100739863844,
+      1.038277008132181,
+      -1.090366249983884,
+      0.41104678818068424
+    ]
+  },
+  "size": [
+    64,
+    64
+  ],
+  "scale_factor": 2.0,
+  "mode": "bilinear",
+  "align_corners": true
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.interpolate",
+  "input": {
+    "shape": [
+      1,
+      128,
+      32,
+      32
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.03959439140893113,
+      1.5790932435730556,
+      -1.0805657203123094,
+      0.3608723451280368,
+      -2.128689747681449,
+      -1.444766897049274,
+      2.112100739863844,
+      1.038277008132181,
+      -1.090366249983884,
+      0.41104678818068424
+    ]
+  },
+  "size": [
+    64,
+    64
+  ],
+  "scale_factor": 2.0,
+  "mode": "bilinear",
+  "align_corners": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `interpolate` API 明确要求 **只能设置 `size` 或 `scale_factor` 之一**，且 `size` 优先级高于 `scale_factor`（文档中明确说明：“And size has a higher priority than scale_factor”），但当前测试用例同时传入了 `size=[64, 64]` 和 `scale_factor=2.0`，违反了该约束。
+   - 而 PyTorch 的 `interpolate` 允许同时指定 `size` 和 `scale_factor`，此时会以 `size` 为准，`scale_factor` 仅用于重新计算缩放因子（当 `recompute_scale_factor=True` 时），这与 PaddlePaddle 的行为不一致。
+
+3. 修复建议：
+   - 应移除 `scale_factor` 参数或将其设为 `None`，以符合 PaddlePaddle 的语义要求；此为框架间行为差异，建议提交 issue 至 PaddlePaddle 官方，反映其对 `size` 与 `scale_factor` 同时存在的处理逻辑与 PyTorch 不一致的问题。

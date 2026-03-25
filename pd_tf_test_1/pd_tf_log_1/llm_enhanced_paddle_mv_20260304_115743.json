@@ -1,0 +1,1204 @@
+{
+  "pd_api": "paddle.mv",
+  "tensorflow_api": "tf.linalg.matvec",
+  "timestamp": "2026-03-04T11:57:43.414442",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 14,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'vec'",
+        "comparison_error": null,
+        "pd_shape": [
+          2
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.matvec does not accept parameter name 'vec'; it expects 'a' (matrix) and 'b' (vector). The parameter names must be aligned semantically: 'x' → 'a', 'vec' → 'b'. No other parameter mismatches exist per docs."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 19.74483569",
+        "pd_shape": [
+          2
+        ],
+        "tensorflow_shape": [
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv computes x @ vec (MxN matrix times Nx1 vector), while tf.linalg.matvec by default computes a @ b where a is MxN and b is N-dim, but requires explicit transpose handling if shapes mismatch; however, the documented behavior matches only when no transposition is needed. The inconsistency arises because tf.linalg.matvec expects b to be rank-1 and a to be rank-2 with a.shape[-1] == b.shape[0], which is satisfied, but numerical divergence >1e-3 suggests missing adjoint/transposition alignment or dtype initialization mismatch. Repair: add identical random seed and deterministic init for both frameworks to ensure comparable values."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec",
+        "transpose_a": false,
+        "adjoint_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 19.08617737",
+        "pd_shape": [
+          2
+        ],
+        "tensorflow_shape": [
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv computes x @ vec (x shape [M,N], vec shape [N]), while tf.linalg.matvec computes a @ b where a is [M,N] and b is [N]; however, TensorFlow's matvec expects matrix-vector multiplication in the same order, but inconsistency suggests missing transpose handling — paddle.mv assumes x is MxN and vec is Nx1 implicitly, while tf.linalg.matvec with default flags requires a to be MxN and b to be N-dim; but docs show both are equivalent. The large error (19.08) implies input data mismatch — test cases only specify shapes/dtypes, not actual values. To ensure functional equivalence, we must use identical numeric inputs (same random seed or fixed values) across frameworks; current cases lack 'data' or 'value' fields, causing non-deterministic and divergent results. Repair: inject identical concrete float64 tensors via 'value' field."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            2,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec",
+        "transpose_a": false,
+        "adjoint_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.90456384",
+        "pd_shape": [
+          2
+        ],
+        "tensorflow_shape": [
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            0,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            0,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'vec'",
+        "comparison_error": null,
+        "pd_shape": [
+          0
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.matvec does not accept 'vec' as a parameter name; it expects 'a' (matrix) and 'b' (vector). The original test case incorrectly used 'vec' for TensorFlow, causing TypeError. Repair by renaming 'vec' to 'b' and 'x' to 'a' to match TF's signature while preserving shape/dtype."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            0,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            0,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          0
+        ],
+        "tensorflow_shape": [
+          0
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始用例含空矩阵（shape=[0,100]），属于边界情况；为增强鲁棒性测试，需变异覆盖常见非空、高维、dtype多样性及转置语义等场景，如改为[5,100]形状并增加float32和int32 dtype变体，同时确保tf.linalg.matvec无transposed标志时语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float32"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float32"
+        },
+        "a": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 32.02212906",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv 和 tf.linalg.matvec 功能等价，但 tf.linalg.matvec 默认执行 a @ b（即矩阵左乘向量），而 paddle.mv 也是 x @ vec；结果不一致（max diff=32.02）表明输入数据未对齐——原始用例仅定义shape/dtype，未指定具体数值，导致两框架使用不同随机/默认初始化，必须显式固定相同随机种子和数值以保证可比性；需补充value字段并确保两框架输入张量值完全一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float32"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float32"
+        },
+        "a": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 16.20420790",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            100,
+            0
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            100,
+            0
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'vec'",
+        "comparison_error": null,
+        "pd_shape": [
+          100
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.matvec does not accept 'vec' as a parameter name; it expects 'a' (matrix) and 'b' (vector). The original test case uses 'vec' for TensorFlow, causing TypeError. Repair by renaming 'vec' to 'b' and 'x' to 'a' to match TF's signature, while keeping shapes and dtypes identical."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            100,
+            0
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            100,
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          100
+        ],
+        "tensorflow_shape": [
+          100
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例使用空向量（shape=[0]）和宽为0的矩阵（shape=[100,0]），虽执行一致，但属边界极端情况；需变异以覆盖更典型且具压力的场景，如非空低维、混合精度、高维广播兼容性等，同时确保两框架参数语义对齐（x/a为MxN矩阵，vec/b为N维向量）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            8
+          ],
+          "dtype": "float32"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "a": {
+          "shape": [
+            5,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.34602523",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv and tf.linalg.matvec are semantically equivalent, but tf.linalg.matvec defaults to no transpose while paddle.mv assumes standard matrix-vector multiplication (a @ b). The inconsistency (max diff 2.346) suggests numerical divergence likely due to uninitialized random data causing non-deterministic values; both frameworks require identical input tensors for fair comparison. We must add deterministic 'data' fields with same values in both cases."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            8
+          ],
+          "dtype": "float32"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "a": {
+          "shape": [
+            5,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 10.27628040",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            0,
+            0
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            0,
+            0
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'vec'",
+        "comparison_error": null,
+        "pd_shape": [
+          0
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.matvec does not accept 'vec' as a keyword argument; it expects 'a' (matrix) and 'b' (vector). The parameter names must be aligned: 'x'→'a', 'vec'→'b'. Also, empty-shape tensors [0,0] and [0] are valid but require dtype consistency and proper argument naming."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            0,
+            0
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            0
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            0,
+            0
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          0
+        ],
+        "tensorflow_shape": [
+          0
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例使用全零维张量（shape=[0,0]和[0]），虽执行一致但缺乏测试强度；需变异为非退化边界情况，如1xN矩阵与N维向量，覆盖文档明确要求的[M,N]×[N]→[M]语义，同时保持dtype一致、数值可验证。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.73438636",
+        "pd_shape": [
+          2
+        ],
+        "tensorflow_shape": [
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv and tf.linalg.matvec are semantically equivalent, but tf.linalg.matvec requires matching inner dimensions: a.shape[-1] must equal b.shape[-1]. Here a is [2,3] and b is [3], which is correct. However, inconsistency with max diff 4.73 suggests missing explicit transpose handling or dtype alignment; TensorFlow may default to float32 unless explicitly cast, while Paddle test uses float64. To ensure numerical equivalence, we must enforce identical random initialization and deterministic seeds, but since test cases only specify shapes/dtypes, the root cause is likely uninitialized values causing divergent random data. Repair by adding consistent 'value' fields to both inputs to fix data."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.59328404",
+        "pd_shape": [
+          2
+        ],
+        "tensorflow_shape": [
+          2
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'vec'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.linalg.matvec does not accept parameter name 'vec'; it expects 'a' (matrix) and 'b' (vector). The PaddlePaddle parameter 'vec' must be renamed to 'b' for TensorFlow, and 'x' must be renamed to 'a' to match tf.linalg.matvec's signature."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 21.58406609",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv 和 tf.linalg.matvec 功能等价，但 TensorFlow 默认执行 a @ b (matrix-vector), while paddle.mv computes x @ vec; however, tf.linalg.matvec requires shape(a)[-1] == shape(b)[-1], and here a is [5,100], b is [100] — correct. The inconsistency (max diff 21.58) suggests random uninitialized data caused divergent outputs; to ensure identical computation, we must use deterministic, identical input tensors — thus adding 'data' fields with same values for both frameworks."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec"
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 19.21328577",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.mv computes x @ vec (x shape [M,N], vec shape [N]), while tf.linalg.matvec computes a @ b where a is [M,N] and b is [N]; but TF's default behavior matches, however the inconsistency suggests missing transpose handling or dtype alignment. Both use float64, but TF may require explicit adjoint=False or transpose_a=False; however docs show defaults are safe. Root cause is likely implicit broadcasting or layout assumption — repair by ensuring identical random seed and value initialization to eliminate stochastic divergence."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "vec": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.mv",
+        "x": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        }
+      },
+      "tensorflow_test_case": {
+        "adjoint": false,
+        "b": {
+          "shape": [
+            100
+          ],
+          "dtype": "float64"
+        },
+        "a": {
+          "shape": [
+            5,
+            100
+          ],
+          "dtype": "float64"
+        },
+        "api": "tf.linalg.matvec",
+        "transpose_a": false
+      },
+      "execution_result": {
+        "pd_api": "paddle.mv",
+        "tensorflow_api": "tf.linalg.matvec",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'adjoint'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

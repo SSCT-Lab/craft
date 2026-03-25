@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_nn_functional_pixel_shuffle_20251215_204601.json
+样例编号: 6
+tensorflow_error 错误信息: {{function_node __wrapped__DepthToSpace_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input depth dimension 85 should be divisible by: 9 [Op:DepthToSpace] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pixel_shuffle",
+  "input": {
+    "shape": [
+      100,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.7739702463150024,
+      1.800927758216858,
+      -0.4501669704914093,
+      0.22303153574466705,
+      -0.2587091326713562,
+      0.49719417095184326,
+      -1.4980548620224,
+      -0.1578950732946396,
+      0.7622222304344177,
+      -0.038316451013088226
+    ]
+  },
+  "upscale_factor": 3
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.depth_to_space",
+  "input": {
+    "shape": [
+      100,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.7739702463150024,
+      1.800927758216858,
+      -0.4501669704914093,
+      0.22303153574466705,
+      -0.2587091326713562,
+      0.49719417095184326,
+      -1.4980548620224,
+      -0.1578950732946396,
+      0.7622222304344177,
+      -0.038316451013088226
+    ]
+  },
+  "block_size": 3
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.depth_to_space` 要求输入的 depth 维度（即 channel 维度）必须能被 `block_size²` 整除，而当前输入 shape 为 `[100, 9, 85, 85]`，depth = 9，block_size = 3，`block_size² = 9`，虽然 9 可被 9 整除，但错误提示中显示“Input depth dimension 85 should be divisible by: 9”——这表明实际传入的 depth 维度是 85 而非 9，说明输入张量的 channel 维度与预期不符。
+   - 更关键的是，`tf.nn.depth_to_space` 的输入格式要求是 `(batch, height, width, depth)`，其中 `depth` 必须是 `block_size² × C`，且 `depth` 本身需能被 `block_size²` 整除。但本例中输入 shape 为 `[100, 9, 85, 85]`，若按 `NHWC` 格式理解，则 depth = 9，而 `9 ÷ 9 = 1`，理论上可行；然而错误信息明确指出“depth dimension 85”，说明实际解析时将第 2 维（即 9）误认为 depth，而第 1 维（9）被当作 H 或 W，这暴露了框架在维度顺序或参数解释上的不一致。
+
+3. 修复建议：
+   - 该问题源于框架对输入维度顺序的理解不一致：PyTorch `pixel_shuffle` 输入为 `NCHW`，TensorFlow `depth_to_space` 也接受 `NCHW` 但要求 `C` 为 `r² × C_out`，且 `C` 必须能被 `r²` 整除。当前测试用例中输入 `C=9`，`r=3`，`9÷9=1`，数学上成立，但错误信息却指向“85”不可被 9 整除，说明存在维度混淆。应确认是否正确传递了 `data_format`（如 `NHWC` vs `NCHW`），并确保输入张量的 channel 维度确实是 `C×r²`，而非 `H` 或 `W`。

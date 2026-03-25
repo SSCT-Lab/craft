@@ -1,0 +1,201 @@
+{
+  "operator": "torch.broadcast_shapes",
+  "timestamp": "2026-01-24T23:31:45.759362",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 1,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "*shapes": [
+          2485
+        ],
+        "api": "torch.broadcast_shapes"
+      },
+      "paddle_test_case": {
+        "*shapes": [
+          2485
+        ],
+        "api": "paddle.broadcast_shape"
+      },
+      "execution_result": {
+        "torch_api": "torch.broadcast_shapes",
+        "paddle_api": "paddle.broadcast_shape",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "broadcast_shape() missing 1 required positional argument: 'y_shape'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: broadcast_shape() missing 1 required positional argument: 'y_shape'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的paddle.broadcast_shape只接受两个形状参数x_shape和y_shape，不支持可变数量的形状输入（如PyTorch的*shapes），且其签名是binary-only，而PyTorch的torch.broadcast_shapes支持任意数量的 shapes（>=1）。原始测试用例传入单个整数2485作为shape，既不符合Paddle要求的list/tuple格式，也未提供必需的y_shape参数。根据文档，需修复为两个合法shape（list/tuple）且类型匹配，例如([2485], [1])，以满足广播规则并适配Paddle API签名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.broadcast_shapes",
+        "*shapes": [
+          [
+            2485
+          ],
+          [
+            1
+          ]
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.broadcast_shape",
+        "x_shape": [
+          2485
+        ],
+        "y_shape": [
+          1
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.broadcast_shapes",
+        "paddle_api": "paddle.broadcast_shape",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，符合广播规则（[2485] 与 [1] 广播为 [2485]），但原始用例仅覆盖一维、简单标量广播场景；为提升测试鲁棒性与边界覆盖，需进行fuzzing：引入多维形状、含0维度、不兼容形状（触发RuntimeError）、空tuple/empty list、高维（如5D）、以及不同长度形状（如[3,1,5] vs [1,4,5]）等典型广播场景，以验证两框架对广播逻辑的完整一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.broadcast_shapes",
+        "*shapes": [
+          [
+            3,
+            1,
+            5
+          ],
+          [
+            1,
+            4,
+            5
+          ],
+          [
+            1,
+            1,
+            1
+          ]
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.broadcast_shape",
+        "x_shape": [
+          3,
+          1,
+          5
+        ],
+        "y_shape": [
+          1,
+          4,
+          5
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.broadcast_shapes",
+        "paddle_api": "paddle.broadcast_shape",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "Shape mismatch: objects cannot be broadcast to a single shape",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\functional.py\", line 151, in broadcast_shapes\n    raise RuntimeError(\nRuntimeError: Shape mismatch: objects cannot be broadcast to a single shape\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.broadcast_shapes supports arbitrary number of shapes (varargs), while PaddlePaddle paddle.broadcast_shape only accepts exactly two shapes (x_shape and y_shape). The original PyTorch test case passes 3 shapes ([3,1,5], [1,4,5], [1,1,1]), which is valid per PyTorch doc, but Paddle's API cannot handle >2 shapes. To make the test comparable, we must reduce to 2 shapes for both frameworks. Also, PyTorch's error 'Shape mismatch' suggests the input shapes are actually compatible — the error is likely due to incorrect usage or version mismatch; however, the documented behavior confirms these three shapes *are* broadcastable to [3,4,5]. Since Paddle only supports binary broadcast_shape, the repair is to align both APIs to use exactly two shapes: use first two shapes ([3,1,5], [1,4,5]) for both, which broadcast to [3,4,5] in both frameworks. This ensures functional equivalence and avoids unsupported arity."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.broadcast_shapes",
+        "*shapes": [
+          [
+            3,
+            1,
+            5
+          ],
+          [
+            1,
+            4,
+            5
+          ]
+        ]
+      },
+      "paddle_test_case": {
+        "api": "paddle.broadcast_shape",
+        "x_shape": [
+          3,
+          1,
+          5
+        ],
+        "y_shape": [
+          1,
+          4,
+          5
+        ]
+      },
+      "execution_result": {
+        "torch_api": "torch.broadcast_shapes",
+        "paddle_api": "paddle.broadcast_shape",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "Shape mismatch: objects cannot be broadcast to a single shape",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\functional.py\", line 151, in broadcast_shapes\n    raise RuntimeError(\nRuntimeError: Shape mismatch: objects cannot be broadcast to a single shape\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_nn_functional_pixel_shuffle_20251215_204601.json
+样例编号: 2
+tensorflow_error 错误信息: {{function_node __wrapped__DepthToSpace_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input depth dimension 85 should be divisible by: 9 [Op:DepthToSpace] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pixel_shuffle",
+  "input": {
+    "shape": [
+      4,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.3138200044631958,
+      -1.3472827672958374,
+      1.3330401182174683,
+      -0.5789806246757507,
+      1.477695345878601,
+      -0.6418161392211914,
+      2.6666316986083984,
+      -0.3514423668384552,
+      0.2674241065979004,
+      -1.388069987297058
+    ]
+  },
+  "upscale_factor": 3
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.depth_to_space",
+  "input": {
+    "shape": [
+      4,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.3138200044631958,
+      -1.3472827672958374,
+      1.3330401182174683,
+      -0.5789806246757507,
+      1.477695345878601,
+      -0.6418161392211914,
+      2.6666316986083984,
+      -0.3514423668384552,
+      0.2674241065979004,
+      -1.388069987297058
+    ]
+  },
+  "block_size": 3
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.depth_to_space` 要求输入的 depth 维度（即 channel 维度）必须能被 `block_size²` 整除，而本例中 input shape 为 `[4, 9, 85, 85]`，depth = 9，block_size = 3，`block_size² = 9`，虽然 9 可被 9 整除，但关键在于：`depth` 应为 `C × r²` 形式，其中 `r = block_size`。此处实际 `C = 1`，因为 `9 / 9 = 1`，理论上可接受，但错误信息提示“Input depth dimension 85 should be divisible by: 9”——这说明 **TensorFlow 实际上将 depth 维度误认为是 85**，而非 9。
+   - 这表明测试用例中输入张量的 shape 被错误理解或传递：在 PyTorch `pixel_shuffle` 中，`C×r²` 是 channel 维度，对应 `9`；但在 TensorFlow `depth_to_space` 中，其期望的是 `input_shape[1] == C * r^2`，而当前传入的 `input.shape[1] = 9`，但错误信息却说“depth dimension 85”，说明可能是 **shape 顺序或维度解析错误**，极可能是因为输入张量的维度顺序与 API 预期不符，或在框架转换时错把 H/W 维度当成了 depth。
+
+3. 修复建议：
+   - 检查输入张量的维度顺序是否正确，确保 TensorFlow 侧传入的 `input.shape[1]` 确实是 `C × r²`，且不与空间维度混淆；若原样例中 `channel=9` 正确，则应确认底层执行逻辑未将空间维度误作为 depth 维度处理。

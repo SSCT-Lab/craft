@@ -1,0 +1,1073 @@
+{
+  "ms_api": "mindspore.ops.ArgMaxWithValue",
+  "paddle_api": "paddle.argmax",
+  "timestamp": "2026-03-04T21:00:52.965701",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 15,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "paddle.argmax",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs PD=(3,)",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (index, value) tuple with same shape logic, while paddle.argmax only returns indices. To align semantics, Paddle test case must use paddle.max + paddle.argmax or switch to paddle.topk; but since output shapes mismatch (MS=(2,3) vs PD=(3,)), the root cause is that Paddle's argmax alone cannot match MS's dual-output behavior — they are semantically incompatible APIs. Thus repair requires using paddle.max for values and paddle.argmax for indices separately, but original test expects single-op equivalence. Therefore skip is not valid (both execute), mutation won't fix semantic divergence. Correct repair: Paddle side must compute both index and value manually — but no direct equivalent. Hence operation is 'repair' by adding keepdims=True in MS and keepdim=True in PD to align reduction shape, and ensure axis=0 on (4,3) input yields (1,3) or (3,) depending on keepdims — but error shows MS=(2,3) which suggests axis was misinterpreted. Rechecking: input (4,3), axis=0 → reduce over dim0 → output shape should be (3,) for indices/values if keep_dims=False. MS doc says shape becomes (input_1,...,input_{axis-1}, input_{axis+1},...) → (3,). But reported MS=(2,3) implies axis=1 was used or bug. So repair: enforce axis=0 and keep_dims=False in both, and fix Paddle to use keepdim=False (default), and verify shape consistency. However, since MS output shape (2,3) contradicts doc and input (4,3), likely test misreported — safest repair is to add keep_dims=True to MS and keepdim=True to PD to force consistent (1,3) shape."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "init_params": {
+          "keep_dims": true,
+          "axis": 0
+        },
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0
+      },
+      "paddle_test_case": {
+        "init_params": {
+          "keepdim": true,
+          "axis": 0
+        },
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 1, 3) vs PD=(3,)",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns both index and value (tuple of two tensors), while paddle.argmax returns only indices. They are semantically incompatible APIs — one is argmax-only, the other is argmax+value. No parameter adjustment can make outputs consistent. Thus, the test case must be skipped as the operators are not equivalent."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0,
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.argmax",
+        "axis": 0,
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs PD=(3,)",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (index, value) tuple with same shape logic as axis reduction, while paddle.argmax only returns indices (not values). They are semantically different operators: MS has dual output (argmax + max), PD has single output (argmax only). Thus direct comparison is invalid — this is a mismatched operator pairing, not a bug. Must skip or replace with paddle.max(axis=..., keepdim=True, return_index=True) if available, but standard paddle.max doesn't return index. So correct action is skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0,
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.argmax",
+        "axis": 0,
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs PD=(3,)",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "axis": 0,
+        "api": "paddle.argmax",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `argmax` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, uint8, int32, float64, int64, int16.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.argmax 不支持 float16 输入，报错提示仅支持 float32/float64/int32/int64/int16/uint8；需将 dtype 统一修复为 paddle 支持的 float32，同时保持语义一致（ArgMaxWithValue 返回 index+value，而 paddle.argmax 仅返回 index）——但本用例原始目标是比对 argmax 行为，故应改用 paddle.argmax + paddle.max 分离实现或降级 dtype。根据任务要求优先修复输入 dtype 以使 paddle 执行成功。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0,
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.argmax",
+        "axis": 0,
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs PD=(3,)",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns tuple (index, value) with same shape as reduced tensor, while Paddle argmax only returns indices. To align semantics, Paddle test case must use paddle.max + paddle.argmax or add keepdims=True and compare indices only; but since output shapes mismatch (MS=(2,3) vs PD=(3,)), the Paddle case is missing keepdim=True to match MindSpore's default keep_dims=False behavior — however, inconsistency stems from API mismatch: ArgMaxWithValue is dual-output, argmax is single-output. Correct repair is to use paddle.max(axis=0, keepdim=True) and paddle.argmax(axis=0, keepdim=True) separately, but per task constraints, we fix by adding keepdim=True to Paddle to match index shape dimensionality expectation."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": false,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0
+      },
+      "paddle_test_case": {
+        "keepdim": true,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs PD=(1, 3)",
+        "ms_shape": null,
+        "paddle_shape": [
+          1,
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle用例中keepdim=true与MindSpore keep_dims=false语义不匹配，导致输出形状不一致；应统一为keep_dims/keepdim=false以保证相同降维行为。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": false,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0
+      },
+      "paddle_test_case": {
+        "keepdim": false,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 3) vs PD=(3,)",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "api": "paddle.argmax",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 32, 256) vs PD=(32, 256)",
+        "ms_shape": null,
+        "paddle_shape": [
+          32,
+          256
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (index, value) tuple with same shape for both outputs, while paddle.argmax only returns indices. To align semantics, Paddle test case must use paddle.max + paddle.argmax or switch to paddle.topk; but since task requires comparing equivalent ops, we repair by using paddle.max(axis=0, keepdim=True) for values and paddle.argmax(axis=0, keepdim=True) for indices — however only argmax is provided. Thus the original Paddle test case is invalid: it lacks value output. Correct repair is to skip direct comparison and instead use paddle.topk(k=1) to get both indices and values, matching ArgMaxWithValue's dual-output behavior."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "init_params": {
+          "axis": 0
+        },
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 0
+      },
+      "paddle_test_case": {
+        "largest": true,
+        "k": 1,
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.topk",
+        "sorted": false,
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.topk",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 32, 256) vs PD=(2, 1, 32, 256)",
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (indices, values) with shape reduction along axis, while paddle.topk returns (values, indices) and keeps k-dim; to align semantics, Paddle should use paddle.argmax + paddle.max instead of topk. But since task requires using topk, we must fix output dim: set k=1 and squeeze axis dim manually — however shape mismatch (MS=(2,32,256) vs PD=(2,1,32,256)) shows topk preserves axis dim as singleton, so we add 'keepdim=True' equivalent via keepdim=True in topk and adjust axis handling. But paddle.topk doesn't have keepdim for axis — it always adds k-dim. Thus correct alignment is impossible with topk alone; official mapping is ArgMaxWithValue → (paddle.argmax, paddle.max), not topk. So this test case is misaligned by API choice — repair by replacing Paddle with argmax+max."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "init_params": {
+          "keep_dims": false,
+          "axis": 0
+        },
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ArgMaxWithValue"
+      },
+      "paddle_test_case": {
+        "keepdim": false,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 32, 256) vs PD=(32, 256)",
+        "ms_shape": null,
+        "paddle_shape": [
+          32,
+          256
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns both index and value (tuple of two tensors), while paddle.argmax returns only indices. They are semantically incompatible APIs — one is argmax+value, the other is argmax-only. No valid parameter adjustment can make outputs consistent. Thus, the comparison is invalid and must be skipped."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "init_params": {
+          "keep_dims": false,
+          "axis": 0
+        },
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.ArgMaxWithValue"
+      },
+      "paddle_test_case": {
+        "keepdim": false,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            2,
+            32,
+            256
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 0
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 32, 256) vs PD=(32, 256)",
+        "ms_shape": null,
+        "paddle_shape": [
+          32,
+          256
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "axis": 1,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float16"
+        },
+        "axis": 1,
+        "api": "paddle.argmax",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `argmax` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, uint8, int32, float64, int64, int16.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.argmax 不支持 float16 输入，报错提示仅支持 float32/float64/int32/int64/int16/uint8；需将 dtype 统一修复为 float32 以保证两框架均可执行且语义一致。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.argmax",
+        "axis": 1,
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 2, 128) vs PD=(2, 128)",
+        "ms_shape": null,
+        "paddle_shape": [
+          2,
+          128
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns both index and value (tuple of two tensors), while Paddle argmax only returns index. To compare equivalent outputs, Paddle test case must use paddle.max + paddle.argmax or switch to paddle.topk; but since the task requires semantic alignment and shape mismatch arises from comparing index (PD) vs index+value (MS), the Paddle case must be replaced with a compatible dual-output pattern. However, no direct Paddle dual-output argmax-with-value exists, so we align by extracting only the index from MS and using paddle.argmax — but current inconsistency is due to MS returning tuple while PD returns single tensor. Thus, repair: update Paddle case to match MS's *index output shape* by adding keepdim=True (Paddle's keepdim) and ensure dtype=int64."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": true,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 1
+      },
+      "paddle_test_case": {
+        "keepdim": true,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 1
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 2, 1, 128) vs PD=(2, 1, 128)",
+        "ms_shape": null,
+        "paddle_shape": [
+          2,
+          1,
+          128
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue返回(index, value)二元组，而Paddle argmax仅返回index；二者语义不等价：前者是argmax+max联合算子，后者仅为argmax。无法通过参数调整使输出一致，需跳过直接对比。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": true,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 1
+      },
+      "paddle_test_case": {
+        "keepdim": true,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            2,
+            64,
+            128
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 1
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 2, 1, 128) vs PD=(2, 1, 128)",
+        "ms_shape": null,
+        "paddle_shape": [
+          2,
+          1,
+          128
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "axis": 2,
+        "api": "paddle.argmax",
+        "init_params": {
+          "axis": 0
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 1024, 1) vs PD=(128, 1024)",
+        "ms_shape": null,
+        "paddle_shape": [
+          128,
+          1024
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue和Paddle argmax语义不等价：前者返回(index, value)二元组，后者仅返回index；且MindSpore init_params.axis=0与调用时axis=2冲突，导致实际行为不一致；需统一为单axis参数并匹配语义——Paddle无value输出，故该算子不可直接对齐，应跳过对比。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": false,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 2
+      },
+      "paddle_test_case": {
+        "keepdim": false,
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 2
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 128, 1024) vs PD=(128, 1024)",
+        "ms_shape": null,
+        "paddle_shape": [
+          128,
+          1024
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (index, value) tuple with same shape as input (reduced dim removed), while paddle.argmax only returns index; to compare equivalent outputs, Paddle test case must use paddle.max + paddle.argmax or switch to paddle.max with return_index=True, but since original intent is argmax-with-value, the Paddle case is missing value extraction — thus shape mismatch arises from comparing index (PD) vs index (MS) — repair by aligning semantics: use paddle.max(..., return_index=True) is invalid; correct fix is to use paddle.argmax for index and paddle.max for value separately, but test expects single-op equivalence. However, Paddle has no native argmax+value op; therefore the test is fundamentally misaligned — proper repair is to replace Paddle with manual argmax+max combo or skip. But per task, we must make cases comparable: so we keep ArgMaxWithValue semantics and adjust Paddle to compute both outputs manually. However, output format constraint requires single-API test cases. Since paddle.argmax ≠ ArgMaxWithValue in functionality (lacks value output), the APIs are semantically non-equivalent — operation must be 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": false,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 2
+      },
+      "paddle_test_case": {
+        "keepdim": false,
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 2
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 128, 1024) vs PD=(128, 1024)",
+        "ms_shape": null,
+        "paddle_shape": [
+          128,
+          1024
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore ArgMaxWithValue returns (index, value) tuple with same shape, while paddle.argmax only returns indices; mismatched output semantics — Paddle lacks 'with_value' functionality. To align, Paddle test case must be replaced with paddle.max + paddle.argmax or skipped, but since task requires comparable outputs and no Paddle equivalent returns both index and value in one op, the comparison is invalid. However, docs confirm paddle.argmax ≠ ArgMaxWithValue — they are not semantic equivalents. Thus repair is impossible; correct action is skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "keep_dims": false,
+        "api": "mindspore.ops.ArgMaxWithValue",
+        "axis": 2
+      },
+      "paddle_test_case": {
+        "keepdim": false,
+        "x": {
+          "shape": [
+            128,
+            1024,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.argmax",
+        "axis": 2
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.ArgMaxWithValue",
+        "paddle_api": "paddle.argmax",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: MS=(2, 128, 1024) vs PD=(128, 1024)",
+        "ms_shape": null,
+        "paddle_shape": [
+          128,
+          1024
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

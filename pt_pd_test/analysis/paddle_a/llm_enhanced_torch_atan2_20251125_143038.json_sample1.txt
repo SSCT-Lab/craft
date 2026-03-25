@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_atan2_20251125_143038.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 5, 1] and the shape of Y = [5, 1, 5]. Received [0] in X is not equal to [5] in Y at i:0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.atan2",
+  "input": {
+    "shape": [
+      0,
+      5,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      5,
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.4889637439691874,
+      1.0004439439109714,
+      2.353185832651301,
+      1.1648146870851668,
+      0.9844572598030004,
+      -1.5689929984103965,
+      0.1855295777195332,
+      0.3057443548278087,
+      -0.48519266334817385,
+      0.377397351584062
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.atan2",
+  "input": {
+    "shape": [
+      0,
+      5,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      5,
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.4889637439691874,
+      1.0004439439109714,
+      2.353185832651301,
+      1.1648146870851668,
+      0.9844572598030004,
+      -1.5689929984103965,
+      0.1855295777195332,
+      0.3057443548278087,
+      -0.48519266334817385,
+      0.377397351584062
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.atan2` 要求输入张量在广播时各维度必须兼容，但当前输入 `X = [0, 5, 1]` 与 `Y = [5, 1, 5]` 在第0维上出现 `0` 与 `5` 不匹配，且 `0` 作为形状维度在实际计算中不被允许（空张量的广播语义在 PaddlePaddle 中受限）。  
+   - 尽管 PyTorch 允许形状为 `[0, 5, 1]` 的张量参与 `torch.atan2` 运算（空张量可视为有效），但 PaddlePaddle 在 broadcast 时对含 `0` 的维度有严格限制，会直接报错“Broadcast dimension mismatch”。
+
+3. 修复建议：  
+   - 此为框架间对空张量广播行为的不一致，建议提交 issue 给 PaddlePaddle 官方，反馈其在处理含 `0` 形状维度的 broadcast 时应与 PyTorch 对齐。

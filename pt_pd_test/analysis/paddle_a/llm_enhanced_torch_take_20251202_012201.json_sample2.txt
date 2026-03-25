@@ -1,0 +1,51 @@
+来源文件: llm_enhanced_torch_take_20251202_012201.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Variable value (index) of OP(index_select) expected >= -1 and < 1, but got 1. Please check input value.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "index": {
+    "shape": [],
+    "dtype": "int64",
+    "sample_values": [
+      1
+    ]
+  },
+  "api": "torch.take"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "index": {
+    "shape": [],
+    "dtype": "int64",
+    "sample_values": [
+      1
+    ]
+  },
+  "api": "torch.take"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `torch.take` 实现中，当输入张量为标量（shape=[]）时，其内部会将其视为 1-D 张量进行索引操作，但此时有效索引范围应为 [0, 0]（仅一个元素），而传入的 index 值为 1，超出合法范围（-1 到 0），导致抛出“index out of bounds”错误。  
+   - 尽管 PyTorch 的 `torch.take` 在这种情况下允许索引值超出维度边界并按模运算处理（或在某些版本中表现为未定义行为），但 PaddlePaddle 严格检查索引有效性，且对空 shape 输入的处理与 PyTorch 存在行为不一致。
+
+3. 修复建议：  
+   - 此问题属于框架间行为不一致，建议提交 issue 至 PaddlePaddle 官方仓库，指出 `torch.take` 在标量输入下对索引越界处理与 PyTorch 不一致，需统一语义或明确文档说明。

@@ -1,0 +1,71 @@
+来源文件: llm_enhanced_torch_nn_functional_binary_cross_entropy_20251202_130927.json
+样例编号: 6
+paddle_error 错误信息: (InvalidArgument) Illegal input, input must be greater than  or equal to 0
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.binary_cross_entropy",
+  "input": {
+    "shape": [
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.0272836834192276,
+      0.5771968960762024,
+      -1.7109160423278809
+    ]
+  },
+  "target": {
+    "shape": [
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.2175026386976242,
+      0.27420544624328613,
+      0.635341465473175
+    ]
+  },
+  "weight": null,
+  "reduction": "mean"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.binary_cross_entropy",
+  "input": {
+    "shape": [
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.0272836834192276,
+      0.5771968960762024,
+      -1.7109160423278809
+    ]
+  },
+  "label": {
+    "shape": [
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.5963883996009827,
+      -0.26542046666145325,
+      -0.5584080815315247
+    ]
+  },
+  "weight": null,
+  "reduction": "mean"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.functional.binary_cross_entropy` 要求 `label`（即目标值）必须在 [0, 1] 区间内，而测试用例中 `label` 的样本值包含负数（如 -0.2654、-0.5584），违反了该约束，导致报错“input must be greater than or equal to 0”（实际应为 label 必须 ≥ 0 且 ≤ 1）。
+   - PyTorch 的 `binary_cross_entropy` 允许输入的 target 为任意实数（只要与 input 形状一致），并在内部通过 sigmoid 处理，因此对 target 值范围无此限制。
+
+3. 修复建议：
+   - 该差异属于框架设计行为不一致，建议提交 issue 给 PaddlePaddle 官方，说明其在 `binary_cross_entropy` 中对 label 范围要求过严且与 PyTorch 不兼容。

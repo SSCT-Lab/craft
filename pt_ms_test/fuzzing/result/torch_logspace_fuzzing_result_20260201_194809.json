@@ -1,0 +1,398 @@
+{
+  "operator": "torch_logspace",
+  "torch_api": "torch.logspace",
+  "mindspore_api": "mindspore.numpy.logspace",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T19:48:09.709090",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_logspace_20260126_012800.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.logspace",
+        "start": -10,
+        "end": 10,
+        "steps": 5,
+        "base": 2
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.numpy.logspace",
+        "start": -10,
+        "stop": 10,
+        "num": 5,
+        "base": 2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发框架在log-scale边界处理、浮点异常传播、次正规数支持等方面的不一致实现，暴露底层数学逻辑差异。",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": "inf",
+            "end": "inf",
+            "steps": 1,
+            "base": 2.0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": "inf",
+            "stop": "inf",
+            "num": 1,
+            "base": 2.0,
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, base=float, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: start should be int, float, bool, list, tuple, Tensor, but got<class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）输入参数",
+          "mutation_reason": "标量输入是logspace的合法输入（文档明确支持0-dimensional Tensor），但框架对标量start/end的广播、dtype推导和边界处理逻辑易不一致，可能暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 5,
+            "base": 2.0,
+            "dtype": "torch.float32"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 5,
+            "base": 2.0,
+            "dtype": "mindspore.float32"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, base=float, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 精度下 logspace 在极端指数范围的数值一致性",
+          "mutation_reason": "float64 提供更高精度，可暴露两框架在对数尺度插值时浮点累积误差或边界处理差异；使用 -100/100 覆盖更广对数区间，易触发截断、溢出或舍入策略不一致",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": -100,
+            "end": 100,
+            "steps": 7,
+            "base": 2.0,
+            "dtype": "torch.float64"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": -100,
+            "stop": 100,
+            "num": 7,
+            "base": 2.0,
+            "dtype": "mindspore.float64",
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=int, end=int, steps=int, base=float, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_logspace_20260126_012800.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.logspace",
+        "start": -10.0,
+        "end": 10.0,
+        "steps": 1000,
+        "base": 2.5
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.numpy.logspace",
+        "start": -10.0,
+        "stop": 10.0,
+        "num": 1000,
+        "base": 2.5
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：使用inf、-inf、nan、-0.0、1e-38、1e38覆盖边界场景",
+          "mutation_reason": "这些特殊浮点值易触发框架底层数学库（如log/pow）的未定义行为或NaN传播差异，暴露logspace在边界条件下的实现不一致bug",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": -0.0,
+            "end": "inf",
+            "steps": 5,
+            "base": 2.0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": -0.0,
+            "stop": "inf",
+            "num": 5,
+            "base": 2.0,
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=float, end=str, steps=int, base=float, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: end should be int, float, bool, list, tuple, Tensor, but got<class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）输入start/end",
+          "mutation_reason": "标量输入是logspace最基础边界情况，两框架对0维Tensor/标量的广播、dtype推导和log-scale步长计算逻辑可能不一致，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 1000,
+            "base": 2.5,
+            "dtype": "torch.float32"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 1000,
+            "base": 2.5,
+            "dtype": "mindspore.float32",
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, base=float, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下logspace在极端指数范围的数值一致性",
+          "mutation_reason": "float64比默认float32提供更高精度，可能暴露两框架在对数刻度插值、幂运算或边界处理上的实现差异，尤其在大跨度start/end时易出现舍入累积误差",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": -10.0,
+            "end": 10.0,
+            "steps": 1000,
+            "base": 2.5,
+            "dtype": "torch.float64"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": -10.0,
+            "stop": 10.0,
+            "num": 1000,
+            "base": 2.5,
+            "dtype": "mindspore.float64"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, base=float, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_logspace_20260126_012800.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.logspace",
+        "start": 0.1,
+        "end": 1.0,
+        "steps": 5,
+        "base": 2
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.numpy.logspace",
+        "start": 0.1,
+        "stop": 1.0,
+        "num": 5,
+        "base": 2
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：替换start/end为inf,-inf,nan,0.0,-0.0,1e-38,1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层log/exp边界处理差异，尤其在logspace中base**start/base**end计算时，inf/nan传播规则或下溢/上溢处理不一致可能导致bug。",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": "nan",
+            "end": "inf",
+            "steps": 5,
+            "base": 2.0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": "nan",
+            "stop": "inf",
+            "num": 5,
+            "base": 2.0,
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=str, end=str, steps=int, base=float, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: start should be int, float, bool, list, tuple, Tensor, but got<class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（shape=[]）输入参数",
+          "mutation_reason": "标量输入是logspace的合法边界情况，两框架对0维Tensor/标量的广播、指数计算和数值稳定性处理可能不同，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": 0.1,
+            "end": 1.0,
+            "steps": 5,
+            "base": 2.0,
+            "dtype": "torch.float32"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": 0.1,
+            "stop": 1.0,
+            "num": 5,
+            "base": 2.0,
+            "dtype": "mindspore.float32",
+            "endpoint": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, base=float, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下边界值（inf, -inf, nan）对 logspace 的影响",
+          "mutation_reason": "高精度浮点类型更易暴露数值稳定性差异；inf/-inf/nan 输入可触发框架在对数域边界处理的不一致实现。",
+          "torch_test_case": {
+            "api": "torch.logspace",
+            "start": 0.1,
+            "end": 1.0,
+            "steps": 5,
+            "base": 2,
+            "dtype": "torch.float64"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.numpy.logspace",
+            "start": 0.1,
+            "stop": 1.0,
+            "num": 5,
+            "base": 2,
+            "dtype": "mindspore.float64"
+          },
+          "execution_result": {
+            "torch_success": false,
+            "mindspore_success": false,
+            "torch_error": "TypeError: logspace() received an invalid combination of arguments - got (start=float, end=float, steps=int, base=int, dtype=str, ), but expected one of:\n * (Tensor start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Tensor end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Tensor start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n * (Number start, Number end, int steps, float base = 10.0, *, Tensor out = None, torch.dtype dtype = None, torch.layout layout = None, torch.device device = None, bool pin_memory = False, bool requires_grad = False)\n",
+            "mindspore_error": "TypeError: only ['np.int_', 'np.int8', 'np.int16', 'np.int32', 'np.int64', 'np.uint', 'np.uint8', 'np.uint16', 'np.uint32', 'np.uint64', 'np.float_', 'np.float16', 'np.float32', 'np.float64', 'np.bool_'] are allowed for dtype, but got <class 'str'>",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "mindspore_shape": null,
+            "torch_dtype": null,
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

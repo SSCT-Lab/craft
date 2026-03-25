@@ -1,0 +1,85 @@
+来源文件: llm_enhanced_torch_div_20251216_005211.json
+样例编号: 1
+mindspore_error 错误信息: For 'Div', input1.shape and input2.shape need to broadcast. The value of input1.shape[3] or input2.shape[3] must be 1 or -1 when they are not the same, but got input1.shape = [0, 5, 1] and input2.shape = [5, 1, 5]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.div",
+  "input": {
+    "shape": [
+      0,
+      5,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      5,
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.3906874381291065,
+      -0.5346552095670651,
+      0.1011831347867094,
+      1.3064422401527667,
+      -1.5368650573355815,
+      1.4202884296621723,
+      0.1473415264435911,
+      0.6637514323716664,
+      -0.43687997579057203,
+      0.20595874071814932
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.div",
+  "input": {
+    "shape": [
+      0,
+      5,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      5,
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.3906874381291065,
+      -0.5346552095670651,
+      0.1011831347867094,
+      1.3064422401527667,
+      -1.5368650573355815,
+      1.4202884296621723,
+      0.1473415264435911,
+      0.6637514323716664,
+      -0.43687997579057203,
+      0.20595874071814932
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `mint.div` 要求输入张量在广播时，维度不匹配的轴必须为 1 或 -1 才能成功广播，但本例中 `input.shape = [0, 5, 1]` 与 `other.shape = [5, 1, 5]` 在第 0 维（0 vs 5）和第 2 维（1 vs 5）均无法满足广播条件（既非 1 也非 -1），且第一个张量存在形状为 0 的维度，这在 MindSpore 中通常被视为无效或不可广播的结构。  
+   - 尽管 PyTorch 允许对包含 0 的 shape 进行广播操作（如 `[0,5,1] / [5,1,5]` 返回 `[0,5,5]` 的空张量），但 MindSpore 明确要求广播规则严格遵循“非 1 维必须为 -1”且不能出现 0 维度参与广播，因此触发了广播失败错误。
+
+3. 修复建议：  
+   - 该问题反映的是两个框架在处理含 0 维形状的广播逻辑上存在不一致，建议提交一个 issue 至 MindSpore 官方仓库，指出其对含 0 维的广播行为过于严格，与 PyTorch 不兼容。

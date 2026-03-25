@@ -1,0 +1,1659 @@
+{
+  "tf_api": "tf.nn.max_pool",
+  "pytorch_api": "torch.nn.functional.max_pool2d",
+  "timestamp": "2026-02-09T23:59:55.309103",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 12,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.max_pool"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.max_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: _max_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch max_pool2d does not accept 'ksize' or 'strides' as keyword arguments; uses 'kernel_size', 'stride', 'padding' (int/tuple, not 'SAME'/'VALID'); input must be NCHW (batch, channels, height, width), not NHWC. Need to convert shape, rename params, compute padding for SAME mode."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": 1,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 4, 4, 8) vs PT=(1, 8, 4, 4)",
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch max_pool2d expects NCHW input (batch, channels, height, width), but test case provides [1,8,8,8] interpreted as NCHW → channels=8, H=8, W=8. TensorFlow NHWC expects [N,H,W,C], so [1,8,8,8] means H=8,W=8,C=8. To align semantics: TF input shape [1,8,8,8] (NHWC) ↔ PT input must be [1,8,8,8] transposed to NCHW → [1,8,8,8] is ambiguous; correct PT input should be [1,8,8,8] with channels=8 → but that's valid only if original TF treats last dim as channels. So PT input shape must be [1,8,8,8] → permuted to [1,8,8,8] is actually NCHW-compatible only if we reinterpret: TF [1,H,W,C] = [1,8,8,8] ⇒ H=8,W=8,C=8 ⇒ PT needs [1,C,H,W] = [1,8,8,8]. However, output shape mismatch (TF=(1,4,4,8), PT=(1,8,4,4)) confirms PT is treating input as NCHW but not transposing — the real issue is PT receives [1,8,8,8] as (N,C,H,W), so C=8, H=8, W=8, and outputs (N,C,H_out,W_out)=(1,8,4,4); TF outputs (N,H_out,W_out,C)=(1,4,4,8). Thus shapes are equivalent up to dimension order — repair by transposing PT input to match TF's channel placement or adjust PT to expect NHWC-like layout via permute. But since PT max_pool2d strictly requires NCHW, we must transpose TF input to NCHW for fair comparison, or transpose PT output. Standard practice: convert TF NHWC input to NCHW for PT. So repair: TF input stays [1,8,8,8] NHWC, but PT input must be [1,8,8,8] → permuted to [1,8,8,8] is already NCHW if we assign dim1=channels — but that’s inconsistent with TF’s dim3=channels. Therefore, correct alignment: TF [1,H,W,C] = [1,8,8,8] ⇒ H=8,W=8,C=8 ⇒ PT input must be [1,C,H,W] = [1,8,8,8]. That matches. Then why output shape differs? Because TF output is [1,H_out,W_out,C] = [1,4,4,8], PT is [1,C,H_out,W_out] = [1,8,4,4]. They are same data, different layout. So the inconsistency is due to format mismatch, not computation. Fix: transpose PT output or — better — make PT input match TF’s logical layout by using torch.permute on input to convert from NHWC to NCHW *before* pooling, but test case only defines shape/dtype, not actual tensor. So repair is to change PT input shape to reflect correct NCHW interpretation: given TF uses [1,8,8,8] as NHWC ⇒ channels=8, so PT must use [1,8,8,8] as NCHW ⇒ that’s correct. The shape mismatch in output is expected and acceptable *only if values match after transpose*. But error says 'shape mismatch', not value mismatch — so the test compares raw tensors without accounting for layout. Therefore, repair is to make PT input shape [1,8,8,8] → but ensure it's interpreted as NCHW, and add transpose to align output shape with TF. However, test case spec doesn’t allow post-processing. So correct repair is to change PT input shape to [1,8,8,8] and accept that outputs differ in layout — but the test framework expects same shape. Hence, canonical fix: use TF input in NCHW format instead, i.e., TF input shape [1,8,8,8] with data_format='NCHW', then both yield [1,8,4,4]. So repair TF data_format to 'NCHW' and adjust ksize/strides accordingly: for NCHW, ksize=[1,1,3,3], strides=[1,1,2,2]. But official TF doc shows ksize for NCHW is [N,C,H,W]. So for input [1,8,8,8] as NCHW, ksize=[1,1,3,3] is wrong — ksize should cover spatial dims only? No: tf.nn.max_pool ksize is always [N,H,W,C] for NHWC or [N,C,H,W] for NCHW. So for NCHW input [1,8,8,8], ksize must be [1,1,3,3] — but that pools only over H,W, ignoring C. Yes, standard. So set data_format='NCHW', ksize=[1,1,3,3], strides=[1,1,2,2], padding='SAME'. Then TF output is [1,8,4,4], matching PT."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": 1,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.71638346",
+        "tf_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow使用NCHW格式但ksize/strides含batch/channel维度(1,1,3,3)，而PyTorch max_pool2d仅 operates on (N,C,H,W) with kernel_size=(h,w); data_format='NCHW' in TF requires ksize=[1,1,3,3] but PyTorch expects input as (N,C,H,W) and kernel only on H/W. However, the input shape [1,8,8,8] is ambiguous: is it NCHW (C=8,H=8,W=8) or NHWC? TF's data_format='NCHW' implies channels=8, height=8, width=8, so ksize [1,1,3,3] is correct. But PyTorch's input must be (N,C,H,W)=(1,8,8,8), and padding [1,1] for SAME is incorrect — SAME padding in TF with ksize=3,stride=2 on size 8 requires pad=1, but PyTorch's functional.max_pool2d with padding=[1,1] yields different coverage due to lack of implicit SAME logic; we must compute exact padding for SAME: pad_h = ((H-1)*stride_h - H + ksize_h)/2 = ((8-1)*2 - 8 + 3)/2 = (14-8+3)/2 = 4.5 → not integer; thus padding must be asymmetric or use ceil_mode. Fix: use padding=1 and ceil_mode=True to align output shape and behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": 1,
+        "ceil_mode": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 8, 4, 4) vs PT=(1, 8, 5, 5)",
+        "tf_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          5,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            0,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.max_pool"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            0,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.max_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: _max_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          0,
+          4,
+          4,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's max_pool2d does not accept 'ksize' or 'strides' as keyword arguments; it uses 'kernel_size' and 'stride'. Also, input must be NCHW (not NHWC), and batch dim 0 is invalid — PyTorch requires positive batch size. Padding 'SAME' is not supported; must compute explicit padding. Input shape [0,8,8,8] is invalid for PyTorch (empty batch)."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": 1,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 4, 4, 8) vs PT=(1, 8, 4, 4)",
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch max_pool2d expects NCHW input (batch, channels, height, width), but input shape [1,8,8,8] is interpreted as (N,C,H,W) = (1,8,8,8), while TF NHWC treats it as (N,H,W,C). To align semantics, PyTorch input must be reshaped to NCHW with channels=8, height=8, width=8 → shape [1,8,8,8] is valid for NCHW only if the first 8 is channels — but TF's ksize [1,3,3,1] implies spatial dims are H,W at indices 1,2, so TF input is NHWC: (N=1,H=8,W=8,C=8). Thus PyTorch input must be (1,8,8,8) → permuted to (1,8,8,8) NCHW is ambiguous; correct fix is to set PyTorch input shape to [1,8,8,8] meaning (N,C,H,W)=(1,8,8,8), requiring TF input to be (1,8,8,8) in NHWC → (N,H,W,C), so C=8 ⇒ TF spatial dims are 8x8, matching. But output shape mismatch (TF=(1,4,4,8), PT=(1,8,4,4)) confirms axis order mismatch: TF NHWC output is (N,H_out,W_out,C), PyTorch NCHW is (N,C,H_out,W_out). So PyTorch test case must permute output or — correctly — ensure input tensor layout consistency: TF input (1,8,8,8) NHWC means last dim=channels=8, so equivalent PyTorch NCHW input must be (1,8,8,8) where dim1=channels=8, i.e., same numeric shape but logical layout differs. The bug is that PyTorch max_pool2d operates on dims 2,3 (H,W), so input must have channels in dim1; thus given TF input shape [1,8,8,8] NHWC ≡ [N,H,W,C], the equivalent NCHW shape is [1,C,H,W] = [1,8,8,8] — which is identical numerically, but TF’s ksize [1,3,3,1] confirms H,W are axes 1,2, so yes, PyTorch kernel_size [3,3] is correct. However, padding='SAME' in TF computes padding to preserve spatial size roughly, and maps to padding=[1,1] only when stride=2 and kernel=3 on size-8: ceil((8+2*1-3)/2)+1 = 4, correct. The real issue is output channel placement: TF outputs (1,4,4,8), PyTorch outputs (1,8,4,4) — same values, different layout. To compare correctly, PyTorch output must be permuted to (1,4,4,8) or TF to (1,8,4,4). Since test compares raw tensors, we must make layouts match. Best repair: keep TF as NHWC, convert PyTorch output via permute(0,2,3,1) — but test cases only define inputs/params, not post-processing. Therefore, fix is to make PyTorch input follow NCHW convention *and* adjust its expected layout handling: no — instead, the PyTorch test case input shape must be explicitly transposed to match TF’s channel location. So TF input (1,8,8,8) NHWC has C=8 at end → equivalent NCHW is (1,8,8,8) with C=8 at index 1, which is already satisfied. Then why output shape differs? Because PyTorch max_pool2d returns (N,C,H,W), TF returns (N,H,W,C). So to get same memory layout for comparison, either transpose one output or — per framework conventions — the test should compare values after aligning axes. Since the task requires 'input same' and 'parameters semantically corresponding', the repair is to add torch.permute in PT case or adjust TF data_format — but test cases don’t include post-processing. Hence correct repair is to change PyTorch input shape to reflect actual NHWC→NCHW conversion: TF shape [1,8,8,8] NHWC means height=8, width=8, channels=8 → NCHW shape is [1,8,8,8]. So shape is correct. The inconsistency is fundamental layout difference, unavoidable without transposition. Therefore, the only sound repair is to make PyTorch use channels_last=False (default) and accept that output is (N,C,H,W), while TF is (N,H,W,C); thus to compare, we must transpose PyTorch output — but since test harness likely does element-wise compare of raw tensors, the shapes must match. So repair: modify PyTorch test case to include output transposition logic — not allowed per format. Alternative: change TF to NCHW data_format and adjust ksize/strides accordingly. TF supports data_format='NCHW', then ksize must be [1,1,3,3] and strides [1,1,2,2]. That makes TF output (1,8,4,4), matching PyTorch (1,8,4,4). Yes — this is the canonical fix."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": 1,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.15306675",
+        "tf_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow使用NCHW但ksize/strides含batch/channel维度，而PyTorch max_pool2d only handles spatial dims; input shape [1,8,8,8] is ambiguous: should be [N,C,H,W] but 8,8,8 violates typical channel-first convention. Fix: reinterpret as NCHW → [1,8,8,8] means C=8,H=8,W=8, so ksize must be [3,3], strides [2,2]; padding='SAME' in TF maps to padding=(1,1) only when ceil_mode=False and dilation=1, but TF's SAME padding computes padding dynamically — PyTorch's [1,1] is insufficient. Correct padding for SAME with kernel=3,stride=2 on H=8/W=8 is pad=1, but output size differs due to floor vs implicit ceil handling. Use explicit padding calculation: for SAME, pad = (k-1)//2 = 1, but TF may add extra padding on right; best fix is align data_format and use NHWC in TF to match PyTorch's implicit channel-last expectation in shape interpretation."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": 1,
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 4, 4, 8) vs PT=(1, 8, 4, 4)",
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          4,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.max_pool"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.max_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: _max_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          5
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's max_pool2d does not accept 'ksize' or 'data_format' parameters; it expects 'kernel_size', 'stride', 'padding' (int/tuple, not 'SAME'), and input in NCHW format. TF uses NHWC with ksize=strides=[1,1,1,2] and padding='SAME', so we must convert input to NCHW, map ksize/strides to 2D kernel/stride, compute equivalent padding, and remove unsupported args."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          2
+        ],
+        "stride": [
+          1,
+          2
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          5
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          1,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例输入为1x1x1x10（NHWC），可变异为更典型的2D池化场景（如NHWC 1x4x4x1 → NCHW 1x1x4x4），并调整ksize/stride为[2,2]、padding为'SAME'对应PyTorch的(1,1) padding，同时引入边界值如ceil_mode=True和非零 padding。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 2, 1) vs PT=(1, 4, 3, 1)",
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          4,
+          3,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch max_pool2d expects NCHW input (batch, channels, height, width), but test case provides NHWC shape [1,4,4,1]. Must transpose to [1,1,4,4] and adjust padding: 'SAME' in TF with ksize=[1,2,2,1], strides=[1,2,2,1] on NHWC implies padding such that output spatial dims are ceil(4/2)=2; for PyTorch NCHW input [1,1,4,4], padding=[0,0] yields output [1,1,2,2], matching TF's (1,2,2,1) after squeeze/transpose. Current PT padding [1,1] is incorrect and causes shape (1,4,3,1)."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "ceil_mode": false
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given input size: (4x4x1). Calculated output size: (4x2x0). Output size is too small",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.max_pool"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.max_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: _max_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's max_pool2d does not accept 'ksize' or 'data_format' parameters; it expects 'kernel_size', 'stride', 'padding' (int/tuple, not 'SAME'), and input in NCHW format. TF uses NHWC with ksize=strides=[1,1,1,3], so we must transpose input to NCHW, convert ksize/strides to 2D (since max_pool2d is strictly 2D), and compute equivalent padding for 'SAME' behavior."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          3
+        ],
+        "stride": [
+          1,
+          3
+        ],
+        "padding": [
+          0,
+          0
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "pytorch_shape": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例中ksize/strides在channel维度为3且input channel=6，属可整除的常规情况，应变异为边界/非整除场景（如ksize=[1,1,1,4]导致padding行为差异）并同步调整PyTorch padding以保持语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          1,
+          4
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          4
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          4
+        ],
+        "stride": [
+          1,
+          4
+        ],
+        "padding": [
+          0,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "UnimplementedError: {{function_node __wrapped__MaxPool_device_/job:localhost/replica:0/task:0/device:CPU:0}} Depthwise max pooling requires the depth window to evenly divide the input depth [Op:MaxPool] name: ",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          1,
+          2,
+          2,
+          2
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.max_pool does not support depthwise pooling with ksize[3] (channel dim) not dividing input channels evenly (6 % 4 != 0); PyTorch max_pool2d operates only on H/W dims, so input must be reshaped to NCHW and kernel_size must align with spatial dims. Fix: use spatial-only pooling — reshape input to [1,6,2,2] (NCHW), set ksize=[1,1,2,2], strides=[1,1,2,2], padding='SAME' in TF; match in PT with kernel_size=[2,2], stride=[2,2], padding=0, and input [1,6,2,2]."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            6,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            6,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          6,
+          1,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          6,
+          1,
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCHW",
+        "api": "tf.nn.max_pool"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCHW",
+        "api": "torch.nn.functional.max_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__MaxPool_device_/job:localhost/replica:0/task:0/device:CPU:0}} Default MaxPoolingOp only supports NHWC on device type CPU [Op:MaxPool] name: ",
+        "pytorch_error": "TypeError: _max_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.max_pool on CPU only supports NHWC format, not NCHW; PyTorch max_pool2d expects kernel_size (int/tuple), not ksize, and input must be NCHW (batch, ch, h, w); also padding 'VALID' is valid in TF but PyTorch uses numeric padding. Fix: convert input to NHWC for TF, use proper kernel_size/stride/padding in PyTorch, and align data formats."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0,
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: _max_pool2d() got an unexpected keyword argument 'data_format'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's max_pool2d does not accept 'data_format' parameter; input must be NCHW, so the input shape [1,8,8,8] is ambiguous — it should be [1,8,8,8] interpreted as NHWC in TF but must be reshaped to [1,8,8,8] → [1,8,8,8] is invalid for NCHW (channel dim must be dim=1); correct NCHW shape is [1,8,8,8] → channels=8, H=8, W=8, so input shape must be [1,8,8,8] → but that's 4D with last dim as channels in NHWC; thus TF's [1,8,8,8] NHWC corresponds to PyTorch's [1,8,8,8] NCHW only if we reinterpret dims: NHWC [N,H,W,C] = [1,8,8,8] → NCHW [N,C,H,W] = [1,8,8,8]. So input shape is valid, but 'data_format' must be removed and padding must be integer (0) or tuple; also TF ksize=[1,3,3,1] → kernel_size=(3,3), strides=[1,2,2,1] → stride=(2,2). The error 'unexpected keyword argument data_format' requires removal of that key."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 3, 3, 8) vs PT=(1, 8, 3, 3)",
+        "tf_shape": [
+          1,
+          3,
+          3,
+          8
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          3,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch max_pool2d expects NCHW input (batch, channels, height, width), but TF case uses NHWC [1,8,8,8] meaning batch=1, height=8, width=8, channels=8. To align semantics, PyTorch input must be reshaped to [1,8,8,8] → [1,8,8,8] is invalid NCHW; correct NCHW is [1,8,8,8] → channels=8, H=8, W=8 ⇒ shape [1,8,8,8] must become [1,8,8,8] → no, wait: NHWC [1,H,W,C] = [1,8,8,8] ⇒ H=8,W=8,C=8 ⇒ NCHW = [1,8,8,8]. So PyTorch input shape is correct, but TF ksize [1,3,3,1] and strides [1,2,2,1] are for NHWC, while PyTorch kernel_size [3,3] implicitly applies to H,W — matching. However, output shape mismatch (TF: (1,3,3,8), PT: (1,8,3,3)) reveals missing channel-first vs channel-last handling: PyTorch output is NCHW ⇒ (N,C,H,W) = (1,8,3,3), TF is NHWC ⇒ (N,H,W,C) = (1,3,3,8). So shapes are equivalent up to dimension order — need to permute PyTorch output or transpose input. But test compares raw tensors; thus repair requires making PyTorch input match TF's channel placement by using NCHW convention consistently — but input shape [1,8,8,8] in PT is interpreted as (N,C,H,W) = (1,8,8,8), i.e., C=8, H=8, W=8 — correct. Then output (1,8,3,3) is correct NCHW; TF output (1,3,3,8) is correct NHWC. To compare, we must either transpose PT output to NHWC or TF to NCHW. Since test framework likely does auto-transpose, the real issue is that PT test case doesn't specify data_format equivalence. Fix: transpose TF input to NCHW and adjust ksize/strides accordingly, OR — simpler — reshape PT input to match TF's logical layout by permuting dims. Standard fix: convert TF NHWC input to NCHW for PT compatibility: TF input [1,8,8,8] (NHWC) ⇒ channels last ⇒ to NCHW: [1,8,8,8] → move last dim to second: [1,8,8,8] → [1,8,8,8] is already valid if we reinterpret — no: NHWC [N,H,W,C] = [1,8,8,8] ⇒ H=8,W=8,C=8 ⇒ NCHW = [1,C,H,W] = [1,8,8,8]. So shape is same numerically, but semantics differ only in axis interpretation. Therefore, the mismatch is expected and unavoidable without transposition. Hence, the test case must be repaired by adding transpose to one side. Since TF is NHWC and PT is NCHW, the proper repair is to make PT input explicitly NCHW-compatible and ensure output comparison accounts for layout — but per task requirement, we must make inputs *and* parameters semantically aligned. So TF should use NCHW data_format and adjust ksize/strides to [1,1,3,3] and [1,1,2,2], and input shape remains [1,8,8,8] but now as NCHW. Then TF output becomes (1,8,3,3), matching PT."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.max_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          1,
+          3,
+          3
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "VALID",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.max_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.max_pool",
+        "pytorch_api": "torch.nn.functional.max_pool2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          8,
+          3,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          8,
+          3,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

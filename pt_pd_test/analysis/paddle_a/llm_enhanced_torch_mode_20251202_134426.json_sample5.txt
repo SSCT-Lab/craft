@@ -1,0 +1,45 @@
+来源文件: llm_enhanced_torch_mode_20251202_134426.json
+样例编号: 5
+paddle_error 错误信息: (InvalidArgument) If keepdim is True, in_dims[axis] should be greater than 0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.mode",
+  "input": {
+    "shape": [
+      5,
+      0,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "dim": 1,
+  "keepdim": true
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.mode",
+  "input": {
+    "shape": [
+      5,
+      0,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "axis": 1,
+  "keepdim": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.mode` 在 `keepdim=True` 时要求被压缩的维度（axis）在输入中长度大于 0，而本例输入 shape 为 `[5, 0, 5]`，其中 axis=1 对应的维度大小为 0，违反了该限制。  
+   - 尽管 PyTorch 的 `torch.mode` 可以处理包含 0 维度的张量（如 `dim=1` 且 size=0 时返回空结果），但 PaddlePaddle 显式要求 `in_dims[axis] > 0` 才能保持维度，这是框架间的行为不一致。
+
+3. 修复建议：  
+   - 该问题属于框架实现差异，可提交 issue 至 PaddlePaddle 官方仓库，建议增强 `paddle.mode` 对零维情况的支持以与 PyTorch 对齐。

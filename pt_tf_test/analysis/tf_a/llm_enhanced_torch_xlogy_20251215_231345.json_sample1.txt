@@ -1,0 +1,69 @@
+来源文件: llm_enhanced_torch_xlogy_20251215_231345.json
+样例编号: 1
+tensorflow_error 错误信息: {{function_node __wrapped__Xlogy_device_/job:localhost/replica:0/task:0/device:CPU:0}} Incompatible shapes: [0,3] vs. [2,3] [Op:Xlogy] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.xlogy",
+  "input": {
+    "shape": [
+      0,
+      3
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.972431607272691,
+      -1.5425396099557596,
+      0.04752509940212653,
+      -0.537920625594355,
+      0.43381059278484296,
+      0.655558632552412
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.xlogy",
+  "input": {
+    "shape": [
+      0,
+      3
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.972431607272691,
+      -1.5425396099557596,
+      0.04752509940212653,
+      -0.537920625594355,
+      0.43381059278484296,
+      0.655558632552412
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.math.xlogy` 在输入张量形状为 `[0, 3]`（即第一维为 0）时，会因空维度导致广播失败，而其内部实现对 shape 中包含 0 的情况处理不兼容，尤其当另一输入为 `[2, 3]` 时，无法进行合法广播（`[0,3]` 与 `[2,3]` 不可广播），因此报错“Incompatible shapes: [0,3] vs. [2,3]”。
+   - PyTorch 的 `torch.xlogy` 虽然也支持空张量，但其在处理形如 `[0,3]` 的输入时通常能容忍零维，且在广播规则上更宽松，允许与非空张量运算，这体现了两框架在空张量处理上的行为差异。
+
+3. 修复建议：
+   - 建议提交一个 issue 给 TensorFlow 官方，指出 `tf.math.xlogy` 对含 0 维度的张量缺乏合理广播支持，属于框架行为不一致问题。

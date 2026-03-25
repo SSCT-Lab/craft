@@ -1,0 +1,706 @@
+{
+  "operator": "torch.nn.functional.max_pool3d",
+  "timestamp": "2026-01-24T18:41:56.656938",
+  "total_iterations": 8,
+  "llm_generated_test_cases": 6,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "*args": {
+          "shape": [
+            20,
+            16,
+            50,
+            44,
+            31
+          ],
+          "dtype": "torch.float32"
+        },
+        "**kwargs": [
+          3,
+          2,
+          2
+        ],
+        "api": "torch.nn.functional.max_pool3d"
+      },
+      "paddle_test_case": {
+        "*args": {
+          "shape": [
+            20,
+            16,
+            50,
+            44,
+            31
+          ],
+          "dtype": "torch.float32"
+        },
+        "**kwargs": [
+          3,
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.max_pool3d"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "_max_pool3d() missing 2 required positional arguments: 'input' and 'kernel_size'",
+        "paddle_error": "max_pool3d() missing 2 required positional arguments: 'x' and 'kernel_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 622, in fn\n    return if_false(*args, **kwargs)\nTypeError: _max_pool3d() missing 2 required positional arguments: 'input' and 'kernel_size'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: max_pool3d() missing 2 required positional arguments: 'x' and 'kernel_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例将所有参数（kernel_size=3, stride=2, padding=2）错误地放入**kwargs列表中，但两个框架的max_pool3d均要求input/x为第一个位置参数，kernel_size为第二个位置参数；其余参数（stride, padding等）才可作为后续位置或关键字参数。PyTorch报错'_max_pool3d() missing 2 required positional arguments: \"input\" and \"kernel_size\"'明确表明未传入必需的位置参数input和kernel_size；同理Paddle报错'missing \"x\" and \"kernel_size\"'。因此必须显式构造input张量并将其作为第一个*args元素，kernel_size作为第二个*args元素（或显式关键字），其余参数按文档规范补全。此外，dtype字段在Paddle中应为paddle.float32而非torch.float32，且padding需满足>=0且<=kernel_size//2（kernel_size=3时padding最大为1），故将padding修正为1（合法值），并显式指定stride=2、padding=1、ceil_mode=False以确保行为对齐。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              20,
+              16,
+              50,
+              44,
+              31
+            ],
+            "dtype": "torch.float32"
+          },
+          3
+        ],
+        "**kwargs": {
+          "stride": 2,
+          "padding": 1,
+          "ceil_mode": false,
+          "return_indices": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              20,
+              16,
+              50,
+              44,
+              31
+            ],
+            "dtype": "paddle.float32"
+          },
+          3
+        ],
+        "**kwargs": {
+          "stride": 2,
+          "padding": 1,
+          "ceil_mode": false,
+          "return_mask": false,
+          "data_format": "NCDHW"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 3.664111852645874",
+        "torch_shape": [
+          20,
+          16,
+          16,
+          14,
+          10
+        ],
+        "paddle_shape": [
+          20,
+          16,
+          16,
+          14,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "结果不一致且最大差异为3.664，远超可容忍精度误差（1e-3），但经分析PyTorch和PaddlePaddle在max_pool3d的padding处理逻辑上存在本质差异：PyTorch的padding是隐式负无穷填充（用于max pooling），而PaddlePaddle文档明确说明padding参数支持'same'/'valid'字符串、int、list/tuple等多形式，且当padding为int时，其语义虽类似，但底层实现对边界索引计算和ceil_mode交互可能存在偏差；此外，PaddlePaddle的return_mask与PyTorch的return_indices虽功能对应，但本例中均设为false，非主因；更关键的是，PaddlePaddle默认data_format='NCDHW'已匹配PyTorch的隐式布局，但输入尺寸(20,16,50,44,31)较大且padding=1、kernel_size=3、stride=2易暴露数值稳定性或索引越界隐患；因此需通过变异测试用例缩小问题范围，优先尝试更小、更规整的输入（如shape=[1,1,7,7,7]）并显式对齐padding模式（改用tuple padding确保各维度对称），同时启用return_indices/mask以验证索引一致性，从而判断是数值计算差异还是索引逻辑差异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              1,
+              7,
+              7,
+              7
+            ],
+            "dtype": "torch.float32"
+          },
+          3
+        ],
+        "**kwargs": {
+          "stride": 2,
+          "padding": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_indices": true
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              1,
+              7,
+              7,
+              7
+            ],
+            "dtype": "paddle.float32"
+          },
+          3
+        ],
+        "**kwargs": {
+          "stride": 2,
+          "padding": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_mask": true,
+          "data_format": "NCDHW"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 0.6155745983123779",
+        "torch_shape": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的return_indices=True对应PaddlePaddle的return_mask=True，但两者语义不完全等价：PyTorch返回(argmax_values, indices)，而PaddlePaddle在return_mask=True时返回(output, indices)，且indices的计算逻辑存在差异（如padding处理、索引映射方式）。此外，PaddlePaddle文档明确要求当return_mask=True时，data_format必须为'NCDHW'（已满足），但关键问题是padding参数解析行为不一致：PyTorch的padding=[1,1,1]表示各维度两侧均pad 1，而PaddlePaddle对list padding的解释需严格匹配其6-element或3-element规范；根据Paddle文档，3-element list [p_d, p_h, p_w] is valid for symmetric padding per dimension, so that part is correct. However, the numerical mismatch (max diff 0.615) suggests divergent index selection or padding application order. The root cause is that PyTorch's max_pool3d with return_indices uses 'legacy' index mapping under padding, while Paddle's return_mask may use a different indexing convention (e.g., including padded regions in index space). To align behavior, we must ensure identical padding interpretation and disable ambiguous behaviors: remove return_indices/return_mask to isolate value computation, and verify basic pooling output matches first. Since the problem manifests only when indices are requested, and values differ significantly (0.615 > 1e-3), this indicates functional divergence in the indexed max operation — not precision error. Therefore, repair by removing indices/mask to test core pooling logic, which should be equivalent. Also, explicitly set padding='same' or adjust padding to ensure identical effective padding coverage; but given input shape [1,1,7,7,7], kernel=3, stride=2, padding=[1,1,1] yields output shape floor((7+2*1-3)/2)+1 = floor(7/2)+1 = 3+1=4 in PyTorch (with ceil_mode=False), same in Paddle per doc. So the issue is in index handling. Per task requirement: when functionality is not fully equivalent (indices semantics differ), and value outputs diverge beyond tolerance, the correct action is to repair by removing the non-equivalent feature (indices/mask) and test core pooling only."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              1,
+              7,
+              7,
+              7
+            ],
+            "dtype": "torch.float32"
+          },
+          3
+        ],
+        "**kwargs": {
+          "stride": 2,
+          "padding": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_indices": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              1,
+              7,
+              7,
+              7
+            ],
+            "dtype": "paddle.float32"
+          },
+          3
+        ],
+        "**kwargs": {
+          "stride": 2,
+          "padding": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_mask": false,
+          "data_format": "NCDHW"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1.3414846658706665",
+        "torch_shape": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "*args": {
+          "shape": [
+            20,
+            16,
+            51,
+            33,
+            15
+          ],
+          "dtype": "torch.float32"
+        },
+        "**kwargs": 3,
+        "api": "torch.nn.functional.max_pool3d"
+      },
+      "paddle_test_case": {
+        "*args": {
+          "shape": [
+            20,
+            16,
+            51,
+            33,
+            15
+          ],
+          "dtype": "torch.float32"
+        },
+        "**kwargs": 3,
+        "api": "paddle.nn.functional.max_pool3d"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "_max_pool3d() missing 2 required positional arguments: 'input' and 'kernel_size'",
+        "paddle_error": "max_pool3d() missing 2 required positional arguments: 'x' and 'kernel_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 622, in fn\n    return if_false(*args, **kwargs)\nTypeError: _max_pool3d() missing 2 required positional arguments: 'input' and 'kernel_size'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: max_pool3d() missing 2 required positional arguments: 'x' and 'kernel_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks failed because the test case incorrectly passes '3' as **kwargs, but max_pool3d requires at least 'input' (or 'x') and 'kernel_size' as positional arguments. The current test case omits the mandatory tensor input and kernel_size parameter entirely — it only provides shape/dtype metadata in *args and a bare integer 3 in **kwargs, which is interpreted as no valid keyword args. Per docs: PyTorch requires 'input' and 'kernel_size' as first two positional args; Paddle requires 'x' and 'kernel_size'. We must construct valid tensor inputs and explicitly pass kernel_size (e.g., (3,3,3)), stride, padding, etc., respecting both APIs' signatures. Also, dtype 'torch.float32' is invalid for Paddle — must use 'float32'."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.functional.max_pool3d",
+        "*args": {
+          "shape": [
+            20,
+            16,
+            51,
+            33,
+            15
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.49504348635673523,
+            0.04607411473989487,
+            -1.2688710689544678,
+            0.7460532784461975,
+            0.7429574131965637,
+            -0.4437461495399475,
+            -0.11149399727582932,
+            1.093514084815979,
+            -1.2022018432617188,
+            -0.293475478887558
+          ]
+        },
+        "**kwargs": {
+          "kernel_size": [
+            3,
+            3,
+            3
+          ],
+          "stride": [
+            2,
+            2,
+            2
+          ],
+          "padding": [
+            0,
+            0,
+            0
+          ],
+          "dilation": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_indices": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.max_pool3d",
+        "*args": {
+          "shape": [
+            20,
+            16,
+            51,
+            33,
+            15
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.49504348635673523,
+            0.04607411473989487,
+            -1.2688710689544678,
+            0.7460532784461975,
+            0.7429574131965637,
+            -0.4437461495399475,
+            -0.11149399727582932,
+            1.093514084815979,
+            -1.2022018432617188,
+            -0.293475478887558
+          ]
+        },
+        "**kwargs": {
+          "kernel_size": [
+            3,
+            3,
+            3
+          ],
+          "stride": [
+            2,
+            2,
+            2
+          ],
+          "padding": [
+            0,
+            0,
+            0
+          ],
+          "ceil_mode": false,
+          "return_mask": false,
+          "data_format": "NCDHW"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "_max_pool3d() missing 2 required positional arguments: 'input' and 'kernel_size'",
+        "paddle_error": "max_pool3d() missing 2 required positional arguments: 'x' and 'kernel_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 622, in fn\n    return if_false(*args, **kwargs)\nTypeError: _max_pool3d() missing 2 required positional arguments: 'input' and 'kernel_size'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: max_pool3d() missing 2 required positional arguments: 'x' and 'kernel_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and PaddlePaddle test cases are missing the required positional argument 'input' (PyTorch) / 'x' (Paddle) — the actual input tensor. The current test case only specifies shape/dtype but does not generate or pass the input tensor. According to both APIs' documentation, the first argument must be a concrete 5D tensor (not just shape/dtype metadata). Additionally, PyTorch requires 'kernel_size' as a positional or keyword argument, but it's already present; however, the error indicates it's not being passed correctly due to missing input tensor. The root cause is that the test harness is incorrectly interpreting '*args' as tensor generation spec instead of passing an actual tensor. To repair: we must replace the shape/dtype-only '*args' with a valid generated tensor (e.g., using torch.randn/paddle.randn), and ensure all required parameters are correctly named and typed per docs. Also, Paddle's 'padding' accepts list[int] of length 3 (valid), but PyTorch's 'padding' must be int or tuple of 3 ints — [0,0,0] is acceptable for both. 'dilation' is not supported in Paddle's max_pool3d (absent from its signature), so it must be removed from Paddle case. 'return_indices' (PyTorch) ↔ 'return_mask' (Paddle) are equivalent but names differ; both set to False so no issue. Finally, Paddle requires 'data_format'='NCDHW' to match PyTorch's default layout."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.functional.max_pool3d",
+        "*args": [
+          "input"
+        ],
+        "**kwargs": {
+          "input": {
+            "shape": [
+              20,
+              16,
+              51,
+              33,
+              15
+            ],
+            "dtype": "float32"
+          },
+          "kernel_size": [
+            3,
+            3,
+            3
+          ],
+          "stride": [
+            2,
+            2,
+            2
+          ],
+          "padding": [
+            0,
+            0,
+            0
+          ],
+          "dilation": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_indices": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.max_pool3d",
+        "*args": [
+          "x"
+        ],
+        "**kwargs": {
+          "x": {
+            "shape": [
+              20,
+              16,
+              51,
+              33,
+              15
+            ],
+            "dtype": "float32"
+          },
+          "kernel_size": [
+            3,
+            3,
+            3
+          ],
+          "stride": [
+            2,
+            2,
+            2
+          ],
+          "padding": [
+            0,
+            0,
+            0
+          ],
+          "ceil_mode": false,
+          "return_mask": false,
+          "data_format": "NCDHW"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "_max_pool3d() missing 1 required positional argument: 'kernel_size'",
+        "paddle_error": "max_pool3d() missing 1 required positional argument: 'kernel_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 622, in fn\n    return if_false(*args, **kwargs)\nTypeError: _max_pool3d() missing 1 required positional argument: 'kernel_size'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: max_pool3d() missing 1 required positional argument: 'kernel_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and PaddlePaddle failed with 'missing required positional argument: kernel_size', indicating that the input tensor is incorrectly passed as a positional argument in '*args' instead of as a keyword argument. According to both APIs' documentation, 'input' (PyTorch) and 'x' (Paddle) are the first *positional* argument — but in the test case, they are provided as string placeholders ('input', 'x') in *args rather than actual tensor objects. However, since this is a synthetic test case generator context (not real code execution), the correct fix is to move the tensor specification from **kwargs into *args as the first element, and remove the redundant string placeholder. Also, PyTorch requires 'kernel_size' as a positional or keyword argument — it's already in **kwargs, but the *args list must not contain only a string; it must be omitted or contain the actual tensor. Standard practice in such test generators is to pass tensor specs via *args as the first element (not as a string key). Furthermore, Paddle's 'padding' accepts list[int] of length 3, which is valid, but PyTorch's 'padding' must be int or tuple of 3 ints — [0,0,0] is acceptable. However, the core issue is structural: *args contains ['input'] (a string), not the tensor spec. The repair moves the input tensor spec to *args[0] and removes the duplicate 'input'/x key from **kwargs to avoid ambiguity and match API signatures."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              20,
+              16,
+              51,
+              33,
+              15
+            ],
+            "dtype": "float32"
+          }
+        ],
+        "**kwargs": {
+          "kernel_size": [
+            3,
+            3,
+            3
+          ],
+          "stride": [
+            2,
+            2,
+            2
+          ],
+          "padding": [
+            0,
+            0,
+            0
+          ],
+          "dilation": [
+            1,
+            1,
+            1
+          ],
+          "ceil_mode": false,
+          "return_indices": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.max_pool3d",
+        "*args": [
+          {
+            "shape": [
+              20,
+              16,
+              51,
+              33,
+              15
+            ],
+            "dtype": "float32"
+          }
+        ],
+        "**kwargs": {
+          "kernel_size": [
+            3,
+            3,
+            3
+          ],
+          "stride": [
+            2,
+            2,
+            2
+          ],
+          "padding": [
+            0,
+            0,
+            0
+          ],
+          "ceil_mode": false,
+          "return_mask": false,
+          "data_format": "NCDHW"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.max_pool3d",
+        "paddle_api": "paddle.nn.functional.max_pool3d",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "_max_pool3d() missing 1 required positional argument: 'kernel_size'",
+        "paddle_error": "max_pool3d() missing 1 required positional argument: 'kernel_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 610, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 622, in fn\n    return if_false(*args, **kwargs)\nTypeError: _max_pool3d() missing 1 required positional argument: 'kernel_size'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 649, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: max_pool3d() missing 1 required positional argument: 'kernel_size'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    }
+  ]
+}

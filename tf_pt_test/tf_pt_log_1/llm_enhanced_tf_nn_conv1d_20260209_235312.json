@@ -1,0 +1,1479 @@
+{
+  "tf_api": "tf.nn.conv1d",
+  "pytorch_api": "torch.nn.functional.conv1d",
+  "timestamp": "2026-02-09T23:53:12.704089",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "api": "tf.nn.conv1d"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv1d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv1d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=int, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d does not accept 'padding' as string 'VALID'; it expects integer padding (e.g., 0) or string 'valid' (lowercase), and requires 'weight' instead of 'filters', with input shape (N, C_in, L) vs TF's (N, L, C_in) for NWC. Also, filter shape must be (C_out, C_in, kernel_size), not (kernel_size, C_in, C_out)."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": 1,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 3, 1) vs PT=(1, 1, 3)",
+        "tf_shape": [
+          1,
+          3,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow使用NWC格式（batch, width, channels），PyTorch使用NCW格式（batch, channels, width）；TF输出shape=(1,3,1)对应NWC，PT输出shape=(1,1,3)对应NCW，需统一数据格式语义：TF保持NWC，PT input应为[1,1,4]→正确，但weight应为[out_channels, in_channels, kernel_width]即[1,1,2]正确；问题在于TF的filters shape[2,1,1]表示kernel_width=2, in_c=1, out_c=1，而PT weight[1,1,2]是等价的；但TF输出宽=4-2+1=3→(1,3,1)，PT输出宽=4-2+1=3→(1,1,3)，二者只是channel/width轴顺序不同，属data_format差异，非计算错误；修复：使PT输出与TF在相同逻辑维度解释，即保持TF NWC→(B,W,C)，PT需输出(B,C,W)，故无需改shape，但需确保比较时按语义对齐；然而当前测试直接比对shape失败，说明用例未做格式归一化；正确修复是让TF用NCW或PT用NWC风格，但PyTorch不支持data_format参数，因此应将TF改为NCW以匹配PT的隐式NCW布局，即TF data_format='NCW'，x shape=[1,1,4]，filters shape=[2,1,1]→但NCW下filters应为[filter_width, in_channels, out_channels]不变，x变为[batch,in_channels,width]，故x=[1,1,4]，filters=[2,1,1]，此时TF输出为[1,1,3]（NCW），与PT[1,1,3]一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": 1,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.26447034",
+        "tf_shape": [
+          1,
+          1,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d weight shape is (out_channels, in_channels, kernel_width), while TF filters is (filter_width, in_channels, out_channels). Original PyTorch weight shape [1,1,2] corresponds to TF filters [2,1,1], but data_format='NCW' in TF expects input [batch, channels, width], matching PyTorch's [N,C,W]; however, padding='VALID' in TF maps to padding=0 in PyTorch, which is correct. The inconsistency arises because TF's 'NCW' input [1,1,4] and filters [2,1,1] produce output width = 4-2+1=3, while PyTorch's weight [1,1,2] with input [1,1,4] also gives width=3 — so shape matches, but numerical mismatch indicates filter layout misalignment: TF filters[height,width,channels] for conv2d emulation implies the filter tensor must be transposed in interpretation. To align semantics, PyTorch weight should be [1,1,2] (correct), but TF filters must be interpreted as [kernel_width, in_channels, out_channels] — which it is — so the real issue is missing bias handling and deterministic initialization. We repair by ensuring identical random seed and explicit weight values; however, since test cases only specify shapes, the root cause is shape-driven tensor initialization divergence. Per docs, both support same math, so we fix by enforcing consistent filter orientation: TF [2,1,1] ↔ PyTorch [1,1,2] is correct, but PyTorch expects weight as (out,in,kw), so [1,1,2] is right. The max diff 1.26 suggests sign or transpose error — likely TF's 'NCW' mode internally reshapes differently. Best repair: switch TF to 'NWC' to match PyTorch's implicit NCHW-like order? No — PyTorch is N,C,W and TF 'NCW' is same. Actually, TF 'NCW' means input [N,C,W], filters [W,C,O], so filters shape [2,1,1] means kernel_width=2, in_channels=1, out_channels=1 — correct. PyTorch weight [1,1,2] means out=1, in=1, kw=2 — same. So inconsistency is due to uninitialized random weights yielding different values. To ensure comparability, we must use deterministic, identical weight tensors — but test cases only define shapes. Therefore, the minimal repair is to align padding specification robustness: use explicit numeric padding in both, and ensure no dilation/stride ambiguity. Since stride=1 and padding=0/'VALID' are equivalent, the issue is deeper: TF conv1d with 'NCW' uses internal conv2d with [1, W, C, O] reshape, while PyTorch uses native 1D. Empirically, they should match — so the observed large error (1.26) indicates a fundamental layout mismatch. Correction: In TF 'NCW', input is [N,C,W], but filters must be [W,C,O]; in PyTorch, weight is [O,C,W] — yes! Official PyTorch doc says weight shape is (out_channels, in_channels, kW). So [1,1,2] is (O=1, C=1, kW=2). TF filters is [filter_width, in_channels, out_channels] = [2,1,1]. So TF filters[0] = kW, TF filters[1] = C, TF filters[2] = O → matches PyTorch weight[2], weight[1], weight[0]? No: PyTorch is [O,C,kW], TF is [kW,C,O] — so TF filters[i,j,k] corresponds to PyTorch weight[k,j,i]. Thus, to get identical computation, PyTorch weight must be permuted: from [1,1,2] to [1,1,2] is fine if we index correctly — but actual tensor values differ because initialization is independent. Since test cases don’t specify values, the only reliable repair is to make both use same concrete weight tensor — but mutation/repair cannot add values per spec. Therefore, per framework alignment rules: the *shape mapping is correct*, so inconsistency implies undocumented behavior divergence. Given max diff > 1e-3 and functional equivalence per docs, this is a test construction flaw: the frameworks interpret the *same shape* with different memory layouts. The fix is to use 'NWC' in TF to match PyTorch’s de-facto channel-last expectation in many ops — but PyTorch conv1d is channel-first. Wait: PyTorch input is [N,C,W] — channel-first. TF 'NCW' is also [N,C,W]. So it's aligned. Then why mismatch? Because TF’s internal conv2d reshape for 'NCW' is: input → [N, C, W] → reshaped to [N, 1, C, W], filters → [1, kW, C, O], then conv2d → [N, 1, O, W_out], then reshaped to [N, O, W_out]. PyTorch does direct 1D. They are mathematically identical. So difference must be due to padding application or indexing. 'VALID' in TF means no padding, same as padding=0. So the only remaining variable is filter orientation during convolution: TF slides filter left-to-right over input width; PyTorch does same. Thus, the error suggests the test used different random seeds or non-deterministic init. Since we can’t control values, the proper repair is to enforce identical *deterministic* weight initialization by specifying values — but task forbids adding values (only shape/dtype/params). Therefore, per guidelines, when frameworks are functionally equivalent but outputs diverge numerically beyond tolerance *and* shapes are correctly mapped*, the root cause is uncontrolled tensor initialization — which makes the test invalid for cross-framework comparison. Hence, the correct action is to repair by adding explicit, identical weight tensors — but JSON schema doesn’t allow 'value' field. So we must instead adjust shapes to expose structural equivalence: use 1x1 kernels where output is fully determined by input[0] and weight[0], eliminating sliding ambiguity. Reduce kernel width to 1."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": 1,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.58231229",
+        "tf_shape": [
+          1,
+          1,
+          4
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "api": "tf.nn.conv1d"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv1d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv1d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=int, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d does not accept 'padding' as string 'VALID'; it expects 'valid' (lowercase) or tuple. Also, PyTorch expects weight shape (out_channels, in_channels, kernel_width), but filters in TF is [filter_width, in_channels, out_channels], so must transpose. Input x in PyTorch must be (N, C_in, L), matching TF's NWC layout requires x shape [1,1,4] not [1,4,1]."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 2, 1) vs PT=(1, 1, 2)",
+        "tf_shape": [
+          1,
+          2,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于data_format与channel位置约定差异：TF默认'NWC'即[batch,in_width,in_channels]，PT为[N,C,W]即[batch,in_channels,in_width]；filters在TF为[filter_width,in_channels,out_channels]，PT weight为[out_channels,in_channels,filter_width]。原TF filters[2,1,1]对应PT weight[1,1,2]正确，但TF输入x[1,4,1]应匹配NWC，PT input[1,1,4]正确；输出形状不一致因TF输出为[batch,out_width,out_channels]即[1,2,1]，PT为[batch,out_channels,out_width]即[1,1,2]，需统一语义对齐——修复PT weight shape为[1,1,2]保持正确，但需确保TF stride=2和padding='VALID'下out_width=floor((4-2)/2)+1=2，PT同理，故问题本质是输出维度顺序不同，需调整TF data_format='NCW'使TF输出为[batch,out_channels,out_width]，即x shape改为[1,1,4]，filters改为[2,1,1]→[filter_width,in_channels,out_channels]不变，但data_format='NCW'要求x为[batch,in_channels,in_width]，故x=[1,1,4]，filters=[2,1,1]合法，此时TF输出shape=[1,1,2]，与PT一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.63433795",
+        "tf_shape": [
+          1,
+          1,
+          2
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv1d with data_format='NCW' expects input shape [batch, in_channels, in_width] and filters [filter_width, in_channels, out_channels], while PyTorch conv1d expects weight [out_channels, in_channels, kernel_width]. Original TF filters shape [2,1,1] means filter_width=2, in_channels=1, out_channels=1; PyTorch weight [1,1,2] is correct. But TF 'stride' is int, PyTorch 'stride' is int/tuple — consistent. However, padding='VALID' vs 'valid' is fine. The inconsistency (max diff 0.63) arises because TF NCW input [1,1,4] is interpreted as [N,C,W], but PyTorch input [1,1,4] is also [N,C,W], so shapes match. The real issue: TF filters [2,1,1] has filter_width=2, but PyTorch weight [1,1,2] has kernel_width=2 — correct. However, TF's internal conv2d reshape logic for NCW may differ in padding/stride handling. To ensure semantic equivalence, align filter/kernel dimensions and use identical numeric inputs; the current weight shape in PyTorch is correct, but TF filters shape must be [filter_width, in_channels, out_channels] = [2,1,1] — already correct. The discrepancy suggests implicit assumption mismatch in padding calculation. Per docs, TF conv1d with 'VALID' computes output width as floor((in_width - filter_width)/stride) + 1 = floor((4-2)/2)+1 = 2. PyTorch same: (4+2*0-2)/2 + 1 = 2. So output shape [1,1,2] matches. Max diff 0.63 indicates actual numeric divergence due to uninitialized or non-deterministic weight values. Test cases must use fixed, identical weight tensors — but current test only specifies shapes, not values. To repair, we must ensure both frameworks use identical weight and input tensor values. Since test cases only define shapes, the inconsistency stems from random initialization. Therefore, repair requires adding deterministic 'value' fields to both x and filters/weight to guarantee identical numeric inputs."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.12947728",
+        "tf_shape": [
+          1,
+          1,
+          2
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "api": "tf.nn.conv1d"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv1d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv1d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=int, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d does not accept 'VALID' as string padding; it only accepts integer tuple or 'valid' (lowercase), and requires input shape (N, C_in, L), but current x shape [2,4,1] is interpreted as (N, L, C_in) — must transpose to (N, C_in, L) = [2,1,4]; filters must be (C_out, C_in//groups, K) = [1,1,2], not [2,1,1]."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 3, 1) vs PT=(2, 1, 3)",
+        "tf_shape": [
+          2,
+          3,
+          1
+        ],
+        "pytorch_shape": [
+          2,
+          1,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于data_format语义差异：TF 'NWC' expects [batch, width, channels] while PT expects [batch, channels, width]; filters in TF are [width, in_channels, out_channels], but PT weight is [out_channels, in_channels, width]. Fix by aligning channel/width order and filter dimensions."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 3, 1) vs PT=(2, 1, 3)",
+        "tf_shape": [
+          2,
+          3,
+          1
+        ],
+        "pytorch_shape": [
+          2,
+          1,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv1d with data_format='NWC' expects input shape (batch, width, channels) and filters (filter_width, in_channels, out_channels), while PyTorch conv1d expects input (batch, channels, width) and weight (out_channels, in_channels, kernel_width). Original PT weight shape [1,1,2] is correct for out_channels=1, but TF filters [2,1,1] implies out_channels=1, filter_width=2 — so PT weight should be [1,1,2], matching. However, TF output shape is (2,3,1) = (batch, out_width, out_channels), PT output is (2,1,3) = (batch, out_channels, out_width), indicating axis misalignment. To align semantics, PT input must be (2,1,4) → correct, but TF uses NWC so x=(2,4,1); the mismatch arises because TF output is (batch, out_width, out_channels) while PT output is (batch, out_channels, out_width). To make outputs comparable, we must transpose PT output or adjust TF data_format — but per doc, 'NCW' in TF would make TF input (2,1,4) and output (2,1,3), matching PT. So repair: change TF data_format to 'NCW', x shape to [2,1,4], filters to [2,1,1] (filter_width=2, in_channels=1, out_channels=1), keeping same logical convolution."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 1,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.75312746",
+        "tf_shape": [
+          2,
+          1,
+          3
+        ],
+        "pytorch_shape": [
+          2,
+          1,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "api": "tf.nn.conv1d"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv1d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv1d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=int, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d does not accept string 'VALID' for padding; it only accepts integer tuple or 'valid' (lowercase) string. Also, PyTorch expects input shape (N, C_in, L), but current x shape [2,4,1] is interpreted as (N, L, C_in) — must transpose to (2,1,4). Filters must be (C_out, C_in/groups, kernel_size) = (1,1,2), not [2,1,1]."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            2,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 2, 1) vs PT=(2, 1, 2)",
+        "tf_shape": [
+          2,
+          2,
+          1
+        ],
+        "pytorch_shape": [
+          2,
+          1,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv1d默认data_format='NWC'，输入shape为[batch, width, channels]即[2,4,1]，filters为[filter_width,in_channels,out_channels]=[2,1,1]；PyTorch conv1d要求input shape [N,C_in,L]=[2,1,4]，weight shape [C_out,C_in/groups,kW]=[1,1,2]，但输出通道数TF为1、PT为1，而TF输出shape为[2,2,1]（NWC），PT为[2,1,2]（NCL）——维度顺序不一致。需统一语义：TF输出应为[batch,out_width,out_channels]，PT为[batch,out_channels,out_width]，故PT weight shape正确，但TF filters shape应保持[2,1,1]，而PT input shape已正确转置。问题根源是TF输出通道在最后、PT在中间，比较前需permute PT output或调整TF data_format。修复方式：将TF设data_format='NCW'，使TF输入为[batch,channels,width]=[2,1,4]，filters=[2,1,1]→需对应[filter_width,in_channels,out_channels]，此时TF输出为[2,1,2]，与PT一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.78236163",
+        "tf_shape": [
+          2,
+          1,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          1,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d weight shape is (out_channels, in_channels/groups, kernel_width), while TF filters is (filter_width, in_channels, out_channels). Original PyTorch weight [1,1,2] corresponds to kernel_width=2, but TF filters [2,1,1] has filter_width=2, in_channels=1, out_channels=1 — so PyTorch weight should be [1,1,2], which is correct. However, TF data_format='NCW' expects input [N,C,W] = [2,1,4], matching PyTorch input [2,1,4]; but TF filters [2,1,1] is correct for NCW. The inconsistency arises because PyTorch padding='valid' is case-insensitive, but TF padding='VALID' is correct. The real issue is stride semantics: both use same stride=2, but output size calculation must match. To ensure functional equivalence, we must align padding mode explicitly and verify kernel layout — TF filters [2,1,1] ↔ PyTorch weight [1,1,2] is correct, but we must ensure identical numerical initialization (not random) for fair comparison; however, since only shapes are given and no init spec, the inconsistency implies shape/semantics mismatch in channel ordering or padding interpretation. Repair: enforce consistent deterministic initialization via seed not shown here, but shape-wise it's correct — yet result diff >1e-3 means semantic divergence due to implicit assumptions. Per docs, TF 'NCW' and PyTorch [N,C,W] match, so the root cause is that TF conv1d with 'NCW' internally reshapes to conv2d with [N,1,W,C], while PyTorch does native 1D — but output size formula must match. Recompute: input W=4, filter W=2, stride=2, padding=0 → out_size = floor((4−2)/2)+1 = 2. Both should output [2,1,2]. So shapes match. Therefore, the inconsistency is due to uninitialized random weights causing divergent values — test case needs deterministic weight/filters. But since test only specifies shapes, not values, the frameworks use different default initializations. To fix comparability, we must ensure same value initialization — but mutation/repair cannot control values without changing spec. Hence, the only sound repair is to make padding explicit as integer (0) instead of string to avoid any backend interpretation variance, and confirm stride/padding alignment. PyTorch padding='valid' ≡ padding=0, TF padding='VALID' ≡ padding=0 — same. So no change needed. However, max diff 2.78 is huge — indicates fundamental layout misalignment: TF 'NCW' input [2,1,4] means N=2, C=1, W=4; filters [2,1,1] means filter_width=2, in_channels=1, out_channels=1 — correct. PyTorch input [2,1,4], weight [1,1,2] — out_channels=1, in_channels=1, kernel_width=2 — correct. So the issue is that TF conv1d with data_format='NCW' expects filters shape [filter_width, in_channels, out_channels], which is [2,1,1], and PyTorch expects [out_channels, in_channels, kernel_width] = [1,1,2] — this is correct transpose. Therefore, the numerical inconsistency suggests missing bias, dilation, or group handling. Default groups=1, dilation=1 in both. So the only remaining factor is that TF may apply different rounding or boundary handling. To resolve, standardize padding to integer 0 for both to eliminate string parsing variance."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": 0,
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": 2,
+        "padding": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "TypeError: Expected string for argument 'padding' not 0.",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          2,
+          1,
+          2
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "api": "tf.nn.conv1d"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv1d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv1d() received an invalid combination of arguments - got (Tensor, filters=Tensor, stride=int, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float16'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d does not accept 'VALID' as string padding; it only accepts integer padding or 'valid' (lowercase) for str mode, and requires explicit 'weight' instead of 'filters', plus input must be (N, C, L) while filters must be (out_c, in_c, k). TensorFlow uses 'VALID' (uppercase) and 'filters' param. Also, PyTorch expects weight shape (out_channels, in_channels, kernel_size), but given [2,1,1] is correct; however padding string must be 'valid', not 'VALID'."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "stride": 1,
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float16"
+        },
+        "weight": {
+          "shape": [
+            2,
+            1,
+            2
+          ],
+          "dtype": "float16"
+        },
+        "bias": null,
+        "stride": 1,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 3, 1) vs PT=(1, 2, 3)",
+        "tf_shape": [
+          1,
+          3,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          2,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float16'>",
+        "pytorch_dtype": "torch.float16",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv1d weight shape must be (out_channels, in_channels, kernel_width), but given [2, 1, 2] implies kernel_width=2, while TF filters [2, 1, 1] has filter_width=2 — mismatched in_channels interpretation: TF expects filters[filter_width, in_channels, out_channels], so [2, 1, 1] means in_channels=1, out_channels=1; but PT weight [2, 1, 2] incorrectly sets out_channels=2, in_channels=1, kernel_width=2 — should be [1, 1, 2] for 1 output channel. Also input shape: TF NWC=[1,4,1] → in_width=4, in_channels=1; PT must be NCHW-like: [1,1,4]. So PT weight must be [1,1,2] to match TF's out_channels=1."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            4,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "stride": 1,
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float16"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float16"
+        },
+        "bias": null,
+        "stride": 1,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 3, 1) vs PT=(1, 1, 3)",
+        "tf_shape": [
+          1,
+          3,
+          1
+        ],
+        "pytorch_shape": [
+          1,
+          1,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float16'>",
+        "pytorch_dtype": "torch.float16",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于data_format默认差异：TF默认'NWC'(batch,in_width,in_channels)，PT默认(N,C,L)即(batch,in_channels,length)。TF输入[1,4,1]对应NWC，PT输入应为[1,1,4]，但滤波器形状未对齐：TF filters[2,1,1]是[filter_width,in_channels,out_channels]，PT weight[1,1,2]应为[out_channels,in_channels,filter_width]，需修正为[1,1,2]→[1,1,2]正确，但输出维度顺序不同导致TF=(1,3,1) vs PT=(1,1,3)；修复方式是统一语义：TF用data_format='NCW'使输入为[1,1,4]，filters保持[2,1,1]，此时TF输出为[1,1,3]，与PT一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv1d",
+        "x": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float16"
+        },
+        "filters": {
+          "shape": [
+            2,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "stride": 1,
+        "padding": "VALID",
+        "data_format": "NCW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv1d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            4
+          ],
+          "dtype": "float16"
+        },
+        "weight": {
+          "shape": [
+            1,
+            1,
+            2
+          ],
+          "dtype": "float16"
+        },
+        "bias": null,
+        "stride": 1,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv1d",
+        "pytorch_api": "torch.nn.functional.conv1d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "UnimplementedError: {{function_node __wrapped__Conv2D_device_/job:localhost/replica:0/task:0/device:CPU:0}} The Conv2D op currently only supports the NHWC tensor format on the CPU. The op was given the format: NCHW [Op:Conv2D] name: ",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          1,
+          1,
+          3
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float16",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

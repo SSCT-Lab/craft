@@ -1,0 +1,39 @@
+来源文件: llm_enhanced_torch_remainder_20251201_230745.json
+样例编号: 3
+paddle_error 错误信息: (InvalidArgument) remainder(): argument 'y' (position 1) must be Tensor, but got float (at ..\paddle\fluid\pybind\eager_utils.cc:1513)
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "other": 1.5,
+  "api": "torch.remainder"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "other": 1.5,
+  "api": "torch.remainder"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PyTorch 的 `torch.remainder` 支持输入为 `Tensor` 或 `Scalar`（包括 float 值），而 PaddlePaddle 的 `torch.remainder` 在当前实现中要求 `other` 参数必须是 `Tensor`，不能直接传入 `float` 类型的标量；
+   - 错误信息 `(InvalidArgument) remainder(): argument 'y' (position 1) must be Tensor, but got float` 明确指出 `other` 参数类型不匹配，说明 PaddlePaddle 当前未对 `Scalar` 输入进行自动转换或隐式封装。
+
+3. 修复建议：
+   - 可提交 issue 给 PaddlePaddle 官方，建议增强 `torch.remainder` 对标量 `other` 的支持以与 PyTorch 保持一致；目前需在调用前将 `1.5` 显式转换为 `paddle.to_tensor(1.5)`。

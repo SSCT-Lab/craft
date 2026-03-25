@@ -1,0 +1,71 @@
+来源文件: llm_enhanced_torch_nn_functional_pixel_shuffle_20251215_204601.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__DepthToSpace_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input depth dimension 85 should be divisible by: 9 [Op:DepthToSpace] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pixel_shuffle",
+  "input": {
+    "shape": [
+      100,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.48699620366096497,
+      -0.02462349832057953,
+      0.8764945864677429,
+      0.2801978290081024,
+      1.426335334777832,
+      0.3309854567050934,
+      1.0804443359375,
+      -1.303824543952942,
+      -0.05446520820260048,
+      1.5724743604660034
+    ]
+  },
+  "upscale_factor": 3
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.depth_to_space",
+  "input": {
+    "shape": [
+      100,
+      9,
+      85,
+      85
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.48699620366096497,
+      -0.02462349832057953,
+      0.8764945864677429,
+      0.2801978290081024,
+      1.426335334777832,
+      0.3309854567050934,
+      1.0804443359375,
+      -1.303824543952942,
+      -0.05446520820260048,
+      1.5724743604660034
+    ]
+  },
+  "block_size": 3
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.nn.depth_to_space` 要求输入的 depth 维度（即 channel 维度）必须能被 `block_size^2` 整除，而本例中 input shape 为 `[100, 9, 85, 85]`，depth=9，block_size=3，`block_size^2 = 9`，但 9 可被 9 整除，表面看似满足条件。然而错误信息提示“Input depth dimension 85 should be divisible by: 9”，说明实际参与计算的是 **channel 维度为 85**，这与输入形状中的第二维（9）矛盾。结合测试用例中输入维度为 `[100, 9, 85, 85]`，可推断：**在 TensorFlow 中，`depth_to_space` 的 depth 维度是第 1 维（即 C），但该维度值为 9，不应是 85**。错误信息中的“85”应为误报或框架内部维度解析错误，但根本原因在于：**PyTorch `pixel_shuffle` 的输入要求是 (C×r², H, W)，而 TensorFlow `depth_to_space` 的输入要求是 (batch, height, width, C×r²)**，即通道维度在最后，且 r² 必须整除 C×r²。此处混淆了输入张量的通道位置和维度顺序。
+
+   - 更关键的是：**`pixel_shuffle` 与 `depth_to_space` 的语义不完全对齐**。虽然两者都用于像素重排，但：
+     - PyTorch `pixel_shuffle`：输入格式 `(C×r², H, W)`，输出 `(C, H×r, W×r)`
+     - TensorFlow `depth_to_space`：输入格式 `(batch, height, width, C×r²)`，输出 `(batch, height×r, width×r, C)`
+     - 因此，若直接将 PyTorch 的 `(100, 9, 85, 85)` 输入给 `depth_to_space`，会认为 batch=100, height=9, width=85, C×r²=85 → C = 85/9 ≈ 9.44，非整数，且维度顺序也不一致。**实际问题在于：测试用例未正确处理张量的维度顺序和 channel 排列方式，导致 TensorFlow 内部误读 depth 维度为 85，从而触发不可整除检查。**
+
+3. 修复建议：  
+   - 需调整输入张量维度顺序，并确保 `depth_to_space` 的 channel 维度为 `C×r²`，且其值必须能被 `block_size^2` 整除。当前输入应为 `(batch, height, width, C×r²)` 形式，因此需将 `shape=[100, 9, 85, 85]` 改为 `(100, 85, 85, 9)` 并验证 `9` 是否能被 `3^2=9` 整除——此时可整除，但需确认是否符合预期语义。

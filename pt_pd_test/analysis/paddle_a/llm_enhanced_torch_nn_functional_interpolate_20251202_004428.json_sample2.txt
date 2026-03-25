@@ -1,0 +1,79 @@
+来源文件: llm_enhanced_torch_nn_functional_interpolate_20251202_004428.json
+样例编号: 2
+paddle_error 错误信息: Only one of size or scale_factor should be defined.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      1,
+      256,
+      14,
+      14
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.3445665836334229,
+      -0.018070030957460403,
+      1.480401873588562,
+      -0.17765894532203674,
+      1.6652863025665283,
+      0.8355485200881958,
+      0.17690235376358032,
+      0.6831273436546326,
+      0.1710434854030609,
+      0.11087557673454285
+    ]
+  },
+  "size": [
+    56,
+    56
+  ],
+  "scale_factor": 2,
+  "mode": "bilinear",
+  "align_corners": true,
+  "api": "torch.nn.functional.interpolate"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [
+      1,
+      256,
+      14,
+      14
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.3445665836334229,
+      -0.018070030957460403,
+      1.480401873588562,
+      -0.17765894532203674,
+      1.6652863025665283,
+      0.8355485200881958,
+      0.17690235376358032,
+      0.6831273436546326,
+      0.1710434854030609,
+      0.11087557673454285
+    ]
+  },
+  "size": [
+    56,
+    56
+  ],
+  "scale_factor": 2,
+  "mode": "bilinear",
+  "align_corners": true,
+  "api": "torch.nn.functional.interpolate"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `torch.nn.functional.interpolate` 实现中，明确要求 **仅允许指定 `size` 或 `scale_factor` 之一**，不能同时传入两者，而 PyTorch 允许两者同时存在（此时会优先使用 `size`，并根据 `scale_factor` 重新计算输出大小，但不会报错）。
+   - 当前测试用例中同时设置了 `size=[56, 56]` 与 `scale_factor=2`，违反了 PaddlePaddle 的参数约束，因此抛出错误“Only one of size or scale_factor should be defined”。
+
+3. 修复建议：
+   - 提交 issue 给 PaddlePaddle 官方，指出其 `interpolate` API 在参数校验上比 PyTorch 更严格，且不兼容同时提供 `size` 与 `scale_factor` 的常见用法，建议在语义对齐下放宽限制或增加提示。

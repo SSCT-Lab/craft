@@ -1,0 +1,798 @@
+{
+  "operator": "torch_nn_functional_softmax",
+  "torch_api": "torch.nn.functional.softmax",
+  "paddle_api": "paddle.nn.functional.softmax",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T18:13:27.718880",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmax_20260125_112314.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmax",
+        "input": {
+          "shape": [
+            128,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5809122920036316,
+            -1.1541366577148438,
+            -0.08160772919654846,
+            -0.51505446434021,
+            -0.9816015958786011,
+            -0.6988247036933899,
+            -0.17682555317878723,
+            -0.9445862174034119,
+            0.7715216875076294,
+            -0.9602674245834351
+          ]
+        },
+        "dim": 1,
+        "_stacklevel": 5
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.functional.softmax",
+        "input": {
+          "shape": [
+            128,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5809122920036316,
+            -1.1541366577148438,
+            -0.08160772919654846,
+            -0.51505446434021,
+            -0.9816015958786011,
+            -0.6988247036933899,
+            -0.17682555317878723,
+            -0.9445862174034119,
+            0.7715216875076294,
+            -0.9602674245834351
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值在softmax中触发边界行为（如exp(inf)=inf, exp(-inf)=0），易暴露框架对NaN/inf传播、数值稳定性或log-sum-exp实现的差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                2.0
+              ]
+            },
+            "dim": 1,
+            "_stacklevel": 5
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                2.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              128,
+              10
+            ],
+            "paddle_shape": [
+              128,
+              10
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1, 1])和含inf/nan的极值输入",
+          "mutation_reason": "单元素张量是softmax最简退化情形，理论上输出必为[1.0]；结合inf/nan可暴露框架对极端值的数值稳定性处理差异（如logsumexp实现偏差、inf传播规则不一致）。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，并注入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "float64 提高数值精度，暴露 softmax 在极端值（inf/nan/-0.0）下的实现差异；Paddle 和 PyTorch 对 NaN/inf 的传播规则或归一化处理可能不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.5809122920036316,
+                -1.1541366577148438,
+                -0.08160772919654846,
+                -0.51505446434021,
+                -0.9816015958786011,
+                -0.6988247036933899,
+                -0.17682555317878723,
+                -0.9445862174034119,
+                0.7715216875076294,
+                -0.9602674245834351
+              ]
+            },
+            "dim": 1,
+            "_stacklevel": 5
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.5809122920036316,
+                -1.1541366577148438,
+                -0.08160772919654846,
+                -0.51505446434021,
+                -0.9816015958786011,
+                -0.6988247036933899,
+                -0.17682555317878723,
+                -0.9445862174034119,
+                0.7715216875076294,
+                -0.9602674245834351
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              128,
+              10
+            ],
+            "paddle_shape": [
+              128,
+              10
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmax_20260125_112314.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmax",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.19775737822055817,
+            1.469297170639038,
+            1.1028422117233276,
+            0.9992176294326782,
+            0.04577542468905449,
+            -0.14056405425071716,
+            0.6378878355026245,
+            -0.5352680087089539,
+            0.36246833205223083,
+            -1.1083996295928955
+          ]
+        },
+        "dim": -1,
+        "_stacklevel": 5
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.functional.softmax",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.19775737822055817,
+            1.469297170639038,
+            1.1028422117233276,
+            0.9992176294326782,
+            0.04577542468905449,
+            -0.14056405425071716,
+            0.6378878355026245,
+            -0.5352680087089539,
+            0.36246833205223083,
+            -1.1083996295928955
+          ]
+        },
+        "axis": -1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "softmax对无穷和NaN的处理易出现框架差异（如inf/inf未定义、nan传播策略不同、下溢上溢数值稳定性），可暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.19775737822055817,
+                1.469297170639038,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.9992176294326782,
+                0.04577542468905449
+              ]
+            },
+            "dim": -1,
+            "_stacklevel": 5
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.19775737822055817,
+                1.469297170639038,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.9992176294326782,
+                0.04577542468905449
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])和含0维(shape=[2,0,4,5])",
+          "mutation_reason": "单元素张量测试归一化退化行为，空维度测试框架对size-0轴的softmax处理一致性（如sum(exp)是否为0、log(0)处理等），易暴露数值稳定性或边界逻辑bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "dim": -1
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.0
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下 softmax 对 inf/-inf/nan 的处理一致性",
+          "mutation_reason": "高精度浮点类型更易暴露数值稳定性差异；inf/-inf/nan 是 softmax 的边界情况，两框架对未定义行为（如 nan/inf 输入）的处理可能不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.19775737822055817,
+                1.469297170639038,
+                1.1028422117233276,
+                0.9992176294326782,
+                0.04577542468905449,
+                -0.14056405425071716,
+                0.6378878355026245,
+                -0.5352680087089539,
+                0.36246833205223083,
+                -1.1083996295928955,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -1,
+            "_stacklevel": 5
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.19775737822055817,
+                1.469297170639038,
+                1.1028422117233276,
+                0.9992176294326782,
+                0.04577542468905449,
+                -0.14056405425071716,
+                0.6378878355026245,
+                -0.5352680087089539,
+                0.36246833205223083,
+                -1.1083996295928955,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmax_20260125_112314.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmax",
+        "input": {
+          "shape": [
+            16,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7435818314552307,
+            0.5142806768417358,
+            0.48063334822654724,
+            -1.9417872428894043,
+            0.9424012303352356,
+            -1.1556490659713745,
+            -0.7246071100234985,
+            -0.5668298602104187,
+            -1.5238163471221924,
+            0.08198494464159012
+          ]
+        },
+        "dim": 1
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.functional.softmax",
+        "input": {
+          "shape": [
+            16,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7435818314552307,
+            0.5142806768417358,
+            0.48063334822654724,
+            -1.9417872428894043,
+            0.9424012303352356,
+            -1.1556490659713745,
+            -0.7246071100234985,
+            -0.5668298602104187,
+            -1.5238163471221924,
+            0.08198494464159012
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "softmax对无穷大和NaN的处理易出现框架差异（如inf/inf未定义、nan传播策略不同），且极小/极大值易触发数值不稳定，暴露底层实现bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                16,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                2.0
+              ]
+            },
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                16,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                2.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              16,
+              10
+            ],
+            "paddle_shape": [
+              16,
+              10
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1, 1])和含inf/nan的sample_values",
+          "mutation_reason": "单元素张量是softmax最简非退化情形，理论输出必为[1.0]；引入inf/nan可暴露框架对异常值的处理差异（如inf/inf、nan传播、logsumexp稳定性）",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32升级为float64，并注入inf/-inf/nan边界值",
+          "mutation_reason": "float64可暴露数值稳定性差异；inf/-inf/nan是softmax数学定义的临界点，两框架对未定义行为（如softmax(inf)）或次正规数处理可能不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                16,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.7435818314552307,
+                0.5142806768417358,
+                0.48063334822654724,
+                -1.9417872428894043,
+                0.9424012303352356,
+                -1.1556490659713745,
+                -0.7246071100234985,
+                -0.5668298602104187,
+                "inf",
+                "nan"
+              ]
+            },
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.functional.softmax",
+            "input": {
+              "shape": [
+                16,
+                10
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.7435818314552307,
+                0.5142806768417358,
+                0.48063334822654724,
+                -1.9417872428894043,
+                0.9424012303352356,
+                -1.1556490659713745,
+                -0.7246071100234985,
+                -0.5668298602104187,
+                "inf",
+                "nan"
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              16,
+              10
+            ],
+            "paddle_shape": [
+              16,
+              10
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

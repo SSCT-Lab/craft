@@ -1,0 +1,1782 @@
+{
+  "tf_api": "tf.nn.depthwise_conv2d",
+  "pytorch_api": "torch.nn.functional.conv2d",
+  "timestamp": "2026-02-09T23:57:54.007205",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 1,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.depthwise_conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filter=Tensor, strides=list, padding=str, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not support 'SAME' padding as string nor 'data_format' parameter; it requires explicit padding calculation and NCHW input format. Depthwise convolution in PyTorch must use groups=in_channels and out_channels=in_channels*channel_multiplier, with weight shape (out_channels,1,kH,kW). Also strides must be tuple of 2 ints, not 4."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=3, weight of size [6, 1, 3, 3], expected input[1, 4, 4, 3] to have 3 channels, but got 4 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires input channels to match groups * (weight_in_channels), but input is NHWC [1,4,4,3] while conv2d expects NCHW. Fix: transpose input to [1,3,4,4], weight shape [6,1,3,3] is correct for depthwise (in_channels=3, channel_multiplier=2 → out_channels=6, groups=3), and padding 'SAME' in TF with stride=1 & kernel=3 implies padding=[1,1] in PyTorch — but input channel dim must be 3, not 4. Original input shape [1,4,4,3] has 3 channels (last dim), so it's valid; error shows input[1,4,4,3] got 4 channels because PyTorch interpreted last dim as channel due to missing permute. Must convert NHWC→NCHW: input [1,4,4,3] → [1,3,4,4], and adjust weight to match depthwise semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=3, weight of size [6, 1, 3, 3], expected input[1, 4, 4, 3] to have 3 channels, but got 4 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires input channels to match in_channels = groups * (weight.shape[1]), but input is NHWC [1,4,4,3] → 3 channels, while groups=3 and weight[1]=1 implies expected input channels=3, yet actual input has last dim=3 but PyTorch expects NCHW. Input must be permuted to NCHW: [1,3,4,4], and weight shape [6,1,3,3] is correct for depthwise (out_channels=in_channels*multiplier=3*2=6, groups=in_channels=3). Padding 'SAME' in TF maps to padding=[1,1] only if stride=1 and kernel=3, which is valid."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=3, weight of size [6, 1, 3, 3], expected input[1, 4, 4, 3] to have 3 channels, but got 4 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCHW",
+        "api": "tf.nn.depthwise_conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCHW",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filter=Tensor, strides=list, padding=str, data_format=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          6,
+          2,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not support depthwise convolution natively; requires groups=in_channels and out_channels=in_channels*channel_multiplier. Filter shape must be (out_channels, in_channels//groups, kH, kW) = (6, 1, 3, 3), not (3,3,3,2). Also strides must be tuple, padding 'VALID' → 0, and data_format NCHW is default but unused in PyTorch."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NCHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 15.29525995",
+        "tf_shape": [
+          1,
+          6,
+          2,
+          2
+        ],
+        "pytorch_shape": [
+          1,
+          6,
+          2,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow depthwise_conv2d with NCHW requires filter shape [H,W,IN_CH,MULT] = [3,3,3,2], but PyTorch conv2d for depthwise must have weight shape [OUT_CH,IN_CH/GROUPS,H,W] = [6,1,3,3] and groups=3 — this is correct. However, TensorFlow NCHW mode expects input [N,C,H,W] and filter [H,W,C,MULT], while PyTorch expects weight [OUT_C,IN_C/G,H,W]. The inconsistency arises because TF's 'data_format=\"NCHW\"' implies input is [N,C,H,W], but its filter dimension order is still [H,W,C,MULT] — matching PyTorch's weight layout only if we reinterpret C as in_channels. The real issue: TF NCHW + depthwise expects filter shape [H,W,C,MULT], but PyTorch groups=3 requires OUT_C = C * MULT = 6, IN_C/G = 1 — correct. However, padding='VALID' and stride=[1,1,1,1] in TF must map to padding=0 in PT, which is correct. The large numerical mismatch (15.29) indicates a fundamental layout misalignment: TF NCHW filter [3,3,3,2] is interpreted as (H,W,C,MULT), but PyTorch weight [6,1,3,3] is (OUT_C,IN_C/G,H,W). To ensure identical computation, we must enforce identical channel-wise kernel application — thus TF filter must be permuted to match PyTorch's implicit grouping. The fix is to use TF's NHWC data format (default) and adjust input/filter shapes accordingly to avoid NCHW layout ambiguity across frameworks."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=3, weight of size [6, 1, 3, 3], expected input[1, 4, 4, 3] to have 3 channels, but got 4 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires input channels to match groups * (in_channels // groups); for depthwise conv with in_channels=3 and channel_multiplier=2, output channels=6, groups=3, so input must have 3 channels in NCHW format. But TF input is NHWC [1,4,4,3] → 3 channels last, while PyTorch expects NCHW [1,3,4,4]. Also weight shape [6,1,3,3] is correct for groups=3, but input must be reshaped to [1,3,4,4] to match."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "dilation": [
+          1,
+          1
+        ],
+        "groups": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=3, weight of size [6, 1, 3, 3], expected input[1, 4, 4, 3] to have 3 channels, but got 4 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.depthwise_conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filter=Tensor, strides=list, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not support depthwise convolution natively; requires explicit groups=in_channels and weight shape (in_channels * channel_multiplier, 1, kH, kW). Also, PyTorch uses NCHW layout and 'SAME' padding is not supported — must use integer padding or 'valid'. TensorFlow's depthwise_conv2d expects NHWC input and filter shape [H,W,in_channels,channel_multiplier], while PyTorch's equivalent needs NCHW input and reshaped weight with groups."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "groups": 2,
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=2, weight of size [6, 1, 2, 2], expected input[1, 3, 3, 2] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d with groups=2 requires input channels divisible by groups (3 % 2 != 0). For depthwise_conv2d: in_channels=2, channel_multiplier=3 → output_channels=6, so PyTorch needs groups=in_channels=2 and input shape must be [N, in_channels, H, W] = [1, 2, 3, 2], not [1, 3, 3, 2]. TensorFlow input is NHWC [1,3,3,2] → last dim is channels=2, so correct PyTorch input must be NCHW [1,2,3,2]. Also filter shape [2,2,2,3] means filter_height=2, filter_width=2, in_channels=2, channel_multiplier=3 → PyTorch weight must be [out_channels, in_channels//groups, kH, kW] = [6, 1, 2, 2] with groups=2, matching."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "groups": 2,
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=2, weight of size [6, 1, 2, 2], expected input[1, 3, 3, 2] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d with groups=2 requires input channels divisible by groups (3 % 2 != 0). For depthwise_conv2d: in_channels=2, channel_multiplier=3 → output_channels=6, so PyTorch needs groups=in_channels=2 and weight shape [out_channels, in_channels//groups, kh, kw] = [6, 1, 2, 2], but input must have in_channels=2. Thus input shape must be [1, 2, 3, 3] (NCHW) or transpose NHWC [1,3,3,2] → NCHW [1,2,3,3]. Fix: adjust TF input to NHWC [1,3,3,2] → PyTorch input to NCHW [1,2,3,3], and update padding to match SAME semantics via explicit calculation."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "weight": {
+          "shape": [
+            6,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "groups": 2,
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=2, weight of size [6, 1, 2, 2], expected input[1, 3, 3, 2] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          6
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            1,
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "api": "tf.nn.depthwise_conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            1,
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filter=Tensor, strides=list, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not support depthwise convolution natively; requires groups=in_channels and weight shape (out_channels, in_channels//groups, kH, kW). Here in_channels=4, so groups=4, weight must be (8, 1, 1, 1) to match tf.nn.depthwise_conv2d's [1,1,4,2] filter (4 input ch × 2 multiplier = 8 output ch). Also PyTorch expects NCHW input, so input shape must be [1,4,1,1], not [1,1,1,4]. Padding 'VALID' is valid but strides must be tuple (1,1), not list."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            1,
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            8,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "groups": 4
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=4, weight of size [8, 1, 1, 1], expected input[1, 1, 1, 4] to have 4 channels, but got 1 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires input channels to match groups * (in_channels // groups); for depthwise conv with in_channels=4 and channel_multiplier=2, TF expects filter [1,1,4,2] → output channels=8, so PyTorch needs groups=4 and weight shape [8, 1, 1, 1], but input must be in NCHW format: [1,4,1,1], not [1,1,1,4]. Fix by transposing input from NHWC to NCHW and adjusting weight shape accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            1,
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            8,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "groups": 4
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=4, weight of size [8, 1, 1, 1], expected input[1, 1, 1, 4] to have 4 channels, but got 1 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires input channels to match groups * (in_channels // groups); for depthwise conv with in_channels=4 and channel_multiplier=2, TF expects filter shape [1,1,4,2] → output channels=8, so PyTorch needs groups=4 and weight shape [8, 1, 1, 1], but input must be NCHW: [1,4,1,1], not [1,1,1,4]. Fix by transposing input from NHWC to NCHW and adjusting weight shape accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            1,
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            8,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "groups": 4
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=4, weight of size [8, 1, 1, 1], expected input[1, 1, 1, 4] to have 4 channels, but got 1 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          8
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.depthwise_conv2d"
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "torch.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv2d() received an invalid combination of arguments - got (Tensor, filter=Tensor, strides=list, padding=str), but expected one of:\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, tuple of ints padding = 0, tuple of ints dilation = 1, int groups = 1)\n * (Tensor input, Tensor weight, Tensor bias = None, tuple of ints stride = 1, str padding = \"valid\", tuple of ints dilation = 1, int groups = 1)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d does not support 'SAME' padding as string; requires explicit padding calculation or 'valid'. Also, depthwise conv in PyTorch requires groups=in_channels and weight shape (in_channels * channel_multiplier, 1, kh, kw), not (kh, kw, in_channels, multiplier). Input must be NCHW, so shape [2,1,5,5], filter reshaped to [4,1,2,2], groups=1, padding computed for SAME with stride=[2,2]."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [4, 1, 2, 2], expected input[2, 5, 5, 1] to have 1 channels, but got 5 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires input in NCHW format, but test case uses NHWC (shape [2,5,5,1] implies channels-last). Also, depthwise_conv2d maps in_channels=1 to out_channels=in_channels*channel_multiplier=4 with groups=in_channels=1, so PyTorch must set groups=1 and weight shape [4,1,2,2], but input must be reshaped to [2,1,5,5]. Padding 'SAME' in TF corresponds to padding=(1,1) only when stride=2 and kernel=2 on size-5 input — verified: ceil(5/2)=3, so output height=3 → required pad = ((3-1)*2+2-5)=1, correct. Fix: transpose input to NCHW and adjust weight shape consistency."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given groups=1, weight of size [4, 1, 2, 2], expected input[2, 5, 5, 1] to have 1 channels, but got 5 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv2d requires NCHW input (batch, channels, H, W), but test case uses NHWC [2,5,5,1]. Also, depthwise convolution in PyTorch needs groups=in_channels and out_channels=groups*channel_multiplier. Here in_channels=1, channel_multiplier=4 → groups=1, out_channels=4, weight shape [4,1,2,2] is correct, but input must be reshaped to [2,1,5,5] for NCHW."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.depthwise_conv2d",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          2,
+          2
+        ],
+        "padding": "same",
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.depthwise_conv2d",
+        "pytorch_api": "torch.nn.functional.conv2d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: padding='same' is not supported for strided convolutions",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

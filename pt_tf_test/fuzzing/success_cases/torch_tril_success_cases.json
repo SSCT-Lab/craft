@@ -1,0 +1,212 @@
+{
+  "operator": "torch_tril",
+  "export_time": "2026-01-26T17:08:11.526255",
+  "total_success_cases": 3,
+  "success_cases": [
+    {
+      "source_file": "llm_enhanced_torch_tril_20260123_212202.json",
+      "operator": "torch.tril",
+      "iteration": 2,
+      "case_number": 3,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6591835618019104,
+            -1.676877737045288,
+            -0.973950207233429,
+            -0.010280449874699116,
+            -0.15632766485214233,
+            1.1205204725265503,
+            1.1183277368545532,
+            -0.25887367129325867,
+            1.1972806453704834,
+            -0.3978991210460663
+          ]
+        },
+        "diagonal": 2
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6591835618019104,
+            -1.676877737045288,
+            -0.973950207233429,
+            -0.010280449874699116,
+            -0.15632766485214233,
+            1.1205204725265503,
+            1.1183277368545532,
+            -0.25887367129325867,
+            1.1972806453704834,
+            -0.3978991210460663
+          ]
+        },
+        "num_lower": -1,
+        "num_upper": 2
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明当前用例已通过跨框架一致性验证；根据任务要求，需进行fuzzing变异以提升测试覆盖率。考虑边界情况：diagonal参数在PyTorch中支持负值（表示主对角线下方的对角线），对应TensorFlow中num_upper应同步调整；同时引入极端形状[0, 5, 5]（空batch）和[1, 1]（最小非空矩阵）以检验框架对退化情形的处理能力；此外，增加int64 dtype测试以覆盖整型输入场景，确保算子泛化性。"
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_tril_20260123_212202.json",
+      "operator": "torch.tril",
+      "iteration": 3,
+      "case_number": 3,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "diagonal": -3
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_lower": -1,
+        "num_upper": -3
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          0,
+          5,
+          5
+        ],
+        "tensorflow_shape": [
+          0,
+          5,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和TensorFlow中均执行成功且结果一致，但存在明显参数映射问题：torch.tril(diagonal=-3) 表示保留主对角线下方第-3条对角线及以下（即从主对角线向上数3条，实际是排除更多上三角区域），而tf.linalg.band_part(num_lower=-1, num_upper=-3)是非法的——根据TF文档，num_lower和num_upper必须为非负整数或-1（-1表示无限制），但num_upper=-3违反约束，当前能执行成功属未触发校验的偶然行为；需变异为语义等价且合法的参数组合：torch.tril(diagonal=k) 等价于 tf.linalg.band_part(num_lower=k, num_upper=0) 当k>=0；但对k<0（如-3），应映射为 num_lower=-1（全部下三角）且 num_upper = k（负值表示从主对角线向上保留|k|条对角线，但TF中num_upper=-3非法），正确等价映射应为：torch.tril(input, diagonal=d) ≡ tf.linalg.band_part(input, num_lower=-1, num_upper=max(d, -1)) 不成立；实际等价关系是：tril with diagonal=d keeps diagonals from d down to -inf → requires num_lower=-1 and num_upper=d only if d >= 0; for d < 0, TF cannot express 'upper bound at negative diagonal' directly — band_part's num_upper=-3 is invalid and undefined. Hence original TF case is malformed but accidentally passed; we mutate to a valid, semantically aligned case: use diagonal=0 (main diagonal) which maps cleanly to num_lower=-1, num_upper=0, and also test edge shape [1, 0, 5] to stress empty dimensions."
+      }
+    },
+    {
+      "source_file": "llm_enhanced_torch_tril_20260123_212202.json",
+      "operator": "torch.tril",
+      "iteration": 4,
+      "case_number": 3,
+      "is_llm_generated": true,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "diagonal": 0
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_lower": -1,
+        "num_upper": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          0,
+          5
+        ],
+        "tensorflow_shape": [
+          1,
+          0,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      }
+    }
+  ]
+}

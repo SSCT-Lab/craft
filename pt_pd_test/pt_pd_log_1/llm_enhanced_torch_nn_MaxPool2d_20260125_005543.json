@@ -1,0 +1,969 @@
+{
+  "operator": "torch.nn.MaxPool2d",
+  "timestamp": "2026-01-25T00:55:43.190544",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 7,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.7175376415252686,
+            0.3669695258140564,
+            0.6692174673080444,
+            0.3338204026222229,
+            -0.09767093509435654,
+            -0.5384476184844971,
+            1.5875588655471802,
+            1.7176878452301025,
+            0.10761496424674988,
+            -0.683731198310852
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true,
+        "api": "torch.nn.MaxPool2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.7175376415252686,
+            0.3669695258140564,
+            0.6692174673080444,
+            0.3338204026222229,
+            -0.09767093509435654,
+            -0.5384476184844971,
+            1.5875588655471802,
+            1.7176878452301025,
+            0.10761496424674988,
+            -0.683731198310852
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true,
+        "api": "paddle.nn.MaxPool2D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "MaxPool2D.__init__() got an unexpected keyword argument 'return_indices'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 645, in execute_test_case\n    paddle_instance = paddle_func(**init_kwargs)\nTypeError: MaxPool2D.__init__() got an unexpected keyword argument 'return_indices'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的MaxPool2D不支持return_indices参数，对应功能由return_mask参数实现；根据Paddle文档，应将return_indices=true替换为return_mask=true，且该参数名和语义在Paddle中是等价的（均返回索引/掩码用于反向或unpool操作）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7288844585418701,
+            0.8017827868461609,
+            1.1224998235702515,
+            -0.7821241021156311,
+            0.17402277886867523,
+            1.482413649559021,
+            1.5904957056045532,
+            0.22509032487869263,
+            -0.5316221117973328,
+            1.0352327823638916
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7288844585418701,
+            0.8017827868461609,
+            1.1224998235702515,
+            -0.7821241021156311,
+            0.17402277886867523,
+            1.482413649559021,
+            1.5904957056045532,
+            0.22509032487869263,
+            -0.5316221117973328,
+            1.0352327823638916
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 1,
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，说明当前用例基础功能对齐；为提升测试鲁棒性与边界覆盖，需进行fuzzing变异。根据API文档，padding支持多种格式（int/tuple/list/str），而当前仅测试了int padding=1；同时kernel_size、stride可尝试非方阵、非整除情形；输入shape可扩展至更小（如单像素）或更大（如batch=1, channel=1, H=W=1）以触发ceil_mode敏感路径；此外，return_indices/return_mask在True时应验证索引一致性，故新增一个极端case：shape=[1,1,1,1]，kernel_size=1，stride=1，padding=0，此时输出应与输入完全相同且indices/mask应全0；但为避免过度复杂，本次选择更典型的边界变异：将输入shape改为[1, 1, 3, 3]（最小有效池化输入），kernel_size=3，stride=1，padding=0，此时输出为[1,1,1,1]，且return_indices/return_mask应返回唯一最大值位置；该case能有效检验单元素输出下的索引逻辑是否对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9527863264083862,
+            -0.6590390205383301,
+            -1.1361570358276367,
+            1.0596818923950195,
+            1.9787861108779907,
+            1.155161738395691,
+            0.37623026967048645,
+            -0.06545361876487732,
+            -0.29093506932258606
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 1,
+        "padding": 0,
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9527863264083862,
+            -0.6590390205383301,
+            -1.1361570358276367,
+            1.0596818923950195,
+            1.9787861108779907,
+            1.155161738395691,
+            0.37623026967048645,
+            -0.06545361876487732,
+            -0.29093506932258606
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 1,
+        "padding": 0,
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致且均成功，需通过fuzzing增强测试覆盖：原始用例使用小尺寸(3x3)输入、无padding、stride=1，缺乏对边界条件（如ceil_mode=True）、非对称参数（如tuple kernel_size/stride/padding）、多通道、batch>1、padding为tuple/list、以及return_indices/mask与ceil_mode组合等场景的覆盖；根据文档，PyTorch和Paddle均支持ceil_mode和多格式padding，且paddle中padding=0等价于(0,0)，但为验证鲁棒性，应变异为非零padding及ceil_mode=True；同时将input shape扩展为[2,3,8,8]以覆盖典型CNN输入规模，并启用ceil_mode和非对称 stride，确保跨框架行为一致性在更复杂配置下仍成立。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            8,
+            8
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9862959384918213,
+            1.9467887878417969,
+            -1.0340232849121094,
+            -0.8494700193405151,
+            -0.19550147652626038,
+            -0.11291977018117905,
+            0.6020393371582031,
+            -0.6734286546707153,
+            -1.9885931015014648,
+            -0.23142383992671967
+          ]
+        },
+        "kernel_size": [
+          3,
+          2
+        ],
+        "stride": [
+          2,
+          3
+        ],
+        "padding": [
+          1,
+          0
+        ],
+        "dilation": 1,
+        "return_indices": true,
+        "ceil_mode": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            8,
+            8
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9862959384918213,
+            1.9467887878417969,
+            -1.0340232849121094,
+            -0.8494700193405151,
+            -0.19550147652626038,
+            -0.11291977018117905,
+            0.6020393371582031,
+            -0.6734286546707153,
+            -1.9885931015014648,
+            -0.23142383992671967
+          ]
+        },
+        "kernel_size": [
+          3,
+          2
+        ],
+        "stride": [
+          2,
+          3
+        ],
+        "padding": [
+          1,
+          0
+        ],
+        "return_mask": true,
+        "ceil_mode": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6373315453529358,
+            -0.33894363045692444,
+            -0.2765153646469116,
+            1.5683767795562744,
+            0.9241743683815002,
+            0.2969197928905487,
+            1.8623919486999512,
+            -0.11554283648729324,
+            0.47548428177833557,
+            0.3288136422634125
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true,
+        "api": "torch.nn.MaxPool2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6373315453529358,
+            -0.33894363045692444,
+            -0.2765153646469116,
+            1.5683767795562744,
+            0.9241743683815002,
+            0.2969197928905487,
+            1.8623919486999512,
+            -0.11554283648729324,
+            0.47548428177833557,
+            0.3288136422634125
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true,
+        "api": "paddle.nn.MaxPool2D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "MaxPool2D.__init__() got an unexpected keyword argument 'return_indices'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 645, in execute_test_case\n    paddle_instance = paddle_func(**init_kwargs)\nTypeError: MaxPool2D.__init__() got an unexpected keyword argument 'return_indices'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的MaxPool2D不支持return_indices参数，对应功能参数名为return_mask；根据PaddlePaddle文档，应将return_indices替换为return_mask，且布尔值含义一致（True表示返回索引/掩码），其他参数保持不变以保证功能对齐。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9969043135643005,
+            -0.0205660592764616,
+            -0.8028382062911987,
+            0.4887986481189728,
+            -0.7050163745880127,
+            0.6889959573745728,
+            0.48595166206359863,
+            -0.22596345841884613,
+            -1.6866655349731445,
+            -0.9231637716293335
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9969043135643005,
+            -0.0205660592764616,
+            -0.8028382062911987,
+            0.4887986481189728,
+            -0.7050163745880127,
+            0.6889959573745728,
+            0.48595166206359863,
+            -0.22596345841884613,
+            -1.6866655349731445,
+            -0.9231637716293335
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle上均执行成功且结果一致，符合fuzzing前提；为提升边界覆盖能力，需变异输入形状（引入非整除尺寸、奇数维度）、padding模式（从int改为'valid'/'same'以触发不同计算逻辑）、并探索return_indices/mask在极端shape下的行为；同时保持参数语义对齐：PyTorch的return_indices=True对应Paddle的return_mask=True，且两者padding=1在NCHW下语义等价，但'valid'和'same'模式更易暴露框架实现差异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            5,
+            7
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.6194924116134644,
+            -0.7670356631278992,
+            -0.45361006259918213,
+            0.8205486536026001,
+            0.28294289112091064,
+            0.18739861249923706,
+            0.4633803069591522,
+            1.0341167449951172,
+            0.05056801438331604,
+            -1.034281849861145
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": "valid",
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            5,
+            7
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.6194924116134644,
+            -0.7670356631278992,
+            -0.45361006259918213,
+            0.8205486536026001,
+            0.28294289112091064,
+            0.18739861249923706,
+            0.4633803069591522,
+            1.0341167449951172,
+            0.05056801438331604,
+            -1.034281849861145
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": "valid",
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "max_pool2d_with_indices(): argument 'padding' (position 4) must be tuple of ints, not str",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 618, in execute_test_case\n    torch_result = torch_instance(input_data)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1751, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1762, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\pooling.py\", line 213, in forward\n    return F.max_pool2d(\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 620, in fn\n    return if_true(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\functional.py\", line 802, in max_pool2d_with_indices\n    return torch._C._nn.max_pool2d_with_indices(\nTypeError: max_pool2d_with_indices(): argument 'padding' (position 4) must be tuple of ints, not str\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.nn.MaxPool2d does not accept string padding modes like 'valid' or 'same'; it only accepts integer or tuple-of-ints for padding. According to PyTorch documentation, padding must be Union[int, tuple[int, int]], whereas PaddlePaddle supports string modes ('valid', 'same'). To make the test valid in PyTorch, we must replace 'valid' with equivalent integer padding (0). Also, PaddlePaddle's return_mask=True is the functional equivalent of PyTorch's return_indices=True, so that mapping is correct. The repair ensures both frameworks use numerically equivalent padding (0) and preserve the indices/mask output."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            5,
+            7
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6889835596084595,
+            0.016810143366456032,
+            -0.18480446934700012,
+            0.574240505695343,
+            0.7461906671524048,
+            -2.0130722522735596,
+            -0.2848318815231323,
+            -0.5847114324569702,
+            -0.7294310927391052,
+            -0.7097116112709045
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 0,
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            5,
+            7
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6889835596084595,
+            0.016810143366456032,
+            -0.18480446934700012,
+            0.574240505695343,
+            0.7461906671524048,
+            -2.0130722522735596,
+            -0.2848318815231323,
+            -0.5847114324569702,
+            -0.7294310927391052,
+            -0.7097116112709045
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 0,
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2717090845108032,
+            0.5423963665962219,
+            -0.5278050899505615,
+            -0.15649670362472534,
+            -1.2302172183990479,
+            0.2488885223865509,
+            -0.8065856695175171,
+            2.238832950592041,
+            -0.5476546287536621,
+            1.0257893800735474
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true,
+        "api": "torch.nn.MaxPool2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2717090845108032,
+            0.5423963665962219,
+            -0.5278050899505615,
+            -0.15649670362472534,
+            -1.2302172183990479,
+            0.2488885223865509,
+            -0.8065856695175171,
+            2.238832950592041,
+            -0.5476546287536621,
+            1.0257893800735474
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true,
+        "api": "paddle.nn.MaxPool2D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "MaxPool2D.__init__() got an unexpected keyword argument 'return_indices'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 645, in execute_test_case\n    paddle_instance = paddle_func(**init_kwargs)\nTypeError: MaxPool2D.__init__() got an unexpected keyword argument 'return_indices'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的MaxPool2D不支持参数'return_indices'，对应参数名为'return_mask'（文档明确说明：'return_mask(bool,optional) – Whether to return the max indices along with the outputs.'），且该参数默认为False。因此需将PyTorch侧的'return_indices': true映射为Paddle侧的'return_mask': true，同时保持PyTorch用例不变（因其API原生支持return_indices）。此外，padding=1在Paddle中是合法的int类型，无需修改；但需确保Paddle版本>=2.4（return_mask自2.4引入），该修复符合官方文档参数映射规范。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.24500299990177155,
+            -0.7482293248176575,
+            0.6999630928039551,
+            0.1974419802427292,
+            -1.1194522380828857,
+            0.7494605183601379,
+            1.8476691246032715,
+            -0.7990297079086304,
+            0.32526519894599915,
+            -2.194671630859375
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.24500299990177155,
+            -0.7482293248176575,
+            0.6999630928039551,
+            0.1974419802427292,
+            -1.1194522380828857,
+            0.7494605183601379,
+            1.8476691246032715,
+            -0.7990297079086304,
+            0.32526519894599915,
+            -2.194671630859375
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 1,
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle上均执行成功且结果一致，说明基础功能对齐。为提升测试鲁棒性与边界覆盖，需进行fuzzing变异：1) 将输入shape从[2,3,4,4]改为[1,1,1,1]（单样本单通道单像素，测试极小尺寸行为）；2) 将padding设为(1,0)以验证非对称padding支持（PyTorch支持tuple padding，Paddle也支持list/tuple形式）；3) 保持return_indices/return_mask=True以继续覆盖索引返回路径；4) stride设为1以增加重叠池化场景，更易暴露ceil_mode或padding处理差异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8793253898620605
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 1,
+        "padding": [
+          1,
+          0
+        ],
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8793253898620605
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 1,
+        "padding": [
+          1,
+          0
+        ],
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "Given input size: (1x1x1). Calculated output size: (1x2x0). Output size is too small",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 618, in execute_test_case\n    torch_result = torch_instance(input_data)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1751, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1762, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\pooling.py\", line 213, in forward\n    return F.max_pool2d(\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 620, in fn\n    return if_true(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\functional.py\", line 802, in max_pool2d_with_indices\n    return torch._C._nn.max_pool2d_with_indices(\nRuntimeError: Given input size: (1x1x1). Calculated output size: (1x2x0). Output size is too small\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch报错 'Calculated output size: (1x2x0)' 表明输出高度或宽度为0，违反了PyTorch对MaxPool2d的尺寸约束：对于 input_size=1, kernel_size=2, stride=1, padding=[1,0]，按公式 H_out = floor((H_in + 2*pad_h - kernel_size) / stride) + 1 = floor((1 + 2*1 - 2) / 1) + 1 = floor(1) + 1 = 2，但实际W_out = floor((1 + 2*0 - 2) / 1) + 1 = floor(-1) + 1 = 0，导致非法输出尺寸。PyTorch严格拒绝输出维度为0，而PaddlePaddle在某些padding配置下可能隐式调整或容忍（文档未明确禁止，且执行成功）。根据PyTorch文档，padding必须满足 H_in + 2*pad_h >= kernel_size 且 W_in + 2*pad_w >= kernel_size 才能保证非零输出。当前 padding=[1,0] 满足H方向（1+2*1>=2），但不满足W方向（1+0<2）。修复方式是使padding在宽方向也满足：例如将padding改为[1,1]，则W_out = floor((1+2*1-2)/1)+1 = 2，合法；或改用'valid'等效padding（即0），但需同步调整以保证两框架行为可比。此处选择最小修改：padding → [1,1]，保持return_indices/return_mask语义一致，且符合两框架对称padding的常规用法。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.MaxPool2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.8585524559020996
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 1,
+        "padding": [
+          1,
+          1
+        ],
+        "return_indices": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.MaxPool2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.8585524559020996
+          ]
+        },
+        "kernel_size": 2,
+        "stride": 1,
+        "padding": [
+          1,
+          1
+        ],
+        "return_mask": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.MaxPool2d",
+        "paddle_api": "paddle.nn.MaxPool2D",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

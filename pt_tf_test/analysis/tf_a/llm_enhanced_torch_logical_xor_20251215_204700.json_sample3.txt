@@ -1,0 +1,95 @@
+来源文件: llm_enhanced_torch_logical_xor_20251215_204700.json
+样例编号: 3
+tensorflow_error 错误信息: cannot compute LogicalOr as input #0(zero-based) was expected to be a bool tensor but is a double tensor [Op:LogicalOr] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.logical_xor",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.6014120327527473,
+      -0.8087821389794982,
+      -2.4972843334207533,
+      1.2032343128495648
+    ]
+  },
+  "other": {
+    "shape": [
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.4213268274169055,
+      -1.5796495668357353,
+      -0.08398993379928009,
+      -0.4038267883996919
+    ]
+  },
+  "out": {
+    "shape": [
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      true,
+      false,
+      true,
+      true
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.logical_xor",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.6014120327527473,
+      -0.8087821389794982,
+      -2.4972843334207533,
+      1.2032343128495648
+    ]
+  },
+  "other": {
+    "shape": [
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.4213268274169055,
+      -1.5796495668357353,
+      -0.08398993379928009,
+      -0.4038267883996919
+    ]
+  },
+  "out": {
+    "shape": [
+      4
+    ],
+    "dtype": "bool",
+    "sample_values": [
+      true,
+      false,
+      true,
+      true
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.math.logical_xor` 要求输入必须是布尔型（bool）张量，而本样例中输入为 `float64` 类型，尽管 PyTorch 的 `torch.logical_xor` 可以接受任意数值类型并自动将其视为布尔逻辑（非零为 True，零为 False），但 TensorFlow 明确要求输入为 bool tensor。
+   - 错误信息 `cannot compute LogicalOr as input #0(zero-based) was expected to be a bool tensor but is a double tensor [Op:LogicalOr]` 直接表明了这一类型不匹配问题，且该限制在官方文档中未被忽略。
+
+3. 修复建议：
+   - 在 TensorFlow 执行前需显式将 float64 输入转换为 bool，如使用 `tf.cast(input, tf.bool)`；此行为差异属于框架设计上的根本区别，可考虑提交 issue 至 TensorFlow 官方，说明其与 PyTorch 在逻辑运算类型处理上的不一致。

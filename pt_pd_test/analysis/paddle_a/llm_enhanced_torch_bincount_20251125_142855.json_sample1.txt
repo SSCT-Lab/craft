@@ -1,0 +1,49 @@
+来源文件: llm_enhanced_torch_bincount_20251125_142855.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) The elements in input tensor must be non-negative ints
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -1,
+      1,
+      5,
+      -2,
+      2
+    ]
+  },
+  "api": "torch.bincount"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -1,
+      1,
+      5,
+      -2,
+      2
+    ]
+  },
+  "api": "torch.bincount"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `torch.bincount` 要求输入张量中的元素必须为非负整数，而测试用例中输入包含 `-1` 和 `-2`，违反了该限制，因此抛出“The elements in input tensor must be non-negative ints”错误。  
+   - 与之对比，PyTorch 的 `torch.bincount` 虽然文档说明“Count the frequency of each value in an array of non-negative ints”，但在实际实现中对负数的处理是未定义行为（通常会报错或产生不可预期结果），但本样例中可能在某些版本下仍允许负数输入（如直接忽略或截断），导致行为不一致。
+
+3. 修复建议：  
+   - 此为框架间语义行为差异，且当前 PaddlePaddle 的严格校验更符合数学定义，应视为合理行为；若希望兼容，可提交 issue 至 PaddlePaddle 官方仓库建议增加对负数输入的容忍性（如返回全零或警告），但非必要。

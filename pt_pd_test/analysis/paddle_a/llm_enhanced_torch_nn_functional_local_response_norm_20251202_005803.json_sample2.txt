@@ -1,0 +1,53 @@
+来源文件: llm_enhanced_torch_nn_functional_local_response_norm_20251202_005803.json
+样例编号: 2
+paddle_error 错误信息: Expected every dim's size to be larger than 0, but the size of the 2-th dim is 0
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.local_response_norm",
+  "input": {
+    "shape": [
+      2,
+      5,
+      0,
+      112,
+      112
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "size": 3,
+  "alpha": 0.0001,
+  "beta": 0.01,
+  "k": 1e-06
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.local_response_norm",
+  "input": {
+    "shape": [
+      2,
+      5,
+      0,
+      112,
+      112
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "size": 3,
+  "alpha": 0.0001,
+  "beta": 0.01,
+  "k": 1e-06
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `local_response_norm` API 在文档中明确要求输入张量的每个维度大小必须大于 0（即不允许任何维度为 0），而该测试用例的输入 shape 为 `[2, 5, 0, 112, 112]`，其中第 2 维（channel 维）为 0，违反了 PaddlePaddle 的运行时检查。
+   - 尽管 PyTorch 的 `local_response_norm` 在处理空通道维度时可能允许或忽略此类情况（实际行为依赖于底层实现），但 PaddlePaddle 显式在执行前进行维度合法性校验，导致抛出“Expected every dim's size to be larger than 0, but the size of the 2-th dim is 0”错误。
+
+3. 修复建议：
+   - 此为框架间对无效 shape 处理策略的差异，建议提交 issue 至 PaddlePaddle 官方仓库，反馈其对零维输入的严格检查与 PyTorch 行为不一致的问题。

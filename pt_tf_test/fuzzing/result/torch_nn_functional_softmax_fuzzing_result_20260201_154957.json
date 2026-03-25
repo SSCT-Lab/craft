@@ -1,0 +1,731 @@
+{
+  "operator": "torch_nn_functional_softmax",
+  "torch_api": "torch.nn.functional.softmax",
+  "tensorflow_api": "tf.nn.softmax",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T15:49:57.985682",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmax_20260123_214246.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmax",
+        "input": {
+          "shape": [
+            128,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.33832764625549316,
+            -0.6053545475006104,
+            -0.5611668825149536,
+            -0.984318733215332,
+            1.6660189628601074,
+            -0.48720934987068176,
+            -0.4446876645088196,
+            -1.5202182531356812,
+            -0.5429176092147827,
+            0.977444052696228
+          ]
+        },
+        "dim": 1,
+        "_stacklevel": 5
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.nn.softmax",
+        "input": {
+          "shape": [
+            128,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.33832764625549316,
+            -0.6053545475006104,
+            -0.5611668825149536,
+            -0.984318733215332,
+            1.6660189628601074,
+            -0.48720934987068176,
+            -0.4446876645088196,
+            -1.5202182531356812,
+            -0.5429176092147827,
+            0.977444052696228
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架对边界条件处理差异，如inf/nan传播、下溢/上溢截断策略、负零符号保持等实现不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0,
+                -1.0,
+                2.0
+              ]
+            },
+            "dim": 1,
+            "_stacklevel": 5
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0,
+                -1.0,
+                2.0
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              128,
+              10
+            ],
+            "tensorflow_shape": [
+              128,
+              10
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])和含负零、inf、nan的样本值",
+          "mutation_reason": "单元素张量在softmax中应退化为[1.0]，但框架对边界情况（如-0.0、inf、nan）的数值稳定性处理可能不一致，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，引入次正规数和溢出边界压力",
+          "mutation_reason": "float16动态范围小（~6e-5到65504），易触发softmax内部减法/指数运算的精度丢失或溢出，暴露两框架对次正规数、inf/nan传播、数值稳定性的实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.33832764625549316,
+                -0.6053545475006104,
+                -0.5611668825149536,
+                -0.984318733215332,
+                1.6660189628601074,
+                -0.48720934987068176,
+                -0.4446876645088196,
+                -1.5202182531356812,
+                -0.5429176092147827,
+                0.977444052696228
+              ]
+            },
+            "dim": 1,
+            "_stacklevel": 5
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                128,
+                10
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.33832764625549316,
+                -0.6053545475006104,
+                -0.5611668825149536,
+                -0.984318733215332,
+                1.6660189628601074,
+                -0.48720934987068176,
+                -0.4446876645088196,
+                -1.5202182531356812,
+                -0.5429176092147827,
+                0.977444052696228
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 0.00048828125",
+            "torch_shape": [
+              128,
+              10
+            ],
+            "tensorflow_shape": [
+              128,
+              10
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmax_20260123_214246.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmax",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.24293793643084105,
+            0.5143743100415452,
+            0.1213522500914409,
+            0.7373655956048126,
+            -0.634273161582864,
+            -1.7342446402592733,
+            0.5089920991009017,
+            -0.7212849218108942,
+            -0.23558141573507407,
+            0.6358093975142637
+          ]
+        },
+        "dim": -1,
+        "_stacklevel": 5
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.nn.softmax",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.24293793643084105,
+            0.5143743100415452,
+            0.1213522500914409,
+            0.7373655956048126,
+            -0.634273161582864,
+            -1.7342446402592733,
+            0.5089920991009017,
+            -0.7212849218108942,
+            -0.23558141573507407,
+            0.6358093975142637
+          ]
+        },
+        "axis": -1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值易触发框架底层数值稳定性处理差异（如log-sum-exp路径、inf/nan传播规则），暴露softmax实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -1,
+            "_stacklevel": 5
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "tensorflow_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])和包含负零、无穷、NaN的样本值",
+          "mutation_reason": "单元素张量是softmax的退化边界 case，理论上输出必为[1.0]；但框架对inf/nan/-0.0的数值稳定性处理差异可能暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "tensorflow_dtype": "<dtype: 'float64'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16下极端值（inf/-inf/nan/零）对softmax数值稳定性的影响",
+          "mutation_reason": "float16精度低，易在exp运算中溢出或下溢；inf/-inf/nan在softmax中应有明确定义行为，两框架处理逻辑差异可能暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "dim": -1,
+            "_stacklevel": 5
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "tensorflow_shape": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softmax_20260123_214246.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softmax",
+        "input": {
+          "shape": [
+            1,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.2379372119903564,
+            0.16299088299274445,
+            -0.5512765049934387
+          ]
+        },
+        "dim": 0,
+        "_stacklevel": 5
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.nn.softmax",
+        "input": {
+          "shape": [
+            1,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.2379372119903564,
+            0.16299088299274445,
+            -0.5512765049934387
+          ]
+        },
+        "axis": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值 stress-test 数值稳定性与边界处理逻辑，如softmax的减法归一化、exp溢出/下溢、NaN传播规则，易暴露框架间实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "dim": 0,
+            "_stacklevel": 5
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                1,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              3
+            ],
+            "tensorflow_shape": [
+              1,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])",
+          "mutation_reason": "单元素张量是softmax的退化边界情况，数学上应输出[1.0]；框架对dim/axis=0在shape=[1]时的广播或归一化处理可能存在差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                42.0
+              ]
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                42.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "tensorflow_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16下极端值（inf/-inf/nan/zero/subnormal）对softmax数值稳定性的影响",
+          "mutation_reason": "float16精度低、动态范围小，易在softmax指数运算中触发溢出或非数传播；两框架对inf/nan的处理逻辑差异可能暴露底层实现bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softmax",
+            "input": {
+              "shape": [
+                1,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "dim": 0,
+            "_stacklevel": 5
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softmax",
+            "input": {
+              "shape": [
+                1,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              3
+            ],
+            "tensorflow_shape": [
+              1,
+              3
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

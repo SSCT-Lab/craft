@@ -1,0 +1,55 @@
+来源文件: llm_enhanced_torch_repeat_interleave_20251202_000653.json
+样例编号: 1
+paddle_error 错误信息: (InvalidType) repeat_interleave(): argument (position 2) must be int, but got list (at ..\paddle\fluid\pybind\op_function_common.cc:316)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.repeat_interleave",
+  "input": {
+    "shape": [
+      1,
+      0,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "repeats": [
+    1,
+    2,
+    1
+  ],
+  "dim": 2
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.repeat_interleave",
+  "input": {
+    "shape": [
+      1,
+      0,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "repeats": [
+    1,
+    2,
+    1
+  ],
+  "dim": 2
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.repeat_interleave` 要求 `repeats` 参数为整数或张量（Tensor），但当前传入的是一个列表 `[1, 2, 1]`，尽管 PyTorch 允许 `repeats` 为列表（会自动转换为 Tensor），但 PaddlePaddle 在底层类型检查中严格要求 `repeats` 必须是 `int` 或 `Tensor`，不能直接接受 Python 列表。
+   - 此外，输入张量的 shape 为 `[1, 0, 3, 4]`，其中包含维度为 0 的情况，在某些框架中可能被视为“空张量”或无效形状，虽然 PaddlePaddle 对零维支持较宽松，但结合 `repeat_interleave` 的实现逻辑，该情形可能触发边界处理异常，加剧了对参数类型的敏感性。
+
+3. 修复建议：
+   - 建议在测试用例执行前将 `repeats` 列表显式转换为 `paddle.to_tensor([1, 2, 1])`，以符合 PaddlePaddle 的类型要求；同时可考虑在框架层对 `repeats` 参数做统一类型预处理。

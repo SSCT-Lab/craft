@@ -1,0 +1,59 @@
+来源文件: llm_enhanced_torch_nn_Embedding_20251215_173743.json
+样例编号: 9
+tensorflow_error 错误信息: Exception encountered when calling Embedding.call().
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.Embedding",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      4,
+      7,
+      5,
+      -2,
+      7
+    ]
+  },
+  "num_embeddings": 5,
+  "embedding_dim": 768,
+  "padding_idx": 0
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.keras.layers.Embedding",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      4,
+      7,
+      5,
+      -2,
+      7
+    ]
+  },
+  "input_dim": 5,
+  "output_dim": 768,
+  "mask_zero": false
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow `tf.keras.layers.Embedding` 要求输入的索引值必须在 `[0, input_dim)` 范围内，而测试用例中出现了 `-2` 和 `7` 的索引值（`input_dim=5`），这超出了有效范围（0~4），导致运行时抛出异常。
+   - PyTorch 的 `torch.nn.Embedding` 允许任意整数索引（包括负数和超出范围的值），对于无效索引会将其映射到 `padding_idx`（若设置）或直接使用零向量（未设置时），但不会报错。这体现了两个框架在输入合法性校验上的根本差异。
+
+3. 修复建议：
+   - 此为框架行为不一致问题，应提交 issue 至 TensorFlow 官方仓库，指出 `Embedding` 层对非法索引的严格检查与 PyTorch 不一致，且缺乏类似 `padding_idx` 的容错机制。

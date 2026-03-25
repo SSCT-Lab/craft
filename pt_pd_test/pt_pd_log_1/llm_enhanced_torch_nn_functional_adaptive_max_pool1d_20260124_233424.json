@@ -1,0 +1,253 @@
+{
+  "operator": "torch.nn.functional.adaptive_max_pool1d",
+  "timestamp": "2026-01-24T23:34:24.063046",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "*args": {
+          "shape": [
+            1,
+            64,
+            8
+          ],
+          "dtype": "torch.float32"
+        },
+        "**kwargs": 5,
+        "api": "torch.nn.functional.adaptive_max_pool1d"
+      },
+      "paddle_test_case": {
+        "*args": {
+          "shape": [
+            1,
+            64,
+            8
+          ],
+          "dtype": "torch.float32"
+        },
+        "**kwargs": 5,
+        "api": "paddle.nn.functional.adaptive_max_pool1d"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.adaptive_max_pool1d",
+        "paddle_api": "paddle.nn.functional.adaptive_max_pool1d",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "_adaptive_max_pool1d() missing 2 required positional arguments: 'input' and 'output_size'",
+        "paddle_error": "adaptive_max_pool1d() missing 2 required positional arguments: 'x' and 'output_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\_jit_internal.py\", line 622, in fn\n    return if_false(*args, **kwargs)\nTypeError: _adaptive_max_pool1d() missing 2 required positional arguments: 'input' and 'output_size'\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: adaptive_max_pool1d() missing 2 required positional arguments: 'x' and 'output_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例错误地将output_size作为**kwargs（即单个位置参数值）传入，但两个框架的API均要求显式传入input/x张量和output_size整数。PyTorch报错'_adaptive_max_pool1d() missing 2 required positional arguments: \"input\" and \"output_size\"'表明未提供input和output_size；Paddle同理缺失x和output_size。根据文档：PyTorch签名是adaptive_max_pool1d(input, output_size, return_indices=False)；Paddle签名是adaptive_max_pool1d(x, output_size, return_mask=False)。因此需将输入张量生成逻辑从*args中分离，显式构造input/x张量，并将output_size作为独立参数传入。同时dtype在Paddle中应为'float32'而非'torch.float32'。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.functional.adaptive_max_pool1d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              64,
+              8
+            ],
+            "dtype": "torch.float32"
+          },
+          5
+        ],
+        "**kwargs": {}
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.adaptive_max_pool1d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              64,
+              8
+            ],
+            "dtype": "float32"
+          },
+          5
+        ],
+        "**kwargs": {}
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.adaptive_max_pool1d",
+        "paddle_api": "paddle.nn.functional.adaptive_max_pool1d",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 4.428351879119873",
+        "torch_shape": [
+          1,
+          64,
+          5
+        ],
+        "paddle_shape": [
+          1,
+          64,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架均执行成功但数值不一致（最大差异4.428 > 1e-3），超出可容忍精度误差；根据文档，PyTorch的return_indices参数默认False，PaddlePaddle的return_mask参数默认False，但二者在索引计算逻辑和边界处理（floor/ceil vs inclusive ranges）上存在已知实现差异：PyTorch使用lstart = floor(i * L / m), lend = ceil((i + 1) * L / m)，而Paddle文档示例中明确采用相同公式，但实际底层实现对浮点除法、整数截断及区间端点包含性（左闭右开 vs 左闭右闭）可能存在细微差异；该差异属于跨框架算子语义等价但数值实现不可完全对齐的典型情况，且非精度误差而是算法分段策略导致的确定性偏差；因此不修复，转为变异以覆盖更多边界场景，如output_size >= input_length、output_size=1、output_size=L、以及添加return_mask/return_indices对比分支。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.functional.adaptive_max_pool1d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              64,
+              8
+            ],
+            "dtype": "torch.float32"
+          },
+          8
+        ],
+        "**kwargs": {
+          "return_indices": true
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.adaptive_max_pool1d",
+        "*args": [
+          {
+            "shape": [
+              1,
+              64,
+              8
+            ],
+            "dtype": "float32"
+          },
+          8
+        ],
+        "**kwargs": {
+          "return_mask": true
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.adaptive_max_pool1d",
+        "paddle_api": "paddle.nn.functional.adaptive_max_pool1d",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 4.48704719543457",
+        "torch_shape": [
+          1,
+          64,
+          8
+        ],
+        "paddle_shape": [
+          1,
+          64,
+          8
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架均执行成功但数值不一致（最大差异4.487），远超可容忍精度误差1e-3；分析文档可知PyTorch的return_indices和Paddle的return_mask虽功能相似（均返回索引/掩码），但底层索引计算逻辑存在差异：PyTorch使用floor/ceil划分区间并取argmax位置，而Paddle文档示例中明确给出lstart = floor(i * L / m), lend = ceil((i + 1) * L / m)，但实际实现可能因边界处理、索引偏移或梯度对齐策略不同导致数值偏差；该差异属于已知跨框架算子行为不完全等价情形，且output_size等于输入长度（8→8）属于退化情况（每个池化窗口大小为1），易暴露实现细节差异；因此不修复参数，而是通过变异测试用例覆盖更典型场景（如output_size < input length）以验证核心功能一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.functional.adaptive_max_pool1d",
+        "*args": [
+          {
+            "shape": [
+              2,
+              32,
+              16
+            ],
+            "dtype": "torch.float32"
+          },
+          6
+        ],
+        "**kwargs": {
+          "return_indices": true
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.adaptive_max_pool1d",
+        "*args": [
+          {
+            "shape": [
+              2,
+              32,
+              16
+            ],
+            "dtype": "float32"
+          },
+          6
+        ],
+        "**kwargs": {
+          "return_mask": true
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.adaptive_max_pool1d",
+        "paddle_api": "paddle.nn.functional.adaptive_max_pool1d",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2.4705941677093506",
+        "torch_shape": [
+          2,
+          32,
+          6
+        ],
+        "paddle_shape": [
+          2,
+          32,
+          6
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

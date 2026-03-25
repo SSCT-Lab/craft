@@ -1,0 +1,678 @@
+{
+  "operator": "torch.min",
+  "timestamp": "2026-01-25T01:06:44.580182",
+  "total_iterations": 11,
+  "llm_generated_test_cases": 8,
+  "successful_test_cases": 4,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.4074966312073809,
+            -0.24202986630239728,
+            0.308601055508868,
+            -1.161192403934154,
+            -1.1360049015162665,
+            0.31729386809029075,
+            -0.540157667228875,
+            0.24070835870860677,
+            0.16384580797481416,
+            0.6524946162287035
+          ]
+        },
+        "api": "torch.min"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.4074966312073809,
+            -0.24202986630239728,
+            0.308601055508868,
+            -1.161192403934154,
+            -1.1360049015162665,
+            0.31729386809029075,
+            -0.540157667228875,
+            0.24070835870860677,
+            0.16384580797481416,
+            0.6524946162287035
+          ]
+        },
+        "api": "paddle.min"
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但仅覆盖了基础场景（3D float64张量、无axis/keepdim等关键参数）。根据API文档，paddle.min必须显式支持axis和keepdim参数，而torch.min在无dim参数时默认全局min；为验证跨框架行为一致性（尤其axis=-1、keepdim=True、空轴、边界维度等），需进行fuzzing以覆盖更多语义路径，如单元素张量、0维张量、负轴、keepdim=True、int类型输入等。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "min(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.",
+        "paddle_error": "(InvalidArgument) Cannot perform reduction along an axis (1) that has a size of 0. \n  [Hint: Expected x.dims().at(i) != 0, but received x.dims().at(i):0 == 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4152)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: min(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 50, in wrapper\n    return func(*processed_args, **processed_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\math.py\", line 3394, in min\n    return _C_ops.min(x, axis, keepdim)\nValueError: (InvalidArgument) Cannot perform reduction along an axis (1) that has a size of 0. \n  [Hint: Expected x.dims().at(i) != 0, but received x.dims().at(i):0 == 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4152)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks fail on empty dimension reduction: PyTorch requires explicit 'dim' argument for empty tensors, and PaddlePaddle rejects reduction along axis with size 0. According to PyTorch docs, torch.min() without 'dim' is only valid for scalar reduction (all elements), but the original test incorrectly implies dim=1 reduction. To make it valid and aligned, we should use 'dim=None' (i.e., reduce over all elements) in both frameworks. However, torch.min() with no dim arg on non-scalar empty tensor raises error, so we must explicitly use torch.min(input, dim=None) — but PyTorch does not accept dim=None; instead, it requires no dim arg *only* for global min, yet fails on empty tensors. Actually, per PyTorch doc and error, torch.min() on empty tensor requires 'dim' to be specified — and the minimal valid behavior is to reduce over a non-empty axis. Since axis=1 has size 0, we must choose an axis with non-zero size: axis=0 (size 1) or axis=2 (size 5). We pick axis=0 (first non-zero axis) and set keepdim=True for consistency. Paddle supports axis=0, and PyTorch supports dim=0. Also, PyTorch's torch.min(input, dim=0) returns (values, indices); but the original test expects scalar-like reduction — however, the error shows user intended reduction, not argmin. So the correct repair is to use dim=0 (not None) for both, and adjust Paddle to match: use axis=0, keepdim=True. This satisfies both APIs: PyTorch allows dim=0 on shape [1,0,5] (reduces over dim 0 → output shape [0,5]), and Paddle allows axis=0 on same shape."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "dim": 0,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "axis": 0,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 1, 0, 5) vs PaddlePaddle (1, 0, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          1,
+          0,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.min with dim=0 and keepdim=True on input shape [1, 0, 5] returns output shape [2, 1, 0, 5], which is inconsistent with expected behavior — this indicates the original test case is malformed: torch.min(input, dim=d) returns a namedtuple (values, indices), not a single tensor. The PaddlePaddle paddle.min only returns values (no indices), so the comparison is invalid without accounting for PyTorch's dual-output semantics. Moreover, shape [1, 0, 5] with dim=0 reduction should yield shape [1, 0, 5] with dim 0 squeezed (if keepdim=False) or [1, 1, 0, 5] (if keepdim=True) — but [2, 1, 0, 5] suggests the test mistakenly used torch.min(input, dim=0) expecting values only, while actually getting (values, indices) tuple whose .values has shape [1, 0, 5] and .indices also [1, 0, 5], and concatenating or misinterpreting them caused the erroneous [2, 1, 0, 5]. To align semantics, we must use torch.min(input, dim=0, keepdim=True).values to extract just the min values tensor, matching paddle.min's single-tensor output. Also, Paddle's paddle.min does not support returning indices; thus the correct comparison is between torch.min(...).values and paddle.min(...). Therefore, the test case must be repaired to explicitly extract .values in PyTorch and ensure both produce same-shape value tensors."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "dim": 0,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "int32",
+          "sample_values": []
+        },
+        "axis": 0,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 1, 0, 5) vs PaddlePaddle (1, 0, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          1,
+          0,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.int32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.3712918813182067,
+            0.6749363322737297,
+            0.7890312063302195,
+            1.1109637648570587,
+            -0.17727847628779891,
+            0.27496812666120946,
+            -0.3853526740834423,
+            1.2929399625098346,
+            -0.911316623510115,
+            0.5008115879431271
+          ]
+        },
+        "api": "torch.min"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.3712918813182067,
+            0.6749363322737297,
+            0.7890312063302195,
+            1.1109637648570587,
+            -0.17727847628779891,
+            0.27496812666120946,
+            -0.3853526740834423,
+            1.2929399625098346,
+            -0.911316623510115,
+            0.5008115879431271
+          ]
+        },
+        "api": "paddle.min"
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功且结果一致，但原始用例仅覆盖了基础全张量min场景；根据PyTorch文档，torch.min支持单参数（全量min）和多参数（带dim/keepdim）形式，而PaddlePaddle的paddle.min必须显式指定axis=None才能等价于torch.min(input)；为增强鲁棒性测试，需变异覆盖边界情况：空维度（shape=[0,5,5]）、单元素张量（shape=[1]）、负axis、keepdim=True、以及int32输入（Paddle支持但PyTorch min对整型同样有效），以验证跨框架行为一致性。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": null,
+        "keepdim": false
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "min(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.",
+        "paddle_error": "(InvalidArgument) Cannot perform reduction along an axis (0) that has a size of 0. \n  [Hint: Expected x.dims().at(i) != 0, but received x.dims().at(i):0 == 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4152)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: min(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 50, in wrapper\n    return func(*processed_args, **processed_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\math.py\", line 3394, in min\n    return _C_ops.min(x, axis, keepdim)\nValueError: (InvalidArgument) Cannot perform reduction along an axis (0) that has a size of 0. \n  [Hint: Expected x.dims().at(i) != 0, but received x.dims().at(i):0 == 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4152)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks fail on empty tensor (shape [0,5,5]) because torch.min without 'dim' argument requires non-empty input, and paddle.min with axis=None also fails on zero-size dimension. According to PyTorch docs, torch.min() without dim is only valid for non-empty tensors; to handle empty tensors, we must specify dim and keepdim. For consistency, we repair by adding 'dim=0' and 'keepdim=True' in PyTorch (which matches paddle's axis=0 + keepdim=True), and align paddle's axis=0 (not null) and keepdim=True. This satisfies both APIs' requirements: torch.min(input, dim=0, keepdim=True) works on empty first dim, and paddle.min(x, axis=0, keepdim=True) also supports reduction over size-0 dimension per its behavior (axis=0 reduces the 0-sized dim, producing shape [1,5,5] with NaN/inf handling — but crucially, it does not crash). Note: PyTorch allows dim=0 on [0,5,5], returning (values=[nan]*5*5, indices=[-1]*5*5) shape [1,5,5]; Paddle similarly supports axis=0 on size-0 dim."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 0,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 0,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "min(): Expected reduction dim 0 to have non-zero size.",
+        "paddle_error": "(InvalidArgument) Cannot perform reduction along an axis (0) that has a size of 0. \n  [Hint: Expected x.dims().at(i) != 0, but received x.dims().at(i):0 == 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4152)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nIndexError: min(): Expected reduction dim 0 to have non-zero size.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 50, in wrapper\n    return func(*processed_args, **processed_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\math.py\", line 3394, in min\n    return _C_ops.min(x, axis, keepdim)\nValueError: (InvalidArgument) Cannot perform reduction along an axis (0) that has a size of 0. \n  [Hint: Expected x.dims().at(i) != 0, but received x.dims().at(i):0 == 0:0.] (at ..\\paddle\\phi\\infermeta\\unary.cc:4152)\n\n"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "PyTorch和PaddlePaddle均明确不支持在空维度（size=0）上执行reduction操作，错误信息语义一致（'non-zero size' vs 'size of 0'），且官方文档未声明对零大小维度的特殊处理；该行为属于合法未定义行为（undefined behavior for empty reduction），非bug，而是框架共识性限制。因此无需变异或修复，应跳过此测试用例。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.1510852811858132,
+            -0.5853198228318,
+            2.4695003946778615,
+            -0.7824027590958406,
+            0.9279480251312169,
+            0.9233474417662029,
+            -0.45786048318133493,
+            -0.9363905682856924,
+            -0.10647431827624491,
+            0.6972949285228497
+          ]
+        },
+        "api": "torch.min"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.1510852811858132,
+            -0.5853198228318,
+            2.4695003946778615,
+            -0.7824027590958406,
+            0.9279480251312169,
+            0.9233474417662029,
+            -0.45786048318133493,
+            -0.9363905682856924,
+            -0.10647431827624491,
+            0.6972949285228497
+          ]
+        },
+        "api": "paddle.min"
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float64",
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但仅覆盖了默认全局min（无axis/keepdim）的单一场景；根据API文档，paddle.min明确支持axis、keepdim等关键参数，而torch.min在无dim参数时行为等价于paddle.min(axis=None, keepdim=False)，但torch.min还有带dim的重载版本（返回values+indices），当前用例未覆盖多维张量沿指定轴reduce、keepdim=True、负轴索引、空shape、int类型等边界场景；为提升鲁棒性与兼容性测试覆盖率，需进行fuzzing变异。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "min(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          0,
+          1,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: min(): Expected reduction dim to be specified for input.numel() == 0. Specify the reduction dim with the 'dim' argument.\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.min requires explicit 'dim' argument for empty tensors (numel() == 0), while paddle.min accepts axis=None or explicit axis. The original PyTorch test case omits 'dim', causing RuntimeError. To align behavior, we must specify 'dim' in torch.min (e.g., dim=1) and ensure paddle.min uses the same reduction axis and keepdim setting. Also, paddle.min requires 'axis' to be explicitly provided when reducing — the original paddle case already has axis=1 and keepdim=true, which is valid; torch.min needs corresponding dim=1 and keepdim=True. Note: torch.min with dim returns (values, indices), but since only values are compared in min-reduction tests and paddle.min only returns values, we use torch.min(..., keepdim=True)[0] to extract values — however, the test framework likely compares only the primary output tensor, so we must match signature: for reduction over dim, torch.min returns a namedtuple, but the scalar-value-only usage in original implies intent is reduction, not argmin. Hence repair: add dim=1 and keepdim=True to torch.min, and keep paddle.min unchanged as it's already correct."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 1,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 0, 1, 5) vs PaddlePaddle (0, 1, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          0,
+          1,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.min with dim=1 and keepdim=True on input shape [0,5,5] returns shape (2,0,1,5) — this is incorrect; actual PyTorch behavior for empty tensor min along dim=1 is to return shape [0,1,5] (squeezing the reduced dim to size 1 due to keepdim=True). The reported PyTorch output shape (2,0,1,5) is invalid and suggests a test instrumentation or metadata misreporting error. However, the observed mismatch — PyTorch (2,0,1,5) vs Paddle (0,1,5) — indicates the PyTorch test case is likely misconfigured: torch.min(input, dim=1, keepdim=True) on shape [0,5,5] must yield output shape [0,1,5], not [2,0,1,5]. The extra leading dimension '2' implies either an erroneous broadcast, tuple unpacking mistake (e.g., mistakenly treating (values, indices) as single tensor), or confusion with torch.min(input, dim=1) which returns a namedtuple (values, indices) — but the test case does not request indices and no 'keepdim' applies to indices in that overload. Crucially, torch.min(input, dim=1, keepdim=True) is valid and returns only values with shape [0,1,5]. Therefore, the PyTorch test case is incorrectly interpreted — it should not produce 4D output. To align semantics and fix the shape mismatch, we must ensure both frameworks compute min over axis/dim=1 with keepdim=True on rank-3 empty tensor, yielding identical [0,1,5] shape. No parameter change needed for Paddle; but the PyTorch test case must be validated — however, since the input config matches docs and the *actual* correct PyTorch output is [0,1,5], the discrepancy arises from test harness misreading torch.return_types.min. Hence, repair is required: remove any implicit assumption of tuple return; enforce scalar reduction mode. But wait — torch.min(input, dim=1, keepdim=True) *does* return a namedtuple with .values field, and accessing .values gives [0,1,5]. The test harness likely compared the full namedtuple vs tensor, causing spurious shape diff. To eliminate ambiguity and ensure apples-to-apples tensor comparison, we must explicitly extract .values in PyTorch test case — but the test case format doesn't support post-processing. Therefore, the only robust fix is to avoid dim-reduction on empty tensors in cross-framework tests, or use the unary (no-dim) form. However, per docs, both support dim + keepdim. The root cause is that PyTorch's torch.min(input, dim=d) returns namedtuple, while paddle.min returns plain tensor — so test harness must unwrap in PyTorch. Since test format cannot express unwrapping, and the spec requires comparing 'results', the correct repair is to use the functional form that returns only values when dim is specified: but torch.min does not have a non-namedtuple form. Thus, the test case is fundamentally flawed for dim-reduction — it conflates API signature (namedtuple) with Paddle's tensor-only return. Therefore, to make comparison valid, we must mutate to use the *unary* (no-dim) overload, which returns scalar tensor in both frameworks for non-empty, but for empty tensor unary min is undefined (raises error). So instead, repair by choosing a non-empty shape where dim-reduction behavior is well-defined and consistent: e.g., shape [2,5,5], dim=1, keepdim=True → both yield [2,1,5]. This avoids empty-tensor edge-case divergence in semantics and implementation."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.min",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.42361289262771606,
+            -0.14868247509002686,
+            1.2394086122512817,
+            -1.3981715440750122,
+            -0.45387572050094604,
+            1.5707097053527832,
+            -0.7273547053337097,
+            -0.39450153708457947,
+            0.18013009428977966,
+            2.327171802520752
+          ]
+        },
+        "dim": 1,
+        "keepdim": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.min",
+        "input": {
+          "shape": [
+            2,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.42361289262771606,
+            -0.14868247509002686,
+            1.2394086122512817,
+            -1.3981715440750122,
+            -0.45387572050094604,
+            1.5707097053527832,
+            -0.7273547053337097,
+            -0.39450153708457947,
+            0.18013009428977966,
+            2.327171802520752
+          ]
+        },
+        "axis": 1,
+        "keepdim": true
+      },
+      "execution_result": {
+        "torch_api": "torch.min",
+        "paddle_api": "paddle.min",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2, 1, 5) vs PaddlePaddle (2, 1, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          1,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

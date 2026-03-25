@@ -1,0 +1,42 @@
+来源文件: llm_enhanced_torch_atleast_3d_20251215_163157.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__StridedSlice_device_/job:localhost/replica:0/task:0/device:CPU:0}} Attempting to slice scalar input. [Op:StridedSlice] name: strided_slice/
+
+【PyTorch 测试用例】
+{
+  "api": "torch.atleast_3d",
+  "*tensors": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.expand_dims",
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "axis": [
+    0,
+    1,
+    2
+  ]
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.expand_dims` 在输入为标量（shape=[]）时，虽然在语法上允许扩展维度，但其底层实现中涉及 `StridedSlice` 操作，而该操作在处理标量输入时会尝试进行切片，导致触发“Attempting to slice scalar input”错误。
+   - 根据 TensorFlow 官方文档，`tf.expand_dims` 对标量输入的处理是合法的，但实际执行中某些路径（如图优化或自动图模式）可能将标量当作不可切片的张量处理，从而引发 `StridedSlice` Op 的运行时异常，这属于框架内部实现对零维张量处理的不一致。
+
+3. 修复建议：
+   - 可提交 issue 给 TensorFlow 官方，指出在自动图模式下对标量输入使用 `expand_dims` 会触发 `StridedSlice` 切片错误，反映框架行为与文档说明不一致。

@@ -1,0 +1,1214 @@
+{
+  "tf_api": "tf.math.segment_mean",
+  "pytorch_api": "torch.scatter_reduce",
+  "timestamp": "2026-02-09T23:45:33.950314",
+  "total_iterations": 17,
+  "llm_generated_test_cases": 12,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "api": "tf.math.segment_mean"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.scatter_reduce is not a direct equivalent of tf.math.segment_mean; it requires explicit input, dim, index, src, and reduce args. To emulate segment_mean, we need to use torch.scatter_reduce with dim=0, index=segment_ids reshaped to match data's first dim, reduce='mean', and proper output initialization. The original PyTorch test case is malformed — missing required arguments and misaligned semantics."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32"
+        },
+        "src": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: scatter(): Expected dtype int64 for index",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch scatter_reduce requires 'index' to be int64 (not float32) as per error and doc; also input shape must match output segments (3,2) for 3 segments, and index must map src[10,2] to input[3,2] along dim=0; segment_ids in TF are equivalent to index in PT but must be cast to torch.int64 and padded/trimmed to match src length."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            10
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires index tensor to have same number of dimensions as input tensor, but segment_mean semantics map 1D segment_ids to reduce data along axis 0. Correct mapping needs input shape [3,2] (num_segments x feature_dim), index [10] broadcastable to src, and dim=0. Also, segment_ids must be sorted/non-negative — fix PyTorch to use proper input shape and index semantics matching TF's segment_mean."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            10
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean",
+        "include_self": false
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "api": "tf.math.segment_mean"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.scatter_reduce is not a direct equivalent of tf.math.segment_mean; it requires explicit input, dim, index, src, and reduce args. The correct PyTorch equivalent is torch.segment_reduce (introduced in 2.1+) or manual scatter + mean. Since segment_ids imply reduction along dim=0 with grouped indices, we must map to torch.segment_reduce(input, dim=0, segments=segment_ids, reduce='mean'). However, torch.segment_reduce does not support float64 by default and requires int64 segments; also, it's not available in older PyTorch versions. Given the TypeError indicates missing args and no segment_reduce in older docs, safest repair is to use scatter-based manual mean simulation with proper args."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "dim": 0,
+        "index": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "src": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce(): argument 'index' must be Tensor, not list",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires 'index' to be a Tensor, not a Python list; also, segment_mean semantics require data and segment_ids to have same leading dim (6), but input shape is [3,3] — must fix shape alignment and wrap index in torch.tensor. TensorFlow expects segment_ids sorted and contiguous starting from 0, which is satisfied."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires index tensor to have same number of dimensions as input tensor, but segment_mean semantics require reduction over unsorted/segmented indices. The correct PyTorch equivalent is torch.segment_reduce (introduced in 2.0+) or manual scatter with torch.zeros + scatter_add/scatter_count. Using torch.segment_reduce with 'mean' matches tf.math.segment_mean behavior and fixes dimension mismatch."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.segment_reduce",
+        "data": {
+          "shape": [
+            6,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "reduce": "mean",
+        "num_segments": 3
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "api": "tf.math.segment_mean"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.scatter_reduce is not a direct equivalent of tf.math.segment_mean; it requires explicit input, dim, index, src, and reduce args. To emulate segment_mean, we need to use torch.scatter_reduce with dim=0, index=segment_ids mapped to output size, and reduce='mean', but segment_ids must be converted to torch.LongTensor and output shape inferred. The original PyTorch test case is malformed — missing required arguments and misusing the API."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "int32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ],
+        "src": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce(): argument 'index' must be Tensor, not list",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires 'index' to be a Tensor, not a Python list; also, segment_mean expects data and segment_ids to have same leading dim (9), but input in PyTorch is shape [3,1] — must align shapes and convert index to tensor. Also, segment_mean has no 'dim' parameter; reduction is always along first dim per segment_ids."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "src": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: scatter(): Expected dtype int64 for index",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires 'index' to be int64 (not float32) as per error 'Expected dtype int64 for index', and segment_ids in TF must be sorted non-negative integers; also input shape must match output segments count (3) — so PyTorch 'input' should be zeros of shape [3,1], 'index' must be int64 with values [0,0,0,1,1,1,2,2,2], and 'src' matches data shape [9,1]."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            9
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            9,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "complex64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "api": "tf.math.segment_mean"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "complex64"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'complex64'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.scatter_reduce is not a direct equivalent of tf.math.segment_mean; it requires explicit input, dim, index, src, and reduce arguments. To emulate segment_mean, we need to use torch.scatter_reduce with dim=0, index=segment_ids, src=data, reduce='mean', and output tensor initialized to zeros. Also, PyTorch scatter_reduce does not support complex64 for 'mean' reduction in current versions (v2.0+), so dtype must be changed to float32."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ],
+        "src": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: scatter_reduce(): argument 'index' must be Tensor, not list",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires 'index' to be a Tensor, not a Python list; also, segment_mean expects data and segment_ids to have same leading dimension (6), but input shape in PyTorch is [3,2] — must align shapes: src=[6,2], input should be zeros_like output ([3,2]) or properly sized accumulator. Fix: convert index to tensor, set input to correct output shape [3,2], ensure dtype consistency."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires index tensor to have same number of dimensions as input tensor, but segment_mean expects 1D segment_ids for 2D data. To emulate segment_mean, input must be zeros tensor of output shape [3,2], index must be 2D with shape [6,2] (broadcastable), and src is the original [6,2] data. Also, include_self=False is needed to avoid adding zeros."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.math.segment_mean",
+        "data": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2
+        ]
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "mean",
+        "include_self": false
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: index 8 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "tf_shape": [
+          3,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          -1,
+          0,
+          0,
+          -1,
+          1,
+          1,
+          -1,
+          2,
+          2,
+          3
+        ],
+        "num_segments": 5,
+        "api": "tf.math.segment_mean"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": [
+          -1,
+          0,
+          0,
+          -1,
+          1,
+          1,
+          -1,
+          2,
+          2,
+          3
+        ],
+        "num_segments": 5,
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_mean",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "TypeError: segment_mean() got an unexpected keyword argument 'num_segments'",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "tf.math.segment_mean and torch.scatter_reduce are fundamentally different operators: segment_mean requires sorted, non-negative segment_ids (with optional num_segments), while scatter_reduce is a generalized scatter operation requiring explicit dim, index, src, and reduce args. They are not semantically equivalent; no direct parameter mapping exists."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    }
+  ]
+}

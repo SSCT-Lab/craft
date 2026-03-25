@@ -1,0 +1,51 @@
+来源文件: llm_enhanced_torch_multinomial_20251202_012420.json
+样例编号: 5
+paddle_error 错误信息: (InvalidArgument) The input of multinomial distribution should be >= 0, but got -2.249684.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -2.2496840953826904,
+      -0.6162845492362976,
+      -0.5756691694259644,
+      0.676449716091156
+    ]
+  },
+  "num_samples": 4,
+  "replacement": true
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -2.2496840953826904,
+      -0.6162845492362976,
+      -0.5756691694259644,
+      0.676449716091156
+    ]
+  },
+  "num_samples": 4,
+  "replacement": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.multinomial` 要求输入张量的每个元素必须 ≥ 0（即概率分布），而该样例中输入包含负值（如 -2.249684），违反了其输入约束，因此抛出 `InvalidArgument` 错误。  
+   - 但 PyTorch 的 `torch.multinomial` 允许输入为任意实数（可视为未归一化的对数概率或权重），内部会自动处理为相对权重进行采样，因此在相同输入下不会报错。
+
+3. 修复建议：  
+   - 此为两框架在语义理解上的根本差异（一个要求非负概率，另一个接受任意实数作为权重），属于合理的行为差异，无需修改映射；建议提交 issue 给 PaddlePaddle 官方，说明该场景下与 PyTorch 的不一致，讨论是否可支持类似“非负性校验可选”的兼容模式。

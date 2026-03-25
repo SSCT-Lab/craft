@@ -1,0 +1,2279 @@
+{
+  "tf_api": "tf.nn.conv3d_transpose",
+  "pytorch_api": "torch.nn.functional.conv_transpose3d",
+  "timestamp": "2026-02-09T23:56:35.493685",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 9,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "api": "torch.nn.functional.conv_transpose3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv_transpose3d() missing 1 required positional arguments: \"weight\"",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv_transpose3d requires 'weight' as positional argument (not 'filters'), expects weight shape (in_channels, out_channels//groups, kT, kH, kW), and uses 'input' instead of 'x'. Also, PyTorch uses NCDHW layout (batch, channels, depth, height, width), while TF case uses NDHWC. Must transpose input/filters and map parameters correctly: output_padding needed to match output_shape, padding must be converted from 'SAME' to explicit int."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 5, 6, 4, 2) vs PT=(2, 2, 5, 6, 4)",
+        "tf_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          5,
+          6,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于数据格式差异：TF默认NDHWC而PT默认NCDHW；TF output_shape[2,5,6,4,2]对应NDHWC，PT需匹配输出为[2,2,5,6,4]，故PT input应为[2,3,5,6,4]→正确，但weight shape[3,2,3,3,3]中in_channels=3与input channel=3匹配，out_channels=2，符合；问题在padding：TF 'SAME'需PT padding=(1,1,1)对应，但output_shape已显式指定，PT需用output_padding调整对齐；TF output_shape[1:] = [5,6,4,2] implies spatial dims (D,H,W)=(5,6,4), channels=2; PT output must be [2,2,5,6,4], so input order is correct. The mismatch is due to TF output_shape including batch and channels in NDHWC order, while PT output is NCDHW — no repair needed to shapes, but TF uses explicit output_shape while PT infers from input+params; to align, PT output_padding must be set to match TF's output_shape exactly. Current PT padding [1,1,1] with stride [1,1,1] and kernel [3,3,3] on input [5,6,4] gives output spatial dim = (5-1)*1 + 3 - 2*1 + 0 = 5,6,4 — correct. So output shape mismatch is due to TF output_shape being [2,5,6,4,2] (NDHWC) vs PT's [2,2,5,6,4] (NCDHW) — they are the same tensor permuted. Thus the test compares different memory layouts; to fix, we must ensure both produce identical logical tensors — so PT output must be permuted to NDHWC or TF to NCDHW. Since TF test uses NDHWC, we adjust PT to output NDHWC-equivalent by transposing result — but test cases only define inputs/params, not post-processing. Therefore, the root cause is data format mismatch in specification: TF output_shape assumes NDHWC, PT has no data_format param, so its output is always NCDHW. To make outputs comparable, we must either transpose PT output or use TF with data_format='NCDHW'. We choose to repair TF to use NCDHW to match PT's implicit layout."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          2,
+          5,
+          6,
+          4
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 34.91426373",
+        "tf_shape": [
+          2,
+          2,
+          5,
+          6,
+          4
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          5,
+          6,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's output_shape must be consistent with NCDHW format and conv3d_transpose math: for SAME padding, output depth/height/width depend on strides/dilation; current output_shape[1]=2 conflicts with input depth=3 and stride=1. PyTorch padding [1,1,1] corresponds to TensorFlow's SAME only when output_shape is computed correctly. Fix by aligning output_shape using PyTorch's implicit output size formula and ensuring filter shape matches TF's [D,H,W,out_ch,in_ch] vs PyTorch's [in_ch,out_ch//g,kD,kH,kW]."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          5,
+          6,
+          4,
+          2
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCDHW"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 5 vs 2 [Op:Conv3DBackpropInputV2]",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          2,
+          2,
+          5,
+          6,
+          4
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "torch.nn.functional.conv_transpose3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv_transpose3d() missing 1 required positional arguments: \"weight\"",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv_transpose3d requires explicit 'weight' parameter (not 'filters'), expects weight shape (in_channels, out_channels//groups, kT, kH, kW), and uses 'input' instead of 'x'. Also, PyTorch uses NCDHW layout (batch, channels, depth, height, width), so input shape must be [2, 3, 5, 6, 4], filters must be reshaped to [3, 2, 3, 3, 3] (in_channels=3, out_channels=2, kT=kH=kW=3), and padding='SAME' is invalid — must compute explicit padding. Strides [2,2,2] (D,H,W only) required."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 10, 12, 8, 2) vs PT=(2, 2, 9, 11, 7)",
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          9,
+          11,
+          7
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于TF和PyTorch对output_shape/output_padding的语义差异：TF requires explicit output_shape, while PyTorch computes output size via formula and uses output_padding to resolve ambiguity. TF's output_shape [2,10,12,8,2] (NDHWC) implies spatial dims (10,12,8), but PT's input (N,C,D,H,W)=(2,3,5,6,4) with stride=(2,2,2), kernel=(3,3,3), padding=(1,1,1) yields output D/H/W = (2*5-1+3-2*1)=10, (2*6-1+3-2*1)=12, (2*4-1+3-2*1)=8 — matching TF — so PT's output shape should be (2,2,10,12,8). Current PT test has weight shape [3,2,3,3,3] (in_channels=3, out_channels=2) but input is (2,3,5,6,4), so output must be (2,2,10,12,8). Fix PT output shape by adjusting input layout consistency and computing correct padding/output_padding."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 10, 12, 8, 2) vs PT=(2, 2, 9, 11, 7)",
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          9,
+          11,
+          7
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于TF和PyTorch对output_shape/output_padding的处理差异：TF requires explicit output_shape with NDHWC layout, while PyTorch infers output size from input+stride+padding+output_padding. The TF output_shape [2,10,12,8,2] implies NDHWC format (batch, D, H, W, channels), but PyTorch input is NCDHW [2,3,5,6,4], and its weight shape [3,2,3,3,3] violates PyTorch's expected (out_channels, in_channels//groups, kT, kH, kW). Must fix PyTorch weight shape to [2,3,3,3,3] and compute correct output_padding to match TF's (2,10,12,8,2) → after NDHWC→NCDHW conversion: (2,2,10,12,8), so PyTorch output must be (2,2,10,12,8), requiring output_padding=[0,1,0] for stride=2, kernel=3, padding=1 on input (5,6,4)."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          1,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given transposed=1, weight of size [2, 3, 3, 3, 3], expected input[2, 3, 5, 6, 4] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          10,
+          12,
+          8,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "api": "torch.nn.functional.conv_transpose3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv_transpose3d() missing 1 required positional arguments: \"weight\"",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv_transpose3d requires 'weight' as positional argument (not 'filters'), expects weight shape (in_channels, out_channels/groups, kT, kH, kW), and input shape (N, C_in, T, H, W). TensorFlow uses NDHWC/NCDHW with filters [kD,kH,kW,outC,inC], so we must transpose filters and reshape inputs to match PyTorch's NCTHW convention and supply correct parameter names."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": 0,
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 11, 13, 9, 2) vs PT=(2, 2, 11, 13, 9)",
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          11,
+          13,
+          9
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于数据格式差异：TF使用NDHWC（batch,depth,height,width,channels），PT使用NCDHW（batch,channels,depth,height,width）。TF输出shape[2,11,13,9,2]对应NDHWC，PT应为[2,2,11,13,9]，但当前PT weight shape[3,2,3,3,3]错误——应为[out_channels,in_channels,kT,kH,kW]=[2,3,3,3,3]，且input shape需匹配TF的in_channels=3在channel dim。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": 0,
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given transposed=1, weight of size [2, 3, 3, 3, 3], expected input[2, 3, 5, 6, 4] to have 2 channels, but got 3 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv_transpose3d expects weight shape [in_channels, out_channels//groups, kT, kH, kW], but given [2,3,3,3,3] implies in_channels=2, while input has 3 channels. Must swap weight's first two dims to [3,2,3,3,3] to match input's in_channels=3 and filters' output_channels=2. Also adjust padding/output_padding to match TF's VALID behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            5,
+            6,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NDHWC"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            5,
+            6,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": 0,
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 11, 13, 9, 2) vs PT=(2, 2, 11, 13, 9)",
+        "tf_shape": [
+          2,
+          11,
+          13,
+          9,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          11,
+          13,
+          9
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "torch.nn.functional.conv_transpose3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv_transpose3d() missing 1 required positional arguments: \"weight\"",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv_transpose3d requires 'weight' as positional argument (not 'filters'), expects weight shape (in_channels, out_channels//groups, kT, kH, kW), and uses 'input' instead of 'x'. Also, PyTorch uses NCDHW layout (batch, channels, depth, height, width), while TF example uses NDHWC. Need to transpose input/filters, rename params, add required 'weight', and compute correct output_padding."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 6, 8, 6, 2) vs PT=(2, 2, 5, 7, 5)",
+        "tf_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          5,
+          7,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "形状不匹配源于data_format与参数语义映射错误：TF默认NDHWC，input shape[2,3,4,3,2]对应[batch,depth,height,width,in_channels]；PT为NCDHW，input应为[2,2,3,4,3]。但TF output_shape[2,6,8,6,2]要求NDHWC输出，而PT需显式匹配该shape。TF的padding='SAME'隐含计算output_shape，与显式指定冲突；PT需通过padding+output_padding反推使输出为[2,6,8,6,2]。修复：统一按NDHWC/NCDHW对齐，TF保持原output_shape，PT调整input shape为[2,2,3,4,3]→[2,2,3,4,3]正确，但weight shape应为[out_channels,in_channels,kT,kH,kW]=[2,2,3,3,3]正确；关键缺失是PT的output_padding未适配：由TF strides=[1,2,2,2,1]（DHW=2）和SAME推得PT需output_padding=[0,1,0]使输出深度6、高度8、宽度6。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          1,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 6, 8, 6, 2) vs PT=(2, 2, 5, 8, 5)",
+        "tf_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "pytorch_shape": [
+          2,
+          2,
+          5,
+          8,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "输出形状不一致源于TF需显式指定output_shape而PT通过output_padding隐式计算；TF的SAME padding与PT的padding=1不等价；应统一为VALID并匹配output_shape推导逻辑：TF output_shape=[2,6,8,6,2]对应PT输入(2,2,3,4,3)、kernel(3,3,3)、stride(2,2,2)、padding(0,0,0)时，理论输出为(2,2,6,8,6)，但TF用NDHWC而PT用NCDHW，故TF shape[2,3,4,3,2]→PT input[2,2,3,4,3]正确，但filters TF[3,3,3,2,2]对应PT weight[2,2,3,3,3]正确；问题在padding和output_padding未对齐：TF SAME ≈ PT padding=(1,1,1) + output_padding=(0,0,0)不成立，需重算使输出形状一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          2,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1,
+          1
+        ],
+        "groups": 1
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "AbortedError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Operation received an exception:Status: 2, message: could not create a primitive descriptor for the convolution forward propagation primitive. Run workload with environment variable ONEDNN_VERBOSE=all to get additional diagnostic information., in file tensorflow/core/kernels/mkl/mkl_conv_grad_input_ops.cc:546 [Op:Conv3DBackpropInputV2]",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          2,
+          2,
+          7,
+          9,
+          7
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "x": {
+          "shape": [
+            0,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          0,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "tf.nn.conv3d_transpose"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            0,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          0,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "api": "torch.nn.functional.conv_transpose3d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: conv_transpose3d() missing 1 required positional arguments: \"weight\"",
+        "comparison_error": null,
+        "tf_shape": [
+          0,
+          6,
+          8,
+          6,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch conv_transpose3d requires explicit 'weight' parameter (not 'filters'), and expects input in NCDHW order, weight shape (in_channels, out_channels/groups, kT, kH, kW), plus 'output_padding' may be needed to match TF's output_shape. Also batch=0 is invalid in PyTorch; must use valid batch size."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          6,
+          8,
+          6,
+          2
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(1, 6, 8, 6, 2) vs PT=(1, 2, 5, 7, 5)",
+        "tf_shape": [
+          1,
+          6,
+          8,
+          6,
+          2
+        ],
+        "pytorch_shape": [
+          1,
+          2,
+          5,
+          7,
+          5
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "输出形状不一致源于TF需显式指定output_shape而PT通过公式自动计算，且padding语义不同：TF 'SAME'隐含动态padding，PT需手动匹配。修复：统一使用VALID padding并按PT公式反推output_shape，调整TF output_shape为[1,2,5,7,5]，PT保持原参数但修正input/filters通道顺序以对齐NDHWC/NCDHW布局。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          2,
+          5,
+          7,
+          5
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped____MklNativeConv3DBackpropInputV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} input and filter must have the same depth: 5 vs 2 [Op:Conv3DBackpropInputV2]",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": [
+          1,
+          2,
+          7,
+          9,
+          7
+        ],
+        "tf_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "tf_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow报错'input and filter must have the same depth: 5 vs 2'表明data_format默认为NDHWC时，input.shape[1]（depth=3）应 match filters.shape[0]（depth=3），但实际filters.shape=[3,3,3,2,2]中第0维是kernel depth，而input.shape=[1,3,4,3,2]中第1维是input depth=3，in_channels=2；filters最后一维必须 equal input's in_channels=2 → filters.shape[4] must be 2 (OK), but filters.shape[3] is output_channels, and input's in_channels=2 must match filters.shape[4], which it does; however, TF expects filters shape [depth, height, width, output_channels, in_channels], so [3,3,3,2,2] means in_channels=2 — correct. The real issue is output_shape[1] (depth dim) = 2 conflicts with stride[1]=2 and input depth=3 under VALID padding: computed output depth = (3-1)*2 + 3 = 7, but output_shape says 2 → invalid. Fix: align output_shape to valid dimension per TF formula."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv3d_transpose",
+        "x": {
+          "shape": [
+            1,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            3,
+            3,
+            3,
+            5,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "output_shape": [
+          1,
+          7,
+          9,
+          7,
+          5
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID"
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.conv_transpose3d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            5,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bias": null,
+        "stride": [
+          2,
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0
+        ],
+        "output_padding": [
+          0,
+          0,
+          0
+        ],
+        "groups": 1,
+        "dilation": [
+          1,
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv3d_transpose",
+        "pytorch_api": "torch.nn.functional.conv_transpose3d",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: Given transposed=1, weight of size [5, 2, 3, 3, 3], expected input[1, 2, 3, 4, 3] to have 5 channels, but got 2 channels instead",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          7,
+          9,
+          7,
+          5
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

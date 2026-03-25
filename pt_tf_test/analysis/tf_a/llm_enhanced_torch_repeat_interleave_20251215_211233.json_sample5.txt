@@ -1,0 +1,89 @@
+来源文件: llm_enhanced_torch_repeat_interleave_20251215_211233.json
+样例编号: 5
+tensorflow_error 错误信息: {{function_node __wrapped__Reshape_device_/job:localhost/replica:0/task:0/device:CPU:0}} Size 2 must be non-negative, not -3 [Op:Reshape] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.repeat_interleave",
+  "input": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.07476484030485153,
+      0.4187507629394531,
+      1.471468448638916,
+      -0.5981284976005554,
+      -0.10469047725200653,
+      0.55850750207901,
+      -0.9340252876281738,
+      -0.8040763139724731,
+      -0.12502193450927734,
+      1.1562416553497314
+    ]
+  },
+  "repeats": {
+    "shape": [
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -5,
+      2,
+      3,
+      -3
+    ]
+  },
+  "dim": -1
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.repeat",
+  "input": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.07476484030485153,
+      0.4187507629394531,
+      1.471468448638916,
+      -0.5981284976005554,
+      -0.10469047725200653,
+      0.55850750207901,
+      -0.9340252876281738,
+      -0.8040763139724731,
+      -0.12502193450927734,
+      1.1562416553497314
+    ]
+  },
+  "repeats": {
+    "shape": [
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -5,
+      2,
+      3,
+      -3
+    ]
+  },
+  "axis": -1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.repeat` 要求 `repeats` 参数中的每个值必须为非负整数（即 ≥ 0），而测试用例中 `repeats` 包含 `-5` 和 `-3`，违反了该限制，导致在执行 `Reshape` 操作时出现“Size 2 must be non-negative, not -3”错误。  
+   - 尽管 PyTorch 的 `torch.repeat_interleave` 允许负数重复值（会将其解释为 0 或报错，具体取决于实现），但 TensorFlow 严格要求重复次数为非负整数，这是两框架在语义处理上的关键差异。
+
+3. 修复建议：  
+   - 此为框架行为不一致问题，应提交 issue 至 TensorFlow 官方仓库，指出 `tf.repeat` 对负数重复值的处理与 PyTorch 不一致且缺乏明确错误提示。

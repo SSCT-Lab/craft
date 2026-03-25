@@ -1,0 +1,122 @@
+来源文件: llm_enhanced_torch_addmm_20251202_125541.json
+样例编号: 6
+paddle_error 错误信息: The input Variable x's width must be equal with Variable y' height. But received x's shape = [3, 3], y's shape = [2, 3].
+
+【PyTorch 测试用例】
+{
+  "api": "torch.addmm",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      6,
+      5,
+      6,
+      -9,
+      -3,
+      6
+    ]
+  },
+  "mat1": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -5,
+      0,
+      -8,
+      -3,
+      -3,
+      4
+    ]
+  },
+  "mat2": {
+    "shape": [
+      3,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      3,
+      7,
+      -4,
+      9,
+      1,
+      6,
+      8,
+      -5
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.addmm",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      6,
+      5,
+      6,
+      -9,
+      -3,
+      6
+    ]
+  },
+  "x": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      -2,
+      8,
+      5,
+      -8,
+      4
+    ]
+  },
+  "y": {
+    "shape": [
+      3,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      2,
+      5,
+      -8,
+      -2,
+      6,
+      -2,
+      0,
+      5,
+      4
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.addmm` 要求 `x` 的宽度（即列数）必须等于 `y` 的高度（即行数），以满足矩阵乘法的维度约束。当前输入中 `x.shape = [2, 3]`，`y.shape = [3, 3]`，满足该条件（3 == 3），因此维度上是合法的。  
+   - 然而，错误信息显示 “x's width must be equal with y's height” 且实际为 `[3, 3]` 和 `[2, 3]`，说明在实际执行时，传入的 `x` 和 `y` 实际被误调换或参数顺序错位，但根据测试用例，`x` 应为 `[2,3]`、`y` 为 `[3,3]`，逻辑上应无问题。  
+   - **关键矛盾点在于**：错误信息中的 `x.shape = [3,3]`, `y.shape = [2,3]` 与测试用例中 `x=[2,3]`, `y=[3,3]` 不符，暗示可能是运行时参数传递错误或测试用例解析错误导致张量被错配。  
+   - 更可能的情况是：**虽然接口语义一致，但 PaddlePaddle 在某些情况下对 `addmm` 的输入维度检查更严格，或内部实现中将 `x` 与 `y` 的乘法顺序固定为 `x @ y`，而 `x` 的形状必须为 `[m,k]`，`y` 为 `[k,n]`，当前 `x=[2,3]`, `y=[3,3]` 是合法的，所以不应报错**。  
+   - 因此，该错误极可能是 **框架内部实现中对输入维度验证逻辑与预期不一致，或存在边界情况下的误判**，属于未被文档明确覆盖的行为差异。
+
+3. 修复建议：  
+   - 该问题虽在语义上应能通过，但因错误提示与输入不符，建议提交 issue 至 PaddlePaddle 官方仓库，指出 `paddle.addmm` 在合法输入下仍报“width != height”错误，疑似内部维度校验逻辑错误或日志打印错误。

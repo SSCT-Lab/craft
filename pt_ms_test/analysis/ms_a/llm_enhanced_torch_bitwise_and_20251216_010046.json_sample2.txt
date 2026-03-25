@@ -1,0 +1,85 @@
+来源文件: llm_enhanced_torch_bitwise_and_20251216_010046.json
+样例编号: 2
+mindspore_error 错误信息: For 'BitwiseAndTensor', input1.shape and input2.shape need to broadcast. The value of input1.shape[3] or input2.shape[3] must be 1 or -1 when they are not the same, but got input1.shape = [0, 4, 5] and input2.shape = [3, 4, 5]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bitwise_and",
+  "input": {
+    "shape": [
+      0,
+      4,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      4,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -3,
+      6,
+      1,
+      -3,
+      9,
+      -7,
+      -6,
+      -6,
+      -7,
+      4
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.bitwise_and",
+  "input": {
+    "shape": [
+      0,
+      4,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      4,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -3,
+      6,
+      1,
+      -3,
+      9,
+      -7,
+      -6,
+      -6,
+      -7,
+      4
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `mindspore.mint.bitwise_and` 要求输入张量在广播时，维度不匹配的维度必须为 1 或 -1 才能广播，而本例中 `input1.shape = [0, 4, 5]` 与 `input2.shape = [3, 4, 5]` 在第 0 维上分别为 0 和 3，且 0 不是 1 或 -1，违反了 MindSpore 的广播规则。
+   - 虽然 PyTorch 的 `torch.bitwise_and` 可以接受包含 0 的 shape 并进行广播（实际行为是将 0 视为“空”维度并允许广播），但 MindSpore 显式限制了广播条件，导致该用例在 MindSpore 中执行失败。
+
+3. 修复建议：
+   - 此为框架间行为不一致，建议提交 issue 至 MindSpore 官方仓库，反馈其对 shape 包含 0 的情况广播规则过于严格，与 PyTorch 不一致。

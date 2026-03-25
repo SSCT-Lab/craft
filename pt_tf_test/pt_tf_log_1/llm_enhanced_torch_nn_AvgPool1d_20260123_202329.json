@@ -1,0 +1,336 @@
+{
+  "operator": "torch.nn.AvgPool1d",
+  "timestamp": "2026-01-23T20:23:29.105005",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.170958399772644,
+            -0.20079921185970306,
+            -0.1333024501800537,
+            0.10033893585205078,
+            -0.14538398385047913,
+            -0.3519684970378876,
+            0.6745709776878357,
+            1.3338377475738525,
+            2.4621129035949707,
+            2.4752604961395264
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "api": "torch.nn.AvgPool1d"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.170958399772644,
+            -0.20079921185970306,
+            -0.1333024501800537,
+            0.10033893585205078,
+            -0.14538398385047913,
+            -0.3519684970378876,
+            0.6745709776878357,
+            1.3338377475738525,
+            2.4621129035949707,
+            2.4752604961395264
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "api": "tf.keras.layers.AveragePooling1D"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AvgPool1d",
+        "tensorflow_api": "tf.keras.layers.AveragePooling1D",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "AveragePooling1D.__init__() missing 1 required positional argument: 'pool_size'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3,
+          4
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\nTypeError: AveragePooling1D.__init__() missing 1 required positional argument: 'pool_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的AveragePooling1D API要求必须提供'pool_size'参数，而原始测试用例中使用了'kernel_size'，这与TensorFlow的API文档不符。根据文档，应将'kernel_size'改为'pool_size'以匹配TensorFlow的参数命名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.AvgPool1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5053331851959229,
+            0.04110618680715561,
+            -1.5964369773864746,
+            0.16263018548488617,
+            1.383130669593811,
+            -0.19889861345291138,
+            -2.4015989303588867,
+            -1.545456886291504,
+            0.11591486632823944,
+            -0.2534525692462921
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.AveragePooling1D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5053331851959229,
+            0.04110618680715561,
+            -1.5964369773864746,
+            0.16263018548488617,
+            1.383130669593811,
+            -0.19889861345291138,
+            -2.4015989303588867,
+            -1.545456886291504,
+            0.11591486632823944,
+            -0.2534525692462921
+          ]
+        },
+        "pool_size": 3,
+        "strides": 2
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AvgPool1d",
+        "tensorflow_api": "tf.keras.layers.AveragePooling1D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 3, 4) vs TensorFlow (2, 1, 10)",
+        "torch_shape": [
+          2,
+          3,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          1,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch AvgPool1d expects input shape (N, C, L) where L is the sequence length (last dim), while TensorFlow AveragePooling1D expects input shape (N, L, C) — i.e., channel-last format. The original test case uses shape [2, 3, 10] for both, but in TF this is interpreted as (batch=2, timesteps=3, features=10), whereas in PyTorch it's (batch=2, channels=3, length=10). This causes mismatched output shapes: PyTorch computes pooling over dim=2 (length=10) → output length = floor((10 + 2*0 - 3)/2) + 1 = 4 → (2,3,4); TF computes over dim=1 (timesteps=3) → output timesteps = floor((3 + 2*0 - 3)/2) + 1 = 1 → (2,1,10). To align semantics, TF input must be reshaped to (N, L, C) = (2, 10, 3), and pool_size/strides applied on axis=1 (the timestep axis), matching PyTorch's pooling on the last dimension. Also, TF default padding is 'valid', same as PyTorch's default padding=0; no need for padding param change. Thus, repair: transpose TF input shape to [2, 10, 3] and keep pool_size=3, strides=2."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.AvgPool1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5536403656005859,
+            0.5944241881370544,
+            -1.729051113128662,
+            0.10931333899497986,
+            -0.3026719391345978,
+            1.0743616819381714,
+            -0.26322007179260254,
+            -0.31645452976226807,
+            0.36849603056907654,
+            -0.28204861283302307
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.AveragePooling1D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.5536403656005859,
+            0.5944241881370544,
+            -1.729051113128662,
+            0.10931333899497986,
+            -0.3026719391345978,
+            1.0743616819381714,
+            -0.26322007179260254,
+            -0.31645452976226807,
+            0.36849603056907654,
+            -0.28204861283302307
+          ]
+        },
+        "pool_size": 3,
+        "strides": 2
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AvgPool1d",
+        "tensorflow_api": "tf.keras.layers.AveragePooling1D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 3, 4) vs TensorFlow (2, 1, 10)",
+        "torch_shape": [
+          2,
+          3,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          1,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的AvgPool1d和TensorFlow的AveragePooling1D在参数默认值上存在差异，导致输出形状不一致。根据文档，PyTorch的AvgPool1d默认padding为0，而TensorFlow的AveragePooling1D默认padding为'valid'，这会导致不同的输出尺寸。为了使两个框架的行为一致，需要显式设置padding参数以确保行为对齐。此外，输入张量的维度顺序可能不同：PyTorch通常使用(N, C, L)格式，而TensorFlow使用(N, L, C)，因此输入形状虽相同但语义不同。应调整TensorFlow输入为(N, L, C)即(2, 10, 3)，与PyTorch的(2, 3, 10)对应，并相应调整pool_size维度。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.AvgPool1d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.09472346305847168,
+            0.7271993160247803,
+            0.8131023645401001,
+            -0.736859142780304,
+            0.9642452597618103,
+            1.2193816900253296,
+            1.7662343978881836,
+            -0.10875532776117325,
+            -0.2828240692615509,
+            0.25698795914649963
+          ]
+        },
+        "kernel_size": 3,
+        "stride": 2,
+        "padding": 0
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.layers.AveragePooling1D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.09472346305847168,
+            0.7271993160247803,
+            0.8131023645401001,
+            -0.736859142780304,
+            0.9642452597618103,
+            1.2193816900253296,
+            1.7662343978881836,
+            -0.10875532776117325,
+            -0.2828240692615509,
+            0.25698795914649963
+          ]
+        },
+        "pool_size": 3,
+        "strides": 2,
+        "padding": "valid"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.AvgPool1d",
+        "tensorflow_api": "tf.keras.layers.AveragePooling1D",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 3, 4) vs TensorFlow (2, 1, 10)",
+        "torch_shape": [
+          2,
+          3,
+          4
+        ],
+        "tensorflow_shape": [
+          2,
+          1,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

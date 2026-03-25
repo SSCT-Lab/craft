@@ -1,0 +1,907 @@
+{
+  "updated_at": "2026-03-22T20:33:49.704391",
+  "records": [
+    {
+      "operator": "tf.batch_to_space",
+      "case_number": 5,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.batch_to_space requires 'block_shape' (1-D tensor/list, not scalar 'block_size') and 'crops', while MindSpore BatchToSpace requires scalar 'block_size' >=2 and 'crops' as list/tuple of two 2-int lists. Original 'block_size': 1 violates both APIs' constraints: TF expects 'block_shape', MS requires block_size>=2. Repair: use block_shape=[2,2] for TF and block_size=2 with compatible crops for MS, ensure input batch dim divisible by product(block_shape) and shape validity.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore BatchToSpace不支持CPU后端，且其block_size仅接受单个int（对应TF的square block_shape），而TF支持任意M维block_shape。原始用例中TF使用[2,2]，需映射为MindSpore的block_size=2；但MindSpore要求输入batch可被block_size²整除（4%4==0），满足条件。错误主因是CPU设备不支持该算子，修复方式为显式指定GPU/Ascend设备或跳过CPU测试；但根据任务要求，优先修复用例使其在支持设备上运行，故保持参数语义一致并确保block_size为int、crops格式正确。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore BatchToSpace不支持CPU后端，需指定GPU/Ascend设备；且其block_size为标量，仅支持2D空间（H,W），而TF的block_shape支持M维。原始用例在CPU上运行失败，应修复为GPU设备并确保block_size与crops维度匹配。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.batch_to_space",
+      "case_number": 4,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.batch_to_space requires 'block_shape' (1-D tensor or int), not 'block_size'; MindSpore BatchToSpace requires 'block_size' >= 2 and 'crops' as list/tuple, not tensor. Original block_size=0 violates both APIs' constraints. Repair: use block_shape=[2,2] for TF, block_size=2 + crops=[[0,0],[0,0]] for MS, and fix input shape to satisfy divisibility (batch=4 for block_shape=[2,2]).",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow报错因crops导致负尺寸，需满足crop_start[i] + crop_end[i] <= block_shape[i] * input_shape[i+1]；MindSpore报错因crops参数缺失（构造函数需传入，非call时传入），且其crops为Python list/tuple而非Tensor，block_size为标量。修复：设crops=[[0,0],[0,0]]满足约束，MindSpore中crops改为list，TensorFlow中crops值同步修正。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore BatchToSpace 不支持 CPU 设备，且其 block_size 为标量（仅支持 2D 输入的正方形 block），而 TensorFlow 的 block_shape 是 1-D Tensor 支持任意 M 维；原始用例在 CPU 上触发 kernel 未注册错误。修复方式：将 MindSpore 测试切换至 GPU/Ascend 设备（但测试框架未指定 device），故退而采用文档明确支持的等效参数形式，并确保 block_size=2 与 block_shape=[2,2] 语义一致，同时补充 dtype 兼容性（MindSpore 要求 float16/float32，TF 支持更广）。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.batch_to_space",
+      "case_number": 2,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.batch_to_space requires 'block_shape' (1-D tensor/list, not scalar 'block_size') and 'crops' as positional args; MindSpore BatchToSpace requires scalar 'block_size' (>=2) and 'crops' as list/tuple of two 2-int lists. Also, TF does not support bfloat16 for this op; MS only supports float16/float32. Repair: use int32 input, convert block_size→block_shape=[2,2] for TF, keep block_size=2 for MS, ensure crops shape matches spatial dims (2D → [2,2]), and fix dtypes to float32.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow报错因crops导致负尺寸，需提供合法crops值；MindSpore报错因crops参数缺失且其API要求crops为list/tuple而非Tensor，且block_size仅支持标量、不支持向量block_shape。需统一为2D输入+标量block_size+显式合法crops列表。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore BatchToSpace does not support CPU backend per error; it requires Ascend/GPU. Also, MindSpore's API only accepts scalar block_size (for 2D only), while TF supports general M-D block_shape. The input shape [16,5,8,7] implies NCHW, so block_size=2 is valid, but CPU device is unsupported. Repair: switch to GPU/Ascend device context — but since test environment is fixed, we must skip CPU usage. However, per docs, BatchToSpace is *not supported on CPU*, so no repair can make it work on CPU. Hence operation must be 'skip'.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.batch_to_space",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.batch_to_space requires 'block_shape' (1-D tensor, not scalar 'block_size') and 'crops' as tensor; MindSpore BatchToSpace requires scalar 'block_size' and 'crops' as list/tuple of lists, not tensor. Both APIs reject current args due to parameter name/type mismatch. Repair: use block_shape=[2,2] for TF (since input is 4D, M=2 spatial dims), and convert crops to Python list [[0,0],[0,0]] for MS.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow requires block_shape to be length-M matching spatial dims (here 3D spatial: [5,8,7] → block_shape must be [a,b,c]), but given [2]; MindSpore only supports 4D input and scalar block_size (not vector), and crops must be list/tuple of two 2-int lists. Also TF batch dim 20 must be divisible by product of block_shape, so fix to 4D input with block_shape=[3,3] (product=9 fails), instead use [2,3] → product=6, batch=24. MindSpore block_size=6 invalid (must be >=2 but scalar), so align to 4D + block_size=2 and crops=[[0,0],[0,0]], input batch divisible by 4. Final: TF uses block_shape=[2,2], batch=16; MS uses block_size=2, input shape [16,5,8,7].",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow tf.batch_to_space requires block_shape to be 1-D, but test case passed 2-D [2,2]; MindSpore BatchToSpace expects crops as list/tuple of two 2-int lists (e.g., [[0,0],[0,0]]), not a tensor with shape [2,2]. Also, MindSpore only supports 4D input and scalar block_size, while TF supports N-D and 1-D block_shape. Repair aligns both: use 2D block_shape=[2,2] in TF (valid for 4D input), and convert to scalar block_size=2 + crops=[[0,0],[0,0]] in MindSpore per doc.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.batch_to_space",
+      "case_number": 3,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.batch_to_space requires 'block_shape' (1-D tensor/list, not scalar 'block_size') and 'crops', while MindSpore BatchToSpace requires scalar 'block_size' and 'crops' as list/tuple of two 2-int lists. Original test uses incompatible parameter names and shapes: TF rejects 'block_size', MS misses required 'crops' initialization in class ctor. Repair aligns TF to use block_shape=[2] (not block_size=2) and ensures MS uses correct class instantiation with block_size=2 and crops=[[0,0],[0,0]]; also fix input shape to 4D for MS (required), so x becomes [4,1,1,1] → reshaped to match TF's batch-to-space logic with M=2 spatial dims.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore BatchToSpace不支持CPU后端，报错'Unsupported op [BatchToSpace] on CPU'；根据文档，该算子仅支持Ascend/GPU，需显式设置device_target='GPU'或'Ascend'，但测试框架未提供设备配置能力；且MindSpore要求block_size为int标量（对应TF的2D block_shape对角相等情形），而原始TF用例block_shape=[2,2]合法，但MindSpore不接受list形式；故修复为统一使用block_size=2，并确保输入shape满足4D、batch可被block_size²整除，同时明确mindspore用例参数符合其限制。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore BatchToSpace不支持CPU后端，报错'Unsupported op [BatchToSpace] on CPU'；根据文档，该算子仅支持Ascend/GPU，需显式设置device_target='GPU'或'Ascend'，但测试框架未提供设备配置能力；且MindSpore要求block_size为int标量（TF为list[int]），而crops维度语义一致；最直接修复是确保block_size与TF block_shape语义等价（2D时block_size应为int，隐含block_shape=[block_size, block_size]），当前用例已满足，但需规避CPU不支持问题——唯一可行修复是跳过CPU环境，改用GPU/Ascend；然而测试环境不可控，故按官方约束将MindSpore用例参数对齐并标注为repair，实际运行需设备适配；此处修复为保持参数合法且最小改动：确认block_size=2合法，crops格式正确，但需注意MindSpore要求输入shape[0]必须被block_size**2整除（4 % 4 == 0），满足；因此根本问题是后端缺失，非用例错误，但任务要求修复用例，故维持原参数，仅修正MindSpore用例中block_size语义明确性（无需改），最终判定为需repair以适配MindSpore严格设备要求，但用例本身无误，故不变更参数，仅确认其合规。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.clip_by_norm",
+      "case_number": 2,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore clip_by_norm does not accept 'clip_norm' parameter; it uses 'max_norm' instead. Also, MindSpore requires explicit tensor input (not symbolic shape-only), and does not support 'axes' — it always computes global L2 norm over flattened tensor. TensorFlow's default axes=None implies global norm, so mapping is valid with parameter name fix.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "skip",
+          "reason": "TensorFlow tf.clip_by_norm clips norm along specified axes (default: all dimensions), while MindSpore clip_by_norm computes global L2-norm over flattened tensor and scales uniformly — fundamentally different semantics; not equivalent operators despite same name.",
+          "execute_symbol": "-"
+        }
+      ]
+    },
+    {
+      "operator": "tf.clip_by_norm",
+      "case_number": 4,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore clip_by_norm does not accept 'clip_norm' or 'axes' parameters; it uses 'max_norm' (no 'clip_' prefix) and operates on the global L2-norm of flattened input, not per-axis clipping. TensorFlow's 'axes' enables axis-specific norm clipping, but MindSpore's API has fundamentally different semantics — no axes support. Thus, repair requires removing 'axes' and renaming 'clip_norm' → 'max_norm', aligning with MindSpore's documented signature.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量升维至4D并设置clip_norm为极小值1e-6，验证边界数值稳定性及高维axes支持差异。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量改为单元素标量形状[1]，clip_norm设为0（边界值），并补充MindSpore的norm_type=2.0显式指定以对齐L2范数语义。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.clip_by_norm",
+      "case_number": 5,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore clip_by_norm does not accept 'clip_norm' or 'axes' parameters; it uses 'max_norm' (no 'clip_norm') and operates on flattened norm of entire tensor (no 'axes' support). Must rename parameter and remove axes to match MindSpore's API signature.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量升维至4D并设置clip_norm/max_norm为极小值1e-6，同时添加norm_type=2.0显式指定L2范数以对齐语义，验证边界鲁棒性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量改为单元素标量形状[1]，clip_norm/max_norm设为0（边界值），并添加error_if_nonfinite=True验证MindSpore异常行为，同时TensorFlow对应axes设为[]以匹配全局归一化语义。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.clip_by_norm",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore clip_by_norm does not accept 'clip_norm' parameter; it uses 'max_norm' instead. Also, MindSpore requires actual Tensor input (not just shape/dtype spec) and does not support 'axes' — it always computes global L2 norm. TensorFlow's default axes=None implies global norm, so we align by removing axes and renaming clip_norm→max_norm.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维张量(4,2,3,1)、clip_norm设为极小值1e-6，并添加axes参数（TF）与norm_type=1.0（MS）以验证多维和非默认范数行为。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "两框架算子语义不一致：tf.clip_by_norm clips norm along specified axes, while mindspore.ops.clip_by_norm computes global norm over all elements (ignores axes) and supports only norm_type=2.0 by default; mismatched norm_type=1.0 in MS exacerbates inconsistency. Repair: align norm_type to 2.0 and remove axes mismatch by using global clipping semantics — but since TF axes=[0,2] implies per-slice clipping and MS has no axes support, the APIs are fundamentally incompatible for this configuration; thus repair to use default global clipping (axes=None in TF, omit axes) and norm_type=2.0 in MS.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.clip_by_norm",
+      "case_number": 3,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore clip_by_norm does not accept 'clip_norm' parameter; it uses 'max_norm' instead. Also, MindSpore requires explicit tensor input (not symbolic shape-only), and does not support 'axes' — it always computes global L2 norm over flattened tensor. TensorFlow's default axes=None implies global norm, so mapping is valid with parameter name fix.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.clip_by_norm默认沿所有轴计算L2范数，而MindSpore clip_by_norm对整个输入张量全局计算L2范数（即flatten后求norm），但TF的axes参数未显式指定导致行为歧义；需统一为全局裁剪并确保输入张量值一致以消除差异。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow tf.clip_by_norm默认按全部维度计算L2范数（axes=None等价于axes=[0,1,...]），而MindSpore clip_by_norm对输入张量整体展平后计算全局L2范数，但文档明确说明其行为是'concatenating the norms of all input elements into a vector and computing the norm of that vector' — 即全局L2范数。然而原始用例中TF的axes=null（即None）实际执行的是逐元素归一化？不，TF文档明确：当axes=None时，clip_by_norm对整个tensor计算L2范数并缩放（即全局clip）。但MindSpore的实现也是全局clip。差异根源在于：TF的tf.clip_by_norm(t, clip_norm, axes=None) 等价于将t视为向量计算||t||_2，若||t||_2 > clip_norm，则输出 t * clip_norm / ||t||_2；MindSpore同理。但实测不一致，最大误差3.16，远超1e-3，说明参数语义未对齐：TF的axes=None是全局，但MindSpore要求x为单个Tensor且行为一致，问题在于TF用例未提供具体数值，导致随机初始化值不同；而跨框架测试必须保证相同输入值。因此修复为固定seed+相同初始值，并显式设置axes=[0,1]以匹配MindSpore的全局理解。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.fill",
+      "case_number": 2,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore fill API does not accept 'dims' parameter; it requires 'type', 'shape', and 'value' parameters. The original test case incorrectly reused TensorFlow's 'dims' keyword. Must replace 'dims' with 'shape' (tuple/int list) and add explicit dtype (e.g., mindspore.int32) as first arg.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，但测试用例中传入了list [1]，导致TypeError: 'shape' must be a tuple or tensor with all Int elements.需将shape改为tuple形式。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，但测试用例中传入了list [1]，导致TypeError: 'shape' must be a tuple or tensor with all Int elements.需将shape改为tuple形式。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.fill",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore fill API does not accept 'dims' parameter; it requires 'type', 'shape', and 'value' parameters. The original test case incorrectly uses 'dims' (TF-style) instead of 'shape' and omits mandatory 'type' dtype specification.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，而测试用例中传入了list [2]，导致TypeError: 'ValueList' not allowed；需改为tuple (2,) 以满足FillV2 InferShape约束。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须是tuple或Tensor，而测试用例中传入了list [2]，导致TypeError: 'shape' must be a tuple or tensor with all Int elements.需将shape改为tuple (2,)以符合MindSpore文档要求。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.fill",
+      "case_number": 4,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore fill不接受'dims'参数名，需改为'shape'；且必须显式指定dtype参数（如mindspore.bool_），而TF自动推导；空shape[0]合法但MindSpore要求shape为tuple/int而非dict，value为bool需匹配dtype=bool_",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，而[0]是Python list；根据文档需改为tuple。同时type参数应使用mindspore.bool_而非字符串'bool_'。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Int元素的Tensor，但测试中传入了list [0]；根据文档，需改为tuple。同时type参数在MindSpore中为mindspore.dtype枚举，不能为字符串，应使用mindspore.bool_（实际为dtype对象），但JSON无法序列化对象，故需用字符串'bool_'并由测试框架映射；标准修复是将shape改为tuple，且确保type合法。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.fill",
+      "case_number": 3,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.fill requires 'dims' as a 1-D tensor/list of shape, not a dict with 'shape' and 'dtype'; MindSpore fill expects 'type' (dtype), 'shape', and 'value' — not 'dims'. Both inputs misuse parameter names and structures per official docs.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，但测试用例中传入了list；根据文档，需将list[2,3,4]改为tuple(2,3,4)以满足FillV2对shape类型的要求。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，但测试用例中传入了list；根据文档，需将list转为tuple。TensorFlow接受list作为dims，而MindSpore严格要求tuple。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.fill",
+      "case_number": 5,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.fill requires 'dims' as first positional arg (1D int tensor), not a dict; MindSpore fill expects (dtype, shape, value) with shape as tuple/list, not dict. Both errors stem from incorrect parameter packaging: TF rejects [0,5] as invalid vector shape (0-dim dim is illegal), MS rejects 'dims' kwarg. Fix: use valid non-zero shape [2,3], pass dims/shape as plain list, and align dtype handling.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape必须为tuple或Tensor，但测试用例中传入了list；根据文档，需将shape改为tuple。同时type参数在MindSpore中为mindspore.dtype类型，需确保正确引用。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore fill要求shape参数为tuple或Tensor，但测试用例中传入了list；根据文档，需将shape改为tuple。TensorFlow的dims接受list，但MindSpore的shape必须是tuple[int]，否则触发TypeError: 'shape' must be a tuple or tensor with all Int elements, but got ValueList。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather",
+      "case_number": 2,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow报错indices[0,0] = 8 is not in [0, 2)，说明indices值越界；params.shape[axis]默认为axis=0时的2，但indices含值8，远超范围[0,2)。需将indices值约束在合法范围内（如[0,2)），且保持两框架输入一致。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow和MindSpore均报索引越界错误：indices值超出params在axis=0维度的合法范围[0,2)。原始用例未指定axis且indices形状[2,1]隐含可能含>=2的值，而params第一维为2。需显式设置axis=0并确保indices值∈[0,2)，同时统一初始化合法索引张量。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow报错indices[0,0] = 9 is not in [0, 2)，说明indices值越界（params.shape[axis]=2，但indices含9）；需约束indices值域为[0, params.shape[axis])，即[0,2)。MindSpore文档明确要求input_indices值必须在[0, input_params.shape[axis])内，而原始用例未指定indices具体值，导致TF随机采样越界。修复：显式设置indices为合法范围内的int32张量，如[[0],[1]]。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather",
+      "case_number": 4,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.gather supports string dtype, but MindSpore mindspore.ops.gather explicitly does not support string dtype (error shows 'Unsupported data type! ... input[String Int32...]'). Per MindSpore docs, string is unsupported; repair requires switching to supported dtype (e.g., int32) for both frameworks to ensure equivalence and successful execution.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.gather 报错 'indices[0] = 2 is not in [0, 2)' 表明 indices 值越界（params.shape[axis]=2，axis 默认为 0，故 indices 必须 ∈ [0,2)）；原始用例未指定 indices 具体值，导致随机生成的 int32 张量可能含非法索引（如 2 或更大）。需显式约束 indices 值域为 [0, params.shape[axis])，且 MindSpore 要求 input_indices 在 [0, input_params.shape[axis]) 内，故统一设 indices 值为 [0]。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow报错因传入了dict类型indices而非Tensor；MindSpore报错因indices值2越界（axis=0时params.shape[0]=2，合法索引为[0,2)即0或1）。需将indices改为合法标量/张量，并确保两框架输入一致：params应为Tensor，indices应为int32 Tensor，且值在[0, params.shape[axis])内。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather",
+      "case_number": 3,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow报错indices[0,0,0]=2超出params在axis=0维度的范围[0,2)，MindSpore同理报索引8越界；原始用例未指定axis且indices值域未约束，需显式设axis=0并确保indices值在[0, params.shape[axis])内；修复为indices shape=[2,2,2]但值全为0或1，dtype=int32，符合shape[0]=2的约束。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow报错indices[0,0,0] = 2 is not in [0, 2) 表明params在axis=0维度长度为2，但indices含值2（越界）；MindSpore报错'input_indices' should be in [0, 6) but got 8，说明其实际校验了索引值上限为params.shape[axis]=2，但生成的int32张量默认值可能超限。需确保indices所有元素∈[0, params.shape[axis])，故将indices shape改为[1,1,1]并显式约束值范围为[0,2)。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow报错indices[0,0,0] = 2 is not in [0, 2)，说明indices值越界（params.shape[axis]=2，但indices含2）。MindSpore文档明确要求input_indices值必须在[0, input_params.shape[axis])内。原始用例未指定indices具体值，导致TF默认生成含越界值的随机索引。需显式设置合法indices值（如全0）并确保跨框架一致。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather_nd",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow报错因indices值越界（indices[2]=[9]超出params.shape=[6]），MindSpore报错因误传3个参数（实际只接受2个：input_x和indices）；需确保indices值在[0, params.shape[0])范围内且MindSpore不传多余参数。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow报错因indices值越界（indices[2]=[8]超出params.shape=[6]），MindSpore报错因传入了3个参数而非2个；需确保indices值在[0, params.shape[0])范围内且仅传2个参数；修复为合法索引[0,1,2]，并统一使用标准参数结构。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore gather_nd 报错 'takes 2 positional arguments but 3 were given'，说明原始用例误传了额外参数；实际 MindSpore API 仅接受 input_x 和 indices 两个参数，且无 params 命名参数；TensorFlow 的 params 对应 MindSpore 的 input_x，需统一参数名并确保仅传两个位置参数。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather_nd",
+      "case_number": 3,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore报错'takes 2 positional arguments but 3 were given'表明原始用例误传了多余参数；实际mindspore.ops.gather_nd仅接受2个位置参数(input_x, indices)，而原始用例可能隐式携带了额外参数；同时indices.shape=[0,1]为空索引张量，TF支持但MindSpore要求indices.shape[-1] <= input_x.rank且非空索引需满足维度约束，故修复为合法非空indices shape[2,2]以匹配params rank=2。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow报错因indices越界（[7,6]超出params[3,3]），MindSpore报错因传入了3个参数（误将params拆为独立参数），实际两者均需2个参数：params/input_x和indices；修复为生成合法indices值（如[[0,0],[1,1]]）并确保两框架输入张量与indices内容一致。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore gather_nd only accepts 2 positional arguments (input_x, indices), but the test case incorrectly passes params as separate dict; must construct explicit input tensor and pass it as first arg, matching TF's params. Also, indices dtype must be int32/int64 per MindSpore doc.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather_nd",
+      "case_number": 4,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "TensorFlow tf.gather_nd requires indices.shape[-1] <= params.rank and indices must be 2D when gathering scalars; MindSpore gather_nd expects indices to be 2D with last dim <= input rank. Original indices shape [2] is invalid — must be [N, K] where K <= rank(params)=2. Fix: use indices shape [2, 2] to index into [6,2] tensor.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow报错因indices越界（[0,3]超出params shape [6,2]的第二维0-1范围）；MindSpore报错因误传3个参数，实际只接受2个（input_x, indices），原始用例未提供具体数值且未构造合法indices值。需修复为合法、对齐的数值张量，确保indices每个向量满足0<=indices[i,j]<params.shape[j]。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "MindSpore gather_nd only accepts 2 positional arguments (input_x, indices), but the test case incorrectly passes params as separate dict; must construct actual Tensor inputs for both frameworks and align parameter names: 'params'→'input_x' in MindSpore, and ensure indices is a Tensor with int32 dtype.",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather_nd",
+      "case_number": 2,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore gather_nd 报错 'takes 2 positional arguments but 3 were given' 表明原始用例误传了额外参数；实际 MindSpore ops.gather_nd 仅接受 input_x 和 indices 两个参数，且不支持 kwargs 如 'batch_dims'；同时 shape [0,2] 的 indices 是合法空张量，但需确保 dtype 为 int32 且 input_x rank >= indices.shape[-1]（即 2 <= 2），故只需移除冗余参数并保持输入一致。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore报错TypeError: gather_nd() got multiple values for argument 'input_x'，表明参数传入方式错误；根据MindSpore文档，gather_nd是函数调用且仅接受两个位置参数input_x和indices，但原始用例中可能因框架适配层误传命名参数导致冲突；需确保MindSpore用例以位置参数顺序调用，且indices.shape[-1] <= input_x.rank（此处2 <= 2满足），但空indices张量[0,2]在MindSpore中可能触发内部校验异常，修复为非空合法索引如[[0,0],[1,1]]以对齐TF行为并消除参数歧义。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow报错因indices越界（[1,7]超出[3,3]范围），MindSpore报错因参数名不匹配且缺少实际tensor值；需修复为合法indices（如[[0,0],[1,1]]）并补全params/input_x张量值，确保两框架输入语义一致。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.gather_nd",
+      "case_number": 5,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore gather_nd 报错 'takes 2 positional arguments but 3 were given' 表明原始用例误传了额外参数；实际 MindSpore ops.gather_nd 仅接受 input_x 和 indices 两个参数，且要求 indices.shape[-1] <= input_x.rank。原始 indices.shape=[1] 要求 params.rank >= 1，但 indices 最后维长度为 1，而 params 为 2D，合法；但当前用例未提供具体值，且 MindSpore 不支持 indices 为 1D 标量索引（需至少 2D，如 [N, K] 形式），故需修复 indices shape 为 [N, K] 且 K <= rank(params)=2，例如 [2, 1] 或 [2, 2]。",
+          "execute_symbol": "✗",
+          "tf_success": true,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "MindSpore报错TypeError: gather_nd() got multiple values for argument 'input_x'，表明原始用例中参数传递方式错误；根据MindSpore文档，gather_nd仅接受两个位置参数input_x和indices，而原始MindSpore测试用例可能误将api名作为关键字参数传入；需确保调用时仅传input_x和indices，且indices.shape[-1] <= input_x.rank（此处indices.shape=[2,1]，input_x.rank=2，满足约束），同时统一TensorFlow中params→input_x语义映射。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow报错因indices[1]=[7]越界（params shape [6,2]，第一维最大索引为5）；MindSpore报错因参数名不匹配且缺少实际tensor值。需修复：indices最后一维必须<=params秩（此处为2），且indices值应在params各维合法范围内；MindSpore需用input_x而非params，且两框架均需提供具体数值张量而非仅shape描述。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "mindspore_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.identity",
+      "case_number": 3,
+      "initial_symbol": "✗",
+      "repaired_round": 1,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "MindSpore Identity不支持string类型，报错明确列出仅支持数值、布尔和复数类型；而TensorFlow支持string。为使两框架均能执行，需将dtype改为双方共同支持的类型，如float32。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为高维张量（4D）、边界dtype（int8）、空张量及单元素张量，验证跨框架identity在极端形状和类型下的一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "原始用例执行一致，但形状[1,0,3,4]含零维（空维度），属边界情况；为增强鲁棒性测试，变异为空张量[0]、高维张量[2,3,4,5,6]及低精度dtype float16，覆盖更广输入空间。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "mindspore_success": true
+        }
+      ]
+    }
+  ]
+}

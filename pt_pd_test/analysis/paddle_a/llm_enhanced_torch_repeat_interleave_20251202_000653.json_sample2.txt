@@ -1,0 +1,43 @@
+来源文件: llm_enhanced_torch_repeat_interleave_20251202_000653.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) repeats should be larger than zero
+
+【PyTorch 测试用例】
+{
+  "api": "torch.repeat_interleave",
+  "input": {
+    "shape": [
+      3,
+      0
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "repeats": 0,
+  "dim": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.repeat_interleave",
+  "input": {
+    "shape": [
+      3,
+      0
+    ],
+    "dtype": "int64",
+    "sample_values": []
+  },
+  "repeats": 0,
+  "dim": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.repeat_interleave` 明确要求 `repeats` 必须大于零（错误信息 `(InvalidArgument) repeats should be larger than zero`），而 PyTorch 的 `torch.repeat_interleave` 在 `repeats=0` 时会返回一个空张量（或形状为 [3, 0] 的结果），允许该情况存在。
+   - 输入张量的 shape 为 `[3, 0]`，表示第二维为 0，结合 `repeats=0`，在两个框架中语义上均可能产生空输出，但 PaddlePaddle 对 `repeats <= 0` 进行了严格校验，直接抛错，而 PyTorch 允许。
+
+3. 修复建议：
+   - 该行为差异属于框架实现不一致，可提交 issue 至 PaddlePaddle 官方仓库，建议放宽对 `repeats=0` 的限制以与 PyTorch 保持兼容。

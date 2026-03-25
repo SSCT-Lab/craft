@@ -1,0 +1,914 @@
+{
+  "operator": "torch_nn_ReplicationPad2d",
+  "torch_api": "torch.nn.ReplicationPad2d",
+  "paddle_api": "paddle.nn.Pad2D",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 8,
+  "timestamp": "2026-02-01T18:04:12.350083",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_ReplicationPad2d_20260125_015724.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.ReplicationPad2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.2887173891067505,
+            0.33447176218032837,
+            -0.43482705950737,
+            0.6065886616706848,
+            1.3131357431411743,
+            1.019924283027649,
+            0.04451237618923187,
+            0.3236198425292969,
+            0.5788909196853638,
+            -0.9343868494033813
+          ]
+        },
+        "padding": 2
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.Pad2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.2887173891067505,
+            0.33447176218032837,
+            -0.43482705950737,
+            0.6065886616706848,
+            1.3131357431411743,
+            1.019924283027649,
+            0.04451237618923187,
+            0.3236198425292969,
+            0.5788909196853638,
+            -0.9343868494033813
+          ]
+        },
+        "padding": 2,
+        "mode": "replicate"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "边界和异常浮点值易暴露padding边界处理逻辑差异，如inf/nan传播规则、零边界复制行为不一致等潜在实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.2887173891067505,
+                0.33447176218032837,
+                -0.43482705950737,
+                0.6065886616706848,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "padding": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -1.2887173891067505,
+                0.33447176218032837,
+                -0.43482705950737,
+                0.6065886616706848,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "padding": 2,
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "Inf 位置不一致",
+            "torch_shape": [
+              2,
+              3,
+              8,
+              8
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              8,
+              8
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1,1]）测试最小非空输入",
+          "mutation_reason": "单元素张量是ReplicationPad2d的极端边界情况，padding=2会显著放大边界复制逻辑，易暴露框架对'单像素边界复制'实现不一致的bug",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "padding": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "padding": 2,
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              5,
+              5
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持padding和shape一致",
+          "mutation_reason": "高精度浮点下边界复制逻辑可能暴露舍入顺序或索引计算差异，尤其在inf/nan/极值附近，易触发框架底层实现不一致",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.2887173891067505,
+                0.33447176218032837,
+                -0.43482705950737,
+                0.6065886616706848,
+                1.3131357431411743,
+                1.019924283027649,
+                0.04451237618923187,
+                0.3236198425292969,
+                0.5788909196853638,
+                -0.9343868494033813,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "padding": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -1.2887173891067505,
+                0.33447176218032837,
+                -0.43482705950737,
+                0.6065886616706848,
+                1.3131357431411743,
+                1.019924283027649,
+                0.04451237618923187,
+                0.3236198425292969,
+                0.5788909196853638,
+                -0.9343868494033813,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "padding": 2,
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3,
+              8,
+              8
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              8,
+              8
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_ReplicationPad2d_20260125_015724.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.ReplicationPad2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6219044327735901
+          ]
+        },
+        "padding": [
+          1,
+          2,
+          0,
+          3
+        ]
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.Pad2D",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6219044327735901
+          ]
+        },
+        "padding": [
+          1,
+          2,
+          0,
+          3
+        ],
+        "mode": "replicate"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发边界处理逻辑差异，如无穷值的复制行为、NaN传播规则、次正规数精度丢失等，可能暴露两框架在ReplicationPad2d/Pad2D中边界采样实现不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan",
+                "-inf",
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "padding": [
+              1,
+              2,
+              0,
+              3
+            ]
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan",
+                "-inf",
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "padding": [
+              1,
+              2,
+              0,
+              3
+            ],
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              1,
+              1,
+              4,
+              4
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              4,
+              4
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（1,1,1,1）但 padding 超出合理边界，触发边界复制逻辑的极端情况",
+          "mutation_reason": "padding=[3,3,3,3] 在 1x1 输入上强制复制边界多次，易暴露两框架对'corner replication'顺序或索引边界的实现差异（如是否允许全边界外推）",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.6219044327735901
+              ]
+            },
+            "padding": [
+              3,
+              3,
+              3,
+              3
+            ]
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.6219044327735901
+              ]
+            },
+            "padding": [
+              3,
+              3,
+              3,
+              3
+            ],
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 0.6219044327735901",
+            "torch_shape": [
+              1,
+              1,
+              7,
+              7
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              7,
+              7
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，并注入边界特殊值（inf, -inf, nan）",
+          "mutation_reason": "float64 更高精度可能暴露数值边界处理差异；inf/-inf/nan 能检验两框架对非有限值的复制逻辑是否一致（如是否错误截断或传播异常）",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "nan",
+                "inf",
+                "-inf",
+                -0.0
+              ]
+            },
+            "padding": [
+              1,
+              2,
+              0,
+              3
+            ]
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "nan",
+                "inf",
+                "-inf",
+                -0.0
+              ]
+            },
+            "padding": [
+              1,
+              2,
+              0,
+              3
+            ],
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              1,
+              1,
+              4,
+              4
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              4,
+              4
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_ReplicationPad2d_20260125_015724.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.ReplicationPad2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.4813224891687016,
+            0.7517143082755136,
+            -2.4915933190749078,
+            1.5793601510285529,
+            -1.1018214454103057,
+            -0.05742122913194527,
+            -1.3942584669727724,
+            1.2287145045146484,
+            -1.1439197558752443,
+            0.10746818150678242
+          ]
+        },
+        "padding": [
+          3,
+          1,
+          4,
+          2
+        ]
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.nn.Pad2D",
+        "input": {
+          "shape": [
+            2,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.4813224891687016,
+            0.7517143082755136,
+            -2.4915933190749078,
+            1.5793601510285529,
+            -1.1018214454103057,
+            -0.05742122913194527,
+            -1.3942584669727724,
+            1.2287145045146484,
+            -1.1439197558752443,
+            0.10746818150678242
+          ]
+        },
+        "padding": [
+          3,
+          1,
+          4,
+          2
+        ],
+        "mode": "replicate"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "边界和异常浮点值易暴露框架对NaN传播、无穷大处理、次正规数截断的实现差异，ReplicationPad2d在边界复制时可能对inf/nan做不同数值稳定性处理。",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.4813224891687016,
+                0.7517143082755136,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -2.4915933190749078,
+                1.5793601510285529
+              ]
+            },
+            "padding": [
+              3,
+              1,
+              4,
+              2
+            ]
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.4813224891687016,
+                0.7517143082755136,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -2.4915933190749078,
+                1.5793601510285529
+              ]
+            },
+            "padding": [
+              3,
+              1,
+              4,
+              2
+            ],
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3,
+              8,
+              7
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              8,
+              7
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1,1]）",
+          "mutation_reason": "单元素张量在复制填充时极易暴露边界索引错误或越界访问，两框架对极小尺寸的padding逻辑实现差异可能被放大。",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.4813224891687016
+              ]
+            },
+            "padding": [
+              3,
+              1,
+              4,
+              2
+            ]
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.4813224891687016
+              ]
+            },
+            "padding": [
+              3,
+              1,
+              4,
+              2
+            ],
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 0.4813224891687016",
+            "torch_shape": [
+              1,
+              1,
+              7,
+              5
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              7,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float64 变异为 float32，保持 padding 和 shape 完全一致",
+          "mutation_reason": "float32 更常用且精度边界更敏感，可能暴露框架在低精度下边界复制逻辑的差异（如舍入、索引越界处理）",
+          "torch_test_case": {
+            "api": "torch.nn.ReplicationPad2d",
+            "input": {
+              "shape": [
+                2,
+                3,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.48132249,
+                0.7517143,
+                -2.4915934,
+                1.5793602,
+                -1.1018214,
+                -0.05742123,
+                -1.3942585,
+                1.2287145,
+                -1.1439198,
+                0.10746818
+              ]
+            },
+            "padding": [
+              3,
+              1,
+              4,
+              2
+            ]
+          },
+          "paddle_test_case": {
+            "api": "paddle.nn.Pad2D",
+            "input": {
+              "shape": [
+                2,
+                3,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.48132249,
+                0.7517143,
+                -2.4915934,
+                1.5793602,
+                -1.1018214,
+                -0.05742123,
+                -1.3942585,
+                1.2287145,
+                -1.1439198,
+                0.10746818
+              ]
+            },
+            "padding": [
+              3,
+              1,
+              4,
+              2
+            ],
+            "mode": "replicate"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 2.6112163066864014",
+            "torch_shape": [
+              2,
+              3,
+              8,
+              7
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              8,
+              7
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+来源文件: llm_enhanced_torch_bincount_20251215_201128.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__DenseBincount_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input arr must be non-negative! [Op:DenseBincount] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bincount",
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      0,
+      -3,
+      0,
+      -7,
+      6
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.bincount",
+  "input": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      0,
+      -3,
+      0,
+      -7,
+      6
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.math.bincount` 要求输入张量中的所有值必须为非负整数（即 ≥ 0），而测试用例中输入包含 `-3` 和 `-7`，违反了该约束，因此触发错误 "Input arr must be non-negative!"。
+   - PyTorch 的 `torch.bincount` 虽然文档也注明“non-negative ints”，但在实际实现中对负数输入的处理是未定义行为或会报错，但本样例中其错误处理机制与 TensorFlow 不一致，导致在相同输入下，两个框架行为不一致。
+
+3. 修复建议：
+   - 该问题反映的是框架间对非法输入的容错策略差异，属于潜在的不一致性，建议提交 issue 给 TensorFlow 官方以统一行为标准。

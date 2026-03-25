@@ -1,0 +1,33 @@
+来源文件: llm_enhanced_torch_arange_20251216_003226.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__Range_device_/job:localhost/replica:0/task:0/device:CPU:0}} Requires start >= limit when delta < 0: 1/49 [Op:Range] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.arange",
+  "start": 1,
+  "end": 49,
+  "step": -0.1,
+  "dtype": "float32",
+  "device": null,
+  "requires_grad": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.range",
+  "start": 1,
+  "limit": 49,
+  "delta": -0.1,
+  "dtype": "float32"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.range` 在 `delta < 0` 时要求 `start >= limit`，否则会抛出错误（如本例中 `start=1`, `limit=49`, `delta=-0.1` 导致 `1 < 49`，违反条件）。
+   - 而 PyTorch 的 `torch.arange` 允许负步长且自动根据 `start` 与 `end` 大小关系决定是否生成空序列或反向序列，其语义是“从 start 开始，以 step 为步长，直到 end 为止”，不强制要求 `start >= end`。
+
+3. 修复建议：
+   - 该行为差异属于框架设计层面的不一致，建议提交 issue 给 TensorFlow 官方，说明 `tf.range` 在负步长下对 `start >= limit` 的严格检查与 PyTorch 的更灵活语义存在不一致。

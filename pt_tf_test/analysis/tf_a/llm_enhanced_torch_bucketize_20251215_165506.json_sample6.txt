@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_bucketize_20251215_165506.json
+样例编号: 6
+tensorflow_error 错误信息: {{function_node __wrapped__UpperBound_device_/job:localhost/replica:0/task:0/device:CPU:0}} Leading dim_size of both tensors must match. [Op:UpperBound] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bucketize",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -10,
+      -1,
+      0,
+      9,
+      -3,
+      -9
+    ]
+  },
+  "boundaries": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -2,
+      4,
+      -2,
+      9,
+      5
+    ]
+  },
+  "right": true
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.searchsorted",
+  "values": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      1,
+      8,
+      -5,
+      9,
+      1
+    ]
+  },
+  "sorted_sequence": {
+    "shape": [
+      5
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      4,
+      9,
+      -2,
+      4,
+      -6
+    ]
+  },
+  "side": "right"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.searchsorted` 要求 `sorted_sequence` 必须是严格递增的（即单调递增），但测试用例中传入的 `sorted_sequence` 为 `[4, 9, -2, 4, -6]`，明显不满足单调性要求，违反了文档中“sorted_sequence must be sorted in ascending order”这一前提。
+   - 错误信息 `Leading dim_size of both tensors must match` 实际上是 `UpperBound` 操作内部对输入维度对齐的检查失败，而该操作由 `tf.searchsorted` 内部调用，其根本原因正是由于 `sorted_sequence` 未排序导致中间计算结构异常，引发维度匹配错误。
+
+3. 修复建议：
+   - 提交 issue 给 TensorFlow 官方，建议在 `tf.searchsorted` 中增加对 `sorted_sequence` 是否单调递增的前置校验并给出更清晰的错误提示。

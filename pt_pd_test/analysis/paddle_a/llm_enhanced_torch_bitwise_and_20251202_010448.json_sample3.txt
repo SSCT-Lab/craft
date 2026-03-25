@@ -1,0 +1,95 @@
+来源文件: llm_enhanced_torch_bitwise_and_20251202_010448.json
+样例编号: 3
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [2, 3, 1] and the shape of Y = [3, 1, 4]. Received [2] in X is not equal to [3] in Y at i:0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.bitwise_and",
+  "input": {
+    "shape": [
+      2,
+      3,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -9,
+      3,
+      -3,
+      -1,
+      9,
+      -10
+    ]
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      0,
+      -4,
+      4,
+      6,
+      6,
+      -1,
+      -1,
+      -10,
+      -5,
+      9
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.bitwise_and",
+  "input": {
+    "shape": [
+      2,
+      3,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -9,
+      3,
+      -3,
+      -1,
+      9,
+      -10
+    ]
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      0,
+      -4,
+      4,
+      6,
+      6,
+      -1,
+      -1,
+      -10,
+      -5,
+      9
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.bitwise_and` 支持广播，但其广播规则要求对应维度的大小必须相等或其中一个为 1。本例中输入 `X = [2, 3, 1]` 与 `Y = [3, 1, 4]` 在第 0 维分别为 2 和 3，不相等且均不为 1，无法广播，因此报错“Broadcast dimension mismatch”。  
+   - PyTorch 的 `torch.bitwise_and` 在广播时允许更灵活的维度对齐（如 2 和 3 可在某些情况下通过扩展处理），而 PaddlePaddle 对广播兼容性有更严格的检查，导致相同用例在两框架行为不一致。
+
+3. 修复建议：  
+   - 建议提交 issue 至 PaddlePaddle 官方仓库，反馈 `bitwise_and` 广播规则与 PyTorch 不一致的问题，尤其是对非对称维度（如 [2,3,1] 与 [3,1,4]）应支持更宽松的广播逻辑以保持跨框架一致性。

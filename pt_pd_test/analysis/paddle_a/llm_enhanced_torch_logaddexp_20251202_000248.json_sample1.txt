@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_logaddexp_20251202_000248.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 3, 4] and the shape of Y = [2, 3, 4]. Received [0] in X is not equal to [2] in Y at i:0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.logaddexp",
+  "input": {
+    "shape": [
+      0,
+      3,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.2532012510548553,
+      -1.451656820257189,
+      -0.727699384291917,
+      0.39566907050662464,
+      0.6743824719144688,
+      0.7696168596877039,
+      -0.9416363265278965,
+      0.19648862030174655,
+      0.7613111282574353,
+      -0.5535094492715247
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.logaddexp",
+  "input": {
+    "shape": [
+      0,
+      3,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      2,
+      3,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.2532012510548553,
+      -1.451656820257189,
+      -0.727699384291917,
+      0.39566907050662464,
+      0.6743824719144688,
+      0.7696168596877039,
+      -0.9416363265278965,
+      0.19648862030174655,
+      0.7613111282574353,
+      -0.5535094492715247
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.logaddexp` 要求 `y` 的形状必须是 `x` 形状的连续前缀子序列（即可通过广播对齐），且在广播时不允许维度为 0 的情况出现。当前输入中 `x.shape = [0, 3, 4]`，其第一维为 0（空张量），而 `y.shape = [2, 3, 4]`，两者的第 0 维分别为 0 和 2，无法广播（即使按规则应从后往前匹配），**尤其当某维度为 0 时，PaddlePaddle 会直接拒绝广播**，因为 0 维不构成有效张量尺寸，与 PyTorch 行为不一致。  
+   - PyTorch 允许 `logaddexp` 在包含 0 维的张量上执行（如 `shape=[0,3,4]` 与 `[2,3,4]` 可广播），但 PaddlePaddle 明确限制了广播中不能存在 0 维。
+
+3. 修复建议：  
+   - 此为框架间对“零维张量”广播行为的不一致，建议提交 issue 至 PaddlePaddle 官方仓库，说明其在处理 `shape=[0,...]` 与非零维广播时过于严格，与 PyTorch 不兼容。

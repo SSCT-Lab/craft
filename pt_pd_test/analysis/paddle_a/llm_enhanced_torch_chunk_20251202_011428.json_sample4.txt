@@ -1,0 +1,47 @@
+来源文件: llm_enhanced_torch_chunk_20251202_011428.json
+样例编号: 4
+paddle_error 错误信息: (InvalidArgument) The input's size along the split dimension must be evenly divisible by Attr(num_or_sections). But received Attr(num_or_sections) = 3, input(X)'s shape = [2, 0, 3, 4], Attr(dim) = 3.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.chunk",
+  "input": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "chunks": 3,
+  "dim": -1
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.chunk",
+  "input": {
+    "shape": [
+      2,
+      0,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "chunks": 3,
+  "dim": -1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.chunk` 要求输入张量在指定维度上的大小必须能被 `chunks` 整除，而本例中输入 shape 为 `[2, 0, 3, 4]`，dim=-1（即第4维）的大小为 4，4 不能被 3 整除，因此触发错误。  
+   - 尽管 PyTorch 的 `torch.chunk` 在这种情况下允许返回少于指定数量的块（即“可能返回更少块”），但 PaddlePaddle 严格要求分块必须均匀，不允许非整除情况，这是两个框架在行为上的关键差异。
+
+3. 修复建议：  
+   - 该问题属于框架行为不一致，建议提交 issue 给 PaddlePaddle 官方，说明 `paddle.chunk` 应对非整除情况与 PyTorch 保持一致（如允许返回不足 chunks 个子张量），以增强兼容性。

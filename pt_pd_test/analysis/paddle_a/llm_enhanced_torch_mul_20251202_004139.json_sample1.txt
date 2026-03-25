@@ -1,0 +1,81 @@
+来源文件: llm_enhanced_torch_mul_20251202_004139.json
+样例编号: 1
+paddle_error 错误信息: (InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: float64, y: int32. (at ..\paddle/phi/common/type_promotion.h:233)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.mul",
+  "input": {
+    "shape": [
+      1,
+      0,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      3,
+      4,
+      4,
+      3,
+      0,
+      -2,
+      1,
+      1,
+      -4,
+      3
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.multiply",
+  "input": {
+    "shape": [
+      1,
+      0,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      5
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      3,
+      4,
+      4,
+      3,
+      0,
+      -2,
+      1,
+      1,
+      -4,
+      3
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.multiply` 在类型提升（type promotion）时明确限制：仅支持浮点数之间或复数与实数之间的计算，不支持 `float64` 与 `int32` 的混合运算（错误信息中“Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: float64, y: int32”）。  
+   - 而 PyTorch 的 `torch.mul` 支持不同数据类型（如 `float64` 与 `int32`）的混合乘法，并会自动进行类型提升（如将 `int32` 提升为 `float64`），因此在该测试用例下可正常执行。
+
+3. 修复建议：  
+   - 该问题属于框架间行为差异，建议提交 issue 给 PaddlePaddle 官方，说明其 `multiply` 算子未遵循 PyTorch 的类型兼容性行为，尤其是在跨 dtype 广播场景下的支持不足。

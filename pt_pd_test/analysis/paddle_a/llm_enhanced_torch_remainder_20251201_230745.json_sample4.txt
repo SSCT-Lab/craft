@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_remainder_20251201_230745.json
+样例编号: 4
+paddle_error 错误信息: (InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: float32, y: int32. (at ..\paddle/phi/common/type_promotion.h:233)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.remainder",
+  "input": {
+    "shape": [
+      0,
+      1,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      1,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -6,
+      -2,
+      -1,
+      1
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.mod",
+  "input": {
+    "shape": [
+      0,
+      1,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      1,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -6,
+      -2,
+      -1,
+      1
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.mod` 在类型提升（type promotion）上严格限制：仅支持浮点数之间或复数与实数之间的运算，不支持 `float32` 与 `int32` 的混合计算（错误信息明确指出“Type promotion only support... between floating-point numbers and between complex and real numbers. But got different data type x: float32, y: int32”）。
+   - PyTorch 的 `torch.remainder` 则允许在 `float32` 与 `int32` 之间进行模运算，会自动将 `int32` 转换为 `float32` 后计算，体现了更宽松的类型兼容性。
+
+3. 修复建议：
+   - 该行为差异属于框架间语义不一致，建议提交 issue 给 PaddlePaddle 官方，反馈其 `paddle.mod` 应对 `float32` 与 `int32` 混合输入提供更一致的兼容性支持，以匹配 PyTorch 行为。

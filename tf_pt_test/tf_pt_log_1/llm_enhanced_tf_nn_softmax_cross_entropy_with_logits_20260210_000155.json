@@ -1,0 +1,1236 @@
+{
+  "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+  "pytorch_api": "torch.nn.functional.cross_entropy",
+  "timestamp": "2026-02-10T00:01:55.816357",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 12,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.softmax_cross_entropy_with_logits"
+      },
+      "pytorch_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.nn.functional.cross_entropy"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: cross_entropy() got an unexpected keyword argument 'labels'",
+        "comparison_error": null,
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy does not accept 'labels' parameter; it uses 'target' instead, and expects class indices (long) for hard labels or class probabilities only when label_smoothing is used. TensorFlow's labels are soft probabilities. To align semantics, PyTorch test case must use 'target' with int64 class indices (not float32 labels), or switch to F.softmax + F.nll_loss for soft labels. Here we repair by converting labels to class indices (argmax) and using correct parameter name and dtype."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "target": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "IndexError: Target 9 is out of bounds.",
+        "comparison_error": null,
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy expects integer class indices (int64) for 'target' when not using soft labels, but the TF counterpart expects probability distribution 'labels' (float32). The current PyTorch test case uses shape [2] int64 target, implying sparse labels, but TF test case provides dense float32 labels — they are semantically incompatible. To align, we must either switch PyTorch to soft labels (float32 target with same shape as logits) or adjust TF to use sparse labels. Per doc, TF's softmax_cross_entropy_with_logits requires dense probability labels, so PyTorch must use soft labels: target shape [2,4], dtype float32."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2,) vs PT=()",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's cross_entropy expects target as class indices (long) for hard labels or probability distribution (float) only when label_smoothing > 0; but by default it treats target as class indices. TF's softmax_cross_entropy_with_logits requires soft labels (float, same shape as logits). To align semantics, PyTorch must use label_smoothing=0.0 and float target, but also requires reduction='none' to match TF's per-sample output shape (2,). Default reduction='mean' causes scalar output () vs TF's (2,)."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0,
+        "reduction": "none"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 7.45133805",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.softmax_cross_entropy_with_logits"
+      },
+      "pytorch_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.nn.functional.cross_entropy"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__Reshape_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input to reshape is a tensor with 2 values, but the requested shape has 1 [Op:Reshape] name: ",
+        "pytorch_error": "TypeError: cross_entropy() got an unexpected keyword argument 'labels'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow要求logits和labels第一维（batch）必须一致；PyTorch cross_entropy不接受'labels'参数名，需改为'target'，且当target为概率分布时需设label_smoothing=0.0并确保input shape匹配。原始用例logits=[1,4], labels=[2,4]维度不匹配，且PyTorch API无labels参数。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "target": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2,) vs PT=()",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's cross_entropy expects 'target' as class indices (LongTensor) for hard labels, or probability distribution only when label_smoothing>0; but TF's softmax_cross_entropy_with_logits requires probability labels (float). The shape mismatch (TF=(2,) vs PT=()) arises because PyTorch defaults to 'mean' reduction, while TF returns per-sample loss. To align semantics: set reduction='none' in PyTorch and ensure labels are valid probability distributions."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "reduction": "none",
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 9.70427132",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy with target of shape [2,4] (soft labels) requires label_smoothing=0.0 AND reduction='none', but TF's softmax_cross_entropy_with_logits expects probability labels, while PyTorch's default behavior with float target is to treat it as soft targets only when size_average=False and no ignore_index — however, the key mismatch is that TF requires labels to sum to 1.0 per row, but original test doesn't enforce that; repair by ensuring label rows are valid probability distributions and adding explicit dtype/shape alignment."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "reduction": "none",
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.94990277",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.softmax_cross_entropy_with_logits"
+      },
+      "pytorch_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.nn.functional.cross_entropy"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__Reshape_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input to reshape is a tensor with 2 values, but the requested shape has 1 [Op:Reshape] name: ",
+        "pytorch_error": "TypeError: cross_entropy() got an unexpected keyword argument 'labels'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow要求logits和labels形状兼容（batch维度需一致），原始用例logits=[1,1], labels=[2,1]不匹配；PyTorch cross_entropy不接受'labels'参数名，应为'target'，且当target是概率分布时需设置label_smoothing=0.0并确保input logits shape与target shape一致。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "target": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2,) vs PT=()",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy默认对batch维度求mean（reduction='mean'），而TF softmax_cross_entropy_with_logits返回per-sample loss (shape=(2,))。需显式设置reduction='none'使PyTorch输出形状一致，且label_smoothing=0.0已正确设置，但target应为概率分布时需确保与TF labels语义一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "reduction": "none",
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.71952546",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.nn.softmax_cross_entropy_with_logits requires labels to be probability distributions (sum to 1 per row), while PyTorch's cross_entropy with target shape [2,3] expects soft targets only when label_smoothing is used; but default behavior differs. To align semantics, PyTorch must use soft targets (no class indices) and same reduction, but TF expects normalized labels — however, the core mismatch is that PyTorch cross_entropy with 2D target does NOT assume soft labels by default unless weight=None and no ignore_index; actually, per docs, 2D target is supported *only* for soft targets, but requires explicit handling. The real issue: TF computes -sum(labels * log(softmax(logits))), while PyTorch with 2D target does the same *only if* target rows sum to 1 — but test case doesn't guarantee that. So we repair by ensuring both use identical soft labels (e.g., valid prob dists) and fix PyTorch to avoid ambiguity: remove label_smoothing (redundant for exact match) and ensure deterministic seed + same numeric values."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "reduction": "none",
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.95125932",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.softmax_cross_entropy_with_logits"
+      },
+      "pytorch_test_case": {
+        "labels": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.nn.functional.cross_entropy"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: cross_entropy() got an unexpected keyword argument 'labels'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy does not accept 'labels' keyword; it uses 'target' for class indices or class probabilities, and expects logits as 'input'. Also, for probability labels (soft targets), PyTorch requires label_smoothing=0.0 and target to be float with same shape as input, but current shape [2,1,4] is invalid for default class-index mode. Repair: rename 'labels'→'target', ensure float target matches input shape, and add label_smoothing=0.0."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 1) vs PT=()",
+        "tf_shape": [
+          2,
+          1
+        ],
+        "pytorch_shape": [],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy expects target to be class indices (LongTensor) for hard labels, or class probabilities only when label_smoothing>0; but current test uses float32 target of shape [2,1,4], which is invalid. TensorFlow's softmax_cross_entropy_with_logits requires probability labels of same shape as logits. To align semantics: PyTorch must use label_smoothing=0.0 + target as class indices (shape [2,1]), or switch to soft targets with proper handling. Since labels are dense prob vectors, we fix PyTorch to use F.softmax_cross_entropy equivalent via F.cross_entropy with target as class indices derived from argmax(labels), but per doc, cross_entropy does NOT accept dense float targets unless label_smoothing>0 — so correct repair is to use torch.nn.functional.cross_entropy with target as LongTensor class indices (shape [2,1]) and reshape logits to [2,4] (flattening spatial dims), matching TF's effective class dim."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "IndexError: Target 7 is out of bounds.",
+        "comparison_error": null,
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy expects target as class indices (int64) of shape [N] when not using soft targets, but the TF version uses dense probability labels (float32, shape [N,C]). The PyTorch test case incorrectly assumes label shape [2] matches TF's [2,4] labels — they are semantically different. To align, we must use soft targets in PyTorch via target of shape [2,4] and float dtype, and disable label_smoothing to match TF's behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "label_smoothing": 0.0
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2,) vs PT=()",
+        "tf_shape": [
+          2
+        ],
+        "pytorch_shape": [],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "labels": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.softmax_cross_entropy_with_logits"
+      },
+      "pytorch_test_case": {
+        "labels": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.nn.functional.cross_entropy"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: cross_entropy() got an unexpected keyword argument 'labels'",
+        "comparison_error": null,
+        "tf_shape": [],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch cross_entropy does not accept 'labels' parameter; it uses 'target' for class indices or class probabilities, and expects 'input' (not 'logits') as first arg. Also, 1D input requires target to be scalar or 0D for class indices, or 1D with same length for probabilistic labels — but probabilistic labels require label_smoothing=0.0 and reduction='none'. TensorFlow's API expects 2D+ logits/labels, so original 1D shape is invalid for both. Must fix shape to [1,4] and map labels→target, logits→input."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.softmax_cross_entropy_with_logits",
+        "labels": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "logits": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "reduction": "none"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 8.97857523",
+        "tf_shape": [
+          1
+        ],
+        "pytorch_shape": [
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's cross_entropy with target of shape [1,4] and dtype float32 expects class probabilities only when label_smoothing > 0; by default it treats target as class indices (int64). To match TensorFlow's softmax_cross_entropy_with_logits (which requires probability labels), we must set label_smoothing=0.0 and ensure target is float, but more critically: PyTorch does NOT accept probability targets in 'cross_entropy' unless using soft targets via label_smoothing — however, the correct equivalent is torch.nn.functional.cross_entropy with target as float and label_smoothing=0.0 is insufficient; actual equivalent requires using torch.nn.functional.softmax + torch.nn.functional.nll_loss or explicit soft-targets handling. The documented correct equivalent is to use F.cross_entropy with target as class indices (long) for hard labels, but here labels are soft (probabilities). Thus, PyTorch test case must instead use F.cross_entropy with target as float tensor AND set soft_target=True (but no such arg exists); actually, the *only* supported soft-target mode in PyTorch is via label_smoothing, which mixes uniform distribution — not arbitrary probabilities. Therefore, the original test case is invalid: PyTorch cross_entropy does not support arbitrary probability labels like TF does. Correct repair is to switch PyTorch to use F.binary_cross_entropy_with_logits or manual soft cross-entropy, but per API alignment requirement, the proper fix is to use F.cross_entropy with integer target (hard labels) and adjust TF to sparse variant — however, the given TF API is softmax_cross_entropy_with_logits (soft labels), so PyTorch must use manual computation. But official guidance states: for soft labels, PyTorch users must implement manually. Hence, the test case mismatch is fundamental: TF supports soft labels natively, PyTorch does not in cross_entropy. So we repair by making both use hard (integer) labels: convert TF to sparse_softmax_cross_entropy_with_logits and PyTorch to long target."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.sparse_softmax_cross_entropy_with_logits",
+        "logits": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "labels": {
+          "shape": [
+            1
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "reduction": "none"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.92302060",
+        "tf_shape": [
+          1
+        ],
+        "pytorch_shape": [
+          1
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始用例中TensorFlow使用了tf.nn.sparse_softmax_cross_entropy_with_logits，但PyTorch对应的是torch.nn.functional.cross_entropy（支持sparse labels），而文档明确要求：TF sparse版本要求labels为int32类索引，PyTorch cross_entropy默认接受int64 target；但TF非-sparse版本要求labels为one-hot float概率分布，二者语义不匹配。需统一为sparse语义，且修复TF API名与参数一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.sparse_softmax_cross_entropy_with_logits",
+        "logits": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "labels": {
+          "shape": [
+            1
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.cross_entropy",
+        "input": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "target": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32"
+        },
+        "reduction": "none"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.softmax_cross_entropy_with_logits",
+        "pytorch_api": "torch.nn.functional.cross_entropy",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: expected scalar type Long but found Float",
+        "comparison_error": null,
+        "tf_shape": [
+          1
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

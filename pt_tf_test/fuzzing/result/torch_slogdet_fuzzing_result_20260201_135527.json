@@ -1,0 +1,467 @@
+{
+  "operator": "torch_slogdet",
+  "torch_api": "torch.slogdet",
+  "tensorflow_api": "tf.linalg.slogdet",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T13:55:27.341381",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_slogdet_20260123_153631.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.507034420967102,
+            -0.7076479196548462,
+            0.6520920395851135,
+            0.530491828918457,
+            -0.46712547540664673,
+            0.5173920392990112,
+            -0.7290564179420471,
+            -1.148098349571228,
+            -0.194077268242836
+          ]
+        },
+        "api": "torch.slogdet"
+      },
+      "original_tensorflow_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.507034420967102,
+            -0.7076479196548462,
+            0.6520920395851135,
+            0.530491828918457,
+            -0.46712547540664673,
+            0.5173920392990112,
+            -0.7290564179420471,
+            -1.148098349571228,
+            -0.194077268242836
+          ]
+        },
+        "api": "tf.linalg.slogdet"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "slogdet在奇异/非有限输入下易出现框架间符号处理、溢出或NaN传播差异，暴露底层LU/QR实现bug",
+          "torch_test_case": {
+            "api": "torch.slogdet",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.slogdet",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=0.0, tf=nan",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.slogdet'>",
+            "tensorflow_dtype": "<class 'tensorflow.python.ops.gen_linalg_ops.LogMatrixDeterminant'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量（0维）输入",
+          "mutation_reason": "标量输入是slogdet的退化情况，数学上slogdet([x])应返回(sign(x), log|abs(x)|)，框架对0维张量的支持差异易暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.slogdet",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -2.5
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.slogdet",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -2.5
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.slogdet: The input tensor A must have at least 2 dimensions.",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__LogMatrixDeterminant_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input tensor 0 must have rank >= 2, got 0 [Op:LogMatrixDeterminant] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下slogdet对极端值的处理一致性",
+          "mutation_reason": "float16动态范围小（~6e-5 to ~65504），易触发溢出/下溢，两框架对inf/nan/-0.0的slogdet边界行为可能不一致",
+          "torch_test_case": {
+            "api": "torch.slogdet",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.0001,
+                10000.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.slogdet",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.0001,
+                10000.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.slogdet: Low precision dtypes not supported. Got Half",
+            "tensorflow_error": "NotFoundError: Could not find device for node: {{node LogMatrixDeterminant}} = LogMatrixDeterminant[T=DT_HALF]\nAll kernels registered for op LogMatrixDeterminant:\n  device='CPU'; T in [DT_FLOAT]\n  device='CPU'; T in [DT_DOUBLE]\n  device='CPU'; T in [DT_COMPLEX64]\n  device='CPU'; T in [DT_COMPLEX128]\n [Op:LogMatrixDeterminant] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_slogdet_20260123_153631.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.slogdet",
+        "input": {
+          "shape": [
+            4,
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.9048742543237954,
+            0.1769872106652434,
+            -0.28538504923009095,
+            -0.9437006750771044,
+            -1.7208068374164593,
+            -1.4194078077286176,
+            -0.449617896755333,
+            -0.8528252364828861,
+            -0.3731235572699157,
+            -0.077553506087824
+          ]
+        }
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linalg.slogdet",
+        "input": {
+          "shape": [
+            4,
+            4
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.9048742543237954,
+            0.1769872106652434,
+            -0.28538504923009095,
+            -0.9437006750771044,
+            -1.7208068374164593,
+            -1.4194078077286176,
+            -0.449617896755333,
+            -0.8528252364828861,
+            -0.3731235572699157,
+            -0.077553506087824
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "slogdet在奇异、非有限输入下易暴露框架间LU分解/行列式符号处理差异，如NaN propagation规则或log|det|渐近行为不一致。",
+          "torch_test_case": {
+            "api": "torch.slogdet",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.9048742543237954,
+                0.1769872106652434,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.7208068374164593,
+                -1.4194078077286176,
+                -0.449617896755333,
+                -0.8528252364828861,
+                -0.3731235572699157,
+                -0.077553506087824,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.slogdet",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.9048742543237954,
+                0.1769872106652434,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.7208068374164593,
+                -1.4194078077286176,
+                -0.449617896755333,
+                -0.8528252364828861,
+                -0.3731235572699157,
+                -0.077553506087824,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "容器第 0 个元素不一致: 结果不一致: torch=-0.0, tf=nan",
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": "<class 'torch.return_types.slogdet'>",
+            "tensorflow_dtype": "<class 'tensorflow.python.ops.gen_linalg_ops.LogMatrixDeterminant'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量输入（shape=[]）",
+          "mutation_reason": "标量是0维方阵的退化情形，数学上slogdet应等价于log|scalar|和sign(scalar)；框架对退化维度处理不一致易暴露实现bug。",
+          "torch_test_case": {
+            "api": "torch.slogdet",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                -2.5
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.slogdet",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                -2.5
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.slogdet: The input tensor A must have at least 2 dimensions.",
+            "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__LogMatrixDeterminant_device_/job:localhost/replica:0/task:0/device:CPU:0}} Input tensor 0 must have rank >= 2, got 0 [Op:LogMatrixDeterminant] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下slogdet对极端值（inf, -inf, nan, subnormal）的数值稳定性差异",
+          "mutation_reason": "float16动态范围小、精度低，易暴露两框架在奇异矩阵判定、log|det|计算或符号提取中的实现差异，如NaN传播规则或次正规数处理不一致。",
+          "torch_test_case": {
+            "api": "torch.slogdet",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.9048742543237954,
+                0.1769872106652434,
+                -0.28538504923009095,
+                -0.9437006750771044,
+                -1.7208068374164593,
+                -1.4194078077286176,
+                -0.449617896755333,
+                -0.8528252364828861,
+                -0.3731235572699157,
+                -0.077553506087824,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.slogdet",
+            "input": {
+              "shape": [
+                4,
+                4
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.9048742543237954,
+                0.1769872106652434,
+                -0.28538504923009095,
+                -0.9437006750771044,
+                -1.7208068374164593,
+                -1.4194078077286176,
+                -0.449617896755333,
+                -0.8528252364828861,
+                -0.3731235572699157,
+                -0.077553506087824,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.slogdet: Low precision dtypes not supported. Got Half",
+            "tensorflow_error": "NotFoundError: Could not find device for node: {{node LogMatrixDeterminant}} = LogMatrixDeterminant[T=DT_HALF]\nAll kernels registered for op LogMatrixDeterminant:\n  device='CPU'; T in [DT_FLOAT]\n  device='CPU'; T in [DT_DOUBLE]\n  device='CPU'; T in [DT_COMPLEX64]\n  device='CPU'; T in [DT_COMPLEX128]\n [Op:LogMatrixDeterminant] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

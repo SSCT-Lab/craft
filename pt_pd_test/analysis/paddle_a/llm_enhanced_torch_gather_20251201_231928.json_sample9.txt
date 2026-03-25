@@ -1,0 +1,96 @@
+来源文件: llm_enhanced_torch_gather_20251201_231928.json
+样例编号: 9
+paddle_error 错误信息: (InvalidArgument) The index should be 0D or 1D, when it is not 2D, but we get 3
+
+【PyTorch 测试用例】
+{
+  "api": "torch.gather",
+  "input": {
+    "shape": [
+      10,
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.2316780926655548,
+      -1.3336957823069422,
+      -0.2840913998378668,
+      0.34905876198271296,
+      -0.30344213215086857,
+      0.5754745075010503,
+      0.998000353651271,
+      0.11935706147636829,
+      -0.3343795155419754,
+      -0.9516104257158402
+    ]
+  },
+  "dim": 1,
+  "index": {
+    "shape": [
+      1,
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      -4,
+      -4,
+      1,
+      -4
+    ]
+  },
+  "sparse_grad": false
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.gather",
+  "input": {
+    "shape": [
+      10,
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.2316780926655548,
+      -1.3336957823069422,
+      -0.2840913998378668,
+      0.34905876198271296,
+      -0.30344213215086857,
+      0.5754745075010503,
+      0.998000353651271,
+      0.11935706147636829,
+      -0.3343795155419754,
+      -0.9516104257158402
+    ]
+  },
+  "axis": 1,
+  "index": {
+    "shape": [
+      1,
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      -4,
+      -4,
+      1,
+      -4
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.gather` 要求 `index` 必须是 0D 或 1D 张量（根据官方文档），但本例中 `index` 的 shape 为 `[1, 5, 1]`，即 3D 张量，违反了该限制，导致报错 `(InvalidArgument) The index should be 0D or 1D, when it is not 2D, but we get 3`。
+   - PyTorch 的 `torch.gather` 支持任意维度的 `index`（只要其在非 `dim` 维度上与 `input` 对齐），而 PaddlePaddle 严格限制 `index` 只能是 0D 或 1D，这是两框架在接口设计上的根本性差异。
+
+3. 修复建议：
+   - 该问题属于框架行为不一致，建议提交 issue 至 PaddlePaddle 官方仓库，反馈 `paddle.gather` 应支持多维 index 以对齐 PyTorch 行为。

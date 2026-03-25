@@ -1,0 +1,104 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_20251215_234632.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,1] = -6 is not in [0, 31640) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding",
+  "input": {
+    "shape": [
+      1,
+      11
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      5,
+      -6,
+      -9,
+      0,
+      -4,
+      -3,
+      -6,
+      -1,
+      -1,
+      7
+    ]
+  },
+  "weight": {
+    "shape": [
+      31640,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.8528772592544556,
+      1.036712646484375,
+      1.7543673515319824,
+      -0.9661508202552795,
+      -0.3938257098197937,
+      -0.37813976407051086,
+      0.8863640427589417,
+      -0.68492192029953,
+      -1.0434924364089966,
+      2.9107108116149902
+    ]
+  },
+  "padding_idx": 1,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "sparse": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      31640,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      2.164341688156128,
+      1.2020361423492432,
+      0.25073227286338806,
+      -1.515479564666748,
+      -0.9025861024856567,
+      -0.39725354313850403,
+      0.07333015650510788,
+      -1.020702838897705,
+      -0.28158631920814514,
+      -0.4010217785835266
+    ]
+  },
+  "ids": {
+    "shape": [
+      1,
+      11
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      9,
+      -6,
+      3,
+      9,
+      7,
+      8,
+      -10,
+      -6,
+      -1,
+      -7
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求输入索引（`ids`）必须在 `[0, num_embeddings)` 范围内，而测试用例中出现了 `-6`、`-10` 等负值索引，违反了该限制，导致抛出 `indices[0,1] = -6 is not in [0, 31640)` 错误。  
+   - 相比之下，PyTorch 的 `torch.nn.functional.embedding` 允许负索引（如 `-6`），并将其视为“未定义”或“填充”行为（若 `padding_idx` 设置有效时会特殊处理），但不会直接报错。
+
+3. 修复建议：  
+   - 此为框架间语义差异，不建议提交 issue；应根据实际需求在转换时对负索引进行预处理（如映射为 `padding_idx` 或忽略）。

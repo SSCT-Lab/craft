@@ -1,0 +1,716 @@
+{
+  "operator": "torch_logcumsumexp",
+  "torch_api": "torch.logcumsumexp",
+  "paddle_api": "paddle.logcumsumexp",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T17:40:13.352338",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_logcumsumexp_20260125_094128.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.logcumsumexp",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7018744349479675,
+            0.38469627499580383,
+            -0.856945812702179,
+            -0.32746726274490356,
+            -1.944610595703125,
+            0.13854844868183136,
+            -0.4424135684967041,
+            0.11112585663795471,
+            -0.46081364154815674
+          ]
+        },
+        "dim": 0
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.logcumsumexp",
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7018744349479675,
+            0.38469627499580383,
+            -0.856945812702179,
+            -0.32746726274490356,
+            -1.944610595703125,
+            0.13854844868183136,
+            -0.4424135684967041,
+            0.11112585663795471,
+            -0.46081364154815674
+          ]
+        },
+        "axis": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "logcumsumexp在边界值处易因数值稳定性处理差异（如max-subtraction策略、inf/nan传播规则）导致框架间不一致，暴露底层实现bug",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.7018744349479675,
+                "inf",
+                -0.856945812702179,
+                "-inf",
+                -1.944610595703125,
+                "nan",
+                -0.4424135684967041,
+                -0.0,
+                1e+38
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.7018744349479675,
+                "inf",
+                -0.856945812702179,
+                "-inf",
+                -1.944610595703125,
+                "nan",
+                -0.4424135684967041,
+                -0.0,
+                1e+38
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              3,
+              3
+            ],
+            "paddle_shape": [
+              3,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）",
+          "mutation_reason": "单元素张量是logcumsumexp的最简非空边界情况，理论上输出应等于输入；框架可能在退化维度处理、广播或索引逻辑中存在未覆盖的bug。",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.7018744349479675
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.7018744349479675
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64 dtype下的数值稳定性与边界值行为",
+          "mutation_reason": "float64比float32具有更高精度，可暴露因数值不稳定（如exp溢出/下溢）或log-sum-exp实现差异导致的框架间偏差；同时包含inf/-inf/nan验证异常值处理一致性。",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.7018744349479675,
+                0.38469627499580383,
+                "inf",
+                -1.944610595703125,
+                "-inf",
+                "nan",
+                -0.4424135684967041,
+                0.11112585663795471,
+                -0.46081364154815674
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.7018744349479675,
+                0.38469627499580383,
+                "inf",
+                -1.944610595703125,
+                "-inf",
+                "nan",
+                -0.4424135684967041,
+                0.11112585663795471,
+                -0.46081364154815674
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              3
+            ],
+            "paddle_shape": [
+              3,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_logcumsumexp_20260125_094128.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.logcumsumexp",
+        "input": {
+          "shape": [
+            2,
+            2,
+            2
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.014696141719712,
+            -0.6716603628830391,
+            0.813860480307824,
+            -0.7940550299051328,
+            0.5750127242999389,
+            -1.9424102334540323,
+            -0.2423702813035487,
+            -0.6587897086011186
+          ]
+        },
+        "dim": -1
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.logcumsumexp",
+        "input": {
+          "shape": [
+            2,
+            2,
+            2
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.014696141719712,
+            -0.6716603628830391,
+            0.813860480307824,
+            -0.7940550299051328,
+            0.5750127242999389,
+            -1.9424102334540323,
+            -0.2423702813035487,
+            -0.6587897086011186
+          ]
+        },
+        "axis": -1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "logcumsumexp在边界值（如inf/-inf）下易因数值稳定性处理差异或NaN传播规则不一致而暴露实现bug；-0.0和极小/极大值可触发不同框架的底层exp/log截断或溢出逻辑分歧。",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                2,
+                2,
+                2
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.014696141719712,
+                "-inf",
+                0.813860480307824,
+                "inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -1
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                2,
+                2,
+                2
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.014696141719712,
+                "-inf",
+                0.813860480307824,
+                "inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              2,
+              2
+            ],
+            "paddle_shape": [
+              2,
+              2,
+              2
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[]）和空张量（shape=[0]）",
+          "mutation_reason": "单元素张量和空张量是logcumsumexp的数学边界情况，理论上输出应严格等价；框架对退化维度的处理（如dim=-1在标量上是否报错/如何广播）易暴露实现不一致。",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [],
+              "dtype": "float64",
+              "sample_values": [
+                2.0
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float64 变异为 float32，并注入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "float32 精度更低，更易暴露数值稳定性差异；inf/-inf/nan/-0.0 是 logcumsumexp 的关键边界情况，两框架对这些值的处理逻辑（如 exp(inf)、log(0)、log(sum) 溢出保护）可能存在不一致。",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                2,
+                2,
+                2
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0146961,
+                -0.6716604,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -1
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                2,
+                2,
+                2
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0146961,
+                -0.6716604,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              2,
+              2
+            ],
+            "paddle_shape": [
+              2,
+              2,
+              2
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_logcumsumexp_20260125_094128.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.logcumsumexp",
+        "input": {
+          "shape": [
+            0,
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 0
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.logcumsumexp",
+        "input": {
+          "shape": [
+            0,
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 0
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "logcumsumexp对无穷和NaN敏感，不同框架在溢出处理、负零传播、NaN抑制策略上可能存在实现差异，易暴露数值稳定性bug",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                0,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                0,
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              2,
+              3
+            ],
+            "paddle_shape": [
+              0,
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])与极端值组合",
+          "mutation_reason": "单元素张量是logcumsumexp的退化情形，理论输出必等于输入；结合inf/-inf/nan可暴露框架对边界值的处理差异（如NaN传播、inf符号处理）",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan"
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan"
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "使用 float64 dtype 和包含 inf/-inf/nan 的边界值样本",
+          "mutation_reason": "float64 提高数值精度，特殊浮点值易暴露框架对边界情况（如 log(sum(exp(x))) 中 exp(inf) 或 sum(nan)）的处理差异，可能揭示实现 bug",
+          "torch_test_case": {
+            "api": "torch.logcumsumexp",
+            "input": {
+              "shape": [
+                0,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.logcumsumexp",
+            "input": {
+              "shape": [
+                0,
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              2,
+              3
+            ],
+            "paddle_shape": [
+              0,
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

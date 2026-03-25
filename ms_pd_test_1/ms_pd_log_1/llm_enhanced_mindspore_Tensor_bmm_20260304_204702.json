@@ -1,0 +1,1388 @@
+{
+  "ms_api": "mindspore.Tensor.bmm",
+  "paddle_api": "paddle.bmm",
+  "timestamp": "2026-03-04T20:47:02.754183",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 10,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            4,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.bmm",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            4,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.bmm",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) Input(X) of BmmOp must be 3-dimensional in BmmOp, but received X's shape: [4].\n  [Hint: Expected x_ndims == 3, but received x_ndims:4 != 3:3.] (at ..\\paddle\\phi\\infermeta\\binary.cc:360)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          4,
+          1,
+          4
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float32",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.bmm requires exactly 3D inputs (b, m, k) and (b, k, n), but test case provides 4D tensors [2,4,1,3] and [2,4,3,4]. MindSpore's Tensor.bmm supports broadcasting-like batch semantics for >3D, but Paddle does not. Repair by reshaping inputs to valid 3D: merge first two dims as batch → [8,1,3] and [8,3,4]."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            8,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            8,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            8,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            8,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          8,
+          1,
+          4
+        ],
+        "paddle_shape": [
+          8,
+          1,
+          4
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以探索边界和极端情况，如batch=1、空维度、高维、int类型、非对齐k维度等，增强测试覆盖率。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            1,
+            5,
+            0
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            0,
+            7
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            1,
+            5,
+            0
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            0,
+            7
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "结果不一致，最大差异: 6506150787840175535252951373025640448.00000000",
+        "ms_shape": [
+          1,
+          5,
+          7
+        ],
+        "paddle_shape": [
+          1,
+          5,
+          7
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架均执行成功但结果严重不一致（差异达1e30量级），表明空维度（0-size）矩阵乘法在bmm实现中存在语义分歧；根据文档，bmm要求x(b,m,k)与y(b,k,n)，当k=0时数学上应返回全零(b,m,n)张量，但框架处理空轴策略不同。需变异为非空维度的合法边界用例以验证核心功能一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          5
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          5
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.bmm",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.bmm",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) Input(X) of BmmOp must be 3-dimensional in BmmOp, but received X's shape: [4].\n  [Hint: Expected x_ndims == 3, but received x_ndims:4 != 3:3.] (at ..\\paddle\\phi\\infermeta\\binary.cc:360)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          2,
+          4
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float32",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.bmm 要求输入必须是3维张量（b, m, k）和（b, k, n），而原始用例中x和y均为4维（2,3,2,3）和（2,3,3,4），违反API约束；MindSpore.Tensor.bmm虽接受高维但实际按最后两维做batch matmul，语义不等价；需修复为合法3D形状以满足两框架共同约束。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3,
+          5
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          5
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以探索边界和极端情况：测试1x1x1单元素张量、batch=1边缘场景、int64输入、以及不匹配的中间维度（应报错但需验证两框架错误一致性）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          1,
+          1,
+          1
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          1
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以覆盖边界和极端情况：扩展batch维度、引入非单位矩阵尺寸（如1x2x3与1x3x4）、测试float16精度、添加负值及零值张量，增强鲁棒性验证。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float16"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `bmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          4,
+          5
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float16",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.bmm",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            4,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.bmm",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          4,
+          1,
+          4
+        ],
+        "paddle_shape": [
+          4,
+          1,
+          4
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以探索边界和极端情况；优先变异为最小合法形状(1,1,1)和(1,1,1)，验证单批次单元素矩阵乘法，并覆盖dtype边界如float16/int32"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `bmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          1,
+          1,
+          1
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float16",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.bmm 不支持 float16 输入，仅支持 float32/float64；而 MindSpore 支持 float16。为使两框架可执行且语义一致，需将 dtype 统一修复为 float32。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          1,
+          1,
+          1
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          1
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以覆盖边界和极端情况：扩展batch维度、引入非单位矩阵尺寸（如1x2x3与1x3x4）、测试float16精度、添加负值及零值张量，增强鲁棒性验证。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float16"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `bmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          4,
+          5
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float16",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            1,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            4,
+            3,
+            4
+          ],
+          "dtype": "float16"
+        },
+        "api": "mindspore.Tensor.bmm",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            4,
+            1,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            4,
+            3,
+            4
+          ],
+          "dtype": "float16"
+        },
+        "api": "paddle.bmm",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `bmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          4,
+          1,
+          4
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float16",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.bmm 不支持 float16 输入，仅支持 float32/float64；需将 dtype 统一改为 float32 以保证两框架语义一致且可执行。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            4,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            4,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            4,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          4,
+          1,
+          4
+        ],
+        "paddle_shape": [
+          4,
+          1,
+          4
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以探索边界和极端情况；优先变异为最小合法batch（1）、单元素矩阵（1x1）、空维度（0 in shape）及int64 dtype以验证类型鲁棒性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          1,
+          1,
+          1
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          1
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以覆盖边界和极端情况：扩展batch维度、引入非单位矩阵尺寸（如1x2x3与1x3x4）、测试float16精度、添加负值及零值张量，增强鲁棒性验证。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.Tensor.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float16"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            3
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            5
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.Tensor.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `bmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          4,
+          5
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float16",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            -1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            -1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.Tensor.bmm",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            -1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            -1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.bmm",
+        "init_params": {}
+      },
+      "execution_result": {
+        "status": "fatal_error",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "Fatal: negative dimensions are not allowed",
+        "paddle_error": null,
+        "comparison_error": null
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore bmm requires 3D inputs (b, m, k) and (b, k, n), but test case provides 4D shapes with -1 dim; PaddlePaddle also rejects -1 in bmm per doc (only supports 3D). Both frameworks fail due to invalid rank. Repair: replace -1 with concrete positive dims (e.g., 2) to satisfy 3D constraint — drop leading batch dim or reshape to 3D."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.bmm",
+        "x": {
+          "shape": [
+            2,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          1,
+          4
+        ],
+        "paddle_shape": [
+          2,
+          1,
+          4
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以探索边界和极端情况：将batch size设为1（最小合法值）、引入单元素矩阵维度（1x1）、扩展至高维边界（如batch=128），并测试int64输入以验证类型兼容性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": [
+          1,
+          1,
+          1
+        ],
+        "paddle_shape": [
+          1,
+          1,
+          1
+        ],
+        "ms_dtype": "Float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为边界形状组合（如batch=0、高维边缘、不匹配k维）和数据类型变异（float16/int32），验证鲁棒性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            8
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            8,
+            3
+          ],
+          "dtype": "float16"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bmm",
+        "x": {
+          "shape": [
+            2,
+            4,
+            8
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            2,
+            8,
+            3
+          ],
+          "dtype": "float16"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.bmm",
+        "paddle_api": "paddle.bmm",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `bmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          4,
+          3
+        ],
+        "paddle_shape": null,
+        "ms_dtype": "Float16",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

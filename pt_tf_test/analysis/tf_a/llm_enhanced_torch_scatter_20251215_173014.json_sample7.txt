@@ -1,0 +1,106 @@
+来源文件: llm_enhanced_torch_scatter_20251215_173014.json
+样例编号: 7
+tensorflow_error 错误信息: {{function_node __wrapped__TensorScatterUpdate_device_/job:localhost/replica:0/task:0/device:CPU:0}} The inner 1 dimensions of output.shape=[10,5] must match the inner 1 dimensions of updates.shape=[2,1] [Op:TensorScatterUpdate] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.scatter",
+  "input": {
+    "shape": [
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.2332626637299169,
+      -0.8507437506948757,
+      -0.4257597962142355,
+      -0.6568716411150748,
+      -0.7790241807855793,
+      0.09510699106462353,
+      0.39876912492052263,
+      0.9236345267080986,
+      -0.3126975675695601,
+      0.44093512264602236
+    ]
+  },
+  "dim": 1,
+  "index": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      -4
+    ]
+  },
+  "src": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.5108073331814704,
+      -0.6222281592629618
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.tensor_scatter_nd_update",
+  "tensor": {
+    "shape": [
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.08874267692150715,
+      1.032951706317671,
+      0.23437510157463287,
+      0.5778008499434806,
+      0.5171957411995838,
+      -0.4920556974347097,
+      0.7774571153523243,
+      1.252666737532383,
+      0.838103956959822,
+      0.8982326423135378
+    ]
+  },
+  "indices": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      2
+    ]
+  },
+  "updates": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.5708044865091348,
+      1.389161016594967
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.tensor_scatter_nd_update` 要求 `updates.shape` 的前缀维度必须与 `indices.shape` 一致（即 `updates.shape[:-1] == indices.shape`），而当前输入中 `indices.shape = [2,1]`，`updates.shape = [2,1]`，其“内层”维度不匹配：`updates` 的最后一个维度为 1，但 `indices` 的最后一个维度是 1，问题在于 `indices` 是坐标索引，其形状应为 `[N, d]`，其中 `d` 是张量的秩，而 `updates` 必须有 `N` 个元素，每个对应一个更新位置。此处虽然 `updates.shape[0] == indices.shape[0]`，但错误提示中提到“inner 1 dimensions of output.shape=[10,5] must match inner 1 dimensions of updates.shape=[2,1]”，这表明 `updates` 的维度结构被误解为要与输出的“内层”维度对齐，而实际上 `updates` 应该是独立于 `output` 除索引外的其余维度。
+   - 更关键的是，`tf.tensor_scatter_nd_update` 不支持通过 `index` 中的负值进行索引（如 `-3`, `-4`）——尽管在 PyTorch `torch.scatter` 中允许负索引（表示从后往前数），但 TensorFlow 不支持负索引，且 `indices` 中的值必须在有效范围内（0 到 shape-1）。本例中 `indices = [[7], [2]]` 是有效的，但若实际测试用例传入了负索引（如样例中 `index.sample_values = [-3, -4]`），则会触发运行时错误。
+
+3. 修复建议：  
+   - 由于 TensorFlow 不支持负索引，需将负索引转换为正索引（如 `idx + size`），并确保 `indices` 严格在合法范围内；同时确认 `updates.shape` 的前缀维度与 `indices.shape[0]` 对齐，而非与 `output.shape` 的内层维度对齐。

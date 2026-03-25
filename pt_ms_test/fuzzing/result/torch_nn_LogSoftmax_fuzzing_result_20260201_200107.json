@@ -1,0 +1,674 @@
+{
+  "operator": "torch_nn_LogSoftmax",
+  "torch_api": "torch.nn.LogSoftmax",
+  "mindspore_api": "mindspore.nn.LogSoftmax",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 3,
+  "timestamp": "2026-02-01T20:01:07.028804",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_LogSoftmax_20260126_122957.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.LogSoftmax",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8172281384468079,
+            -0.002765093930065632,
+            0.20245616137981415,
+            -0.2309950292110443,
+            1.5384167432785034,
+            0.43997570872306824
+          ]
+        },
+        "dim": 1
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.nn.LogSoftmax",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.8172281384468079,
+            -0.002765093930065632,
+            0.20245616137981415,
+            -0.2309950292110443,
+            1.5384167432785034,
+            0.43997570872306824
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊值易触发数值不稳定、溢出处理差异或NaN传播逻辑不一致，暴露框架底层实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                "inf"
+              ]
+            },
+            "dim": 1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1e+38,
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                "inf"
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3
+            ],
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）",
+          "mutation_reason": "标量是LogSoftmax的退化情况，数学上log(softmax(x))=x（因唯一元素概率为1，log1=0？不——需重审：softmax([x])=[1.0]→log(1.0)=0.0），但框架可能未正确处理零维张量的dim/axis语义，易暴露索引越界或广播逻辑bug。",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下极端值（inf/-inf/nan/零）对LogSoftmax数值稳定性的影响",
+          "mutation_reason": "float64可暴露浮点溢出、次正规数处理、inf/nan传播等实现差异；LogSoftmax在exp阶段易因精度或边界处理不同导致结果偏差。",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.8172281384468079,
+                -0.002765093930065632,
+                "inf",
+                -0.2309950292110443,
+                1.5384167432785034,
+                "-inf"
+              ]
+            },
+            "dim": 1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.8172281384468079,
+                -0.002765093930065632,
+                "inf",
+                -0.2309950292110443,
+                1.5384167432785034,
+                "-inf"
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3
+            ],
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_LogSoftmax_20260126_122957.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.LogSoftmax",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4588675796985626
+          ]
+        },
+        "dim": -1
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.nn.LogSoftmax",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.4588675796985626
+          ]
+        },
+        "axis": -1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "LogSoftmax在边界值（如无穷、NaN、极小/极大浮点数）处易出现数值稳定性差异或特殊值处理不一致，可能暴露框架底层实现bug。",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1
+            ],
+            "mindspore_shape": [
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用5维超高维张量（1,1,1,1,1）",
+          "mutation_reason": "超高维张量可能暴露框架对dim/axis参数解析的差异，尤其在负索引（-1）与高维轴映射时易产生越界或降维逻辑错误。",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.4588675796985626
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.4588675796985626
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "mindspore_shape": [
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下特殊浮点值（inf/nan/-0.0）的LogSoftmax数值稳定性",
+          "mutation_reason": "float64可暴露更高精度下的数值实现差异；inf/nan/-0.0是LogSoftmax边界case，易触发框架间对未定义行为的不同处理（如log(0)、exp(inf)截断策略）",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": -1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              2,
+              3
+            ],
+            "mindspore_shape": [
+              2,
+              3
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_LogSoftmax_20260126_122957.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.LogSoftmax",
+        "input": {
+          "shape": [
+            2,
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 1
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.nn.LogSoftmax",
+        "input": {
+          "shape": [
+            2,
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "LogSoftmax在边界值（如inf/-inf）下需严格满足log(sum(exp(x)))数学定义；框架对NaN传播、负零处理、溢出截断策略差异易暴露实现bug。",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                0,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                0,
+                4
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              0,
+              4
+            ],
+            "mindspore_shape": [
+              2,
+              0,
+              4
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量（空shape）输入，验证零维张量处理一致性",
+          "mutation_reason": "标量是LogSoftmax的退化边界情况（dim/axis应被忽略或静默处理），两框架对零维输入的广播、维度检查、log(softmax)数学定义一致性易出现差异",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "dim": 0
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.5
+              ]
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将输入 dtype 从 float32 变异为 float64，并注入边界/特殊值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float64 更高精度可能暴露数值稳定性差异；inf/-inf/nan/-0.0 是 LogSoftmax 的关键边界场景，两框架对未定义行为（如 log(0)、softmax over empty dim）处理可能不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                0,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.nn.LogSoftmax",
+            "input": {
+              "shape": [
+                2,
+                0,
+                4
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              0,
+              4
+            ],
+            "mindspore_shape": [
+              2,
+              0,
+              4
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

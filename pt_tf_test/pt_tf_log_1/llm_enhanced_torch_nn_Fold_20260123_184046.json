@@ -1,0 +1,173 @@
+{
+  "operator": "torch.nn.Fold",
+  "timestamp": "2026-01-23T18:40:46.920112",
+  "total_iterations": 2,
+  "llm_generated_test_cases": 1,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6670545935630798,
+            -0.6190125942230225,
+            -0.04521273076534271,
+            -0.372783899307251,
+            -0.7177609801292419,
+            1.6444627046585083
+          ]
+        },
+        "output_size": [
+          4,
+          5
+        ],
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "torch.nn.Fold"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6670545935630798,
+            -0.6190125942230225,
+            -0.04521273076534271,
+            -0.372783899307251,
+            -0.7177609801292419,
+            1.6444627046585083
+          ]
+        },
+        "output_size": [
+          4,
+          5
+        ],
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "tf.signal.overlap_and_add"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Fold",
+        "tensorflow_api": "tf.signal.overlap_and_add",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "Expected size of input's dimension 1 to be divisible by the product of kernel_size, but got input.size(1)=2 and kernel_size=(2, 2).",
+        "tensorflow_error": "Got an unexpected keyword argument 'output_size'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 612, in execute_test_case\n    torch_result = torch_instance(input_data)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1751, in _wrapped_call_impl\n    return self._call_impl(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\module.py\", line 1762, in _call_impl\n    return forward_call(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\modules\\fold.py\", line 146, in forward\n    return F.fold(\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\torch\\nn\\functional.py\", line 5561, in fold\n    return torch._C._nn.col2im(\nRuntimeError: Expected size of input's dimension 1 to be divisible by the product of kernel_size, but got input.size(1)=2 and kernel_size=(2, 2).\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'output_size'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.nn.Fold requires input dimension 1 to be divisible by the product of kernel_size (2*2=4), but input.shape[1]=3 is invalid; also, input must have at least 3 dimensions (batch, channels, flattened_patches), so shape [2,3] is insufficient — it should be e.g., [1, 4, 6] for kernel_size=(2,2) and output_size=(4,5). TensorFlow tf.signal.overlap_and_add does not accept 'output_size' or 'kernel_size' — it only accepts 'frame_length' and 'frame_step', and input must be rank-3: [batch, frames, frame_length]. The original test case incorrectly maps Fold parameters to overlap_and_add parameters. Repair involves: (1) fixing PyTorch input to satisfy Fold constraints: input shape must be [N, C*prod(kernel_size), L], where L is number of patches; for output_size=(4,5) and kernel_size=(2,2), valid patch count L = (4-2+2*0)/1 * (5-2+2*0)/1 = 3*4 = 12 (assuming stride=1, padding=0), so input.shape[1] must be divisible by 4 → use C=1 → input.shape[1] = 4*12 = 48; (2) for TF, map Fold's semantics to overlap_and_add: overlap_and_add reconstructs signal from overlapping frames — it corresponds to Fold only when input is interpreted as overlapping patches reshaped into frames; thus input must be reshaped to [batch, num_frames, frame_length], where frame_length = prod(kernel_size) = 4, and frame_step = output spatial stride = 1; output_size determines total length: for 2D Fold output (H,W), overlap_and_add is 1D — so we reduce to 1D analog: output_length = H*W = 20, frame_length=4, frame_step=1 → num_frames = output_length - frame_length + frame_step = 17 → input shape = [1, 17, 4]. We choose minimal consistent repair: PyTorch input shape [1, 4, 12] (C=1, patches=12) → output (4,5); TF input shape [1, 17, 4] → output length 20 → reshape to (4,5). Also remove invalid params: 'output_size' and 'kernel_size' are not TF args; only 'frame_length' and 'frame_step' are used."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.Fold",
+        "input": {
+          "shape": [
+            1,
+            4,
+            12
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.069203495979309,
+            1.1164026260375977,
+            -0.0016679404070600867,
+            0.21547263860702515,
+            1.2008754014968872,
+            -1.0788520574569702,
+            -1.4657584428787231,
+            0.6568980813026428,
+            -1.2486605644226074,
+            0.5882231593132019
+          ]
+        },
+        "output_size": [
+          4,
+          5
+        ],
+        "kernel_size": [
+          2,
+          2
+        ]
+      },
+      "tensorflow_test_case": {
+        "api": "tf.signal.overlap_and_add",
+        "input": {
+          "shape": [
+            1,
+            4,
+            12
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.069203495979309,
+            1.1164026260375977,
+            -0.0016679404070600867,
+            0.21547263860702515,
+            1.2008754014968872,
+            -1.0788520574569702,
+            -1.4657584428787231,
+            0.6568980813026428,
+            -1.2486605644226074,
+            0.5882231593132019
+          ]
+        },
+        "frame_length": 4,
+        "frame_step": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Fold",
+        "tensorflow_api": "tf.signal.overlap_and_add",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Got an unexpected keyword argument 'frame_length'",
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          1,
+          4,
+          5
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 639, in execute_test_case\n    tensorflow_instance = tensorflow_func(**init_kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'frame_length'\n"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "torch.nn.Fold 和 tf.signal.overlap_and_add 功能不等价：Fold 是将滑动块（unfold 的逆操作）重组为完整空间张量，要求输入为 (N, C*kernel_size[0]*kernel_size[1], L)，输出为 (N, C, output_size[0], output_size[1])；而 overlap_and_add 是对短时傅里叶变换（STFT）类场景设计的重叠相加操作，输入为 (..., frames, frame_length)，沿帧维度重叠相加得到 (..., frame_length + (frames-1)*frame_step)。二者输入结构、语义、参数含义（如 kernel_size vs frame_length/frame_step）和数学行为均不同，无法通过参数映射实现等价转换。TensorFlow 报错 'unexpected keyword argument frame_length' 也印证了原始测试用例错误地将 Fold 的参数直接套用于 overlap_and_add，属于跨框架算子误配，应跳过而非修复或变异。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    }
+  ]
+}

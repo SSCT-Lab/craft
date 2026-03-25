@@ -1,0 +1,89 @@
+来源文件: llm_enhanced_torch_nn_Conv2d_20251215_165947.json
+样例编号: 4
+tensorflow_error 错误信息: The number of input channels must be evenly divisible by the number of groups. Received groups=3, but the input has 4 channels (full input shape is (2, 12, 4, 4)).
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.Conv2d",
+  "input": {
+    "shape": [
+      2,
+      12,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.4102206230163574,
+      0.2623526155948639,
+      1.3633513450622559,
+      -0.05997347831726074,
+      -1.1317822933197021,
+      0.3878072500228882,
+      -1.736033320426941,
+      0.4589345455169678,
+      -1.13755464553833,
+      -0.4639488160610199
+    ]
+  },
+  "in_channels": 12,
+  "out_channels": 3,
+  "kernel_size": 1,
+  "stride": 1,
+  "padding": [
+    0,
+    1
+  ],
+  "dilation": [
+    1,
+    1
+  ],
+  "groups": 3,
+  "bias": true
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.keras.layers.Conv2D",
+  "input": {
+    "shape": [
+      2,
+      12,
+      4,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      1.4102206230163574,
+      0.2623526155948639,
+      1.3633513450622559,
+      -0.05997347831726074,
+      -1.1317822933197021,
+      0.3878072500228882,
+      -1.736033320426941,
+      0.4589345455169678,
+      -1.13755464553833,
+      -0.4639488160610199
+    ]
+  },
+  "filters": 3,
+  "kernel_size": 1,
+  "strides": 1,
+  "padding": "valid",
+  "dilation_rate": [
+    1,
+    1
+  ],
+  "groups": 3,
+  "use_bias": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `Conv2D` 层要求输入通道数必须能被 `groups` 整除，这是其底层实现的严格限制（文档中虽未显式说明，但源码逻辑和运行时校验强制此条件）。本例中 `in_channels=12`，`groups=3`，12 ÷ 3 = 4，满足整除，但错误信息却提示“input has 4 channels”，这表明实际传入的张量通道数在内部被误解析为 4，而非 12。
+   - 结合输入形状 `(2, 12, 4, 4)` 和 `groups=3`，PyTorch 允许将 12 个输入通道按 3 组每组 4 个通道进行分组卷积，而 TensorFlow 在某些版本或配置下可能对分组卷积的通道分配逻辑存在不一致处理，尤其是当 `groups > 1` 且 `in_channels % groups != 0` 时会报错。尽管此处 12 % 3 == 0，但错误提示“input has 4 channels”暗示框架内部可能将输入通道误解为 4，可能是由于某种维度顺序或数据布局（如 NHWC vs NCHW）混淆导致。
+
+3. 修复建议：
+   - 此问题极可能源于框架对分组卷积在不同数据格式下的处理差异，建议提交 issue 至 TensorFlow 官方仓库，指出在 `NCHW` 格式下使用 `groups=3` 且 `in_channels=12` 时仍报“input has 4 channels”这一误导性错误，疑似内部通道数解析错误。

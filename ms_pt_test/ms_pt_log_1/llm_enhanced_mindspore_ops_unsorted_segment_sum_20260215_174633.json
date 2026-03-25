@@ -1,0 +1,964 @@
+{
+  "ms_api": "mindspore.ops.unsorted_segment_sum",
+  "pytorch_api": "torch.scatter_reduce",
+  "timestamp": "2026-02-15T17:46:33.826422",
+  "total_iterations": 15,
+  "llm_generated_test_cases": 10,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "data": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 3,
+        "api": "torch.scatter_reduce",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: unsorted_segment_sum() got an unexpected keyword argument 'data'",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore unsorted_segment_sum expects 'input_x', 'segment_ids', 'num_segments' (positional), not 'data'/'ids'; PyTorch scatter_reduce requires explicit 'input', 'dim', 'index', 'src', 'reduce' — it's not a semantic equivalent of unsorted_segment_sum. The correct PyTorch equivalent is torch.scatter_add (with dim=0) or manual scatter + reduce, but official docs confirm scatter_reduce is not drop-in replacement. Thus, repair MindSpore param names and replace PyTorch with torch.scatter_add (dim=0) for functional equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.scatter_add"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_add",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "RuntimeError: index 3 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "ms_shape": [
+          3
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_add requires index values to be within [0, input.size(dim)), but segment_ids=[?, ?, ?, ?] with num_segments=3 implies max index=2; original PyTorch test uses input.shape=[3] but index may contain 3 (out-of-bounds). Must align index values to [0, 3) and ensure input tensor size matches num_segments. Also, torch.scatter_add is deprecated; torch.scatter_reduce(..., reduce='sum') is the correct equivalent."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "RuntimeError: index 9 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "ms_shape": [
+          3
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires index values to be within [0, input.size(dim)), but original segment_ids may contain out-of-bounds values (e.g., 9) violating this constraint. MindSpore unsorted_segment_sum allows sparse segment_ids and pads missing segments with 0, while scatter_reduce expects index to map into output size. Repair: clamp segment_ids to [0, num_segments-1] and ensure input tensor size matches num_segments."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/UnsortedSegmentSum-op1\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "RuntimeError: index 7 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "data": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 2,
+        "api": "mindspore.ops.unsorted_segment_sum",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 2,
+        "api": "torch.scatter_reduce",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: unsorted_segment_sum() got an unexpected keyword argument 'data'",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore unsorted_segment_sum expects 'input_x', 'segment_ids', 'num_segments' (positional), not 'data'/'ids'; PyTorch scatter_reduce is not a semantic equivalent — it requires dim, index, src, reduce and operates on scattered reduction along a dim, not segment-wise sum. The two APIs are fundamentally mismatched: unsorted_segment_sum is segment-reduction (like TF's unsorted_segment_sum), while scatter_reduce is index-scattered reduction. No direct mapping exists; thus repair is impossible and skip is warranted per task rule #6 and #8."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "num_segments": 2,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_reduce requires 'index' to have same number of dimensions as 'input' along the scatter dim; unsorted_segment_sum is a reduction-by-segment operation, not scatter-reduce — they are semantically different. The correct PyTorch equivalent is torch.segment_reduce (introduced in 2.0+) or manual scatter_add with zeros init; but torch.segment_reduce requires index shape [N] and input shape [N, ...], so we must align input_x.shape[0] == segment_ids.shape[0] and output shape [num_segments, ...]. Thus repair: use torch.zeros(num_segments, input_x.shape[1]) + scatter_add."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "num_segments": 2,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.scatter_add"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_add",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Float32",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.scatter_add requires 'index' to have same number of dimensions as 'src' along the scatter dim; unsorted_segment_sum maps 1D segment_ids to reduce input_x along first dim into num_segments outputs, so correct PyTorch equivalent is torch.scatter_reduce with 'reduce=\"sum\"', 'dim=0', and 'input' pre-allocated to [num_segments, *input_x.shape[1:]]"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "num_segments": 2,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/UnsortedSegmentSum-op2\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "RuntimeError: Index tensor must have the same number of dimensions as self tensor",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "data": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "ids": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 5,
+        "api": "mindspore.ops.unsorted_segment_sum",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            2,
+            3,
+            4,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "ids": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 5,
+        "api": "torch.scatter_reduce",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: unsorted_segment_sum() got an unexpected keyword argument 'data'",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "MindSpore unsorted_segment_sum 和 PyTorch scatter_reduce 语义不等价：前者是按 segment_ids 对 input_x 全展平后按索引分组求和，输出 shape=[num_segments]；后者需指定 dim/index/src/reduce 且作用于特定维度，无直接对应关系。文档未表明二者可互换，且参数签名、调用方式、输入约束（如 segment_ids 形状与 input_x 关系）均不兼容，属于算子级语义鸿沟，不可修复或变异。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "data": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "ids": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "ids": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 3,
+        "api": "torch.scatter_reduce",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: unsorted_segment_sum() got an unexpected keyword argument 'data'",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore unsorted_segment_sum expects 'input_x', 'segment_ids', 'num_segments' (positional), not 'data'/'ids'; PyTorch scatter_reduce requires explicit 'input', 'dim', 'index', 'src', 'reduce' — no direct equivalent to unsorted_segment_sum; must map semantics: segment sum → scatter_reduce with dim=0, reduce='sum', index=segment_ids, src=input_x, output init zeros(num_segments); dtype int32 unsupported in torch.scatter_reduce (requires float or int64), so upgrade to int64."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "index": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/UnsortedSegmentSum-op0\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "RuntimeError: index 5 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore unsorted_segment_sum requires segment_ids values to be in [0, num_segments), but original test uses segment_ids of shape [5] with dtype int32 and num_segments=3 — likely contains invalid indices (e.g., >=3 or <0) causing Launch kernel failed. PyTorch scatter_reduce fails because index contains 5 which exceeds input dim 0 size 3. Repair: constrain segment_ids/index to valid range [0, 3) and ensure consistent semantics: segment_ids and index must only contain values in [0, num_segments)."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "index": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/UnsortedSegmentSum-op0\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "RuntimeError: index 4 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore unsorted_segment_sum requires segment_ids values to be in [0, num_segments), but original test has segment_ids shape [5] with dtype int32 and num_segments=3 — likely contains invalid indices (e.g., >=3 or <0). PyTorch scatter_reduce fails because index contains 4 but input dim0 size is 3. Both errors stem from out-of-bounds segment/index values. Repair: constrain segment_ids/index to [0, 2] and ensure consistent valid range."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "num_segments": 3,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "src": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "index": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "dim": 0,
+        "reduce": "sum",
+        "input": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "pytorch_error": "RuntimeError: index 4 is out of bounds for dimension 0 with size 3",
+        "comparison_error": null,
+        "ms_shape": [
+          3
+        ],
+        "pytorch_shape": null,
+        "ms_dtype": "Int64",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "data": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 2,
+        "api": "mindspore.ops.unsorted_segment_sum",
+        "init_params": {}
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "num_segments": 2,
+        "api": "torch.scatter_reduce",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.scatter_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: unsorted_segment_sum() got an unexpected keyword argument 'data'",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore unsorted_segment_sum expects 'input_x', 'segment_ids', 'num_segments' (positional), not 'data'/'ids'; PyTorch scatter_reduce is not semantically equivalent — it requires dim, index, src, reduce and operates on indexed reduction along a dim, not segment-wise sum. Correct mapping requires using torch.scatter_add with manual segment-to-index expansion or torch.segment_reduce (v2.1+), but scatter_reduce alone cannot emulate unsorted_segment_sum. Thus, repair to use correct APIs: MindSpore with proper arg names, PyTorch with torch.segment_reduce('sum') if available, else skip — however v2.1+ torch.segment_reduce matches semantics. Since original uses scatter_reduce (missing args) and docs confirm it's not a drop-in replacement, we repair to valid torch.segment_reduce with proper args."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "segment_ids": {
+          "shape": [
+            3
+          ],
+          "dtype": "int32"
+        },
+        "input_x": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "num_segments": 2,
+        "api": "mindspore.ops.unsorted_segment_sum"
+      },
+      "pytorch_test_case": {
+        "offsets": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "data": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "reduce": "sum",
+        "api": "torch.segment_reduce",
+        "lengths": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.unsorted_segment_sum",
+        "pytorch_api": "torch.segment_reduce",
+        "ms_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "ms_error": "RuntimeError: Launch kernel failed, name:Default/UnsortedSegmentSum-op1\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ccsrc\\pynative\\utils\\runtime\\op_runner.cc:668 mindspore::runtime::`anonymous-namespace'::LaunchKernels\n",
+        "pytorch_error": "RuntimeError: Expected segment_length >= 0 to be true, but got false.  (Could this error message be improved?  If so, please report an enhancement request to PyTorch.)",
+        "comparison_error": null,
+        "ms_shape": null,
+        "pytorch_shape": null,
+        "ms_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "MindSpore unsorted_segment_sum 和 PyTorch segment_reduce 语义不等价：前者基于 segment_ids 索引分组求和，后者（torch.segment_reduce）实际不存在；PyTorch 官方文档中无 torch.segment_reduce API，正确对应算子应为 torch.scatter_reduce 或 torch.segment_sum（已弃用），且参数结构（offsets/lengths）与 segment_ids 不可直接映射，无法构造语义一致的测试用例。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    }
+  ]
+}

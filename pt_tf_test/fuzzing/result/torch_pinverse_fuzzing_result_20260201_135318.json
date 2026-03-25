@@ -1,0 +1,470 @@
+{
+  "operator": "torch_pinverse",
+  "torch_api": "torch.pinverse",
+  "tensorflow_api": "tf.linalg.pinv",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T13:53:18.300289",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260123_132401.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.818732500076294,
+            0.399562805891037,
+            0.26737305521965027,
+            -0.7486399412155151,
+            -0.6995257139205933,
+            -1.0029375553131104,
+            0.8444095253944397,
+            0.30020251870155334,
+            1.5167511701583862,
+            0.5773425102233887
+          ]
+        },
+        "api": "torch.pinverse"
+      },
+      "original_tensorflow_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.818732500076294,
+            0.399562805891037,
+            0.26737305521965027,
+            -0.7486399412155151,
+            -0.6995257139205933,
+            -1.0029375553131104,
+            0.8444095253944397,
+            0.30020251870155334,
+            1.5167511701583862,
+            0.5773425102233887
+          ]
+        },
+        "api": "tf.linalg.pinv"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值 stress-test 数值稳定性与边界处理逻辑，易暴露两框架在SVD截断、伪逆定义域（如rank-deficient+NaN传播）上的实现差异。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.pinv",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": true,
+            "torch_error": "_LinAlgError: linalg.svd: The algorithm failed to converge because the input matrix contained non-finite values.",
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "tensorflow_shape": [
+              5,
+              3
+            ],
+            "torch_dtype": null,
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试空张量（shape=[0, 3]）",
+          "mutation_reason": "空矩阵的伪逆在数学上定义明确（零维输出），但框架对空张量的维度广播、SVD分解或梯adients处理易不一致，可能暴露底层实现差异。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.pinv",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              0
+            ],
+            "tensorflow_shape": [
+              3,
+              0
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，保留相同shape和sample_values（含inf/nan/-0.0）",
+          "mutation_reason": "float16下数值精度更低、动态范围更小，易暴露两框架在截断、舍入、特殊值处理上的实现差异，如NaN传播或inf处理逻辑不一致。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -1.818732500076294,
+                0.399562805891037,
+                0.26737305521965027,
+                -0.7486399412155151,
+                -0.6995257139205933,
+                -1.0029375553131104,
+                0.8444095253944397,
+                0.30020251870155334,
+                1.5167511701583862,
+                0.5773425102233887,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.pinv",
+            "input": {
+              "shape": [
+                3,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -1.818732500076294,
+                0.399562805891037,
+                0.26737305521965027,
+                -0.7486399412155151,
+                -0.6995257139205933,
+                -1.0029375553131104,
+                0.8444095253944397,
+                0.30020251870155334,
+                1.5167511701583862,
+                0.5773425102233887,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.pinv(Half{[3, 5]}): expected a tensor with 2 or more dimensions of float, double, cfloat or cdouble types",
+            "tensorflow_error": "NotFoundError: Could not find device for node: {{node Svd}} = Svd[T=DT_HALF, compute_uv=true, full_matrices=false]\nAll kernels registered for op Svd:\n  device='CPU'; T in [DT_FLOAT]\n  device='CPU'; T in [DT_DOUBLE]\n  device='CPU'; T in [DT_COMPLEX64]\n  device='CPU'; T in [DT_COMPLEX128]\n  device='XLA_CPU_JIT'; T in [DT_FLOAT, DT_DOUBLE, DT_HALF]\n [Op:Svd] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_pinverse_20260123_132401.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.pinverse",
+        "input": {
+          "shape": [
+            0,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "rcond": 1e-10
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.linalg.pinv",
+        "input": {
+          "shape": [
+            0,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "rcond": 1e-10
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值 stress-test 数值稳定性与异常处理逻辑，易暴露两框架在奇异值截断、NaN传播或零秩边界条件下的实现差异。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                0,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.pinv",
+            "input": {
+              "shape": [
+                0,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              0
+            ],
+            "tensorflow_shape": [
+              5,
+              0
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：零维标量输入（shape=[]）",
+          "mutation_reason": "标量是矩阵的退化情形，其伪逆数学上应为自身倒数（非零）或0（零），两框架对标量pinv处理逻辑可能不一致，易暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.pinv",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                2.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.pinv(Float{[]}): expected a tensor with 2 or more dimensions of float, double, cfloat or cdouble types",
+            "tensorflow_error": "ValueError: Input `a` must have at least 2 dimensions (saw: 0).",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float16，同时注入边界/异常浮点值",
+          "mutation_reason": "float16精度更低、动态范围更窄，易暴露两框架在极小值、无穷、NaN等边界情况下的数值稳定性差异或实现不一致",
+          "torch_test_case": {
+            "api": "torch.pinverse",
+            "input": {
+              "shape": [
+                0,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "tensorflow_test_case": {
+            "api": "tf.linalg.pinv",
+            "input": {
+              "shape": [
+                0,
+                5
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "rcond": 1e-10
+          },
+          "execution_result": {
+            "torch_success": false,
+            "tensorflow_success": false,
+            "torch_error": "RuntimeError: linalg.pinv(Half{[0, 5]}): expected a tensor with 2 or more dimensions of float, double, cfloat or cdouble types",
+            "tensorflow_error": "NotFoundError: Could not find device for node: {{node Svd}} = Svd[T=DT_HALF, compute_uv=true, full_matrices=false]\nAll kernels registered for op Svd:\n  device='CPU'; T in [DT_FLOAT]\n  device='CPU'; T in [DT_DOUBLE]\n  device='CPU'; T in [DT_COMPLEX64]\n  device='CPU'; T in [DT_COMPLEX128]\n  device='XLA_CPU_JIT'; T in [DT_FLOAT, DT_DOUBLE, DT_HALF]\n [Op:Svd] name: ",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "tensorflow_shape": null,
+            "torch_dtype": null,
+            "tensorflow_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

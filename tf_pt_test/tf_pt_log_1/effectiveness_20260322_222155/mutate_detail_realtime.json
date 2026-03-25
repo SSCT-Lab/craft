@@ -1,0 +1,725 @@
+{
+  "updated_at": "2026-03-22T22:27:28.685498",
+  "records": [
+    {
+      "operator": "tf.signal.rfft",
+      "case_number": 5,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异输入形状为边界值（1, 2, 1024）和奇偶性变化（256），并添加fft_length/ n 参数显式控制，确保跨框架语义对齐。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length to be a tensor or list, not a plain Python int (causing TypeError: 'numpy.int32' object is not iterable). Per TF docs, fft_length must be int32 tensor of shape [1]. PyTorch torch.fft.rfft accepts plain int for n. Fix: wrap fft_length in tf.constant([256], dtype=tf.int32).",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为奇数长度输入（255）和非2的幂长度（300），并测试边界情况如单元素张量，验证两框架对fft_length/n与输入长度不匹配时的裁剪/补零行为一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.signal.rfft",
+      "case_number": 2,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为边界值fft_length=1、奇数长度127的补零/截断场景，并增加高维输入[2, 127]测试广播与轴对齐行为。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length as a list/tensor of int32 (not scalar int), per doc: 'fft_length: A Tensor of type int32'. The error 'numpy.int32 object is not iterable' occurs because TF tries to iterate over scalar fft_length. Fix: wrap fft_length in a list [128] to match expected tensor input.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为边界值场景——输入长度等于fft_length（无补零/截断），使用最小有效尺寸2，dtype降为float32以验证精度鲁棒性，并扩展至3D张量测试高维兼容性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.signal.rfft",
+      "case_number": 3,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为单元素张量、奇数长度维度、高维输入及边界fft_length参数，验证两框架在边界场景下行为一致性。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length as int (not numpy.int32) and may fail with numpy scalars; PyTorch torch.fft.rfft accepts Python int. Fix by ensuring fft_length is a plain Python int in TF case. Also, TF's rfft requires input to be rank >= 1 and real-valued, which is satisfied, but type coercion of fft_length is critical.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length as int (not numpy.int32) and may fail with numpy scalars; PyTorch torch.fft.rfft accepts Python int. Fix by ensuring fft_length is a plain Python int in TF case. Also, TF's rfft requires input to be rank >= 1 and real-valued, which is satisfied, but type coercion of fft_length is critical.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.signal.rfft",
+      "case_number": 4,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为奇数长度维度（31）触发边界处理逻辑，同时添加fft_length/n参数显式控制长度，确保两框架语义对齐。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length to be a tensor or list, not a plain Python int; error 'numpy.int32 object is not iterable' suggests internal iteration over fft_length — it must be passed as a scalar tensor or list. PyTorch torch.fft.rfft accepts plain int for n. Fix: wrap fft_length in tf.constant or use list [32] per TF doc requiring int32 tensor shape [1].",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为边界值场景——fft_length等于输入维度（31），触发无填充/裁剪；同时使用单元素张量和float64类型验证数值稳定性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.signal.rfft",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为2D输入（batched 1D signals）、添加fft_length参数测试截断/补零行为，并确保tf.signal.rfft与torch.fft.rfft在dim=1上对齐；PyTorch需显式指定dim=1，TensorFlow默认作用于最内维，故保持shape[128]不变但扩展为[2,128]以触发相同语义轴。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length as a Python int or list/tuple of ints, but the error 'numpy.int32 object is not iterable' suggests the test passes a numpy scalar; PyTorch torch.fft.rfft accepts plain int for n. Fix: ensure fft_length is a native Python int (not numpy.int32) in TF case.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow tf.signal.rfft expects fft_length to be a Python int or 1D int32 tensor, but the test passes raw int which may be misinterpreted as numpy.int32 in some contexts; fix by ensuring fft_length is plain Python int and align dim handling: tf.signal.rfft operates on last axis by default, so no explicit axis param needed, unlike torch.fft.rfft which requires dim=1 for same behavior.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.size",
+      "case_number": 2,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维张量（5x4x3x2）、空张量（0,）和单元素张量（1,），并覆盖int64/float32类型，验证tf.size和torch.numel在边界及多维场景下行为一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：引入空张量(shape=[0])、单元素张量(shape=[1])、高维张量(7D)、float32 dtype及负维度（不合法但需验证错误行为）等边界场景。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以覆盖更多边界情况；原始用例仅测试空一维张量，应扩展为高维、零维、大尺寸及不同dtype等场景以增强鲁棒性验证。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.size",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为高维张量(1, 1, 1, 1)、空张量([])、单元素张量([1])及int64 dtype边界场景。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维边界情况（10维全1张量）和空张量，验证两框架对极端形状的size/numel处理一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例为10维全1张量，变异为包含0维（标量）、空张量（shape=[0]）及高维稀疏形状的边界情况，同时测试不同dtype和out_type参数。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.size",
+      "case_number": 4,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维张量（5D）、空张量（shape=[]）和边界dtype（int8/float16），验证跨维度、空输入及低精度类型下的行为一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例含空维度（size 0），可变异为高维、极小/极大尺寸、不同数值类型及边界形状（如1D单元素、全1形状、int64 dtype）来验证鲁棒性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维边界情况（10维全1张量）和空张量，验证两框架对极端形状的size/numel处理一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.size",
+      "case_number": 3,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维空张量（shape=[0,2,3,0]）和极小标量张量（shape=[]），并覆盖int64输出类型（TF）与默认行为（PyTorch）的语义对齐。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.size expects 'input' parameter, not 'x'; 'out_type' must be a tf.DType object (e.g., tf.int64), not string. PyTorch torch.numel has no out_type param and takes tensor directly. Fix TF case to use 'input' key and proper dtype object.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow tf.size expects 'input' to be a tensor object, not a shape/dtype dict; the test case incorrectly passes a spec instead of constructing a tensor. PyTorch torch.numel similarly requires a tensor. We must construct actual tensors with given shape and dtype for both frameworks.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.size",
+      "case_number": 5,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "原始用例在空维度张量[0,3]上结果一致，需通过fuzzing验证边界鲁棒性，如高维空张量、单元素张量、负维度（不合法但需测试）、不同dtype（float32/int32）及超大维度等场景。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例使用含0维的形状[2,0,4,5]（即空张量），可变异为边界场景：单元素张量[1]、高维稀疏张量[1,1,1,1,1]、负维度不合法故不采用，以及int64输出类型（tf.size支持out_type）对应torch.numel无参数但dtype不影响结果，故保持输入一致并增加极端形状。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "TensorFlow tf.size expects 'input' parameter name, not 'x'; 'out_type' must be a tf.dtype (e.g., tf.int64), not string 'int64'. PyTorch torch.numel has no out_type, so only input tensor is needed. Repair aligns param names and types per TF doc.",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.unique",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "PyTorch torch.unique requires explicit return_inverse=True to match tf.unique's behavior (which always returns indices), and tf.unique only supports 1-D input while torch.unique defaults to flattened but needs dim=None for equivalence; also dtype 'int32' is not native in PyTorch, must use torch.int32.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "PyTorch torch.unique with return_inverse=true returns a tuple (values, inverse_indices), while tf.unique returns (y, idx) — but the original PyTorch test case lacks 'return_counts' handling and dim=null is invalid; also, tf.unique has no 'sorted' param, and PyTorch's sorted=True is default but must align with tf.unique's behavior (stable order of first occurrence). The error 'setting an array element with a sequence' suggests mismatched output unpacking — fix by ensuring PyTorch returns only values+inverse (no counts) and use dim=None (not null), and add dtype consistency.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "PyTorch torch.unique with return_inverse=true returns a tuple (values, inverse_indices), while tf.unique returns only (y, idx) as two separate tensors; the comparison failed due to shape mismatch during array assignment — dim=null is invalid in PyTorch (should be omitted or None), and 'sorted' param is redundant since torch.unique default-sorts; remove return_inverse to align with tf.unique's minimal output.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.unique",
+      "case_number": 3,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "tf.unique returns (y, idx) where y is 1-D unique elements, while torch.unique by default returns only the unique tensor; to match output structure and shape, PyTorch must set return_inverse=False (default) but TF's idx is always returned — however the shape mismatch (TF=(2,7000) vs PT=(7000,)) indicates TF output was misinterpreted: tf.unique returns y (1-D) and idx (1-D), not a 2D tensor. The reported shape mismatch suggests incorrect unpacking in comparison logic; repair requires explicit parameter alignment: torch.unique needs return_inverse=False and no extra outputs, but TF's idx must be ignored for direct y comparison. However, since both APIs are 1-D input → 1-D unique output, the inconsistency stems from comparing TF's *tuple* to PT's *single tensor*. Fix: make PT return only unique values (default), and ensure TF extracts only y.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow tf.unique returns (y, idx) tuple where y is 1-D unique values; PyTorch torch.unique by default returns only the unique values tensor, but the shape mismatch (TF=(2,7000) vs PT=(7000,)) indicates TF output was misinterpreted — likely the test compared the entire tuple instead of just y. To align, PT must be configured to match TF's default behavior: return only unique values (no inverse/counts), and TF's y must be extracted. Also, TF requires 1-D input, which is satisfied, but PT's default sorted=True matches TF's 'same order as first occurrence' only when sorted=False — however TF does NOT sort, so PT must set sorted=False to preserve order equivalence.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "tf.unique returns (y, idx) tuple where y is 1-D unique values, but torch.unique by default returns only the unique values tensor; shape mismatch occurs because TF output is interpreted as 2-tuple while PT returns single tensor. Need to align return structure: add return_inverse=True in PyTorch to match TF's idx, and ensure both return same number of outputs.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.unstack",
+      "case_number": 3,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为4D张量、axis=0边界值、int32 dtype，并确保两框架参数语义对齐。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：尝试边界轴值（axis=-1）、高维退化形状[1,1,1,1]、及低秩张量[5]，验证跨框架在极端维度下的行为一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量形状扩展为高维边界情况[1,2,1,3,1]，axis设为-3（负索引边界），验证多维unstack/unbind在非首尾轴的行为一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.unstack",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为高维张量(2,3,4,5)并测试axis=-1（负索引边界）、dtype扩展为int64，并验证输出数量与输入shape[axis]一致。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量形状变异为边界情况(1, 1, 1, 1)，dtype保持int64，axis保持-1以验证单元素张量解包行为。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量形状扩展为高维边界情况[1,2,1,3,1]，axis设为-2以验证负轴索引在高维下的行为一致性，dtype保持int64确保跨框架数值精度一致。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.unstack",
+      "case_number": 2,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为高维张量(2,3,4,5)，修改axis为负索引(-2)，并使用float32类型验证跨dtype和边界axis行为的一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致且无错误，需进行fuzzing以增强测试覆盖：将输入张量形状变异为边界情况(1, 1, 1, 1)，axis/dim设为0（正索引），并移除num参数（因tf.unstack中num为可选，且torch.unbind无对应参数，保持语义等价）",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量形状从[1,1,1,1]变异为[0,3,4]（空第一维），验证框架对零大小维度的支持一致性；axis/dim保持0，符合文档中axis为整数且默认0的要求。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.unstack",
+      "case_number": 4,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖；原始用例使用空维(0)张量，可变异为非空边界形状如[1,1,1]、高维[2,3,4,5]、负axis(-1)、不同dtype(int64/float64)等，验证跨框架鲁棒性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量形状变异为边界情况(1, 1, 1, 1)，并测试axis=0和axis=-4等等价但易出错的轴索引，验证跨框架对单元素张量及负轴解析的一致性。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量形状扩展为高维边界情况[1,0,3,4,5]（含零维轴），并调整axis为-2以验证负轴索引兼容性，同时确保两框架参数语义对齐。",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.where",
+      "case_number": 4,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": true,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "tf.where(condition) returns indices with shape [num_true, rank(condition)], while torch.where(condition) returns indices as tuple of tensors (one per dim), so direct shape comparison fails; must align by using torch.where(condition) then torch.stack to match tf.where's output format.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "tf.where(condition) returns indices with shape [num_true, rank(condition)], while torch.where(condition) returns indices as tuple of tensors (one per dim), not a stacked tensor. To align output semantics, PyTorch must unpack and stack indices manually; TF case is correct but PT case must be adapted to return stacked indices matching TF's (N, D) shape.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "tf.where(condition) returns indices with shape [num_true, rank(condition)], while torch.where(condition) returns indices as tuple of tensors (one per dim), not a stacked tensor. To align behavior, PyTorch must unpack and stack indices manually; TF case is correct but PT case must be adapted to return stacked indices matching TF's (N, D) output.",
+          "execute_symbol": "✓",
+          "tf_success": true,
+          "pytorch_success": true
+        }
+      ]
+    },
+    {
+      "operator": "tf.where",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为3D布尔张量并添加x/y参数分支，验证广播行为和多维索引一致性，符合两框架文档中condition+x+y三参数模式的语义等价性要求。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "两个框架均报错：condition dtype为bool但输入张量实际未生成，测试用例仅声明shape/dtype而未提供具体值；tf.where和torch.where均要求condition为bool tensor，但原始用例缺少实际数据初始化，需修复为合法的bool张量（如全True或随机bool），且x/y/input/other需为同shape数值张量。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "两个框架均报错：condition必须为bool类型，但原始用例中condition dtype已为bool，错误实际源于测试用例未提供具体数值而仅描述shape/dtype；tf.where和torch.where在三参数模式下要求condition为bool，x/input和y/other类型需匹配且非bool，当前结构正确但缺少实际张量值。修复方式是确保condition为明确的bool张量（如随机bool），x/y和input/other为对应float32张量，避免框架因空/未初始化张量误判类型。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.where",
+      "case_number": 3,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为三维张量并引入x/y参数分支，验证广播行为和数值选择逻辑在tf.where(condition, x, y)与torch.where(condition, input, other)间的一致性。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "TensorFlow和PyTorch均要求condition为bool类型（已满足），但x和y必须与condition可广播且形状兼容；原始用例中x=[3,4]与condition=[1,3,4]广播后为[1,3,4]，而y=[1,3,4]匹配，但TF SelectV2报错表明实际运行时x未被正确广播——需显式确保x和y广播维度一致。修复：将x的shape改为[1,3,4]以消除广播歧义，保持语义等价。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "两个框架均报错：condition必须为bool类型，但原始用例中condition dtype已为bool，错误实际源于测试用例未生成真实张量数据——仅定义了shape/dtype而未提供具体值；tf.where和torch.where在三参数模式下要求condition是bool张量，需确保其内容为True/False。修复方式：显式指定condition为全True或混合bool值，x/y为合法float32张量。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        }
+      ]
+    },
+    {
+      "operator": "tf.where",
+      "case_number": 2,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：扩展为2D布尔张量并添加x/y参数分支，验证tf.where(condition, x, y)与torch.where(condition, input, other)在广播和数值选择行为上的一致性。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "两个框架均报错：condition dtype 为 bool 是正确的，但错误信息表明实际传入的 condition 张量值类型不匹配（文档要求 condition 为 bool，但测试用例仅声明 dtype 而未提供具体 bool 值数据）。原始用例缺少 tensor value 定义，导致框架内部解析时 type 推断失败。需显式提供 bool 类型的 condition 数据（如全 True/False 或混合），并确保 x/y 与 condition 可广播。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "两个框架均报错：condition dtype不匹配。但原始用例中condition dtype已为bool，错误实际源于测试用例未提供具体张量值，导致框架内部类型推导失败；需补充合法的bool condition张量值（如全True）及对应x/y数值，确保输入可执行。",
+          "execute_symbol": "✗",
+          "tf_success": false,
+          "pytorch_success": false
+        }
+      ]
+    }
+  ]
+}

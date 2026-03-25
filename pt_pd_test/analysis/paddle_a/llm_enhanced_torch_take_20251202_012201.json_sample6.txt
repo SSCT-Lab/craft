@@ -1,0 +1,55 @@
+来源文件: llm_enhanced_torch_take_20251202_012201.json
+样例编号: 6
+paddle_error 错误信息: (InvalidArgument) Variable value (index) of OP(index_select) expected >= -1 and < 1, but got -6. Please check input value.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "index": {
+    "shape": [
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7
+    ]
+  },
+  "api": "torch.take"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "index": {
+    "shape": [
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7
+    ]
+  },
+  "api": "torch.take"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `torch.take` 实现要求索引值必须在有效范围内（即 `index >= -1 且 < 1`），而输入的 `index` 为 `[-7]`，其绝对值超出张量维度范围（当前 input 为空张量，形状为 `[]`，视为 0 维，因此合法索引只能是 0 或 -1）。  
+   - 尽管 PyTorch 的 `torch.take` 允许负索引并支持任意整数索引（会按一维视图处理），但当输入为 0 维张量时，索引 `-7` 显然越界，应触发错误。然而，**关键差异在于：PyTorch 在 0 维张量上对 `torch.take` 的行为允许通过一维视图进行索引（即使仅一个元素），而 PaddlePaddle 当前实现对该边界检查更严格，导致直接报错**。
+
+3. 修复建议：  
+   - 此问题反映出两框架在零维张量下 `take` 行为的不一致，建议提交 issue 至 PaddlePaddle 官方仓库，指出其与 PyTorch 在 0 维张量上的 `torch.take` 索引边界处理存在差异，需统一行为。

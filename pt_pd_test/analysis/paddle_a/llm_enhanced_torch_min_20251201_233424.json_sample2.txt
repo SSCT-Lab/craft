@@ -1,0 +1,43 @@
+来源文件: llm_enhanced_torch_min_20251201_233424.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) Cannot perform reduction along an axis (1) that has a size of 0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.min",
+  "input": {
+    "shape": [
+      2,
+      0,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dim": 1
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.min",
+  "input": {
+    "shape": [
+      2,
+      0,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "axis": 1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.min` 在沿 axis 进行归约时，若指定轴的尺寸为 0（如 shape 为 [2, 0, 5] 中 axis=1），会触发错误“Cannot perform reduction along an axis (1) that has a size of 0”，因为该操作在语义上无效。
+   - 而 PyTorch 的 `torch.min(dim=1)` 在面对 shape 为 [2, 0, 5] 且 dim=1 时，允许对 size 为 0 的维度进行归约，返回一个 shape 为 [2, 5] 的空张量（即最小值为空，但结构合法），这体现了两个框架在空维度处理上的行为差异。
+
+3. 修复建议：
+   - 该差异属于框架行为不一致，建议提交 issue 至 PaddlePaddle 官方仓库，指出其在空维度归约时缺乏对 PyTorch 兼容性支持。

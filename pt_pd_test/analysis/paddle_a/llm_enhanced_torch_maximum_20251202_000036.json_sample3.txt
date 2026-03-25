@@ -1,0 +1,69 @@
+来源文件: llm_enhanced_torch_maximum_20251202_000036.json
+样例编号: 3
+paddle_error 错误信息: (InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: int32, y: float64. (at ..\paddle/phi/common/type_promotion.h:233)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.maximum",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.6245483991690675,
+      0.9478863118307749,
+      -0.7033566914465529,
+      -1.5458605526422997,
+      -0.6087281101534822
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.maximum",
+  "input": {
+    "shape": [
+      0,
+      3,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      1,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -1.6245483991690675,
+      0.9478863118307749,
+      -0.7033566914465529,
+      -1.5458605526422997,
+      -0.6087281101534822
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.maximum` 明确要求两个输入张量的数据类型必须同为浮点型（如 float32、float64）或同为整型（如 int32、int64），不支持跨类型（如 int32 与 float64）的混合计算，即使可以广播也不允许。错误信息 `(InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: int32, y: float64` 直接指出了该限制。  
+   - 而 PyTorch 的 `torch.maximum` 支持不同数据类型之间的比较（会自动进行类型提升，例如将 int32 与 float64 比较时将 int32 转换为 float64），因此在相同输入下，PyTorch 可以正常执行，而 PaddlePaddle 会报错。
+
+3. 修复建议：  
+   - 该问题属于框架间行为差异，且为未被文档明确说明的隐含限制，建议提交 issue 至 PaddlePaddle 官方仓库，指出 `paddle.maximum` 在跨类型（如 int32 与 float64）输入时应支持类型提升以对齐 PyTorch 行为，或至少提供更清晰的错误提示。

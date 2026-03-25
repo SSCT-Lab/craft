@@ -1,0 +1,214 @@
+{
+  "operator": "torch.nn.functional.softmin",
+  "timestamp": "2026-01-25T00:33:06.091564",
+  "total_iterations": 3,
+  "llm_generated_test_cases": 2,
+  "successful_test_cases": 1,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07310280948877335,
+            -1.0156718492507935,
+            -0.42584362626075745,
+            -1.2509523630142212,
+            -0.367280513048172,
+            1.3711313009262085
+          ]
+        },
+        "dim": null,
+        "_stacklevel": 5,
+        "api": "torch.nn.functional.softmin"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07310280948877335,
+            -1.0156718492507935,
+            -0.42584362626075745,
+            -1.2509523630142212,
+            -0.367280513048172,
+            1.3711313009262085
+          ]
+        },
+        "dim": null,
+        "_stacklevel": 5,
+        "api": "paddle.nn.functional.log_softmax"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.softmin",
+        "paddle_api": "paddle.nn.functional.log_softmax",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "log_softmax() got an unexpected keyword argument 'dim'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: log_softmax() got an unexpected keyword argument 'dim'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的log_softmax不接受'dim'参数，而应使用'axis'参数；同时softmin和log_softmax功能不等价：softmin = exp(-x)/sum(exp(-x))，而log_softmax = log(softmax(x)) = log(exp(x)/sum(exp(x)))。二者数学定义不同，无法直接对应。但用户意图可能是测试softmin的等价物，而Paddle无原生softmin；最接近的是-log_softmax(-x)。然而当前错误是因参数名不匹配导致的TypeError，需先修复参数名以使Paddle调用成功。根据Paddle文档，应将'dim'改为'axis'，且不能为null，需提供有效整数轴。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.functional.softmin",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.09045852720737457,
+            1.7329285144805908,
+            -0.5957362055778503,
+            0.10219312459230423,
+            -1.8786060810089111,
+            -0.7733711004257202
+          ]
+        },
+        "dim": 1,
+        "_stacklevel": 5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.log_softmax",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.09045852720737457,
+            1.7329285144805908,
+            -0.5957362055778503,
+            0.10219312459230423,
+            -1.8786060810089111,
+            -0.7733711004257202
+          ]
+        },
+        "axis": 1,
+        "_stacklevel": 5
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.softmin",
+        "paddle_api": "paddle.nn.functional.log_softmax",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "log_softmax() got an unexpected keyword argument '_stacklevel'",
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: log_softmax() got an unexpected keyword argument '_stacklevel'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的log_softmax API不接受'_stacklevel'参数，该参数是PyTorch内部调试用参数，不属于公开API签名；根据PaddlePaddle文档，log_softmax仅支持x、axis、dtype、name参数，因此必须移除'_stacklevel'以避免'got an unexpected keyword argument'错误。此外，softmin与log_softmax数学上不等价：softmin(x) = exp(-x)/sum(exp(-x))，而log_softmax(x) = log(softmax(x)) = x - log(sum(exp(x)))，二者功能不同，但本测试意图应为验证'软最小化'对应算子；然而PaddlePaddle无直接softmin实现，log_softmax不是其正确对应算子——但用户指定对比的是softmin vs log_softmax，且执行失败源于非法参数，故首要修复是删除非法参数。注意：尽管功能不等价，但当前任务目标是使Paddle用例能成功执行（paddle_failed → paddle_success），而非语义对齐；因此修复非法参数即可解决执行失败问题。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.functional.softmin",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.4036672115325928,
+            1.2905937433242798,
+            -0.2925536334514618,
+            -0.033597104251384735,
+            1.8958172798156738,
+            1.3168847560882568
+          ]
+        },
+        "dim": 1,
+        "_stacklevel": 5
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.log_softmax",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.4036672115325928,
+            1.2905937433242798,
+            -0.2925536334514618,
+            -0.033597104251384735,
+            1.8958172798156738,
+            1.3168847560882568
+          ]
+        },
+        "axis": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.softmin",
+        "paddle_api": "paddle.nn.functional.log_softmax",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "数值不匹配，最大差异: 3.1754813194274902",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "paddle_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "torch.nn.functional.softmin 和 paddle.nn.functional.log_softmax 功能不等价：softmin 计算的是 exp(-x_i) / sum(exp(-x_j))，即对输入取负后再 softmax；而 log_softmax 计算的是 log(softmax(x))。二者数学定义不同，输出值无直接数值一致性可比性。文档明确显示 softmin 是 softmax(-x) 的变体，而 log_softmax 是 log(softmax(x))，两者既非同一变换，也非互逆关系。因此结果不一致是预期行为，不应视为 bug，也不应通过参数调整强行对齐。故跳过该跨框架数值比较测试。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    }
+  ]
+}

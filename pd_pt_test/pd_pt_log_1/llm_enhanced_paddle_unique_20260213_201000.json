@@ -1,0 +1,1075 @@
+{
+  "pd_api": "paddle.unique",
+  "pytorch_api": "torch.unique",
+  "timestamp": "2026-02-13T20:10:00.697260",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 11,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": false,
+        "axis": null,
+        "dtype": "int32",
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": false,
+        "axis": null,
+        "dtype": "int32",
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: _return_inverse() got an unexpected keyword argument 'return_index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique does not have 'return_index' parameter; it uses 'return_inverse' and 'return_counts', but indices are returned as part of the first return value when return_inverse=True. The correct PyTorch equivalent is to use 'return_inverse=True' and 'return_counts=False', and note that 'axis' in Paddle maps to 'dim' in PyTorch, and 'dtype' is not a valid arg in torch.unique — indices dtype is inferred."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": false,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": false,
+        "dim": null,
+        "input": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: PD=(3, 6) vs PT=(2, 6)",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique requires explicit return_inverse_indices=True to match paddle.unique's return_inverse behavior, and missing return_index in PyTorch causes shape mismatch (PD=(3,6) vs PT=(2,6)); must add return_inverse_indices=True and return_indices=True to align output tuple length and semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": false,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": false,
+        "return_indices": true,
+        "dim": null,
+        "input": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: _return_inverse() got an unexpected keyword argument 'return_indices'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique does not accept 'return_indices' parameter; correct parameter name is 'return_inverse' for inverse indices, and 'return_counts' is supported, but 'return_index' in Paddle corresponds to 'return_inverse' and 'return_counts', while PyTorch uses 'return_inverse' and 'return_counts' — however, the error shows 'return_indices' is invalid. The correct PyTorch parameter for returning first occurrence indices is 'return_inverse=False' alone doesn't help; actually, PyTorch uses 'return_inverse' for inverse mapping and has no direct 'return_index' equivalent — but it *does* support 'return_inverse' and 'return_counts', and since Paddle's 'return_index=True' maps to PyTorch's 'return_inverse=False' + output indices via separate logic, the fix is to remove invalid 'return_indices' and use only documented PyTorch params: 'return_inverse' and 'return_counts'. However, PyTorch *does* support 'return_inverse' and also returns indices via a 2-tuple when return_inverse=True, but the real issue is 'return_indices' is not a valid arg — it should be removed. Also, PyTorch unique does not have 'return_index' analog; instead, to get indices of first occurrences, you must use 'return_inverse=False' and no extra flag — but that’s not enough. Actually, PyTorch 1.10+ supports 'return_inverse' and 'return_counts', and the index of first occurrence is *not* returned by default. To match Paddle's 'return_index=True', we need PyTorch's 'return_inverse=False' and no other flags — but that gives only unique values. The correct fix: PyTorch requires 'return_inverse=True' to get inverse map, and to get original indices, it uses *a different signature*: torch.unique(..., return_inverse=True) returns (values, inverse_indices), but to get *first occurrence indices*, PyTorch uses 'return_inverse=False' and no such flag — wait, no: official doc says 'return_inverse' controls whether to return inverse mapping, and there's *no* 'return_index' in PyTorch. So Paddle's 'return_index=True' has *no direct PyTorch equivalent*. Therefore, to repair: drop 'return_index' from Paddle side or align semantics — but task says keep semantic equivalence. Since PyTorch lacks 'return_index', the only compliant repair is to set 'return_index': false in Paddle and remove 'return_indices' from PyTorch, keeping only 'return_inverse' and 'return_counts' as shared. But original Paddle case has 'return_index': true and 'return_inverse': true — that’s 3 outputs. PyTorch can only return (values, inverse_indices) when return_inverse=True, or (values, inverse_indices, counts) when return_counts=True too. So to match, we must set 'return_counts': true in both, and drop 'return_index' from Paddle (since no PyTorch analog), and remove invalid 'return_indices' from PyTorch."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "return_index": false,
+        "return_counts": true,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": null,
+        "input": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": false,
+        "axis": null,
+        "dtype": "int32",
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": false,
+        "axis": null,
+        "dtype": "int32",
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: _return_inverse() got an unexpected keyword argument 'return_index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique does not have 'return_index' parameter; it uses 'return_inverse' and 'return_counts', but index return is handled via 'return_inverse' or separate logic. Paddle's 'return_index' maps to PyTorch's 'return_inverse=False' + manual index extraction, but the correct PyTorch equivalent for returning indices is not via a 'return_index' flag — instead, PyTorch requires using 'torch.unique(..., return_inverse=True)' and then deriving indices separately, or using 'torch.unique_consecutive'. However, the standard fix is to remove 'return_index' from PyTorch call since it's unsupported, and align only on supported flags: 'return_inverse' and 'return_counts'. Also 'axis' in Paddle maps to 'dim' in PyTorch."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": false,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": false,
+        "dim": null,
+        "sorted": true,
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: PD=(3, 1) vs PT=(2, 1)",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的paddle.unique要求return_index=True时必须返回indices，而PyTorch的torch.unique在return_inverse=True时默认不返回indices；原始用例中Paddle返回(out, indices, inverse)三元组，PyTorch只返回(output, inverse_indices)，导致形状不匹配；需在PyTorch侧显式添加return_inverse=True且保持输出元组长度一致，但torch.unique无return_index参数，故需同步移除Paddle的return_index=True并确保两框架均只启用return_inverse，使输出结构对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "return_index": false,
+        "return_counts": false,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": false,
+        "dim": null,
+        "sorted": true,
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将输入张量从1维单元素扩展为2维空形状[0, 3]（合法空tensor），同时适配axis/dim参数为0，并保持return_inverse=True；Paddle中axis=0对应PyTorch中dim=0，dtype统一为int32以验证类型一致性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "return_index": false,
+        "return_counts": false,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            0,
+            3
+          ],
+          "dtype": "int32"
+        },
+        "axis": 0,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": false,
+        "dim": 0,
+        "sorted": true,
+        "input": {
+          "shape": [
+            0,
+            3
+          ],
+          "dtype": "int32"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (2, 0) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": true,
+        "axis": null,
+        "dtype": "int64",
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": true,
+        "axis": null,
+        "dtype": "int64",
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": "TypeError: _unique_impl() got an unexpected keyword argument 'return_index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique does not have 'return_index' parameter; it uses 'return_inverse' and 'return_counts', but indices are returned as the second element only when return_inverse=True or return_counts=True, and the first return is always unique values. The correct PyTorch equivalent requires removing 'return_index' and relying on positional returns: unique, inverse_indices, counts — no explicit 'return_index' flag exists."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": true,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": null,
+        "sorted": true,
+        "input": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (4,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique requires return_inverse_indices to be explicitly handled as a separate tensor, and the comparison error 'setting an array element with a sequence' suggests mismatched output structure; Paddle returns (out, indices, inverse, counts) while PyTorch returns (output, inverse_indices, counts) — missing return_index in PyTorch test case causes structural inconsistency. Must add return_inverse=True and align return_index usage via torch.unique(..., return_inverse=True, return_counts=True) but PyTorch has no native return_index; instead, use torch.unique(..., return_inverse=True, return_counts=True, sorted=True) and compute indices separately or drop return_index from both to ensure comparable outputs."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "return_index": false,
+        "return_counts": true,
+        "dtype": "int64",
+        "x": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": null,
+        "sorted": true,
+        "input": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique with return_inverse=True returns inverse_indices tensor of same shape as input, while Paddle's inverse is 1D; the comparison failed due to shape inhomogeneity. PyTorch requires return_inverse to be paired with correct handling — we must ensure both frameworks compute inverse over flattened input (axis/dim=None) and align output structure. Also, PyTorch does not have 'dtype' param for inverse/indices; Paddle's dtype='int64' is fine, but torch.inverse_indices dtype is inferred — no mismatch, but comparison tool likely tried to stack non-broadcastable shapes. Fix: explicitly set sorted=True in both, and ensure input is deterministic (not random), but since shape-only spec causes undefined values, we must inject concrete data. However, per task constraints, only shape/dtype/config allowed — so repair by adding 'sorted': true to PyTorch to match Paddle's default sorted=True behavior and avoid ambiguity."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "return_index": false,
+        "return_counts": true,
+        "sorted": true,
+        "x": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "dtype": "int64",
+        "axis": null,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": null,
+        "sorted": true,
+        "input": {
+          "shape": [
+            150
+          ],
+          "dtype": "int64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: unique() got an unexpected keyword argument 'sorted'",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": true,
+        "axis": -1,
+        "is_sorted": true,
+        "dtype": "int32",
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": true,
+        "axis": -1,
+        "is_sorted": true,
+        "dtype": "int32",
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: unique() got an unexpected keyword argument 'is_sorted'",
+        "pytorch_error": "TypeError: _unique_impl() got an unexpected keyword argument 'return_index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持'is_sorted'参数（报错），PyTorch不支持'return_index'与'axis'同时使用（报错）；根据文档，Paddle用'sorted'替代'is_sorted'，PyTorch用'dim'替代'axis'，且PyTorch无'dtype'参数；需移除is_sorted、统一axis→dim、删除dtype、确保return_index在PyTorch中仅与sorted兼容。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": true,
+        "sorted": true,
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "dtype": "int32",
+        "axis": -1,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "return_indices": false,
+        "dim": -1,
+        "sorted": true,
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: unique() got an unexpected keyword argument 'sorted'",
+        "pytorch_error": "TypeError: _unique_impl() got an unexpected keyword argument 'return_indices'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle unique不支持'sorted'参数（报TypeError），PyTorch unique不支持'return_indices'（应为'return_inverse'或'return_counts'，且'return_indices'是旧版弃用参数，新版用'return_inverse'；同时PyTorch无'dtype'参数，而Paddle有'dtype'控制indices/inverse类型。需移除Paddle的'sorted'、统一使用'return_inverse'而非'return_indices'，并删除PyTorch中非法的'return_indices'参数。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": true,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": -1,
+        "sorted": true,
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (4,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique 不支持 return_index=True 时与 return_inverse=True、return_counts=True 同时使用（返回元组长度不一致），而 PaddlePaddle paddle.unique 支持四元组返回；原始 PyTorch 用例缺失 return_inverse_indices 参数对应逻辑，且未提供 return_inverse_indices 所需的 inverse_indices 输出处理，导致 numpy 比较时形状不匹配（inhomogeneous shape）。修复：为 PyTorch 添加 return_inverse=True 并确保输出结构可比，同时对齐 Paddle 的 return_index=True ——但 torch.unique 无直接等价 return_index 语义（其 indices 是 unique 值在原 tensor 中首次出现位置，需显式启用 return_inverse=False 时才返回 indices）；正确对齐方式是：PyTorch 必须设 return_inverse=True 且不设 return_counts=True 或单独处理 counts 形状，但当前错误源于 inverse_indices 返回张量形状为 input.shape（6,1,8），而 counts 形状为 output.shape（动态），导致 tuple 转 numpy 时维度不齐。根本修复是移除 return_counts 或统一降维比较，此处选择移除 return_counts 以保证两框架均返回 (output, inverse_indices) 二元组，消除 inhomogeneous shape 错误。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": false,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "axis": -1,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": false,
+        "dim": -1,
+        "sorted": true,
+        "x": {
+          "shape": [
+            6,
+            1,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": true,
+        "axis": 1,
+        "is_sorted": true,
+        "dtype": "int32",
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_index": true,
+        "return_inverse": true,
+        "return_counts": true,
+        "axis": 1,
+        "is_sorted": true,
+        "dtype": "int32",
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: unique() got an unexpected keyword argument 'is_sorted'",
+        "pytorch_error": "TypeError: _unique_impl() got an unexpected keyword argument 'return_index'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle不支持'is_sorted'参数（报TypeError），应改为'sorted'；PyTorch不支持'return_index'（报TypeError），实际参数名为'return_inverse'和'return_counts'，但'return_index'在PyTorch中对应'return_inverse'的语义不同，且PyTorch无'return_index'参数；正确PyTorch参数为'return_inverse'和'return_counts'，且'dim'对应Paddle的'axis'，'sorted'对应PyTorch的'sorted'。需移除'is_sorted'、修正参数名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": true,
+        "sorted": true,
+        "x": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "dtype": "int32",
+        "axis": 1,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": 1,
+        "sorted": true,
+        "input": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: unique() got an unexpected keyword argument 'sorted'",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.unique does not accept 'sorted' parameter (causes TypeError), while PyTorch torch.unique does. Per Paddle docs, 'sorted' is optional but has no effect and is not in the actual signature — it must be removed from Paddle test case to fix the error."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "return_index": true,
+        "return_counts": true,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": 1,
+        "sorted": true,
+        "input": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (4,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.unique does not support return_index when dim is specified; it only returns (output, inverse_indices, counts) without indices along dim. Paddle's return_index=True with axis=1 is invalid for cross-framework equivalence. Remove return_index from both to align semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "return_index": false,
+        "return_counts": true,
+        "dtype": "int32",
+        "x": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "axis": 1,
+        "return_inverse": true,
+        "api": "paddle.unique"
+      },
+      "pytorch_test_case": {
+        "return_counts": true,
+        "dim": 1,
+        "sorted": true,
+        "input": {
+          "shape": [
+            3,
+            8,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "return_inverse": true,
+        "api": "torch.unique"
+      },
+      "execution_result": {
+        "pd_api": "paddle.unique",
+        "pytorch_api": "torch.unique",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (3,) + inhomogeneous part.",
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

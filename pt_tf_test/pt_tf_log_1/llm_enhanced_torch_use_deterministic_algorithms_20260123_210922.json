@@ -1,0 +1,199 @@
+{
+  "operator": "torch.use_deterministic_algorithms",
+  "timestamp": "2026-01-23T21:09:22.107560",
+  "total_iterations": 6,
+  "llm_generated_test_cases": 4,
+  "successful_test_cases": 4,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "mode": true,
+        "api": "torch.use_deterministic_algorithms"
+      },
+      "tensorflow_test_case": {
+        "mode": true,
+        "api": "tf.config.experimental.enable_op_determinism"
+      },
+      "execution_result": {
+        "torch_api": "torch.use_deterministic_algorithms",
+        "tensorflow_api": "tf.config.experimental.enable_op_determinism",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "enable_op_determinism() got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\nTypeError: enable_op_determinism() got an unexpected keyword argument 'mode'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.config.experimental.enable_op_determinism API不接受'mode'参数，根据TensorFlow官方文档，该函数是一个无参数函数，调用它即可启用操作的确定性。而PyTorch的torch.use_deterministic_algorithms使用mode作为主要参数来控制是否启用确定性算法。因此需要修复TensorFlow测试用例，移除不存在的'mode'参数。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.use_deterministic_algorithms",
+        "mode": true
+      },
+      "tensorflow_test_case": {
+        "api": "tf.config.experimental.enable_op_determinism"
+      },
+      "execution_result": {
+        "torch_api": "torch.use_deterministic_algorithms",
+        "tensorflow_api": "tf.config.experimental.enable_op_determinism",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "torch.use_deterministic_algorithms 和 tf.config.experimental.enable_op_determinism 均为全局配置性API，不接收输入张量、不产生输出张量，而是设置运行时行为（确定性模式开关）。二者功能语义等价但接口设计本质不同：PyTorch API是纯状态设置函数（无返回值，无输入张量），TensorFlow API同理且无参数。原始测试用例中TensorFlow侧错误地添加了x参数（{'shape': [2, 3], 'dtype': 'float32'}），而官方文档明确该API无参数；报错'ufunc isfinite not supported'源于后续比较逻辑试图对非张量/非数值结果调用isfinite，说明测试框架错误地将这两个配置API当作有输出的算子进行数值比对。因此，该跨框架比较本身不成立——它们不是可比算子（no output tensor to compare），属于‘功能等价但不可直接数值比较’的情形，应跳过。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "mode": false,
+        "api": "torch.use_deterministic_algorithms"
+      },
+      "tensorflow_test_case": {
+        "mode": false,
+        "api": "tf.config.experimental.enable_op_determinism"
+      },
+      "execution_result": {
+        "torch_api": "torch.use_deterministic_algorithms",
+        "tensorflow_api": "tf.config.experimental.enable_op_determinism",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "enable_op_determinism() got an unexpected keyword argument 'mode'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\nTypeError: enable_op_determinism() got an unexpected keyword argument 'mode'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.config.experimental.enable_op_determinism does not accept a 'mode' parameter — it is a no-argument function that enables determinism globally when called. The PyTorch API torch.use_deterministic_algorithms accepts a 'mode' boolean (and optional 'warn_only'), but TensorFlow's equivalent has no such parameter and cannot be disabled once enabled in the same process (it's a one-time enablement). Therefore, the TensorFlow test case must be repaired to remove the invalid 'mode' argument and call the function without parameters. Since the original intent was to set determinism to 'False' (i.e., disable), but TensorFlow provides no disable API (enabling is irreversible per process), the only valid repair for a 'mode=False' PyTorch call is to skip the TensorFlow counterpart — however, the task requires repair *if possible*, and per docs, enable_op_determinism() has no arguments and no disable counterpart; thus the correct repair is to omit all arguments and treat the call as enabling determinism (mode=True semantics), but the original mode=False is fundamentally unsupported. However, since the error is 'unexpected keyword argument', the minimal repair is removing 'mode' entirely — resulting in a zero-argument call. Note: this makes the behavior asymmetric (PyTorch disables, TF enables), but the error is purely syntactic and must be fixed to avoid TypeError. Hence, repair by removing 'mode' from TF test case."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.use_deterministic_algorithms",
+        "mode": false
+      },
+      "tensorflow_test_case": {
+        "api": "tf.config.experimental.enable_op_determinism"
+      },
+      "execution_result": {
+        "torch_api": "torch.use_deterministic_algorithms",
+        "tensorflow_api": "tf.config.experimental.enable_op_determinism",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "比较过程出错的原因是由于在比较阶段尝试对非张量类型进行数值比较操作，而这两个API的功能本质上不涉及张量计算，而是框架级别的确定性行为控制设置。PyTorch的torch.use_deterministic_algorithms(mode=False)用于禁用强制使用确定性算法，而TensorFlow的tf.config.experimental.enable_op_determinism()用于开启操作符级的确定性。两者语义相反：PyTorch此例为关闭确定性，而TensorFlow API调用后是开启确定性。因此当前测试用例中两者的配置状态不对应，导致行为不一致。应修复TensorFlow用例以显式传递等效配置（即关闭确定性）来匹配PyTorch的mode=False。但TensorFlow的enable_op_determinism没有布尔参数开关控制启停，它是一个无参函数，调用即启用；要禁用需调用disable_op_determinism。因此无法通过参数直接实现与PyTorch mode=False的对等配置。考虑到功能控制粒度不同且无直接对等参数配置方式，判定为需修复测试逻辑，但由于无法构造等效状态，最终选择跳过跨框架比较。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.use_deterministic_algorithms",
+        "mode": false
+      },
+      "tensorflow_test_case": {
+        "api": "tf.config.experimental.enable_op_determinism"
+      },
+      "execution_result": {
+        "torch_api": "torch.use_deterministic_algorithms",
+        "tensorflow_api": "tf.config.experimental.enable_op_determinism",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.use_deterministic_algorithms和TensorFlow的tf.config.experimental.enable_op_determinism功能上不完全对等，且原始测试用例中TensorFlow部分缺少必要的参数配置。根据文档，PyTorch API接受mode和可选warn_only参数，而TensorFlow API是一个无参数的启用操作确定性的函数调用。比较错误'ufunc 'isfinite' not supported for the input types'表明在结果比较阶段出现了类型不支持的问题，这可能源于测试框架试图对非张量对象进行数值比较。实际上，这两个API的作用是全局设置确定性行为，并不返回可比较的张量输出。因此，原始测试用例构造不当，不应直接比较其返回值。正确的做法是分别调用各自API来开启/关闭确定性模式，而不应期望它们有可比的输出值。由于两者在设计和使用方式上有本质差异，无法通过修复参数使其产生可比较的结果。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.use_deterministic_algorithms",
+        "mode": false
+      },
+      "tensorflow_test_case": {
+        "api": "tf.config.experimental.enable_op_determinism"
+      },
+      "execution_result": {
+        "torch_api": "torch.use_deterministic_algorithms",
+        "tensorflow_api": "tf.config.experimental.enable_op_determinism",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "比较过程出错: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''",
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    }
+  ]
+}

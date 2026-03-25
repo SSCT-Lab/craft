@@ -1,0 +1,74 @@
+来源文件: llm_enhanced_torch_nn_MaxPool2d_20251215_192154.json
+样例编号: 5
+mindspore_error 错误信息: For MaxPool2d, the parameter 'padding', 'dilation', 'return_indices', 'ceil_mode' can not be set to non-default value when pad_mode is not 'pad', but got pad_mode:valid.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.MaxPool2d",
+  "input": {
+    "shape": [
+      1,
+      3,
+      5,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.029195619747042656,
+      0.6070646643638611,
+      1.7337207794189453,
+      0.016988512128591537,
+      -1.1848887205123901,
+      -0.6642535328865051,
+      0.17119942605495453,
+      0.40212953090667725,
+      -0.33249181509017944,
+      -1.5685704946517944
+    ]
+  },
+  "kernel_size": 3,
+  "stride": 3,
+  "padding": 0,
+  "return_indices": true
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.MaxPool2d",
+  "input": {
+    "shape": [
+      1,
+      3,
+      5,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.029195619747042656,
+      0.6070646643638611,
+      1.7337207794189453,
+      0.016988512128591537,
+      -1.1848887205123901,
+      -0.6642535328865051,
+      0.17119942605495453,
+      0.40212953090667725,
+      -0.33249181509017944,
+      -1.5685704946517944
+    ]
+  },
+  "kernel_size": 3,
+  "stride": 3,
+  "padding": 0,
+  "pad_mode": "valid",
+  "return_indices": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `MaxPool2d` 在 `pad_mode="valid"` 时，明确要求 `padding`、`dilation`、`return_indices`、`ceil_mode` 必须为默认值（即 `padding=0`, `dilation=1`, `return_indices=False`, `ceil_mode=False`），否则会抛出错误。而本样例中设置了 `padding=0`（虽为默认值，但显式传入）和 `return_indices=True`（非默认），违反了该约束。
+   - 虽然 `padding=0` 在语义上与 `valid` 模式兼容，但 MindSpore 严格限制在非 `"pad"` 模式下这些参数必须保持默认，这是其内部实现对参数组合的强约束，与 PyTorch 的宽松行为不同（PyTorch 允许在 `valid` 模式下自由设置 `padding=0` 及 `return_indices=True`）。
+
+3. 修复建议：  
+   - 由于该行为是框架设计上的差异，且符合文档说明，不构成映射错误或 API 错配，因此无需修改测试用例或映射逻辑；建议提交 issue 给 MindSpore 官方以讨论是否放宽此限制（如允许在 `valid` 模式下保留 `return_indices=True`），但当前属于合理的行为边界。

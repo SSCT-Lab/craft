@@ -1,0 +1,41 @@
+{
+  "updated_at": "2026-03-21T23:42:23.311341",
+  "records": [
+    {
+      "operator": "torch.where",
+      "case_number": 1,
+      "initial_symbol": "✓",
+      "mutate_success": {
+        "1": true,
+        "2": false,
+        "3": true
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "mutation",
+          "reason": "PyTorch和TensorFlow的torch.where/tf.where在三参数模式（condition, x, y）下语义一致且执行成功、结果一致；但原始用例仅覆盖常规二维同形张量场景，未测试边界与变异情况。根据任务要求，需进行fuzzing以提升鲁棒性验证：引入空维度（shape=[0, 5]）、标量x/y、混合dtype（int32 condition + float32 x/y）、广播不对称场景（condition [1,5], x [5,1], y scalar），并确保tf.where三参数模式与torch.where严格对应（避免误用单参数indices模式）。此处选择最简有效变异——将condition改为1D且含0元素的边界形状[1]，x/y降为标量，触发广播逻辑并覆盖标量-张量交互路径。",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "mutation",
+          "reason": "PyTorch and TensorFlow both execute successfully and produce consistent results for the given test case (scalar x/y with 1-element bool condition). However, the current case is minimal and lacks coverage of key behavioral dimensions: (1) broadcasting edge cases (e.g., rank-0 condition vs higher-rank inputs), (2) dtype mismatches (e.g., int64 condition with float32 x/y), (3) non-scalar x/y with broadcastable but asymmetric shapes, (4) empty tensors (shape containing 0), and (5) boolean vs numeric condition (TF supports numeric condition as truthy/falsy, while PyTorch requires bool — though both accept bool here). To improve robustness and uncover framework-specific broadcasting or type promotion bugs, we mutate to a more challenging case: 3D condition with broadcast-compatible but distinct shapes for x (scalar) and y (1D), using int64 dtype for condition (valid in both per docs: TF explicitly allows numeric condition; PyTorch accepts int64 as boolean-equivalent in recent versions), and adding an empty dimension to stress broadcasting logic.",
+          "execute_symbol": "✗",
+          "torch_success": false,
+          "tensorflow_success": false
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "PyTorch torch.where requires condition to be a boolean tensor (dtype=torch.bool), but the test case provides int64. TensorFlow tf.where (in multiplex mode, i.e., with x and y provided) also requires condition to be boolean (or numeric but interpreted as truthy; however, recent TF versions strictly enforce bool for SelectV2 op). Both frameworks failed with dtype mismatch errors. Per official docs: PyTorch explicitly states 'condition(BoolTensor)', and TensorFlow's tf.where multiplex mode expects condition to have dtype bool (or numeric, but error message confirms strict bool requirement in this context). Therefore, we must cast condition to bool in both frameworks. The repair converts condition dtype from int64 to bool while preserving shape; x and y remain unchanged as their dtypes and shapes are valid.",
+          "execute_symbol": "✓",
+          "torch_success": true,
+          "tensorflow_success": true
+        }
+      ]
+    }
+  ]
+}

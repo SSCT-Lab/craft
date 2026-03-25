@@ -1,0 +1,672 @@
+{
+  "operator": "torch_mean",
+  "torch_api": "torch.mean",
+  "tensorflow_api": "tf.reduce_mean",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T15:45:21.979447",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_mean_20260123_154104.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3665630519390106,
+            -0.4110764265060425,
+            -1.1514332294464111,
+            -0.9717385172843933,
+            -1.4037388563156128,
+            -0.721271276473999,
+            -0.6271639466285706,
+            0.36019957065582275,
+            -0.7962684631347656,
+            -0.5565642714500427
+          ]
+        },
+        "api": "torch.mean"
+      },
+      "original_tensorflow_test_case": {
+        "input": {
+          "shape": [
+            3,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.3665630519390106,
+            -0.4110764265060425,
+            -1.1514332294464111,
+            -0.9717385172843933,
+            -1.4037388563156128,
+            -0.721271276473999,
+            -0.6271639466285706,
+            0.36019957065582275,
+            -0.7962684631347656,
+            -0.5565642714500427
+          ]
+        },
+        "api": "tf.reduce_mean"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在NaN propagation、inf arithmetic、underflow/overflow处理上的不一致，尤其mean对空/全-inf/nan输入的语义差异。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                3,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.3665630519390106,
+                -0.4110764265060425,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.1514332294464111,
+                -0.9717385172843933
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                3,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.3665630519390106,
+                -0.4110764265060425,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.1514332294464111,
+                -0.9717385172843933
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 64]）",
+          "mutation_reason": "空张量触发未定义行为边界，PyTorch和TensorFlow对空维度mean的NaN传播策略、dtype保留逻辑可能存在不一致（如是否强制float32 NaN vs dtype-preserving NaN）。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "dim": 0
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "axis": 0
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              64
+            ],
+            "tensorflow_shape": [
+              64
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16 dtype及特殊浮点值（inf/nan/-0.0）在均值计算中的框架一致性",
+          "mutation_reason": "float16精度边界和特殊值处理易暴露框架间数值稳定性差异；PyTorch与TF对nan/inf传播规则虽标准一致，但底层实现可能因舍入顺序或空张量检查逻辑不同而产生偏差。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                3,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                3,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_mean_20260123_154104.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            3,
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": [
+          1
+        ],
+        "keepdim": true
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.reduce_mean",
+        "input": {
+          "shape": [
+            3,
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": [
+          1
+        ],
+        "keepdims": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf、-inf、nan、-0.0、1e-38、1e38等特殊浮点值",
+          "mutation_reason": "空维度（dim=1, size=0）下，各框架对特殊值的NaN传播规则、空集均值定义及浮点异常处理可能存在不一致，易暴露实现差异",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                3,
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": [
+              1
+            ],
+            "keepdim": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                3,
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": [
+              1
+            ],
+            "keepdims": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              1,
+              64
+            ],
+            "tensorflow_shape": [
+              3,
+              1,
+              64
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量输入（shape=[]）测试空维度处理一致性",
+          "mutation_reason": "标量是张量的退化情形，两框架对零维张量的mean/reduce_mean行为应数学等价（返回自身），但实现中可能因维度广播或空轴逻辑差异导致NaN/inf传播不一致。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "dim": null,
+            "keepdim": false
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0
+              ]
+            },
+            "axis": null,
+            "keepdims": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16类型下空维度均值计算的NaN一致性",
+          "mutation_reason": "float16精度更低，空维度（size=0）时两框架对NaN生成逻辑可能不一致；原始用例为float32，变异到float16可暴露底层实现差异。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                3,
+                0,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": []
+            },
+            "dim": [
+              1
+            ],
+            "keepdim": true
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                3,
+                0,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": []
+            },
+            "axis": [
+              1
+            ],
+            "keepdims": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              1,
+              64
+            ],
+            "tensorflow_shape": [
+              3,
+              1,
+              64
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_mean_20260123_154104.json",
+        "iteration": 1,
+        "case_number": 2,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.13404437899589539,
+            -0.034379299730062485,
+            0.08565232157707214,
+            -1.529392123222351,
+            1.2518336772918701,
+            -0.18556365370750427,
+            -0.9101349115371704,
+            -0.012278753332793713,
+            0.2046891450881958,
+            0.3755822777748108
+          ]
+        },
+        "api": "torch.mean"
+      },
+      "original_tensorflow_test_case": {
+        "input": {
+          "shape": [
+            2,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.13404437899589539,
+            -0.034379299730062485,
+            0.08565232157707214,
+            -1.529392123222351,
+            1.2518336772918701,
+            -0.18556365370750427,
+            -0.9101349115371704,
+            -0.012278753332793713,
+            0.2046891450881958,
+            0.3755822777748108
+          ]
+        },
+        "api": "tf.reduce_mean"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在NaN propagation、inf arithmetic、underflow/overflow处理上的不一致，尤其mean对空维或全-inf/nan输入的行为差异。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                2,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                2,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 64]）",
+          "mutation_reason": "空张量触发未定义行为边界，PyTorch返回nan，TensorFlow可能返回0或nan；二者数学定义应一致（均应为nan），差异暴露实现不一致bug。",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                0,
+                64
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16类型及特殊浮点值（inf/nan/-0.0）在均值计算中的框架一致性",
+          "mutation_reason": "float16精度较低且对inf/nan/-0.0处理敏感，PyTorch与TF在舍入、NaN传播、负零保持等底层实现可能存在差异，易暴露数值稳定性bug",
+          "torch_test_case": {
+            "api": "torch.mean",
+            "input": {
+              "shape": [
+                2,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "dim": null
+          },
+          "tensorflow_test_case": {
+            "api": "tf.reduce_mean",
+            "input": {
+              "shape": [
+                2,
+                64
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "axis": null
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

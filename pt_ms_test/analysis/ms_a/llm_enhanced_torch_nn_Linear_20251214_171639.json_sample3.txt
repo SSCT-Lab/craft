@@ -1,0 +1,71 @@
+来源文件: llm_enhanced_torch_nn_Linear_20251214_171639.json
+样例编号: 3
+mindspore_error 错误信息: For 'Dense', the type of 'x2' should be same as 'x1', but got 'x1' with type Tensor[Float64] and 'x2' with type Tensor[Float32].
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//dense.cc:127 mindspore::ops::DenseFuncImpl::InferType
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.Linear",
+  "input": {
+    "shape": [
+      4,
+      256
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.3190938677482901,
+      0.4802683919019608,
+      -0.1023324546744323,
+      1.290267209742333,
+      -0.3045588139597872,
+      0.14413040638266428,
+      1.7374223662603907,
+      0.07621257619947795,
+      -0.5930039819232217,
+      0.41455087641944693
+    ]
+  },
+  "in_features": 256,
+  "out_features": 2,
+  "bias": false
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.nn.Linear",
+  "input": {
+    "shape": [
+      4,
+      256
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.3190938677482901,
+      0.4802683919019608,
+      -0.1023324546744323,
+      1.290267209742333,
+      -0.3045588139597872,
+      0.14413040638266428,
+      1.7374223662603907,
+      0.07621257619947795,
+      -0.5930039819232217,
+      0.41455087641944693
+    ]
+  },
+  "in_features": 256,
+  "out_features": 2,
+  "bias": false
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `mindspore.mint.nn.Linear` 在初始化时，若未显式指定 `dtype`，默认使用 `mstype.float32`（根据文档说明），导致权重和偏置的 dtype 被强制设为 float32；
+   - 而输入张量 `x` 为 `float64`，在执行 Dense 运算时，要求 `x1`（输入）与 `x2`（权重）类型一致，但实际出现 `Tensor[Float64]` 与 `Tensor[Float32]` 不匹配，触发了类型不一致错误。
+
+3. 修复建议：
+   - 可提交 issue 给 MindSpore 官方，建议在 `mint.nn.Linear` 中支持输入 dtype 与内部参数自动对齐（即当输入为 float64 时，自动将 weight 初始化为 float64），以提升与 PyTorch 的兼容性。

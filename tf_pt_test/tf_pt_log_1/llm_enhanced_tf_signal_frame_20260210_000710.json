@@ -1,0 +1,1223 @@
+{
+  "tf_api": "tf.signal.frame",
+  "pytorch_api": "torch.nn.functional.unfold",
+  "timestamp": "2026-02-10T00:07:10.102560",
+  "total_iterations": 19,
+  "llm_generated_test_cases": 14,
+  "successful_test_cases": 6,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "signal": {
+          "shape": [
+            9152
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 180,
+        "pad_end": false,
+        "api": "tf.signal.frame"
+      },
+      "pytorch_test_case": {
+        "signal": {
+          "shape": [
+            9152
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 180,
+        "pad_end": false,
+        "api": "torch.nn.functional.unfold"
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'signal'",
+        "comparison_error": null,
+        "tf_shape": [
+          49,
+          512
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's unfold does not accept 'signal', 'frame_length', 'frame_step', or 'pad_end' — it requires 'input', 'kernel_size', 'dilation', 'padding', 'stride'. tf.signal.frame is for 1D time-series framing; torch.nn.functional.unfold is for N-D tensor patch extraction (e.g., 4D image patches). They are not semantically equivalent APIs. Correct PyTorch equivalent is torch.stft or manual framing via torch.unfold on reshaped 2D input, but unfold alone cannot replicate frame semantics. Use torch.nn.functional.unfold only on batched 2D/4D inputs with proper reshape."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            9152
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 180,
+        "pad_end": false
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            9152
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          1,
+          512
+        ],
+        "stride": [
+          1,
+          180
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: \"im2col_out_cpu\" not implemented for 'Int'",
+        "comparison_error": null,
+        "tf_shape": [
+          49,
+          512
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch unfold does not support int32 dtype (fails with 'im2col_out_cpu' not implemented for 'Int'); tf.signal.frame supports int32 but PyTorch equivalent requires float. Repair: cast input to float32 in both frameworks; also unfold expects 4D input with C=1, but frame operates on 1D — reshape signal to [1,1,1,9152] for unfold and adjust kernel/stride accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            9152
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 512,
+        "frame_step": 180,
+        "pad_end": false
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            9152
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          512
+        ],
+        "stride": [
+          1,
+          180
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(49, 512) vs PT=(1, 512, 49)",
+        "tf_shape": [
+          49,
+          512
+        ],
+        "pytorch_shape": [
+          1,
+          512,
+          49
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "tf.signal.frame输出形状为[frames, frame_length]，而torch.nn.functional.unfold在4D输入下输出为[N, C*kernel_size[0]*kernel_size[1], L]，需调整PyTorch输入维度和参数映射：将信号展平为2D [1, 9152]，使用unfold后转置并reshape为[frames, 512]；同时确保frame_step=180对应stride[1]=180，kernel_size[1]=512，且需匹配pad_end=false逻辑（无padding）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            9152
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 512,
+        "frame_step": 180,
+        "pad_end": false
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            9152
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          512
+        ],
+        "stride": [
+          1,
+          180
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(49, 512) vs PT=(1, 512, 49)",
+        "tf_shape": [
+          49,
+          512
+        ],
+        "pytorch_shape": [
+          1,
+          512,
+          49
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "signal": {
+          "shape": [
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 192,
+        "pad_end": true,
+        "pad_value": 0,
+        "api": "tf.signal.frame"
+      },
+      "pytorch_test_case": {
+        "signal": {
+          "shape": [
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 192,
+        "pad_end": true,
+        "pad_value": 0,
+        "api": "torch.nn.functional.unfold"
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'signal'",
+        "comparison_error": null,
+        "tf_shape": [
+          53,
+          512
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.nn.functional.unfold does not accept 'signal', 'frame_length', 'frame_step', 'pad_end', or 'pad_value' parameters; it operates on NCHW tensors with kernel_size and dilation, requiring input reshaping and padding logic to emulate tf.signal.frame. The correct PyTorch equivalent is torch.nn.functional.unfold only for 2D+ tensors with manual 1D-to-2D expansion and zero-padding — so we replace with torch.stft + manual framing or use torch.nn.Unfold after unsqueeze(0). Here, we repair by switching to torch.nn.Unfold (class-based) with proper input reshaping: reshape [10000] → [1, 1, 1, 10000], then unfold with kernel_size=(1,512), stride=(1,192), and manual padding before unfold to match pad_end=True."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 192,
+        "pad_end": true,
+        "pad_value": 0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.Unfold",
+        "input_shape": [
+          1,
+          1,
+          1,
+          10000
+        ],
+        "dtype": "int32",
+        "kernel_size": [
+          1,
+          512
+        ],
+        "stride": [
+          1,
+          192
+        ],
+        "padding": 0,
+        "pad_end": true,
+        "pad_value": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'input_shape'",
+        "comparison_error": null,
+        "tf_shape": [
+          53,
+          512
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.nn.functional.unfold does not accept 'input_shape', 'pad_end', or 'pad_value' — it operates on existing tensors and requires manual padding. tf.signal.frame's pad_end/pad_value must be emulated via torch.nn.functional.pad before unfold. Also, unfold expects 4D input (N,C,H,W), so 1D signal [10000] must be reshaped to [1,1,1,10000], and padding logic must be implemented separately."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 192,
+        "pad_end": true,
+        "pad_value": 0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          1,
+          512
+        ],
+        "stride": [
+          1,
+          192
+        ],
+        "padding": 0,
+        "pad_end": true,
+        "pad_value": 0,
+        "manual_padding_required": true
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'pad_end'",
+        "comparison_error": null,
+        "tf_shape": [
+          53,
+          512
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch unfold does not support pad_end or pad_value; manual padding is required before calling unfold to emulate tf.signal.frame's pad_end=True behavior. The current PyTorch test case incorrectly passes unsupported kwargs."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 512,
+        "frame_step": 192,
+        "pad_end": true,
+        "pad_value": 0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            10000
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          1,
+          512
+        ],
+        "stride": [
+          1,
+          192
+        ],
+        "padding": 0,
+        "manual_padding_required": true,
+        "pad_end_equivalent_length": 10000,
+        "frame_length": 512,
+        "frame_step": 192,
+        "pad_value": 0
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'manual_padding_required'",
+        "comparison_error": null,
+        "tf_shape": [
+          53,
+          512
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "signal": {
+          "shape": [
+            0
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 2,
+        "frame_step": 1,
+        "pad_end": true,
+        "pad_value": 99,
+        "api": "tf.signal.frame"
+      },
+      "pytorch_test_case": {
+        "signal": {
+          "shape": [
+            0
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 2,
+        "frame_step": 1,
+        "pad_end": true,
+        "pad_value": 99,
+        "api": "torch.nn.functional.unfold"
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'signal'",
+        "comparison_error": null,
+        "tf_shape": [
+          0,
+          2
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch unfold does not accept 'signal', 'pad_end', or 'pad_value' parameters; it operates on NCHW tensors with kernel_size and dilation, requiring manual padding. tf.signal.frame is audio-specific (1D sliding window), while unfold is for convolutional patches (2D+). They are functionally non-equivalent for 1D sequence framing."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 0.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          3
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          1
+        ],
+        "stride": [
+          1,
+          2
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(4, 3) vs PT=(3, 4)",
+        "tf_shape": [
+          4,
+          3
+        ],
+        "pytorch_shape": [
+          3,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "tf.signal.frame和torch.nn.functional.unfold语义不等价：前者沿1D信号轴切帧，输出形状为[frames, frame_length]；后者是2D卷积展开，需匹配输入维度（N,C,H,W）且padding/stride行为不同。PyTorch用例错误地将1D信号嵌入3D张量并使用2D unfold，导致形状错位。应改用torch.stft或手动滑动窗口，但无直接等价API，故修复为更合理的torch.nn.functional.unfold等效构造：将信号reshape为[1,1,1,8]，kernel_size=[1,3]，stride=[1,2]，padding=[0,1]对应pad_end=True，但需调整输出view以匹配TF的[frames,frame_length]顺序。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 0.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          3
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          1
+        ],
+        "stride": [
+          1,
+          2
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(4, 3) vs PT=(1, 3, 4)",
+        "tf_shape": [
+          4,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "tf.signal.frame和torch.nn.functional.unfold语义不等价：前者是1D滑动窗口分帧（输出[frames, frame_length]），后者是4D张量的局部提取（需匹配NCHW布局且padding/stride语义不同）。PyTorch用例错误地将1D信号嵌入4D并使用unfold，应改用torch.stft或自定义unfold_1d；但stft不支持任意frame_step/pad_end，故最接近等价的是torch.nn.Unfold配合reshape，需调整输入为2D[N,1]、kernel_size=[1,3]、stride=[1,2]、padding=[0,1]后展平。当前PT用例shape[1,1,1,8]导致输出(1,3,4)，而TF输出(4,3)，需统一为2D输入并修正padding逻辑。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            8
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 0.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          3
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          1
+        ],
+        "stride": [
+          1,
+          2
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(4, 3) vs PT=(1, 3, 4)",
+        "tf_shape": [
+          4,
+          3
+        ],
+        "pytorch_shape": [
+          1,
+          3,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "signal": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99,
+        "api": "tf.signal.frame"
+      },
+      "pytorch_test_case": {
+        "signal": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99,
+        "api": "torch.nn.functional.unfold"
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'signal'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch unfold does not accept 'signal', 'frame_length', 'frame_step', 'pad_end', or 'pad_value' — it requires 'input', 'kernel_size', 'dilation', 'padding', 'stride'. tf.signal.frame is for 1D framing (e.g., audio), while unfold is for sliding windows on 2D/3D tensors (e.g., image patches). They are not semantically equivalent; correct PyTorch equivalent is torch.unfold (1D) or manual padding + unfold, but torch.nn.functional.unfold only supports 4D input. Repair: use torch.Tensor.unfold (not functional) with proper dim=1, size=3, step=2, and manual padding."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99
+      },
+      "pytorch_test_case": {
+        "api": "torch.Tensor.unfold",
+        "input": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "dimension": 1,
+        "size": 3,
+        "step": 2
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'dimension'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.nn.functional.unfold does not accept 'dimension' argument; it only supports 4D input (N,C,H,W) and unfolds along spatial dimensions. torch.Tensor.unfold is the correct equivalent but requires manual padding for pad_end=True. The error 'unexpected keyword argument dimension' occurs because unfold() method signature differs — it's tensor.unfold(dimension, size, step), not functional.unfold. Also, dtype int32 is unsupported for unfold in PyTorch (requires float)."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99
+      },
+      "pytorch_test_case": {
+        "api": "torch.Tensor.unfold",
+        "input": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "dimension": 1,
+        "size": 3,
+        "step": 2
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'dimension'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.nn.functional.unfold does not accept 'dimension' argument; it only supports 4D input (N,C,H,W) and unfolds along spatial dimensions. torch.Tensor.unfold is the correct equivalent but requires manual padding for pad_end=True, and uses 'size'/'step', not 'frame_length'/'frame_step'. Also, dtype 'int32' is unsupported in unfold — must use float or double."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.Tensor.unfold",
+        "input": {
+          "shape": [
+            2,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "dimension": 1,
+        "size": 3,
+        "step": 2
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'dimension'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "signal": {
+          "shape": [
+            2,
+            1,
+            3,
+            1,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99,
+        "api": "tf.signal.frame"
+      },
+      "pytorch_test_case": {
+        "signal": {
+          "shape": [
+            2,
+            1,
+            3,
+            1,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99,
+        "api": "torch.nn.functional.unfold"
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "TypeError: unfold() got an unexpected keyword argument 'signal'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          1,
+          3,
+          1,
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.nn.functional.unfold does not accept 'signal', 'frame_length', 'frame_step', 'pad_end', or 'pad_value' parameters; it requires 'input', 'kernel_size', 'dilation', 'padding', 'stride'. tf.signal.frame is for 1D framing with padding, while unfold is for sliding windows on 2D/3D tensors. They are not direct equivalents. Correct PyTorch equivalent is torch.nn.Unfold (with manual padding) or custom framing; we repair by mapping to torch.nn.Unfold + torch.nn.functional.pad."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            2,
+            1,
+            3,
+            1,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            2,
+            1,
+            1,
+            6
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          1,
+          3
+        ],
+        "stride": [
+          1,
+          2
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": "RuntimeError: \"im2col_out_cpu\" not implemented for 'Int'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          1,
+          3,
+          1,
+          3,
+          3
+        ],
+        "pytorch_shape": null,
+        "tf_dtype": "<dtype: 'int32'>",
+        "pytorch_dtype": null,
+        "status": "pytorch_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch unfold does not support int32 dtype (causes 'im2col_out_cpu not implemented for Int' error); tf.signal.frame supports int32 but PyTorch equivalent requires float dtype. Repair: change dtype to float32 in both frameworks and adjust input shape to match tf.signal.frame's 5D signal semantics — tf.signal.frame operates on arbitrary-rank tensors with frame axis, while unfold expects 4D NCHW; we must reshape [2,1,3,1,6] to [2,3,1,6] and treat channel dim as feature, aligning frame_length=3 along last dim via kernel_size=[1,3]."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.signal.frame",
+        "signal": {
+          "shape": [
+            2,
+            1,
+            3,
+            1,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "frame_length": 3,
+        "frame_step": 2,
+        "pad_end": true,
+        "pad_value": 99.0
+      },
+      "pytorch_test_case": {
+        "api": "torch.nn.functional.unfold",
+        "input": {
+          "shape": [
+            2,
+            3,
+            1,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          1,
+          3
+        ],
+        "stride": [
+          1,
+          2
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ]
+      },
+      "execution_result": {
+        "tf_api": "tf.signal.frame",
+        "pytorch_api": "torch.nn.functional.unfold",
+        "tf_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "pytorch_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 1, 3, 1, 3, 3) vs PT=(2, 9, 2)",
+        "tf_shape": [
+          2,
+          1,
+          3,
+          1,
+          3,
+          3
+        ],
+        "pytorch_shape": [
+          2,
+          9,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "tf.signal.frame和torch.nn.functional.unfold功能不等价：前者是通用信号分帧（支持任意轴、padding、非卷积语义），后者是2D卷积展开操作，要求输入为4D(N,C,H,W)且仅作用于空间维度；二者参数语义、轴对齐方式、padding行为均不同，无法构造语义一致的等价测试用例。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    }
+  ]
+}

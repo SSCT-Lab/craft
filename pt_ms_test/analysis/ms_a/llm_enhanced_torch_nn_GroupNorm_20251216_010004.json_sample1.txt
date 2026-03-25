@@ -1,0 +1,61 @@
+来源文件: llm_enhanced_torch_nn_GroupNorm_20251216_010004.json
+样例编号: 1
+mindspore_error 错误信息: For GroupNorm, shape of weight and bias should be equal to input_x's channel dimension: 3, bug got shape: [const vector]{6}.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//group_norm.cc:178 mindspore::ops::GroupNormFuncImpl::InferShape
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.7767624855041504,
+      1.1534233093261719,
+      -0.030589347705245018,
+      0.39799025654792786,
+      -0.6520394682884216,
+      0.1407117396593094
+    ]
+  },
+  "num_groups": 1,
+  "num_channels": 6,
+  "api": "torch.nn.GroupNorm"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.7767624855041504,
+      1.1534233093261719,
+      -0.030589347705245018,
+      0.39799025654792786,
+      -0.6520394682884216,
+      0.1407117396593094
+    ]
+  },
+  "num_groups": 1,
+  "num_channels": 6,
+  "api": "torch.nn.GroupNorm"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `GroupNorm` 要求 weight 和 bias 的形状必须与输入张量的通道数（channel dimension）一致，即应为 `[3]`（因为输入 shape 为 `[2, 3]`，通道维度为 3），但实际传入的是 `[6]`，说明其内部将 `num_channels=6` 错误地当作 weight/bias 的长度。
+   - 根据 PyTorch 官方文档，`num_channels` 是输入通道总数，而 `num_groups` 决定分组方式。在当前配置中，`num_groups=1`，`num_channels=6`，意味着输入应有 6 个通道，但测试用例输入却只有 3 个通道（shape=[2,3]），这与参数设置严重不匹配，导致 MindSpore 在推断时认为 channel 维度是 3，但 weight 形状却期望为 6，从而报错。
+
+3. 修复建议：
+   - 此问题本质是框架对输入 shape 与 num_channels 的一致性校验比 PyTorch 更严格，且未正确处理“num_channels > input channels”场景，建议提交 issue 给 MindSpore 官方以统一行为或增强错误提示。

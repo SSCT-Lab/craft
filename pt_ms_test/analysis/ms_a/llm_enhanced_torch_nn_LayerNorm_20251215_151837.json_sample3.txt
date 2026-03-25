@@ -1,0 +1,61 @@
+来源文件: llm_enhanced_torch_nn_LayerNorm_20251215_151837.json
+样例编号: 3
+mindspore_error 错误信息: For 'LayerNorm', gamma or beta shape must match input shape, but got input shape: [const vector]{2, 3}, gamma shape: [const vector]{1024}, beta shape: [const vector]{1024}.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer/ops_func_impl//layer_norm_ext.cc:144 mindspore::ops::LayerNormExtFuncImpl::InferShape
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.838776171207428,
+      1.1310900449752808,
+      0.655087411403656,
+      -0.9334864020347595,
+      0.8666965961456299,
+      -2.1557037830352783
+    ]
+  },
+  "normalized_shape": 1024,
+  "eps": 1e-12,
+  "api": "torch.nn.LayerNorm"
+}
+
+【MindSpore 测试用例】
+{
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.838776171207428,
+      1.1310900449752808,
+      0.655087411403656,
+      -0.9334864020347595,
+      0.8666965961456299,
+      -2.1557037830352783
+    ]
+  },
+  "normalized_shape": 1024,
+  "eps": 1e-12,
+  "api": "torch.nn.LayerNorm"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `LayerNorm` 要求 `gamma`（weight）和 `beta`（bias）的形状必须与输入张量在归一化维度上的形状完全匹配，而当前输入形状为 `[2, 3]`，但 `normalized_shape=1024`，导致参数形状 [1024] 与输入 [2, 3] 不兼容。
+   - 根据 PyTorch 官方文档，`normalized_shape` 应表示要归一化的维度大小，且该维度应是输入张量的后缀部分。此处输入为 `[2, 3]`，最大维度仅为 3，却指定 `normalized_shape=1024`，明显超出输入维度范围，属于语义不一致的非法配置。尽管 PyTorch 可能容忍此情况（如通过广播或报错），但 MindSpore 更严格地校验了形状一致性，直接拒绝执行。
+
+3. 修复建议：
+   - 该问题反映的是两框架在 `LayerNorm` 参数形状合法性判断上的行为差异，建议提交 issue 给 MindSpore 官方，说明其对 `normalized_shape` 的校验过于严格，应与 PyTorch 保持一致（如允许 `normalized_shape` 大于输入维度时自动按后缀对齐）。

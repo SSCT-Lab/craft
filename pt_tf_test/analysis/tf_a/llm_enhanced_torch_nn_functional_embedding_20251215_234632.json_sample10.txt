@@ -1,0 +1,94 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_20251215_234632.json
+样例编号: 10
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,0] = -9 is not in [0, 1026) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding",
+  "input": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      2,
+      -4,
+      1,
+      -7
+    ]
+  },
+  "weight": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.042029086500406265,
+      -1.2311254739761353,
+      -0.32529640197753906,
+      0.404723197221756,
+      0.16045081615447998,
+      1.0855244398117065,
+      0.027350744232535362,
+      -1.056087851524353,
+      0.29972848296165466,
+      -1.0069550275802612
+    ]
+  },
+  "padding_idx": 1,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "sparse": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.4219590425491333,
+      0.35633549094200134,
+      1.3218703269958496,
+      1.1182255744934082,
+      0.6248327493667603,
+      -0.8095602989196777,
+      -1.7916555404663086,
+      0.915092408657074,
+      -0.5035890936851501,
+      0.5733716487884521
+    ]
+  },
+  "ids": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -9,
+      8,
+      -5,
+      -3,
+      3
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求输入索引（`ids`）必须在 `[0, vocab_size)` 范围内，且不支持负索引。错误信息中 `indices[0,0] = -9` 明确违反了该限制，导致执行失败。
+   - 虽然 PyTorch 的 `torch.nn.functional.embedding` 允许负索引（如 `-4`, `-7`），并将其解释为“未定义”或通过 `padding_idx` 机制处理，但 TensorFlow 并无等效的容错机制，直接拒绝负索引。
+
+3. 修复建议：
+   - 由于 TensorFlow 严格校验索引合法性而 PyTorch 不同，此为框架行为差异，不建议提交 issue；应确保测试用例中索引非负，或在映射时对负值做预处理（如偏移映射）。

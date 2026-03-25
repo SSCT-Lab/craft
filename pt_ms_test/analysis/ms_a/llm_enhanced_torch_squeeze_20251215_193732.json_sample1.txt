@@ -1,0 +1,54 @@
+来源文件: llm_enhanced_torch_squeeze_20251215_193732.json
+样例编号: 1
+mindspore_error 错误信息: Failed calling Squeeze with "Squeeze(axis=None)(input=Tensor)".
+The valid calling should be: 
+"Squeeze(axis=<int, tuple of int>)(input=<Tensor>)".
+
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ccsrc\pynative\pynative_utils.cc:1116 mindspore::pynative::PyNativeAlgo::PyParser::PrintTypeCastError
+
+【PyTorch 测试用例】
+{
+  "api": "torch.squeeze",
+  "input": {
+    "shape": [
+      3,
+      1,
+      1,
+      0,
+      7
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dim": null
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.squeeze",
+  "input": {
+    "shape": [
+      3,
+      1,
+      1,
+      0,
+      7
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dim": null
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `mindspore.mint.squeeze` 要求 `dim` 参数必须为 `int` 或 `tuple(int)`，且不能为 `None`；而本样例中传入的 `dim: null` 在 MindSpore 中等价于 `None`，违反了参数类型约束。  
+   - 更关键的是，当输入张量包含大小为 0 的维度（如 `shape=[3, 1, 1, 0, 7]`）时，MindSpore 在动态图模式下对 `squeeze` 的处理存在未明确支持的行为，尤其在涉及零维维度时可能触发底层算子校验失败，导致执行异常。
+
+3. 修复建议：  
+   - 该问题反映的是框架对含零维度形状的 `squeeze` 操作处理不一致，建议提交 issue 至 MindSpore 官方仓库，指出在 `dim=None` 且输入包含 0 维时应更严格地处理或给出清晰错误提示。

@@ -1,0 +1,104 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_20251215_234632.json
+样例编号: 6
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,3] = -7 is not in [0, 1026) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding",
+  "input": {
+    "shape": [
+      1,
+      11
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      -10,
+      1,
+      8,
+      -2,
+      6,
+      -2,
+      4,
+      -5,
+      -10
+    ]
+  },
+  "weight": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.15751028060913086,
+      -0.0737541988492012,
+      -1.864844799041748,
+      0.38435429334640503,
+      -0.703942596912384,
+      -1.5944730043411255,
+      0.1836913526058197,
+      -0.6362245082855225,
+      1.9101864099502563,
+      2.0512003898620605
+    ]
+  },
+  "padding_idx": 1,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "sparse": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      2.0532166957855225,
+      1.4569706916809082,
+      -0.7613360285758972,
+      0.05119156092405319,
+      0.8184179067611694,
+      -0.9334505200386047,
+      0.5545310378074646,
+      1.0044360160827637,
+      -0.6424736380577087,
+      -0.2506924271583557
+    ]
+  },
+  "ids": {
+    "shape": [
+      1,
+      11
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      8,
+      5,
+      3,
+      -7,
+      8,
+      -8,
+      4,
+      -8,
+      -1,
+      -9
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求输入索引（`ids`）中的每个值必须在 `[0, num_embeddings)` 范围内，否则会抛出 `indices[0,3] = -7 is not in [0, 1026)` 错误。而 PyTorch 的 `torch.nn.functional.embedding` 允许负索引（如 -7），并将其视为“未定义”或“忽略”，但不会直接报错（除非设置了 `padding_idx` 且该负值匹配）。  
+   - 两者对负索引的处理策略不同：PyTorch 可容忍负索引（尤其当未显式设置 `padding_idx` 时），而 TensorFlow 严格要求索引非负且在范围内。
+
+3. 修复建议：  
+   - 由于该行为差异属于框架设计层面的语义不一致，且 TensorFlow 明确限制索引范围，建议在跨框架映射时增加预处理逻辑，将负索引转换为有效索引或显式屏蔽（如替换为 `padding_idx`），而非直接传递至 TensorFlow。

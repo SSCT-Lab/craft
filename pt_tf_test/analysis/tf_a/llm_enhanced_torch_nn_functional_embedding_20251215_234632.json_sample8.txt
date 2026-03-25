@@ -1,0 +1,104 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_20251215_234632.json
+样例编号: 8
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,1] = -6 is not in [0, 1026) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding",
+  "input": {
+    "shape": [
+      1,
+      11
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -6,
+      -10,
+      7,
+      -8,
+      7,
+      4,
+      -7,
+      -3,
+      -8,
+      -8
+    ]
+  },
+  "weight": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.33400779962539673,
+      -0.5999682545661926,
+      1.762440800666809,
+      0.8492729067802429,
+      0.968211829662323,
+      0.00927802175283432,
+      0.9549400806427002,
+      0.4264530539512634,
+      -0.044267311692237854,
+      0.053977660834789276
+    ]
+  },
+  "padding_idx": 1,
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "sparse": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      1026,
+      1024
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.23989349603652954,
+      1.5852391719818115,
+      0.4269464313983917,
+      0.758055567741394,
+      -1.5445314645767212,
+      -0.6936057209968567,
+      -0.46149349212646484,
+      -2.888301372528076,
+      2.3554434776306152,
+      -0.04523712396621704
+    ]
+  },
+  "ids": {
+    "shape": [
+      1,
+      11
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      4,
+      -6,
+      1,
+      5,
+      5,
+      -2,
+      0,
+      4,
+      -7,
+      -6
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.embedding_lookup` 要求输入的 `ids` 必须为非负整数索引，且在 `[0, num_embeddings)` 范围内。错误信息中 `indices[0,1] = -6` 明确指出存在负值索引，而 TensorFlow 严格禁止此类输入，会直接抛出 `GatherV2` Op 错误。
+   - 相比之下，PyTorch 的 `torch.nn.functional.embedding` 允许负索引（如 -6），并将其视为“未定义”或“填充”行为（若设置了 `padding_idx` 则可处理，否则仍会报错或产生无效输出），但其内部实现对负索引的处理方式与 TensorFlow 不同，导致行为不一致。
+
+3. 修复建议：
+   - 该问题属于框架间对负索引处理的语义差异，建议提交 issue 给 TensorFlow 官方，说明其 `embedding_lookup` 对负索引的强制限制与 PyTorch 不一致，可能影响模型迁移兼容性。

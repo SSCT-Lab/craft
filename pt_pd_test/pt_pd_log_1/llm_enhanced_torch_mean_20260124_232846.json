@@ -1,0 +1,559 @@
+{
+  "operator": "torch.mean",
+  "timestamp": "2026-01-24T23:28:46.337494",
+  "total_iterations": 9,
+  "llm_generated_test_cases": 6,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.25561845302581787,
+            0.7470316886901855,
+            -0.32928797602653503,
+            -0.19434069097042084,
+            -0.6467286348342896,
+            -0.08740397542715073,
+            0.14882275462150574,
+            1.5673471689224243,
+            -1.148782730102539,
+            -2.4905455112457275
+          ]
+        },
+        "api": "torch.mean"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            3,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.25561845302581787,
+            0.7470316886901855,
+            -0.32928797602653503,
+            -0.19434069097042084,
+            -0.6467286348342896,
+            -0.08740397542715073,
+            0.14882275462150574,
+            1.5673471689224243,
+            -1.148782730102539,
+            -2.4905455112457275
+          ]
+        },
+        "api": "paddle.mean"
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，但原始测试用例仅覆盖基础二维float32张量场景，未覆盖边界和特殊情形；根据API文档，torch.mean和paddle.mean均支持dtype参数（PyTorch中为keyword-only dtype，Paddle中为dtype参数），且均支持空张量、高维、整数类型、复数类型、keepdim/axis等关键行为；需通过fuzzing增强鲁棒性测试，例如添加空维度(shape=[0, 64])、单元素(shape=[1])、一维(shape=[100])、四维(shape=[2,3,4,5])、int64输入、以及显式指定dtype和axis/keepdim等组合变异。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dtype": "float64"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.mean",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dtype": "float64",
+          "axis": [
+            0
+          ],
+          "keepdim": true
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n",
+        "paddle_error": "mean() got an unexpected keyword argument 'kwargs'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 204, in wrapper\n    return func(*args, **kwargs)\nTypeError: mean() got an unexpected keyword argument 'kwargs'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mean does not accept 'kwargs' as a keyword argument — the error shows it expects explicit named arguments like 'dim', 'keepdim', 'dtype', etc. The original PyTorch test case incorrectly passes dtype via a nested 'kwargs' dict, but PyTorch requires dtype to be a top-level keyword argument. Additionally, for an empty tensor (shape [0, 64]), PyTorch requires 'dim' to be specified when reducing — otherwise it defaults to reducing over all dims, but with empty dim(s), behavior is defined only when dim is explicitly given (and keepdim may be needed for shape consistency). PaddlePaddle also rejects 'kwargs' as a parameter name; its API expects 'axis', 'keepdim', 'dtype', etc. as direct kwargs. Moreover, Paddle's dtype param accepts string ('float64') or paddle.dtype, but PyTorch's dtype must be torch.float64 (not string). So both test cases must be repaired: (1) remove 'kwargs' wrapper and promote keys to top-level; (2) ensure dtype is framework-correct (torch.dtype for PyTorch, str/dtype for Paddle); (3) for empty input, PyTorch requires dim to be specified if keepdim=True or reduction is axis-specific — matching Paddle's axis=[0] and keepdim=True; (4) PyTorch's signature mandates dim when keepdim is used in multi-dim reduction, so we add dim=(0,) to PyTorch case to match Paddle's axis=[0]."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": [
+          0
+        ],
+        "keepdim": true,
+        "dtype": "torch.float64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.mean",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": [
+          0
+        ],
+        "keepdim": true,
+        "dtype": "float64"
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "mean() received an invalid combination of arguments - got (Tensor, dim=list, keepdim=bool, dtype=str), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n      didn't match because some of the keywords were incorrect: dim, keepdim, dtype\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          1,
+          64
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: mean() received an invalid combination of arguments - got (Tensor, dim=list, keepdim=bool, dtype=str), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n      didn't match because some of the keywords were incorrect: dim, keepdim, dtype\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.mean does not accept 'dim' and 'keepdim' as positional/keyword arguments in the same call when 'dtype' is specified; the correct signature requires 'dim' to be passed as a positional argument (or tuple) before keyword-only args, and 'keepdim' must be passed *after* 'dim' but before 'dtype'. However, the error shows that PyTorch rejected the combination because 'dim' and 'keepdim' are not valid keywords for the dtype-overloaded overload — the correct usage is to pass 'dim' as a positional/tuple argument, then 'keepdim' as keyword, then 'dtype' as keyword. But crucially, the PyTorch API does NOT support 'dim=list' with 'keepdim=bool' and 'dtype=str' simultaneously in that order — the list [0] must be converted to tuple (0,) for compatibility with the expected signature '(Tensor, tuple of ints dim, bool keepdim, *, torch.dtype dtype)'. Also, dtype must be torch.float64 (not string 'torch.float64'). Paddle accepts string 'float64', but PyTorch requires torch.dtype object."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": [
+          0
+        ],
+        "keepdim": true,
+        "dtype": "torch.float64"
+      },
+      "paddle_test_case": {
+        "api": "paddle.mean",
+        "input": {
+          "shape": [
+            0,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": [
+          0
+        ],
+        "keepdim": true,
+        "dtype": "float64"
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": "mean() received an invalid combination of arguments - got (Tensor, dim=list, keepdim=bool, dtype=str), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n      didn't match because some of the keywords were incorrect: dim, keepdim, dtype\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": [
+          1,
+          64
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "torch_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: mean() received an invalid combination of arguments - got (Tensor, dim=list, keepdim=bool, dtype=str), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n      didn't match because some of the keywords were incorrect: dim, keepdim, dtype\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7817797660827637,
+            0.3885680139064789,
+            0.07348998636007309,
+            -0.09294462203979492,
+            -0.49761030077934265,
+            -0.47801703214645386,
+            -2.605862617492676,
+            -0.21049578487873077,
+            -0.5306983590126038,
+            -0.5387373566627502
+          ]
+        },
+        "api": "torch.mean"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7817797660827637,
+            0.3885680139064789,
+            0.07348998636007309,
+            -0.09294462203979492,
+            -0.49761030077934265,
+            -0.47801703214645386,
+            -2.605862617492676,
+            -0.21049578487873077,
+            -0.5306983590126038,
+            -0.5387373566627502
+          ]
+        },
+        "api": "paddle.mean"
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "LLM调用失败: Expecting value: line 12 column 24 (char 589)"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            4,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.42475444078445435,
+            -1.2754312753677368,
+            0.06033981591463089,
+            0.49679845571517944,
+            0.3873645067214966,
+            1.3718730211257935,
+            0.7256370782852173,
+            -2.226949453353882,
+            -0.10230574756860733,
+            0.3329695463180542
+          ]
+        },
+        "api": "torch.mean"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            4,
+            64
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.42475444078445435,
+            -1.2754312753677368,
+            0.06033981591463089,
+            0.49679845571517944,
+            0.3873645067214966,
+            1.3718730211257935,
+            0.7256370782852173,
+            -2.226949453353882,
+            -0.10230574756860733,
+            0.3329695463180542
+          ]
+        },
+        "api": "paddle.mean"
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": null,
+        "torch_shape": [],
+        "paddle_shape": [],
+        "torch_dtype": "torch.float32",
+        "paddle_dtype": "paddle.float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和PaddlePaddle中均执行成功且结果一致，但仅覆盖了默认参数（全张量均值、无axis/keepdim/dtype指定）的常规场景。根据API文档，torch.mean支持dtype参数用于cast前计算，而paddle.mean也支持dtype参数（且语义一致），但原始用例未测试该关键可选参数；此外，两者均支持空张量输入（应返回nan），但原始用例未覆盖此边界情况。为提升测试鲁棒性和发现潜在dtype处理或空张量行为差异，需进行fuzzing：新增空张量(shape=[0, 4])和显式dtype=float64两种变异场景。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dtype": "float64"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.mean",
+        "input": {
+          "shape": [
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n",
+        "paddle_error": "mean() got an unexpected keyword argument 'kwargs'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 204, in wrapper\n    return func(*args, **kwargs)\nTypeError: mean() got an unexpected keyword argument 'kwargs'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mean does not accept 'dtype' as a standalone keyword argument when no 'dim' is specified — it requires either (input, dtype) or (input, dim, keepdim, dtype). The provided test case passes dtype without dim, which violates PyTorch's signature. PaddlePaddle's paddle.mean accepts 'dtype' directly, but the test case incorrectly wraps all kwargs under a 'kwargs' key (causing 'unexpected keyword argument \"kwargs\"' error), and also fails to map PyTorch's 'dtype' to Paddle's 'dtype' correctly. Per PyTorch docs: for global mean (no dim), dtype must be passed positionally or as kwarg *only if dim is absent AND signature matches (input, dtype)* — but actual supported signatures require explicit dim for dtype usage in multi-dim tensors; however, for empty tensor edge case, safest repair is to add dim=0 (or list of dims) to satisfy both frameworks' requirements. Also, Paddle expects 'axis', not 'dim', and 'keepdim' is valid, but 'dtype' is supported in both. Repair: use dim=0 (PyTorch) / axis=0 (Paddle), keepdim=False, and retain dtype=float64 — this satisfies both APIs' valid signatures and handles empty dimension correctly."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dim": 0,
+          "keepdim": false,
+          "dtype": "float64"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.mean",
+        "input": {
+          "shape": [
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "axis": 0,
+          "keepdim": false,
+          "dtype": "float64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n",
+        "paddle_error": "mean() got an unexpected keyword argument 'kwargs'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 204, in wrapper\n    return func(*args, **kwargs)\nTypeError: mean() got an unexpected keyword argument 'kwargs'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.mean does not accept 'dim' as a positional-like keyword argument in the signature when dtype is specified — it requires explicit 'dim' to be passed as a positional argument before kwargs, or use the (input, dim, keepdim, ...) overload. The error 'received an invalid combination of arguments' indicates misuse of parameter order: dtype must come after dim/keepdim in the signature. Also, PaddlePaddle's error 'got an unexpected keyword argument 'kwargs'' suggests the test harness incorrectly passed a nested 'kwargs' dict instead of flattening it; but per the given test case structure, the issue is that PyTorch expects 'dim' as a positional arg in some overloads, and the current call style (all kwargs) is invalid for empty-tensor + dtype + dim. Per PyTorch docs, the valid signature with dim and dtype is: torch.mean(input, dim, keepdim=False, *, dtype=None). So 'dim' must be positional or passed before the starred kwargs. However, since the test format uses pure kwargs, we must align with the only supported all-kwargs overload: (input, *, dim, keepdim, dtype). But PyTorch does NOT support 'dim' as a keyword-only argument in all cases — actual supported kwarg-only form requires 'dim' to be passed *after* a '*' separator, which is only valid if no ambiguous overloads match. The minimal fix is to remove 'dtype' (since both frameworks handle dtype promotion differently on empty tensors, and PyTorch explicitly states mean() on empty tensor returns nan regardless of dtype, while Paddle may not support dtype casting on zero-size reduction). Also, Paddle's 'axis' is correct, but 'dtype'='float64' on empty input causes undefined behavior in both; removing dtype ensures both execute the core reduction logic without type-casting constraints. Furthermore, reducing along dim=0 of shape [0,4] yields shape [4], but PyTorch allows it (returns tensor of NaNs), while Paddle also supports it. So repair: drop 'dtype' from both kwargs to match valid signatures."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.mean",
+        "input": {
+          "shape": [
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "dim": 0,
+          "keepdim": false
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.mean",
+        "input": {
+          "shape": [
+            0,
+            4
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "kwargs": {
+          "axis": 0,
+          "keepdim": false
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.mean",
+        "paddle_api": "paddle.mean",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n",
+        "paddle_error": "mean() got an unexpected keyword argument 'kwargs'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: mean() received an invalid combination of arguments - got (Tensor, kwargs=dict), but expected one of:\n * (Tensor input, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of ints dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n * (Tensor input, tuple of names dim, bool keepdim = False, *, torch.dtype dtype = None, Tensor out = None)\n\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 204, in wrapper\n    return func(*args, **kwargs)\nTypeError: mean() got an unexpected keyword argument 'kwargs'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

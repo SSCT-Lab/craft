@@ -1,0 +1,823 @@
+{
+  "operator": "torch.nn.Dropout",
+  "timestamp": "2026-01-26T02:36:28.905793",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 5,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.4361298084259033,
+            -0.24530060589313507,
+            -1.0108044147491455,
+            0.6106566190719604,
+            -0.40618962049484253,
+            0.6096389889717102
+          ]
+        },
+        "p": 0.2,
+        "api": "torch.nn.Dropout"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.4361298084259033,
+            -0.24530060589313507,
+            -1.0108044147491455,
+            0.6106566190719604,
+            -0.40618962049484253,
+            0.6096389889717102
+          ]
+        },
+        "p": 0.2,
+        "api": "mindspore.nn.Dropout"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 0.35903239250183105",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's Dropout uses 'p' as drop probability (fraction of elements set to zero), while MindSpore's Dropout also uses 'p' with same semantics — however, the numerical inconsistency (max diff 0.359) indicates missing training mode synchronization: Dropout is stochastic and only active during training; both frameworks require explicit train mode enablement for non-deterministic behavior to align. The original test cases omit setting model to training mode, leading to PyTorch defaulting to train=True (if not explicitly set via .eval()) but MindSpore requiring explicit net.set_train(True). Without this, MindSpore may run in eval mode (no dropout applied), causing deterministic output vs PyTorch's stochastic output — resulting in large numerical mismatch. Repair: add explicit training mode activation in both frameworks and ensure same random seed for reproducibility."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8874930739402771,
+            0.3713320791721344,
+            -0.1559523344039917,
+            -0.22847287356853485,
+            -0.35002774000167847,
+            0.9907121062278748
+          ]
+        },
+        "p": 0.2,
+        "train_mode": true,
+        "seed": 42
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8874930739402771,
+            0.3713320791721344,
+            -0.1559523344039917,
+            -0.22847287356853485,
+            -0.35002774000167847,
+            0.9907121062278748
+          ]
+        },
+        "p": 0.2,
+        "train_mode": true,
+        "seed": 42
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": "_DropoutNd.__init__() got an unexpected keyword argument 'train_mode'",
+        "mindspore_error": "Dropout.__init__() got an unexpected keyword argument 'train_mode'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": null,
+        "torch_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 625, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: _DropoutNd.__init__() got an unexpected keyword argument 'train_mode'\n",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 664, in execute_test_case\n    mindspore_instance = mindspore_func(**init_kwargs)\nTypeError: Dropout.__init__() got an unexpected keyword argument 'train_mode'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and MindSpore Dropout constructors do not accept 'train_mode' as an init argument. In PyTorch, training/inference mode is controlled via module.train()/module.eval() or torch.is_grad_enabled(), not via constructor. In MindSpore, training mode is set via net.set_train() after construction, not in __init__. The 'train_mode' parameter is invalid for both APIs and must be removed. Additionally, MindSpore's Dropout requires explicit dtype handling and supports only float16/float32; PyTorch accepts float32 by default. Also, MindSpore's 'p' parameter must be in [0, 1), and PyTorch's 'p' is in [0, 1], but both accept 0.2. Seed control is framework-specific: PyTorch uses torch.manual_seed() externally, not in Dropout init; MindSpore does not expose seed in Dropout init either. Thus, 'seed' and 'train_mode' must be removed from both test cases, and MindSpore test case must ensure proper dtype (mstype.float32) is used internally — but since the test case only specifies input dtype as string 'float32', it's acceptable as long as the test harness maps it correctly. The core fix is removing unsupported 'train_mode' and 'seed' args from constructor calls."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8960370421409607,
+            -0.5677884817123413,
+            0.5063695311546326,
+            -0.07135357707738876,
+            -0.911549985408783,
+            1.5181442499160767
+          ]
+        },
+        "p": 0.2
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8960370421409607,
+            -0.5677884817123413,
+            0.5063695311546326,
+            -0.07135357707738876,
+            -0.911549985408783,
+            1.5181442499160767
+          ]
+        },
+        "p": 0.2
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1.5181442499160767",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's Dropout uses 'p' as drop probability (fraction of elements set to zero), while MindSpore's Dropout also uses 'p' with same semantics — however, the documented behavior states that MindSpore scales output by 1/(1-p) during training, and PyTorch does the same (inverted dropout). The numerical mismatch (max diff ~1.52) is not due to precision error (1e-3 tolerance violated), but because the test cases lack explicit training mode control: both frameworks only apply dropout stochastically *during training*, and default to evaluation mode (no dropout applied) unless explicitly set. The original test cases do not call .train() / set_train(), so PyTorch returns input unchanged, while MindSpore — depending on internal default state — may behave inconsistently. Per docs: PyTorch requires torch.nn.Dropout to be in training mode (via model.train() or dropout.train()); MindSpore requires net.set_train(). Without this, dropout is disabled in both, but uninitialized/undefined behavior or framework-specific defaults may cause divergence. To ensure semantic equivalence, we must enforce training mode and use deterministic seeding for reproducible stochastic behavior. Also, MindSpore's Dropout requires explicit dtype specification matching input, and 'p' must be float (not int); though 0.2 is valid, mode control is the root cause."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.07828968018293381,
+            -0.10119673609733582,
+            -1.2457832098007202,
+            -0.2833438217639923,
+            0.9404425024986267,
+            0.11663460731506348
+          ]
+        },
+        "p": 0.2,
+        "training_mode": true
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.07828968018293381,
+            -0.10119673609733582,
+            -1.2457832098007202,
+            -0.2833438217639923,
+            0.9404425024986267,
+            0.11663460731506348
+          ]
+        },
+        "p": 0.2,
+        "training_mode": true
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": "_DropoutNd.__init__() got an unexpected keyword argument 'training_mode'",
+        "mindspore_error": "Dropout.__init__() got an unexpected keyword argument 'training_mode'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": null,
+        "torch_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 625, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: _DropoutNd.__init__() got an unexpected keyword argument 'training_mode'\n",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 664, in execute_test_case\n    mindspore_instance = mindspore_func(**init_kwargs)\nTypeError: Dropout.__init__() got an unexpected keyword argument 'training_mode'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6380546689033508,
+            2.0834550857543945,
+            -0.4022490978240967,
+            -0.12018216401338577,
+            -1.5970337390899658,
+            0.4500639736652374
+          ]
+        },
+        "p": 0.5,
+        "api": "torch.nn.Dropout"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6380546689033508,
+            2.0834550857543945,
+            -0.4022490978240967,
+            -0.12018216401338577,
+            -1.5970337390899658,
+            0.4500639736652374
+          ]
+        },
+        "p": 0.5,
+        "api": "mindspore.nn.Dropout"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2.0834550857543945",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's Dropout uses 'p' as drop probability (fraction of elements set to zero), while MindSpore's Dropout also uses 'p' with same semantics, but the observed numerical mismatch (max diff ~2.08) indicates non-deterministic behavior due to missing seed control and training mode mismatch. Both frameworks require explicit train/eval mode setting for dropout to behave consistently: PyTorch Dropout only applies dropout in training mode (requires torch.set_grad_enabled(True) and model.train()), whereas MindSpore Dropout requires net.set_train() to activate dropout; without it, MindSpore defaults to eval mode (no dropout applied). The original test cases omit mode configuration, causing functional divergence — PyTorch may run in default train mode (if grad enabled) while MindSpore runs in eval mode by default. To ensure semantic equivalence, both must be explicitly set to training mode and use identical random seeds."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1440594345331192,
+            -1.5072119235992432,
+            0.032287828624248505,
+            0.3580162227153778,
+            0.37219539284706116,
+            0.25928056240081787
+          ]
+        },
+        "p": 0.5,
+        "training": true,
+        "seed": 42
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1440594345331192,
+            -1.5072119235992432,
+            0.032287828624248505,
+            0.3580162227153778,
+            0.37219539284706116,
+            0.25928056240081787
+          ]
+        },
+        "p": 0.5,
+        "training": true,
+        "seed": 42
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": "_DropoutNd.__init__() got an unexpected keyword argument 'training'",
+        "mindspore_error": "Dropout.__init__() got an unexpected keyword argument 'training'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": null,
+        "torch_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 625, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: _DropoutNd.__init__() got an unexpected keyword argument 'training'\n",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 664, in execute_test_case\n    mindspore_instance = mindspore_func(**init_kwargs)\nTypeError: Dropout.__init__() got an unexpected keyword argument 'training'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and MindSpore Dropout constructors do not accept 'training' as an init argument — it is a runtime state controlled externally (e.g., via model.train()/model.eval() or net.set_train()). The 'training' flag in the test case is incorrectly passed to __init__. According to PyTorch docs, Dropout.__init__ only accepts 'p' and 'inplace'; MindSpore docs confirm Dropout.__init__ only accepts 'keep_prob', 'p', and 'dtype'. Therefore, 'training' must be removed from both constructors. Additionally, MindSpore requires explicit dtype mapping (e.g., 'float32' → mindspore.float32), but since the test case uses symbolic string 'dtype' for input spec (not actual tensor construction), only the constructor args need correction. Also, MindSpore deprecates 'keep_prob' and recommends 'p', which is already used; no change needed there. Finally, seed handling is framework-specific and not part of Dropout constructor — it should be managed via global RNG state (e.g., torch.manual_seed / mindspore.set_seed), so 'seed' must be removed from both test cases to avoid TypeError."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6267797350883484,
+            0.4327935576438904,
+            -2.118194103240967,
+            -0.29224449396133423,
+            -1.618582010269165,
+            0.973820149898529
+          ]
+        },
+        "p": 0.5
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6267797350883484,
+            0.4327935576438904,
+            -2.118194103240967,
+            -0.29224449396133423,
+            -1.618582010269165,
+            0.973820149898529
+          ]
+        },
+        "p": 0.5
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2.118194103240967",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功但结果不一致，最大差异为2.118，远超可容忍精度误差（1e-3）。根据文档，PyTorch Dropout默认训练模式下以概率p置零并缩放（除以1-p），MindSpore Dropout同样在训练模式下以概率p置零并乘以1/(1-p)，理论上行为一致。但实际数值差异巨大，表明原始测试未显式设置训练/评估模式，导致PyTorch默认eval（无dropout），而MindSpore测试中可能调用了set_train()或默认行为不同；然而原始用例未指定mode，且文档未明确默认mode，因此需通过变异引入显式训练模式控制，并覆盖边界p值（如p=0.0、p=0.99）和不同形状（如1D、4D、batch=1）以验证行为一致性及发现潜在实现偏差。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6257092952728271,
+            -0.11630268394947052,
+            0.5854348540306091,
+            1.2707703113555908,
+            0.5331423282623291,
+            0.37636783719062805
+          ]
+        },
+        "p": 0.5
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.6257092952728271,
+            -0.11630268394947052,
+            0.5854348540306091,
+            1.2707703113555908,
+            0.5331423282623291,
+            0.37636783719062805
+          ]
+        },
+        "p": 0.5
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1.2707703113555908",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.37227731943130493,
+            -1.5003067255020142,
+            -0.8910971879959106,
+            0.6306121349334717,
+            -0.4039935767650604,
+            0.8448912501335144
+          ]
+        },
+        "p": 0.5,
+        "api": "torch.nn.Dropout"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.37227731943130493,
+            -1.5003067255020142,
+            -0.8910971879959106,
+            0.6306121349334717,
+            -0.4039935767650604,
+            0.8448912501335144
+          ]
+        },
+        "p": 0.5,
+        "api": "mindspore.nn.Dropout"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 1.5003067255020142",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's Dropout uses 'p' as drop probability (0.5 means 50% dropped), while MindSpore's Dropout also uses 'p' with same semantics, but the observed large numerical discrepancy (max diff ~1.5) indicates non-deterministic behavior due to missing seed control and training mode mismatch. Both frameworks require explicit train/eval mode setting for dropout to behave consistently: PyTorch requires `model.train()` to activate dropout, and MindSpore requires `net.set_train()`; without this, PyTorch defaults to eval mode (no dropout), while MindSpore's default behavior may vary. Additionally, to ensure reproducibility and identical stochastic behavior, both must use the same random seed and be in training mode. The original test cases omit mode configuration and seed, causing inconsistent masking and scaling — PyTorch scales by 1/(1-p) during training, and MindSpore does too, but only when in training mode. Thus, repair involves adding explicit training mode activation and fixed seed."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.08830411732196808,
+            -0.7550795674324036,
+            1.5017573833465576,
+            0.3581084907054901,
+            0.11374382674694061,
+            -0.24219359457492828
+          ]
+        },
+        "p": 0.5,
+        "train_mode": true,
+        "seed": 42
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.08830411732196808,
+            -0.7550795674324036,
+            1.5017573833465576,
+            0.3581084907054901,
+            0.11374382674694061,
+            -0.24219359457492828
+          ]
+        },
+        "p": 0.5,
+        "train_mode": true,
+        "seed": 42
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "torch_error": "_DropoutNd.__init__() got an unexpected keyword argument 'train_mode'",
+        "mindspore_error": "Dropout.__init__() got an unexpected keyword argument 'train_mode'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "mindspore_shape": null,
+        "torch_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 625, in execute_test_case\n    torch_instance = torch_func(**init_kwargs)\nTypeError: _DropoutNd.__init__() got an unexpected keyword argument 'train_mode'\n",
+        "mindspore_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_ms_test\\llm_enhanced_compare.py\", line 664, in execute_test_case\n    mindspore_instance = mindspore_func(**init_kwargs)\nTypeError: Dropout.__init__() got an unexpected keyword argument 'train_mode'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both PyTorch and MindSpore Dropout constructors do not accept 'train_mode' as an init argument. In PyTorch, training/inference mode is controlled via module.train()/module.eval() or torch.is_grad_enabled(), not via constructor. In MindSpore, training mode is set via net.set_train(True/False) after construction — not passed to __init__. The 'train_mode' parameter is invalid for both APIs and must be removed. Additionally, MindSpore's Dropout requires explicit dtype handling (though default is float32), and seed control is not part of the layer constructor in either framework — it must be handled externally (e.g., via torch.manual_seed or mindspore.set_seed). Thus, the test case must be repaired by removing 'train_mode' and 'seed' from both constructors, and ensuring p is valid: PyTorch accepts p in [0,1), MindSpore accepts p in [0,1) — both support p=0.5. Input tensor generation (not construction) should handle seeding separately; it's not a Dropout constructor parameter."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07990240305662155,
+            -0.24142184853553772,
+            -0.07734934985637665,
+            0.2624063789844513,
+            -0.5919782519340515,
+            0.8820039629936218
+          ]
+        },
+        "p": 0.5
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07990240305662155,
+            -0.24142184853553772,
+            -0.07734934985637665,
+            0.2624063789844513,
+            -0.5919782519340515,
+            0.8820039629936218
+          ]
+        },
+        "p": 0.5
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": "数值不匹配，最大差异: 0.8820039629936218",
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功但结果不一致，最大差异为0.882，远超可容忍精度误差（1e-3）。根据文档分析：PyTorch Dropout zeroes elements with probability p and scales remaining elements by 1/(1-p) during training; MindSpore Dropout also zeroes with probability p and scales by 1/(1-p) — functionally equivalent. However, the observed large numerical discrepancy indicates non-deterministic behavior due to different random number generation seeds or lack of seed control in test setup. Since both APIs support only p (not seed), the inconsistency arises from uncontrolled stochasticity — not functional divergence. Therefore, instead of repairing (no parameter mismatch), we apply mutation to enforce deterministic comparison: use a fixed input tensor value (e.g., ones) and explicitly set training mode, but more critically, we must ensure identical dropout mask application logic. However, since neither framework exposes seed control in the layer constructor, the only robust way to compare is to run multiple trials or use deterministic mode — but test harness doesn't support that. Hence, per best practice for stochastic ops, we mutate to use p=0.0 (deterministic identity) and p=1.0 (deterministic zeroing) to verify functional equivalence at boundaries, avoiding stochastic comparison entirely."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.18115943670272827,
+            0.0490490198135376,
+            -2.184307098388672,
+            -0.030274130403995514,
+            -0.8403566479682922,
+            -2.3421244621276855
+          ]
+        },
+        "p": 0.0
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.nn.Dropout",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.18115943670272827,
+            0.0490490198135376,
+            -2.184307098388672,
+            -0.030274130403995514,
+            -0.8403566479682922,
+            -2.3421244621276855
+          ]
+        },
+        "p": 0.0
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.Dropout",
+        "mindspore_api": "mindspore.nn.Dropout",
+        "torch_success": true,
+        "mindspore_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "mindspore_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          2,
+          3
+        ],
+        "mindspore_shape": [
+          2,
+          3
+        ],
+        "torch_dtype": "torch.float32",
+        "mindspore_dtype": "Float32",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

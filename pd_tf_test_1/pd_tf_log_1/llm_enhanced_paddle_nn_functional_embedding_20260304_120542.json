@@ -1,0 +1,359 @@
+{
+  "pd_api": "paddle.nn.functional.embedding",
+  "tensorflow_api": "tf.nn.embedding_lookup",
+  "timestamp": "2026-03-04T12:05:42.969097",
+  "total_iterations": 18,
+  "llm_generated_test_cases": 13,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "bfloat16"
+        },
+        "api": "paddle.nn.functional.embedding"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "bfloat16"
+        },
+        "api": "tf.nn.embedding_lookup"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.embedding",
+        "tensorflow_api": "tf.nn.embedding_lookup",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'weight'",
+        "comparison_error": null,
+        "pd_shape": [
+          4,
+          31
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.embedding_lookup does not accept 'weight' parameter; it expects 'params' (a tensor or list of tensors) and 'ids'. The Paddle 'weight' maps to TensorFlow 'params', and 'x' maps to 'ids'. Also, bfloat16 is not natively supported in older TF versions for embedding_lookup; cast to float32 for compatibility."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.embedding",
+        "x": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "params": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.nn.embedding_lookup"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.embedding",
+        "tensorflow_api": "tf.nn.embedding_lookup",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.35931700",
+        "pd_shape": [
+          4,
+          31
+        ],
+        "tensorflow_shape": [
+          4,
+          31
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.nn.functional.embedding 和 tf.nn.embedding_lookup 功能不完全等价：前者要求 ids 在 [0, weight.shape[0]) 范围内且支持 padding_idx/max_norm/scale_grad_by_freq 等语义；后者无 padding_idx，且当 params 是单个 tensor 时行为类似 gather，但默认不校验越界、不支持归一化或梯度缩放。原始用例未指定 ids 值域约束，导致数值结果因初始化/越界处理/归一化逻辑差异而显著不一致（max diff=3.36）。需显式对齐输入 id 范围（0~9）并禁用 paddle 端非 TF 对应功能（max_norm=None, padding_idx=None, scale_grad_by_freq=False, sparse=False）以保证语义可比。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "sparse": false,
+        "padding_idx": null,
+        "scale_grad_by_freq": false,
+        "api": "paddle.nn.functional.embedding",
+        "x": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "norm_type": 2.0,
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        },
+        "max_norm": null
+      },
+      "tensorflow_test_case": {
+        "ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.nn.embedding_lookup",
+        "params": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.embedding",
+        "tensorflow_api": "tf.nn.embedding_lookup",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.88004422",
+        "pd_shape": [
+          4,
+          31
+        ],
+        "tensorflow_shape": [
+          4,
+          31
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.embedding_lookup does not support padding_idx, max_norm, norm_type, or scale_grad_by_freq; Paddle's embedding has strict id range [0, weight.shape[0]), while TF silently wraps out-of-bound ids via modulo if using partitioned params — but here params is single tensor, so out-of-bound ids cause undefined behavior. To ensure semantic equivalence, we must constrain ids to [0, 10) in both frameworks and remove unsupported Paddle-only parameters (max_norm, norm_type, scale_grad_by_freq) or align them to no-op defaults. Also, padding_idx=null in Paddle must be mirrored by ensuring no -1 or out-of-range ids exist."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "sparse": false,
+        "padding_idx": null,
+        "scale_grad_by_freq": false,
+        "api": "paddle.nn.functional.embedding",
+        "x": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "norm_type": 2.0,
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        },
+        "max_norm": null
+      },
+      "tensorflow_test_case": {
+        "ids": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64"
+        },
+        "api": "tf.nn.embedding_lookup",
+        "params": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.embedding",
+        "tensorflow_api": "tf.nn.embedding_lookup",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.13180506",
+        "pd_shape": [
+          4,
+          31
+        ],
+        "tensorflow_shape": [
+          4,
+          31
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "int64"
+        },
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "bfloat16"
+        },
+        "api": "paddle.nn.functional.embedding"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "int64"
+        },
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "bfloat16"
+        },
+        "api": "tf.nn.embedding_lookup"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.embedding",
+        "tensorflow_api": "tf.nn.embedding_lookup",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'weight'",
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          4,
+          5,
+          31
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.embedding_lookup does not accept 'weight' parameter; it expects 'params' (list of tensors or single tensor) and 'ids'. Also, bfloat16 is not supported in tf.nn.embedding_lookup for params in most TF versions. Repair: rename 'weight' to 'params', wrap as list, and change dtype to float32."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "weight": {
+          "shape": [
+            10,
+            31
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.embedding",
+        "x": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "ids": {
+          "shape": [
+            2,
+            4,
+            5
+          ],
+          "dtype": "int64"
+        },
+        "params": [
+          

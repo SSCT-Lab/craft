@@ -1,0 +1,87 @@
+来源文件: llm_enhanced_torch_masked_select_20251202_000600.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) The type of data we are trying to retrieve (bool) does not match the type of data (uint8) currently contained in the container.
+
+【PyTorch 测试用例】
+{
+  "input": {
+    "shape": [
+      8
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.04355946183204651,
+      0.34019216895103455,
+      0.5214433073997498,
+      0.8550620079040527,
+      -0.9476993680000305,
+      -0.34944722056388855,
+      -1.7864489555358887,
+      2.5701348781585693
+    ]
+  },
+  "mask": {
+    "shape": [
+      8
+    ],
+    "dtype": "uint8",
+    "sample_values": [
+      0,
+      0,
+      0,
+      1,
+      255,
+      0,
+      0,
+      255
+    ]
+  },
+  "api": "torch.masked_select"
+}
+
+【PaddlePaddle 测试用例】
+{
+  "input": {
+    "shape": [
+      8
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.04355946183204651,
+      0.34019216895103455,
+      0.5214433073997498,
+      0.8550620079040527,
+      -0.9476993680000305,
+      -0.34944722056388855,
+      -1.7864489555358887,
+      2.5701348781585693
+    ]
+  },
+  "mask": {
+    "shape": [
+      8
+    ],
+    "dtype": "uint8",
+    "sample_values": [
+      0,
+      0,
+      0,
+      1,
+      255,
+      0,
+      0,
+      255
+    ]
+  },
+  "api": "torch.masked_select"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `torch.masked_select` 要求 `mask` 必须是 `bool` 类型（即 `bool` tensor），但输入的 `mask` 为 `uint8`，尽管其值为 0 和 255（可视为布尔掩码），但类型不匹配。
+   - 官方文档明确指出 `mask` 应为 `BoolTensor`，而当前传入的是 `uint8`，即使数值上可解释为真/假，类型不一致仍会触发类型校验失败。
+
+3. 修复建议：
+   - 该问题属于框架对 mask 类型严格校验的行为差异，建议提交 issue 给 PaddlePaddle 官方，反映其应支持非 bool 型掩码（如 uint8）的隐式转换以兼容 PyTorch 行为。

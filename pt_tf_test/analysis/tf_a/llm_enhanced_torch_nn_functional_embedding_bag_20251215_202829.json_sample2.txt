@@ -1,0 +1,114 @@
+来源文件: llm_enhanced_torch_nn_functional_embedding_bag_20251215_202829.json
+样例编号: 2
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[1] = -3 is not in [0, 8) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.embedding_bag",
+  "input": {
+    "shape": [
+      10
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      0,
+      -4,
+      -3,
+      -4,
+      -9,
+      -1,
+      -10,
+      -3,
+      -10,
+      8
+    ]
+  },
+  "weight": {
+    "shape": [
+      8,
+      3
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.0547918718788458,
+      -0.1521836282497367,
+      -0.7919355078062894,
+      -0.33072265149566227,
+      0.09648061013524632,
+      -1.1792013934529766,
+      0.4941636635533215,
+      0.2797677681609901,
+      0.3013838079771027,
+      -1.4519695085006838
+    ]
+  },
+  "offsets": {
+    "shape": [
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      1,
+      -6
+    ]
+  },
+  "max_norm": null,
+  "norm_type": 2.0,
+  "scale_grad_by_freq": false,
+  "mode": "mean",
+  "sparse": true,
+  "per_sample_weights": null,
+  "include_last_offset": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.nn.embedding_lookup",
+  "params": {
+    "shape": [
+      8,
+      3
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -2.06292347441593,
+      0.9673883556362143,
+      -0.10323807478514686,
+      1.5913984038771847,
+      0.497213725253083,
+      -0.2815687383262372,
+      -0.4545480803094401,
+      -0.1726598802556286,
+      -1.0597850231165316,
+      -0.30073969692223174
+    ]
+  },
+  "ids": {
+    "shape": [
+      10
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      1,
+      -3,
+      9,
+      -7,
+      -9,
+      -2,
+      7,
+      9,
+      -10,
+      2
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.nn.embedding_lookup` 严格要求索引值（`ids`）必须在 `[0, num_embeddings)` 范围内，而测试用例中 `ids` 包含 `-3`、`-7`、`-9`、`-10` 等负值，且最大值为 `9`，超出权重矩阵维度 `8`，导致 `indices[1] = -3 is not in [0, 8)` 的错误。
+   - PyTorch 的 `torch.nn.functional.embedding_bag` 支持负索引作为“未定义”或“忽略”处理（如通过 `padding_idx`），但其语义与 TensorFlow 严格边界检查不同，因此该行为差异属于框架对索引合法性的默认处理策略不一致。
+
+3. 修复建议：
+   - 该问题反映框架在索引有效性检查上的根本行为差异，值得提交 issue 给 TensorFlow 官方，说明其对负索引的严格限制与 PyTorch 的容错设计存在不一致。

@@ -1,0 +1,39 @@
+来源文件: llm_enhanced_torch_broadcast_shapes_20251125_151713.json
+样例编号: 3
+paddle_error 错误信息: 'int' object is not iterable
+
+【PyTorch 测试用例】
+{
+  "api": "torch.broadcast_shapes",
+  "*shapes": [
+    [
+      2485
+    ],
+    [
+      1
+    ]
+  ]
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.broadcast_shapes",
+  "*shapes": [
+    [
+      2485
+    ],
+    [
+      1
+    ]
+  ]
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.broadcast_shapes` 要求输入的 `*shapes` 参数必须是**可迭代的形状列表**，但其内部在处理单个整数或非嵌套结构时可能出现类型错误。尽管输入为 `[[2485], [1]]` 是合法的形状列表，但该错误 `'int' object is not iterable` 表明在实际执行中，框架可能将某个形状元素误当作整数直接遍历，说明底层实现对形状结构的校验不够严格。
+   - 与 PyTorch 的 `torch.broadcast_shapes`（接受 `torch.Size` 元组或列表）相比，PaddlePaddle 在某些边界情况下的输入类型检查更敏感，尤其当形状被解析为非标准序列时，可能导致类型转换失败。
+
+3. 修复建议：
+   - 建议提交 issue 给 PaddlePaddle 官方，指出 `broadcast_shapes` 在处理标准形状列表时存在潜在的内部迭代异常，尤其是当输入为嵌套列表但未正确识别为序列时。

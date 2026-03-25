@@ -1,0 +1,1264 @@
+{
+  "pd_api": "paddle.scatter_add",
+  "tensorflow_api": "tf.tensor_scatter_nd_add",
+  "timestamp": "2026-03-04T12:35:08.432881",
+  "total_iterations": 17,
+  "llm_generated_test_cases": 12,
+  "successful_test_cases": 2,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.tensor_scatter_nd_add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: scatter_add() got an unexpected keyword argument 'value'",
+        "tensorflow_error": "TypeError: tensor_scatter_add() got an unexpected keyword argument 'value'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.scatter_add uses 'src' instead of 'value', and 'dim' instead of 'axis'; TensorFlow tf.tensor_scatter_nd_add requires 'indices' (not 'index') and 'updates' (not 'value'), and takes 'tensor' (not 'x') as first arg; also indices must be rank-2 with last dim <= rank of tensor, so [10,10] indices is invalid for [10,10] tensor — need indices of shape [N, 1] or [N, 2] to scatter into 2D tensor. Repaired to use correct param names and valid index shape [5, 1] for axis=0 scatter."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            5,
+            1
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            5,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.06964016",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.scatter_add(dim=0) scatters along axis 0, meaning it adds src rows into input rows indexed by index; tf.tensor_scatter_nd_add expects indices to be rank-2 with last dim = rank(tensor) for element-wise update, but here indices.shape=[5,1] implies scatter to 1st-dim slices (i.e., rows), so must reshape updates to match tensor's rank and ensure indices target full rows — current setup is semantically misaligned: paddle index [5,1] maps 5 scalar indices for axis-0, while TF requires indices to have shape [5, 1] *and* interpret it as indexing dim-0 only when used with updates of shape [5,10]; however, TF’s tensor_scatter_nd_add treats indices[..., :] as coordinates — so [i,0] targets row i, column 0 unless indices.shape[-1]==2. To align semantics, indices must be [5, 2] where second dim indexes columns, but paddle.scatter_add with dim=0 only uses 1D indices per slice. Correct alignment: use indices of shape [5] (1D) in both, or broadcast to [5,1] consistently — but TF requires indices rank to match tensor rank for full-element scatter. Therefore, fix: use 1D indices [5] for both, and adjust TF to use indices=tf.expand_dims(index_1d, axis=-1) is insufficient; instead, use indices with shape [5, 1] *only if* we intend row-wise scatter — but TF requires indices.shape[-1] == 2 for [10,10] tensor to index rows. So minimal repair: change indices to shape [5, 2], where second column is zeros (to select first column of each row), and updates to [5, 10] — but that scatters into 5 specific *elements*, not rows. True semantic equivalence requires paddle.scatter_add(dim=0) ≡ TF scatter to rows → use tf.tensor_scatter_nd_add with indices = [[i, j] for i in indices_1d for j in range(10)] → too expensive. Instead, canonical fix: use dim=0 + index shape [5] (1D) in Paddle, and in TF use indices = tf.stack([index_1d, tf.zeros_like(index_1d)], axis=1) for row-0 selection — but that only hits column 0. Best practice: align to *row-scatter* via tf.scatter_nd_add (not tensor_scatter_nd_add) — but task mandates tf.tensor_scatter_nd_add. Therefore, correct repair is to make indices shape [5, 1] valid for TF by setting tensor rank=1? No — input is [10,10]. So actual issue: paddle.scatter_add(dim=0, index=[5,1]) treats index as [i][0] → i-th row, and broadcasts src [5,10] across that row — this is *row-wise scatter-add*. TF tensor_scatter_nd_add does NOT support implicit broadcasting; it requires explicit coordinate list. Thus, to scatter [5,10] values into rows indexed by [i0,i1,...], we need indices shape [5*10, 2] and updates shape [5*10, 1]. But that’s computationally mismatched. Therefore, the original test case is **semantically invalid for TF**: tf.tensor_scatter_nd_add cannot emulate paddle.scatter_add(dim=0) with index shape [5,1] and src [5,10] without expanding indices. Hence, repair is to use 1D index [5] and reshape src to [5,10], then in TF generate indices = tf.concat([tf.expand_dims(index_1d, axis=1), tf.range(10)[None, :]], axis=1) → shape [50,2], updates = tf.reshape(src, [-1, 1]). But test case must remain simple and comparable. So minimal faithful repair: change index to 1D [5] in both, and in TF use indices with shape [5, 1] is *invalid* — TF requires indices.shape[-1] == 2 for 2D tensor. Therefore, correct aligned repair is to lower tensor to 1D: use input [100], index [5], src [5], dim=0 → trivially aligned. But task preserves shape [10,10]. So final decision: the frameworks are not functionally equivalent for this signature — paddle supports axis-specific broadcast scatter; TF tensor_scatter_nd_add is coordinate-based and non-broadcasting. Hence, per task rule #3(2): 'if you think the two cross-framework operators are not fully equivalent', choose skip — but wait: official docs show paddle.scatter_add *is* designed as axis-aligned scatter-add, while tf.tensor_scatter_nd_add is general coordinate scatter. They are *not* equivalent APIs — tf.scatter_nd_add is closer, but not mandated. However, the task says 'tf.tensor_scatter_nd_add' is given, and inconsistency is observed. Since max diff is 4.07 (large, not fp error), and semantic mismatch exists (broadcasting vs coordinate), and no doc states they are equivalent, operation is 'skip'. But wait — instruction says: 'if you think these two cross-framework operators are not fully equivalent', then skip. Yes — paddle.scatter_add(dim=0) scatters src[i] into input[index[i]] along dim 0, broadcasting src[i] across all columns; tf.tensor_scatter_nd_add with indices [i,0] only updates one element per index. So they are fundamentally different. Therefore, skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            5,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: `indices` and `arr` must have the same number of dimensions!",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Inner dimensions of output shape must match inner dimensions of updates shape. Output: [10,10] updates: [5,10] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's scatter_add requires index.shape == src.shape except on dim axis, so index must be [5,10] for dim=0 and src=[5,10]; TF's tensor_scatter_nd_add needs indices.shape = [5,2] to scatter 5 rows into [10,10] tensor. Original index shape [5] mismatches Paddle's dimension constraint and TF's rank requirement. Repair: align index to [5,10] in Paddle (broadcastable per doc) and fix TF indices to valid 2D indices targeting first dim."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            5,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            5,
+            10
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 5.18936288",
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            64,
+            102400
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "index": {
+          "shape": [
+            64,
+            102400
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            64,
+            102400
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            64,
+            102400
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "index": {
+          "shape": [
+            64,
+            102400
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            64,
+            102400
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.tensor_scatter_nd_add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: scatter_add() got an unexpected keyword argument 'value'",
+        "tensorflow_error": "TypeError: tensor_scatter_add() got an unexpected keyword argument 'value'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "LLM调用失败: Expecting ',' delimiter: line 14 column 30 (char 962)"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.tensor_scatter_nd_add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: scatter_add() got an unexpected keyword argument 'value'",
+        "tensorflow_error": "TypeError: tensor_scatter_add() got an unexpected keyword argument 'value'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.scatter_add uses 'src' instead of 'value', and 'dim' instead of 'axis'; TensorFlow tf.tensor_scatter_nd_add requires 'indices' (not 'index') and 'updates' (not 'value'), and takes 'tensor' as first arg instead of 'x'. Also, indices must have rank = input_rank - 1 for slice updates, so [10,10] index shape is invalid for [10,10] input — must be [N, 1] for axis=1 scatter on 2D tensor. Repaired to use correct param names and valid index shape [10, 1]."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "dim": 1,
+        "src": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} The inner 1 dimensions of output.shape=[10,10] must match the inner 1 dimensions of updates.shape=[10,1] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.tensor_scatter_nd_add requires updates.shape[:-1] == indices.shape[:-1] and updates.shape[-1] must match the size of the slice being updated; here indices.shape=[10,1] implies scatter along axis=1 with 1-index per row, so updates must have shape [10, 10] or [10] for full-row updates — but [10,1] is invalid. To align semantics with paddle.scatter_add(dim=1), we need indices of shape [10] (one index per row) and updates of shape [10, 10] or broadcast-compatible; fixing to indices=[10], updates=[10,10] ensures equivalent column-wise addition."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "dim": 1,
+        "src": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            10
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            10,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: `indices` and `arr` must have the same number of dimensions!",
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": [
+          10,
+          10
+        ],
+        "pd_dtype": null,
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's scatter_add requires 'index' to have same number of dimensions as 'input', but original index has shape [10] while input is [10,10]. Per doc, index must match input dim; for dim=1 scatter, index should be [10,10] or broadcastable. TensorFlow's tensor_scatter_nd_add expects indices of rank = tensor.rank with last dim being index coordinates, so [10,1] is correct for scattering along axis 1. Repair: align index shape to [10,10] in Paddle and adjust TF indices to match semantic scatter along axis 1 (i.e., each row's column index), keeping updates shape consistent."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "dim": 1,
+        "src": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            10,
+            10,
+            1
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            10,
+            10
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Inner dimensions of output shape must match inner dimensions of updates shape. Output: [10,10] updates: [10,10] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": [
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 0,
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.tensor_scatter_nd_add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: scatter_add() got an unexpected keyword argument 'value'",
+        "tensorflow_error": "TypeError: tensor_scatter_add() got an unexpected keyword argument 'value'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle scatter_add uses 'src' not 'value', and 'dim' not 'axis'; TensorFlow tensor_scatter_nd_add requires 'indices' (not 'index') and 'updates' (not 'value'), and takes 'tensor' as first arg, not 'x'. Both APIs have incompatible parameter names and signatures — must align semantics: Paddle's dim=0 + index shape [2,3] implies scattering along axis 0 with per-column indices, requiring indices of shape [k, 1] for k updates; TF's tensor_scatter_nd_add expects indices of rank N matching update rank, so for 2x3 input and element-wise add, indices must be [6, 2]. Repair to use correct param names and shapes per doc."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: one of element of indices is out of bounds for dimension 0 with size 2",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[5] = [8, 2] does not index into shape [2,3] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's scatter_add requires index values to be within [0, input.shape[dim]), while TF's tensor_scatter_nd_add expects indices of shape [N, rank] where each index is a coordinate. Original index shape [2,3] (for dim=0) is invalid for Paddle; TF's indices shape [6,2] mismatches tensor rank=2 but contains out-of-bounds [8,2]. Repair: align semantics by using valid 1D indices for Paddle (shape [6], values in [0,2)) and corresponding 2D coordinates for TF (shape [6,2], all coords in [0,2)x[0,3])."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            6
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: `indices` and `arr` must have the same number of dimensions!",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[5] = [3, 8] does not index into shape [2,3] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's scatter_add requires index.shape == input.shape (same ndim), but original index has shape [6] while input is [2,3]; TF's tensor_scatter_nd_add requires indices.shape[-1] == rank(tensor) = 2, so indices must be [N,2], and updates must match indexed elements count. Repair: for Paddle, reshape index to [2,3] and src to [2,3]; for TF, keep indices [6,2] but ensure all indices are in-bounds [0,2)x[0,3), and updates [6] matches flattened indexing. Also fix dtype consistency and valid index values."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            6,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "RuntimeError: one of element of indices is out of bounds for dimension 0 with size 2",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[5] = [4, 0] does not index into shape [2,3] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "axis": 1,
+        "index": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "value": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.tensor_scatter_nd_add"
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "TypeError: scatter_add() got an unexpected keyword argument 'value'",
+        "tensorflow_error": "TypeError: tensor_scatter_add() got an unexpected keyword argument 'value'",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle scatter_add uses 'src' instead of 'value', and 'dim' instead of 'axis'; TensorFlow tensor_scatter_nd_add requires 'indices' (not 'index') and 'updates' (not 'value'), and takes 'tensor' as first arg, not 'x'. Also, indices must be rank-2 with last dim = rank of tensor (here 2), so [2,3] index shape is invalid for [2,3] tensor — need indices of shape [N, 2] where N is number of updates. Repaired to use correct param names and valid index structure."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            2
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            2,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: `indices` and `arr` must have the same number of dimensions!",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Inner dimensions of output shape must match inner dimensions of updates shape. Output: [2,3] updates: [2,3] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's scatter_add requires 'index' to have same number of dimensions as 'input', but original index has shape [2] while input is [2,3]. TensorFlow's tensor_scatter_nd_add requires indices.shape[-1] <= rank(tensor), and for rank-2 tensor, indices must be [N, 2] to index elements. Original indices shape [2,2] is valid but updates shape [2,3] mismatches expected [2,] for element-wise update; must align semantics: Paddle dim=0 means scatter along axis 0 (rows), so indices should be [3] for column-wise indexing into 2x3 tensor, and updates should be [3] or [2,3] with broadcasting handled via matching dim. Fix: make index shape [3] (matching input dim 1 size) and updates [3], and for TF use indices [[i, j]] for each element, so indices shape [3,2], updates [3]."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: `indices` and `arr` must have the same number of dimensions!",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[2] = [9, 8] does not index into shape [2,3] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's scatter_add requires index.shape == input.shape, but original index.shape=[3] vs input.shape=[2,3] violates this. TF's tensor_scatter_nd_add requires indices.shape[-1] == rank(tensor)=2, but original indices.shape=[3,2] is valid; however updates.shape must match indexed slices — here updates.shape=[3] implies indexing 3 scalars, so indices must be [3,2] (valid), but input shape [2,3] means valid indices are in [0,1]x[0,2]; original indices likely contain out-of-bounds values causing TF error. Repair: align semantics — use index=[0,0,0] for dim=0 scatter on first dim, so indices must be 1D with same length as src, and for TF, indices must be [3,2] where each row [i,j] scatters to (i,j); to match Paddle's dim=0 behavior (scatter along axis 0, i.e., update rows), we need indices targeting same row (e.g., [0,j] for j in 0,1,2) — so use indices=[[0,0],[0,1],[0,2]] and updates=[1,2,3]. Also fix Paddle index to [0,0,0] (shape [3]) to satisfy dim=0 scatter."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "dim": 0,
+        "src": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.scatter_add",
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "index": {
+          "shape": [
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "tensorflow_test_case": {
+        "api": "tf.tensor_scatter_nd_add",
+        "indices": {
+          "shape": [
+            3,
+            2
+          ],
+          "dtype": "int64"
+        },
+        "tensor": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "updates": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "pd_api": "paddle.scatter_add",
+        "tensorflow_api": "tf.tensor_scatter_nd_add",
+        "pd_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: `indices` and `arr` must have the same number of dimensions!",
+        "tensorflow_error": "InvalidArgumentError: {{function_node __wrapped__TensorScatterAdd_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[2] = [7, 0] does not index into shape [2,3] [Op:TensorScatterAdd] name: ",
+        "comparison_error": null,
+        "pd_shape": null,
+        "tensorflow_shape": null,
+        "pd_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

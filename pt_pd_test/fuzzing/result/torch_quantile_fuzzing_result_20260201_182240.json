@@ -1,0 +1,864 @@
+{
+  "operator": "torch_quantile",
+  "torch_api": "torch.quantile",
+  "paddle_api": "paddle.quantile",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T18:22:40.172041",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_quantile_20260125_093124.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.quantile",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.23720009995733637,
+            -1.039731032132582,
+            -1.277453706739323,
+            2.3159187104357746,
+            -1.2595546429460445,
+            -1.2464384911540427,
+            -0.473587435463132,
+            0.056673858848886365,
+            -1.033852549471448,
+            0.4078583904417911
+          ]
+        },
+        "q": 0.5,
+        "dim": 1,
+        "keepdim": true
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.quantile",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.23720009995733637,
+            -1.039731032132582,
+            -1.277453706739323,
+            2.3159187104357746,
+            -1.2595546429460445,
+            -1.2464384911540427,
+            -0.473587435463132,
+            0.056673858848886365,
+            -1.033852549471448,
+            0.4078583904417911
+          ]
+        },
+        "q": 0.5,
+        "axis": 1,
+        "keepdim": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发边界处理差异，如排序稳定性、NaN传播逻辑、下溢/上溢截断策略不同，可能暴露quantile实现bug",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.23720009995733637,
+                -1.039731032132582,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.277453706739323,
+                2.3159187104357746
+              ]
+            },
+            "q": 0.5,
+            "dim": 1,
+            "keepdim": true,
+            "interpolation": "linear"
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.23720009995733637,
+                -1.039731032132582,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                -1.277453706739323,
+                2.3159187104357746
+              ]
+            },
+            "q": 0.5,
+            "axis": 1,
+            "keepdim": true,
+            "interpolation": "linear"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              1,
+              5
+            ],
+            "paddle_shape": [
+              5,
+              1,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1]）",
+          "mutation_reason": "单元素张量是量化计算的极端边界，易暴露插值逻辑或维度压缩/扩展处理差异，尤其在keepdim=true时框架对退化维度的处理可能不一致。",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.5
+              ]
+            },
+            "q": 0.5,
+            "dim": 1,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.5
+              ]
+            },
+            "q": 0.5,
+            "axis": 1,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float64变异为int32，保持shape、q、dim/axis、keepdim一致",
+          "mutation_reason": "整数类型可能暴露框架对离散值排序/插值的边界处理差异，如中位数索引计算或cast行为不一致，且int32在两框架CPU均完全支持。",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "int32",
+              "sample_values": [
+                0,
+                -1,
+                -1,
+                2,
+                -1,
+                -1,
+                0,
+                0,
+                -1,
+                0
+              ]
+            },
+            "q": 0.5,
+            "dim": 1,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "int32",
+              "sample_values": [
+                0,
+                -1,
+                -1,
+                2,
+                -1,
+                -1,
+                0,
+                0,
+                -1,
+                0
+              ]
+            },
+            "q": 0.5,
+            "axis": 1,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: quantile() input tensor must be either float or double dtype",
+            "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), int32) of kernel `lerp` is not registered. Selected wrong DataType `int32`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_quantile_20260125_093124.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.quantile",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07025468349456787,
+            0.68752521276474,
+            0.2964830994606018,
+            0.6157342791557312,
+            -2.309872627258301,
+            -0.16924622654914856,
+            -0.8949594497680664,
+            0.9722928404808044,
+            -0.9529880881309509,
+            -2.1614654064178467
+          ]
+        },
+        "q": 0.0,
+        "dim": 2,
+        "keepdim": true,
+        "interpolation": "nearest"
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.quantile",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.07025468349456787,
+            0.68752521276474,
+            0.2964830994606018,
+            0.6157342791557312,
+            -2.309872627258301,
+            -0.16924622654914856,
+            -0.8949594497680664,
+            0.9722928404808044,
+            -0.9529880881309509,
+            -2.1614654064178467
+          ]
+        },
+        "q": 0.0,
+        "axis": 2,
+        "keepdim": true,
+        "interpolation": "nearest"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露量化/排序/边界索引逻辑差异，尤其在nearest插值下对NaN/inf的处理可能不一致",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                2,
+                3,
+                2
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.07025468349456787,
+                0.68752521276474,
+                "nan",
+                "-inf",
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                -2.309872627258301,
+                -0.16924622654914856
+              ]
+            },
+            "q": 0.0,
+            "dim": 2,
+            "keepdim": true,
+            "interpolation": "nearest"
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                2,
+                3,
+                2
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.07025468349456787,
+                0.68752521276474,
+                "nan",
+                "-inf",
+                "inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                -2.309872627258301,
+                -0.16924622654914856
+              ]
+            },
+            "q": 0.0,
+            "axis": 2,
+            "keepdim": true,
+            "interpolation": "nearest"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              1,
+              2,
+              3,
+              2
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              1,
+              2,
+              3,
+              2
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：单元素张量（shape=[1]）",
+          "mutation_reason": "单元素张量是quantile的最简非空边界情况，q=0.0或1.0时理论输出必为该唯一元素，易暴露框架对退化维度的索引/排序/插值逻辑差异。",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.42
+              ]
+            },
+            "q": 0.0,
+            "dim": 0,
+            "keepdim": true,
+            "interpolation": "nearest"
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                0.42
+              ]
+            },
+            "q": 0.0,
+            "axis": 0,
+            "keepdim": true,
+            "interpolation": "nearest"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为float64，保持所有参数和sample_values语义一致",
+          "mutation_reason": "float64更高精度可能暴露数值稳定性或边界处理差异，如inf/nan传播、插值舍入误差、排序稳定性等潜在实现bug",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                2,
+                3,
+                2
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.07025468349456787,
+                0.68752521276474,
+                0.2964830994606018,
+                0.6157342791557312,
+                -2.309872627258301,
+                -0.16924622654914856,
+                -0.8949594497680664,
+                0.9722928404808044,
+                -0.9529880881309509,
+                -2.1614654064178467
+              ]
+            },
+            "q": 0.0,
+            "dim": 2,
+            "keepdim": true,
+            "interpolation": "nearest"
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                2,
+                3,
+                2
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                0.07025468349456787,
+                0.68752521276474,
+                0.2964830994606018,
+                0.6157342791557312,
+                -2.309872627258301,
+                -0.16924622654914856,
+                -0.8949594497680664,
+                0.9722928404808044,
+                -0.9529880881309509,
+                -2.1614654064178467
+              ]
+            },
+            "q": 0.0,
+            "axis": 2,
+            "keepdim": true,
+            "interpolation": "nearest"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              1,
+              2,
+              3,
+              2
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              1,
+              2,
+              3,
+              2
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_quantile_20260125_093124.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.quantile",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -2.0861977180249114,
+            0.4947839392273887,
+            0.49629010031736415,
+            0.04335985629246008,
+            -1.0576267580987673,
+            0.5082983052045104,
+            0.9168839977244015,
+            1.152316899860885,
+            -0.5884952736522739,
+            -0.29431425974026515
+          ]
+        },
+        "q": 0.5,
+        "dim": 0,
+        "keepdim": true
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.quantile",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -2.0861977180249114,
+            0.4947839392273887,
+            0.49629010031736415,
+            0.04335985629246008,
+            -1.0576267580987673,
+            0.5082983052045104,
+            0.9168839977244015,
+            1.152316899860885,
+            -0.5884952736522739,
+            -0.29431425974026515
+          ]
+        },
+        "q": 0.5,
+        "axis": 0,
+        "keepdim": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在边界情况下的插值逻辑、NaN传播、无穷大排序或下溢/上溢处理差异，导致quantile结果不一致。",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -2.0861977180249114,
+                0.4947839392273887,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.49629010031736415,
+                0.04335985629246008
+              ]
+            },
+            "q": 0.5,
+            "dim": 0,
+            "keepdim": true,
+            "interpolation": "linear"
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -2.0861977180249114,
+                0.4947839392273887,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.49629010031736415,
+                0.04335985629246008
+              ]
+            },
+            "q": 0.5,
+            "axis": 0,
+            "keepdim": true,
+            "interpolation": "linear"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              5,
+              5
+            ],
+            "paddle_shape": [
+              1,
+              5,
+              5
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1]）和含0维张量（shape=[0,5,5]）",
+          "mutation_reason": "单元素张量和空张量是量化分位数计算的极端边界，易暴露框架对退化维度的处理差异（如索引越界、插值逻辑跳过、NaN传播不一致）。",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            },
+            "q": 0.5,
+            "dim": 0,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            },
+            "q": 0.5,
+            "axis": 0,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": true,
+            "torch_error": "RuntimeError: quantile() input tensor must be non-empty",
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "paddle_shape": [
+              1,
+              5,
+              5
+            ],
+            "torch_dtype": null,
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float64变异为int32，保持shape、q、dim/axis、keepdim一致",
+          "mutation_reason": "整数类型可能暴露量化边界处理、排序稳定性或插值逻辑差异（如linear插值在离散索引上的实现分歧），且int32在两框架CPU均原生支持",
+          "torch_test_case": {
+            "api": "torch.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "int32",
+              "sample_values": [
+                -2,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                1,
+                1,
+                -1,
+                0
+              ]
+            },
+            "q": 0.5,
+            "dim": 0,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.quantile",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "int32",
+              "sample_values": [
+                -2,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                1,
+                1,
+                -1,
+                0
+              ]
+            },
+            "q": 0.5,
+            "axis": 0,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: quantile() input tensor must be either float or double dtype",
+            "paddle_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), int32) of kernel `lerp` is not registered. Selected wrong DataType `int32`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

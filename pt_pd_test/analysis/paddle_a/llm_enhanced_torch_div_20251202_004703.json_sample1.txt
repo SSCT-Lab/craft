@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_div_20251202_004703.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [1, 0, 2, 1] and the shape of Y = [3, 1, 0, 1]. Received [2] in X is not equal to [0] in Y at i:2.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.div",
+  "input": {
+    "shape": [
+      1,
+      0,
+      2,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      0,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.divide",
+  "input": {
+    "shape": [
+      1,
+      0,
+      2,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      1,
+      0,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.divide` 在广播机制中对维度为 0 的形状（如 `[1, 0, 2, 1]`）存在严格限制，当某维为 0 时，若另一张量对应维不为 0 或 1，则无法进行合法广播；而 PyTorch 允许在某些情况下对包含 0 维的张量进行广播（例如在 `torch.div` 中，只要非零维度可广播即可）。  
+   - 错误信息明确指出第 2 维不匹配：X 为 [2]，Y 为 [0]，说明两个张量在该维度上无法广播，且 PaddlePaddle 不支持将 0 维与非 0 非 1 维进行广播。
+
+3. 修复建议：  
+   - 该问题反映 PaddlePaddle 与 PyTorch 在含 0 维张量的广播行为上存在不一致，建议提交 issue 至 PaddlePaddle 官方仓库，反馈此广播规则过于严格，与 PyTorch 不兼容。

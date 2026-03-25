@@ -1,0 +1,1108 @@
+{
+  "ms_api": "mindspore.ops.NMSWithMask",
+  "paddle_api": "paddle.vision.ops.nms",
+  "timestamp": "2026-03-04T21:34:54.416900",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4000,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            4000,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [4000, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求输入boxes为[N,4]，而MindSpore的NMSWithMask要求[N,5]（含score）。原始用例中shape=[4000,5]导致Paddle报错。需将Paddle用例拆分为boxes（[4000,4]）和scores（[4000]），并适配参数名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            4000,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            4000,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            4000
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 4000) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          3607
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes为[num_boxes,4]且scores为[num_boxes]，而MindSpore的NMSWithMask输入为[num_boxes,5]（含score在最后一维），需将MindSpore输入拆分为boxes+scores；且Paddle报错'inhomogeneous shape (3,4000)'表明测试时可能误传了非1D scores或维度混乱，应显式构造合法scores并确保MindSpore输入boxes不含 score以对齐语义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            4000,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            4000,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            4000
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 4000) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          3595
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功但结果不一致，且Paddle报错提示'inhomogeneous shape (3, 4000)'，表明输出维度不匹配：MindSpore返回3个张量（output_boxes, output_idx, selected_mask），而Paddle仅返回1D索引Tensor；需变异为语义可比的最小一致用例，降低box数至10并显式构造合法bbox坐标+score数据，避免形状广播/截断歧义。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            10,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            10,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 10) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          10
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [12, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes输入为(N,4)，但原始用例提供(N,5)含score，而MindSpore的NMSWithMask要求(N,5)含坐标+score。需将Paddle用例拆分为boxes(N,4)和scores(N,)两个输入，并移除score列；MindSpore保持原输入。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [12, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes输入为(N,4)，但原始用例提供(N,5)（含score），而MindSpore的NMSWithMask要求输入为(N,5)且score在最后一维。需将Paddle的boxes拆分为独立4D boxes和scores张量，并移除x中第5维，使两框架输入语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "boxes": {
+          "shape": [
+            12,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 12) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          11
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功但结果不一致，且Paddle报错提示'inhomogeneous shape'，表明输出索引维度不匹配；MindSpore返回3个张量(output_boxes, output_idx, selected_mask)，而Paddle仅返回1D索引Tensor；需变异为统一语义可比形式：固定输入boxes按score降序排列，并使Paddle显式返回筛选后boxes及indices，MindSpore提取output_idx并mask过滤，确保比较对象均为有效索引列表。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "boxes": {
+          "shape": [
+            12,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 12) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          12
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [2, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes输入为[N, 4]，而MindSpore的NMSWithMask要求[N, 5]（含score）。原始用例x.shape=[2,5]导致Paddle报错。需将Paddle输入拆分为boxes（[2,4]）和scores（[2]），并适配参数名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 2) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          2
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功但结果不一致，且Paddle报错提示'inhomogeneous shape'，表明原始用例中MindSpore输入为[2,5]（含score），而Paddle boxes为[2,4]、scores为[2]分离，但测试未提供具体数值导致输出结构不匹配；需变异为同构数值输入并统一box格式（x0,y0,x1,y1,score vs boxes+scores），同时扩展至边界值3/2864以覆盖文档限定条件。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "两框架执行均成功但结果不一致，且Paddle报错提示'inhomogeneous shape'，表明输入boxes/scores未对齐或NMSWithMask输出结构（tuple of 3 tensors）与paddle.nms单输出indices语义不等价；需变异为同构可比形式：统一生成具体数值输入，确保boxes坐标合法(x1<y1<x2<y2)，scores单调递减，并使MindSpore输出取selected_mask过滤后的output_idx，与Paddle indices对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [2, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.vision.ops.nms requires boxes of shape [N, 4], but input has shape [2, 5] (includes score). MindSpore's NMSWithMask expects [N, 5] with last dim as score. To align semantics, we must split boxes and scores for Paddle, while keeping MindSpore's full [N,5] input."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [2, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes输入为(N, 4)，但原始用例提供(N, 5)含score，而MindSpore的NMSWithMask要求输入为(N, 5)含score。需将Paddle用例拆分为boxes(N,4)和scores(N,)，并移除x中第5列，使语义对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            2,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "boxes": {
+          "shape": [
+            2,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            2
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 2) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          2
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes为[num_boxes,4]且scores为[num_boxes]，而MindSpore的NMSWithMask输入为[num_boxes,5]（含score在最后一维）。原始用例中MindSpore输入shape=[2,5]隐含score，但Paddle未提供scores张量导致比较异常；需显式生成一致数值输入并确保scores与boxes对齐，修复为同构随机数据输入。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "boxes": {
+          "shape": [
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 3) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          3
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.vision.ops.nms",
+        "init_params": {
+          "iou_threshold": 0.5
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The shape [12, 5] of boxes must be (N, 4).\n  [Hint: Expected boxes.dims()[1] == 4, but received boxes.dims()[1]:5 != 4:4.] (at ..\\paddle\\phi\\kernels\\cpu\\nms_kernel.cc:83)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms要求boxes输入为(N,4)，而MindSpore的NMSWithMask要求(N,5)含score；原始用例x.shape=[12,5]导致Paddle报错。需将Paddle用例拆分为boxes(12,4)和scores(12,)，并适配参数名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            12,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 12) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          12
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms返回1D索引Tensor，而MindSpore的NMSWithMask返回三元组(output_boxes, output_idx, selected_mask)，输出结构不匹配导致比较异常；且Paddle要求boxes为[num_boxes,4]、scores为[num_boxes]，而MindSpore要求bboxes为[N,5]（含score），需对齐输入构造并适配输出解析逻辑。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            12,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 12) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          12
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的nms返回1D索引Tensor，而MindSpore的NMSWithMask返回三元组(output_boxes, output_idx, selected_mask)；原始用例未对齐输出结构且Paddle缺少category_idxs/scores适配导致形状不一致错误；需修复为语义等价调用：MindSpore需提取output_idx并mask过滤，Paddle需确保scores非None且输出索引与MindSpore masked output_idx可比。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "api": "mindspore.ops.NMSWithMask",
+        "init_params": {
+          "iou_threshold": 0.5
+        },
+        "x": {
+          "shape": [
+            12,
+            5
+          ],
+          "dtype": "float32"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.vision.ops.nms",
+        "iou_threshold": 0.5,
+        "boxes": {
+          "shape": [
+            12,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "scores": {
+          "shape": [
+            12
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.NMSWithMask",
+        "paddle_api": "paddle.vision.ops.nms",
+        "ms_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": null,
+        "paddle_error": null,
+        "comparison_error": "比较异常: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (3, 12) + inhomogeneous part.",
+        "ms_shape": null,
+        "paddle_shape": [
+          12
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.int64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

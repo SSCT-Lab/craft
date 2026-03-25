@@ -1,0 +1,59 @@
+来源文件: llm_enhanced_torch_maximum_20251202_000036.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 2, 5] and the shape of Y = [3, 0, 1]. Received [0] in X is not equal to [3] in Y at i:0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.maximum",
+  "input": {
+    "shape": [
+      0,
+      2,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      0,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.maximum",
+  "input": {
+    "shape": [
+      0,
+      2,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      3,
+      0,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.maximum` 在广播时要求维度为 0 的位置必须在两个输入张量中具有相同值（即广播兼容），但此处 `X = [0, 2, 5]` 与 `Y = [3, 0, 1]` 在第 0 维分别有 0 和 3，不相等且无法广播，导致“Broadcast dimension mismatch”。  
+   - 而 PyTorch 的 `torch.maximum` 允许在某些情况下对包含 0 的维度进行广播（如空张量参与运算时行为更宽松），这体现了两框架在空张量广播规则上的不一致。
+
+3. 修复建议：  
+   - 该问题反映的是框架间对含零维度张量的广播语义差异，建议提交 issue 至 PaddlePaddle 官方仓库，指出其在处理含 0 维度的广播时过于严格，与 PyTorch 不一致，可提升兼容性。

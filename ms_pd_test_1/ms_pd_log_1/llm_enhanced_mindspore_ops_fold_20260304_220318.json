@@ -1,0 +1,1801 @@
+{
+  "ms_api": "mindspore.ops.fold",
+  "paddle_api": "paddle.nn.functional.fold",
+  "timestamp": "2026-03-04T22:03:18.622977",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            16,
+            64,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          2,
+          2
+        ],
+        "padding": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            16,
+            64,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          2,
+          2
+        ],
+        "padding": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.fold",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 25, calculated number of sliding blocks: 6. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": "TypeError: fold() got an unexpected keyword argument 'kernel_size'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore fold requires output_size to be a 1D int tensor of length 2 (e.g., [H, W]), but input has shape [2] with dtype int32 — ambiguous if it's [2] or [2,?] — must fix to explicit [H,W]; PaddlePaddle rejects 'kernel_size' (expects 'kernel_sizes'), and 'padding' must be Size2/Size4 (not [2,2] alone for paddings), while MindSpore accepts [2,2] as symmetric padding. Also, input shape [16,64,25] violates constraint: C_in must equal C_out * k_h * k_w → 64 = C_out * 4 ⇒ C_out=16, and L=25 must match calculated block count; current params yield 6 blocks, not 25 — so parameters are inconsistent. Repair by recalculating valid output_size and adjusting padding/stride/dilation to satisfy block count formula."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            16,
+            64,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "output_size": [
+          4,
+          4
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            64,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (4, 4), kernel_sizes (2, 2), strides (2, 2), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 2 * 2 = 4, but got 6\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:4 != in_dims[2]:6.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore要求output_size为Tensor类型，但用例传入list；Paddle报错因input.shape[2]=6不匹配理论块数4（由output_size=[4,4], kernel=[2,2], stride=[2,2], pad=[0,0], dil=[1,1]推导得blocks = ((4+0-1*(2-1)-1)//2+1)^2 = (2+1)^2=9? 错误计算——正确公式：L = floor((H+2p-d(k-1)-1)/s+1) * floor((W+2p-d(k-1)-1)/s+1) = ((4+0-1*1-1)/2+1)^2 = (2/2+1)^2 = (1+1)^2 = 4，故input.shape[2]应为4，非6。需统一修正input.shape[2]为4，并将MindSpore output_size转为int32 Tensor。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            16,
+            64,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          4,
+          4
+        ],
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          2,
+          2
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            64,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": [
+          16,
+          16,
+          4,
+          4
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore mindspore.ops.fold requires output_size to be a Tensor (not Python list), per its doc: 'output_size(Tensor) – 1D tensor with 2 elements of data type int'. The original test passes a list [4,4], causing TypeError. Fix: wrap output_size as a mindspore.Tensor([4, 4], dtype=mindspore.int32). Paddle accepts list directly, so its case remains valid."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            16,
+            64,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        }
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            64,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 4, calculated number of sliding blocks: 0. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": [
+          16,
+          16,
+          4,
+          4
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            16,
+            64,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          2,
+          2
+        ],
+        "padding": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            16,
+            64,
+            25
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          2,
+          2
+        ],
+        "padding": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.fold",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 25, calculated number of sliding blocks: 4. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": "TypeError: fold() got an unexpected keyword argument 'kernel_size'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore fold要求input.shape[1] == kernel_size[0]*kernel_size[1]*C，且L必须匹配理论滑动块数；Paddle中参数名应为'output_sizes','kernel_sizes','strides','paddings','dilations'（复数形式），且paddings支持4维扩展而MindSpore仅支持2维。原始用例中input.shape=[16,64,25]与kernel_size=[2,2]导致C=64/(2*2)=16，但L=25不满足计算公式；同时Paddle报错因误用'kernel_size'而非'kernel_sizes'。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        }
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          2,
+          2
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 4, calculated number of sliding blocks: 28. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (2, 2), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 1 * 1 = 1, but got 4\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:1 != in_dims[2]:4.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore fold要求input.shape[1] == kernel_size[0] * kernel_size[1] * C，即C = input.shape[1] / (k_h * k_w) 必须为整数；当前input.shape[1]=16, kernel_size=[2,2] → C=4，合法；但output_size=[2]是1D tensor，而文档明确要求output_size为含2个int的1D tensor（即shape=[2]），但值应为[output_h, output_w]，此处传入shape=[2]但未指定具体值，导致计算滑块数时用默认/错误值；Paddle报错也表明in_dims[2]=4与期望blocks=1不匹配。根本原因是output_size语义被误设：MindSpore中output_size参数是Tensor值（如Tensor([2,2])），而非shape；原始用例将output_size写成{'shape':[2],'dtype':'int32'}，实际应为具体值Tensor([2,2])；同理Paddle中output_sizes应为[2,2]（已正确），但MindSpore用例未提供value字段，导致构造非法Tensor。需修复为显式value=[2,2]并确保input.shape[2]匹配理论滑块数L。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "value": [
+            2,
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          2,
+          2
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got Dictionary[[value,dtype,],[List[Int64*2],String]].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (2, 2), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 1 * 1 = 1, but got 4\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:1 != in_dims[2]:4.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore要求output_size为Tensor类型，但测试中传入了字典格式；Paddle报错因输入第2维16不等于kernel_size[0]*kernel_size[1]*C_out=4*C_out，需满足input.shape[1] == C * kernel_h * kernel_w，故C=4，input.shape[2]=L=4需匹配滑动块总数：L = ((H+2p-d(k-1)-1)/s+1)*((W+2p-d(k-1)-1)/s+1) = (2+0-1)/1+1)^2=4，正确；但MindSpore input.shape[1]必须等于 kernel_size[0]*kernel_size[1]*C => 16 == 2*2*C => C=4，合法；问题在output_size传参类型错误（应为Tensor而非dict）且Paddle paddings解析歧义（需4-element list），故修复：MindSpore output_size转为int32 Tensor，Paddle paddings扩展为[0,0,0,0]。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": {
+          "value": [
+            2,
+            2
+          ],
+          "dtype": "int32"
+        }
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          2,
+          2
+        ],
+        "paddings": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got Dictionary[[value,dtype,],[List[Int64*2],String]].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (2, 2), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 1 * 1 = 1, but got 4\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:1 != in_dims[2]:4.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            16,
+            64,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          2,
+          2
+        ],
+        "padding": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            16,
+            64,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          2,
+          2
+        ],
+        "padding": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "api": "paddle.nn.functional.fold",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 4, calculated number of sliding blocks: 18. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": "TypeError: fold() got an unexpected keyword argument 'kernel_size'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错因input.shape[2]=4不匹配理论滑动块数（计算得18），Paddle报错因参数名错误：Paddle使用'output_sizes','kernel_sizes','strides','paddings','dilations'（复数+s+下划线），而原始用例传入单数形式；需修正Paddle参数名，并重算合法output_size使滑动块数匹配input.shape[2]=4，根据Paddle公式L=4=C_in/(k_h*k_w)=64/4=16→矛盾，故需调整input C维为16或kernel_size为4x4等；最简修复是将input C维改为16（16=4*4）并设output_size=[4,4]使块数L=4，同时修正Paddle参数命名。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": [
+          4,
+          4
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            16,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (4, 4), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 3 * 3 = 9, but got 4\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:9 != in_dims[2]:4.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore要求output_size为Tensor类型，但测试中传入list；Paddle报错因输入第2维4不等于理论块数(4+0-1*1-1)//1+1=4 → 高宽各4→块数=(4+2*0-1*(2-1)-1)/1+1=4，故总块数4*4=16，但input.shape[2]=4≠16。需修复input.shape[2]为16，并将MindSpore output_size改为Tensor，Paddle paddings保持[0,0]（对应MindSpore padding）。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            16,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          4,
+          4
+        ],
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (4, 4), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 3 * 3 = 9, but got 16\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:9 != in_dims[2]:16.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore要求output_size为Tensor类型，但用例传入list；Paddle报错因输入第2维16与理论块数(4+0-1*1-1)//1+1=4，4*4=16不匹配，实际应为(4+2*0-1*(2-1)-1)//1+1=4→4*4=16，计算正确，但Paddle校验逻辑严格要求in_dims[2]==blocks_height*blocks_width=9（误算），说明output_size/kernels/stride/padding组合不满足Paddle的隐式约束：需满足(output_h + 2*p_h - d_h*(k_h-1) - 1)//s_h + 1 = blocks_h，同理w。原参数导致Paddle内部计算blocks_h=3，blocks_w=3，故需修复为使blocks_h*blocks_w == x.shape[2] == 16，如output_size=[5,5], kernel_size=[2,2], stride=[1,1], padding=[0,0] → blocks_h=4, blocks_w=4 → 16。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            16,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": [
+          4,
+          4
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            16,
+            16,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (4, 4), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 3 * 3 = 9, but got 16\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:9 != in_dims[2]:16.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            16,
+            9
+          ],
+          "dtype": "int32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "api": "mindspore.ops.fold",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            4,
+            16,
+            9
+          ],
+          "dtype": "int32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: proposed_shape '[const vector]{4, -1, 9, 9}' is invalid for input of size 576\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\view\\reshape_strides_calc.cc:116 mindspore::ops::`anonymous-namespace'::infer_size_impl\n",
+        "paddle_error": "TypeError: fold() got an unexpected keyword argument 'kernel_size'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore fold要求input.shape[1] == kernel_size[0] * kernel_size[1] * C，当前input.shape[1]=16, kernel_size=[3,3]→9，16%9≠0，不满足约束；Paddle报错因参数名应为'kernel_sizes'而非'kernel_size'，且padding格式需支持4维（top/left/bottom/right）或2维，当前[0,0]合法但需同步修正参数名。修复：调整input.channel=9（即shape[1]=9），output_size=[9,9]匹配理论输出尺寸，并修正Paddle参数名为kernel_sizes/paddings/strides/dilations。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            4,
+            9,
+            9
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        }
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          9,
+          9
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            4,
+            9,
+            9
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          3,
+          3
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 9, calculated number of sliding blocks: 5. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (9, 9), kernel_sizes (3, 3), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 7 * 7 = 49, but got 9\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:49 != in_dims[2]:9.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "两框架均报错，根源在于输入张量第三维（L）与理论滑动块数量不匹配：MindSpore要求L=5但给9，Paddle要求L=49但给9；需按公式反推合法L值——output_size=[9,9], kernel_size=[3,3], stride=[1,1], padding=[0,0], dilation=[1,1] → L = ((9+0-1*(3-1)-1)/1+1)² = 7² = 49；故x.shape[2]应为49，且C=9需满足C % (3*3)==0 → C=9合法；同时MindSpore output_size参数应为int32 Tensor [9,9]而非shape[2]的占位符。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            4,
+            9,
+            49
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        }
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          9,
+          9
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            4,
+            9,
+            49
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          3,
+          3
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 49, calculated number of sliding blocks: -1. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": [
+          4,
+          1,
+          9,
+          9
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore fold requires output_size to be a 1D tensor of exactly 2 int elements (e.g., [9,9]), but current test case provides shape [2] dtype int32 — this is ambiguous and likely interpreted as a scalar tensor or misaligned. Paddle uses [9,9] which satisfies the spatial output size constraint. The error 'calculated number of sliding blocks: -1' indicates invalid output_size leading to negative block count in formula; fixing output_size to valid [9,9] resolves shape consistency per both docs."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            4,
+            9,
+            49
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          9,
+          9
+        ],
+        "kernel_size": [
+          3,
+          3
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          9,
+          9
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            4,
+            9,
+            49
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          3,
+          3
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": [
+          4,
+          1,
+          9,
+          9
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "api": "mindspore.ops.fold",
+        "init_params": {}
+      },
+      "paddle_test_case": {
+        "x": {
+          "shape": [
+            1,
+            4,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "output_size": {
+          "shape": [
+            2
+          ],
+          "dtype": "int32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "init_params": {}
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "ValueError: For 'Col2Im', size of input's 4th dimension must be equal to calculated number of sliding blocks, but got input.size[3]: 4, calculated number of sliding blocks: 8. Please refer to Mindspore official website API docs for details about how the number of sliding blocks is calculated.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/infer//col2im.cc:92 mindspore::ops::`anonymous-namespace'::Col2ImShapeCheck\n",
+        "paddle_error": "TypeError: fold() got an unexpected keyword argument 'kernel_size'",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore fold requires input shape (N, C×kH×kW, L) where L must match calculated sliding blocks; current L=4 but expected 8. PaddlePaddle rejects 'kernel_size' (should be 'kernel_sizes'), 'padding' (expects 2 or 4 elements, not [0,0] for Size2/Size4), and 'stride' (should be 'strides'). Both APIs need parameter name and value alignment per docs."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": [
+          4,
+          4
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            1,
+            4,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (4, 4), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 3 * 3 = 9, but got 8\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:9 != in_dims[2]:8.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore要求output_size为Tensor类型，但用例传入list；Paddle报错因输入第2维8不匹配理论块数9（(4+0-1*1-1)//1+1=4，4*4=16? 错误提示为3*3=9，说明output_size=4,4/ksize=2,2/stride=1,pad=0时理论L=(4+2*0-1*(2-1)-1)//1+1=4 → 4*4=16≠8；实际应满足L = ((H+2p-d(k-1)-1)//s+1) * ((W+2p-d(k-1)-1)//s+1) = ((4-1)//1+1)^2 = 4^2 = 16，故输入L必须为16。修复：将input.shape[2]改为16，且MindSpore output_size转为Tensor。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "output_size": [
+          4,
+          4
+        ],
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            1,
+            4,
+            16
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": "ValueError: (InvalidArgument) Given input output_size (4, 4), kernel_sizes (2, 2), strides (1, 1), dilations (1, 1), which should be expected size of input's dimension 2 to match the calculated number of 3 * 3 = 9, but got 16\n  [Hint: Expected blocks_height * blocks_width == in_dims[2], but received blocks_height * blocks_width:9 != in_dims[2]:16.] (at ..\\paddle\\phi\\infermeta\\unary.cc:1982)\n",
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": null,
+        "ms_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore要求output_size为Tensor类型，但测试用例传入list；Paddle报错因输入第2维16不等于理论块数(4+0-1*1)/1+1=4 → 4×4=16? 实际公式应为blocks_h = floor((H_out + 2p_h - d_h*(k_h-1)-1)/s_h)+1 → (4+0-1*1-1)/1+1=4, same for w → 4×4=16, so input dim2=16 is correct. But Paddle's error says expected 9, meaning it computed (4-2+1)^2=9 → implies it used output_size as *feature map size before padding*, i.e., expects output_size to be the *unpadded spatial size* while interpreting formula differently. Fix: align input shape to satisfy both: use output_size=[4,4], kernel=[2,2], stride=[1,1], pad=[0,0], dilation=[1,1] → blocks = ((4+0-1*(2-1)-1)//1+1)^2 = (4-1-1+1)^2=3^2=9 → so input.shape[2] must be 9, and input.shape[1] must be C*k_h*k_w → set C=1 → input.shape[1]=4 → ok. So fix input.shape[2] to 9."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "ms_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            9
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "api": "mindspore.ops.fold",
+        "padding": [
+          0,
+          0
+        ],
+        "dilation": [
+          1,
+          1
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "output_size": [
+          4,
+          4
+        ]
+      },
+      "paddle_test_case": {
+        "output_sizes": [
+          4,
+          4
+        ],
+        "paddings": [
+          0,
+          0
+        ],
+        "x": {
+          "shape": [
+            1,
+            4,
+            9
+          ],
+          "dtype": "float32"
+        },
+        "dilations": [
+          1,
+          1
+        ],
+        "strides": [
+          1,
+          1
+        ],
+        "api": "paddle.nn.functional.fold",
+        "kernel_sizes": [
+          2,
+          2
+        ]
+      },
+      "execution_result": {
+        "ms_api": "mindspore.ops.fold",
+        "paddle_api": "paddle.nn.functional.fold",
+        "ms_success": false,
+        "paddle_success": true,
+        "results_match": false,
+        "ms_error": "TypeError: For Primitive[Col2Im], the type of input argument[output_size] must be Tensor but got List[Int64*2].\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\core\\utils\\check_convert_utils.cc:881 mindspore::CheckAndConvertUtils::CheckTensorTypeValid\n",
+        "paddle_error": null,
+        "comparison_error": null,
+        "ms_shape": null,
+        "paddle_shape": [
+          1,
+          1,
+          4,
+          4
+        ],
+        "ms_dtype": null,
+        "paddle_dtype": "paddle.float32",
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

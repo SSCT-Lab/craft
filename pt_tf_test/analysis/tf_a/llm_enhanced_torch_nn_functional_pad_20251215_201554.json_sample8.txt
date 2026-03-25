@@ -1,0 +1,99 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251215_201554.json
+样例编号: 8
+tensorflow_error 错误信息: {{function_node __wrapped__MirrorPad_device_/job:localhost/replica:0/task:0/device:CPU:0}} paddings must be less than the dimension size: 0, 1 not less than 1 [Op:MirrorPad]
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      1,
+      128,
+      528,
+      1,
+      2
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.2546788454055786,
+      0.3047201931476593,
+      0.07623368501663208,
+      0.3255106508731842,
+      -0.534352719783783,
+      -0.6772991418838501,
+      -0.690309464931488,
+      -1.1709531545639038,
+      0.01870032586157322,
+      -1.1585124731063843
+    ]
+  },
+  "pad": [
+    0,
+    1,
+    0,
+    1
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.pad",
+  "input": {
+    "shape": [
+      1,
+      128,
+      528,
+      1,
+      2
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -1.2546788454055786,
+      0.3047201931476593,
+      0.07623368501663208,
+      0.3255106508731842,
+      -0.534352719783783,
+      -0.6772991418838501,
+      -0.690309464931488,
+      -1.1709531545639038,
+      0.01870032586157322,
+      -1.1585124731063843
+    ]
+  },
+  "paddings": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      1
+    ]
+  ],
+  "mode": "REFLECT",
+  "constant_values": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.pad` 在 `mode="REFLECT"` 时要求每个维度的 padding 大小必须严格小于该维度的实际大小（即 `paddings[i][0] < input.shape[i]` 且 `paddings[i][1] < input.shape[i]`），否则会报错。本例中第4维（shape[3]=1）的右填充为1，即 `paddings[3][1] = 1`，而该维度大小为1，不满足“小于”的条件，导致错误。  
+   - PyTorch 的 `torch.nn.functional.pad(mode='reflect')` 允许在边界为1的维度上进行反射填充（如对长度为1的维度进行反射填充是合法的），其行为与 TensorFlow 不一致，属于框架间语义差异。
+
+3. 修复建议：  
+   - 该问题反映的是框架间 `reflect` 模式下边界处理逻辑的不一致，建议提交 issue 至 TensorFlow 官方，指出其在 `REFLECT` 模式下对维度大小限制过于严格，与 PyTorch 行为不符。

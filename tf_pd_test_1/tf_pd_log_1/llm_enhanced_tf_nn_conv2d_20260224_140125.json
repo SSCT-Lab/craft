@@ -1,0 +1,2009 @@
+{
+  "tf_api": "tf.nn.conv2d",
+  "paddle_api": "paddle.nn.functional.conv2d",
+  "timestamp": "2026-02-24T14:01:25.514406",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 4,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "paddle.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv2d does not accept 'filters' argument; it uses 'weight' instead. Also, Paddle expects input in NCHW format by default while TF uses NHWC, so 'data_format' must be removed and input/weight shapes adjusted accordingly: weight shape should be [out_channels, in_channels, h, w] = [4, 3, 2, 2], and input remains [2, 3, 3, 3] but will be transposed to [2, 3, 3, 3] → NCHW requires [2, 3, 3, 3] → no transpose needed if we reinterpret as NCHW-compatible (but original is NHWC, so we must transpose input to [2, 3, 3, 3] → [2, 3, 3, 3] is ambiguous; correct fix is to use 'data_format' equivalent via input layout handling — however paddle.nn.functional.conv2d has no 'data_format' arg, so input must be NCHW: thus input shape becomes [2, 3, 3, 3] → valid NCHW, and weight shape must be [4, 3, 2, 2]. Also 'padding'='SAME' must be converted to explicit padding value."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 3, 3, 4) vs Paddle=(2, 4, 3, 3)",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "paddle_shape": [
+          2,
+          4,
+          3,
+          3
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": "paddle.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv2d默认NCHW格式，input需为[2,3,3,3]→[2,3,3,3]但data_format='NHWC'不支持，应转为NCHW布局即[2,3,3,3]→[2,3,3,3]不变形，但weight形状[4,3,2,2]正确；TF的filters[2,2,3,4]对应H,W,C_in,C_out，Paddle weight[C_out,C_in,H,W]=[4,3,2,2]正确；差异源于TF输出NHWC[2,3,3,4] vs Paddle输出NCHW[2,4,3,3]，需统一data_format或转置输出。修复：Paddle侧添加output_layout转换或TF侧保持NHWC但Paddle用channels_last=False，但Paddle无此参数，故将Paddle input reshape为[2,3,3,3]→[2,3,3,3]并显式transpose输出，但测试用例仅定义输入，因此应使Paddle data_format='NHWC'（若支持）或调整input为NCHW等价形式。经查Paddle 2.5+支持data_format='NHWC'，故设data_format='NHWC'并保持weight为[4,3,2,2]，此时Paddle输出为[2,3,3,4]与TF一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": null,
+        "comparison_error": "结果不一致，最大差异: 12.81421804",
+        "tf_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "paddle_shape": [
+          2,
+          3,
+          3,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": "paddle.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv2d weight shape [out_channels, in_channels, H, W] = [4, 3, 2, 2] is correct, but TensorFlow filters shape [H, W, in_channels, out_channels] = [2, 2, 3, 4] matches; however, padding='SAME' behavior differs numerically due to internal kernel size handling — Paddle requires explicit padding calculation or 'EXPLICIT' with computed pads. To align semantics, use 'VALID' padding and matching spatial dims to eliminate numerical divergence from padding logic."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            4,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": null,
+        "comparison_error": "结果不一致，最大差异: 10.52100015",
+        "tf_shape": [
+          2,
+          2,
+          2,
+          4
+        ],
+        "paddle_shape": [
+          2,
+          2,
+          2,
+          4
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": "paddle.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "paddle.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[0, 3], [0, 0]] of size 2",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding to be list of 4 pairs when explicit, but given 2; PaddlePaddle uses 'filter' not 'filters', and padding format differs: TF expects [top,bottom,left,right] for explicit, while Paddle uses [pad_h_top,pad_h_bottom,pad_w_left,pad_w_right] or list of 2 lists only for 'EXPLICIT' mode with data_format='NHWC'. Also strides must be 4D in TF."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          3,
+          0,
+          0
+        ],
+        "data_format": "NHWC"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filter'",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv2d does not accept 'filter' as keyword argument; correct parameter name is 'weight'. Also, filter shape [2,2,1,2] is invalid for input [2,2,3,2] in NHWC: expected [out_channels, in_channels, h, w] = [2,2,1,2], but TF filters shape [1,2,2,2] implies NHWC layout [h,w,in_c,out_c], so Paddle weight must be [out_c,in_c,h,w] = [2,2,1,2] → valid. However, 'filter' param name is wrong; must use 'weight'. Also padding format differs: TF uses list-of-lists for each dim, Paddle uses [top,bottom,left,right] or int/list, so [0,3,0,0] is correct. Strides must be 2-element for 2D."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          3,
+          0,
+          0
+        ],
+        "data_format": "NHWC"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: TF=(2, 2, 2, 2) vs Paddle=(2, 5, 2, 2)",
+        "tf_shape": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "paddle_shape": [
+          2,
+          5,
+          2,
+          2
+        ],
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": "paddle.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle conv2d weight shape expects [out_channels, in_channels, h, w] for NCHW, but input is NHWC; padding format mismatch: TF uses [[top,bottom],[left,right]] per dim, Paddle uses [top, bottom, left, right] for 'NHWC' but requires explicit data_format handling and correct weight layout. Fix: transpose weight to [2,2,1,2]->[2,2,1,2] is correct for NHWC? No — Paddle's NHWC mode expects weight [out_c, h, w, in_c], so [2,1,2,2]. Also padding order in Paddle NHWC must be [top, bottom, left, right] = [0,3,0,0] is correct, but TF padding [[0,3],[0,0],[0,0],[0,0]] means pad only dim1 (height) with 0 top/3 bottom — which in NHWC is height dim=1, so Paddle padding [0,3,0,0] matches. Main issue: Paddle weight shape must be [out_c, filter_h, filter_w, in_c] = [2,1,2,2], not [2,2,1,2]."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            3
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            1,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          3,
+          0,
+          0
+        ],
+        "data_format": "NHWC"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input's channels should be equal to filter's channels * groups for Op(Conv). But received: the input's channels is 2, the input's shape is [2, 2, 3, 2]; the filter's channels is 1, the filter's shape is [2, 1, 2, 2]; the groups is 1, the data_format is NHWC. The error may come from wrong data_format setting.\n  [Hint: Expected input_channels == filter_channels * groups, but received input_channels:2 != filter_channels * groups:1.] (at ..\\paddle\\phi\\infermeta\\binary.cc:664)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "paddle.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[1, 0], [0, 2]] of size 2",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding to be list of 4 elements (e.g., [[0,0],[1,0],[0,2],[0,0]]) when data_format='NHWC', not 2-element list; PaddlePaddle uses 'filter' not 'filters', and padding must be int/list/tuple, not nested list for explicit padding — fix both to use explicit symmetric padding [1,0,0,2] and correct param names."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          0,
+          2
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filter'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          4,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'got an unexpected keyword argument filter'，实际应为'weight'；且filter shape需匹配NCHW输入：input[N,C,H,W]→weight[O,C,Kh,Kw]，原[2,3,2,2]错误，应为[2,2,2,2]；padding格式不一致，需从list[int]转为list[list[int]]或int；data_format需统一为NHWC或做等价转换。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: Non-zero padding([[0, 0], [1, 0], [0, 2], [0, 0]]) in the batch or channel dimensions is not supported.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          4,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'Non-zero padding in batch or channel dimensions not supported'，因其conv2d仅支持H/W维度padding（即2-element list或4-element list for [top, bottom, left, right]），不支持TensorFlow的5D-style [[0,0],[1,0],[0,2],[0,0]]。需将padding转为等效的NCHW格式[1,0,0,2]并确保data_format一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            2,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          0,
+          2
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input's channels should be equal to filter's channels * groups for Op(Conv). But received: the input's channels is 2, the input's shape is [1, 2, 3, 3]; the filter's channels is 3, the filter's shape is [2, 3, 2, 2]; the groups is 1, the data_format is NCHW. The error may come from wrong data_format setting.\n  [Hint: Expected input_channels == filter_channels * groups, but received input_channels:2 != filter_channels * groups:3.] (at ..\\paddle\\phi\\infermeta\\binary.cc:664)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          4,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            2
+          ]
+        ],
+        "data_format": "NHWC",
+        "api": "paddle.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[3, 4], [4, 2]] of size 2",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding to be list of 4 elements (e.g., [top, bottom, left, right]) or string when data_format='NHWC'; PaddlePaddle uses 'filter' not 'filters' and expects 'weight' param; also padding format differs: Paddle uses [pad_h_top, pad_h_bottom, pad_w_left, pad_w_right] or list of 2 lists only for explicit H/W, but must match NHWC layout. Both errors stem from invalid padding structure and param name mismatch."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            3,
+            4
+          ],
+          [
+            4,
+            2
+          ]
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          3,
+          4,
+          4,
+          2
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[3, 4], [4, 2]] of size 2",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'strides'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow要求padding为4元素列表或字符串，当前[[3,4],[4,2]]非法；PaddlePaddle不支持strides关键字参数（应为stride），且weight形状应为[out_channels,in_channels,kh,kw]即[3,3,2,2]正确，但data_format='NCHW'与input[1,1,1,3]不匹配，需改为NHWC布局或调整input/weight形状。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input's channels should be equal to filter's channels * groups for Op(Conv). But received: the input's channels is 1, the input's shape is [1, 1, 1, 3]; the filter's channels is 3, the filter's shape is [3, 3, 2, 2]; the groups is 1, the data_format is NCHW. The error may come from wrong data_format setting.\n  [Hint: Expected input_channels == filter_channels * groups, but received input_channels:1 != filter_channels * groups:3.] (at ..\\paddle\\phi\\infermeta\\binary.cc:664)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因input通道数(1)与weight预期通道数(3)不匹配，且data_format默认NCHW但TF用NHWC；需将Paddle input reshape为[1,3,1,1]（NCHW），weight改为[3,3,2,2]→[3,3,2,2]合法但需匹配输入通道：原TF input[1,1,1,3]是NHWC→C=3，故Paddle input应为[1,3,1,1]，weight应为[3,3,2,2]→但实际weight shape应为[out_c,in_c,kh,kw]=[3,3,2,2]，故in_c=3匹配；当前Paddle weight shape[3,3,2,2]中in_c=3，但input shape[1,1,1,3]在NCHW下解释为C=1，故需修正input为[1,3,1,1]并设data_format='NCHW'，同时TF保持NHWC对应关系。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            2,
+            2,
+            3,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            1,
+            1,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "weight": {
+          "shape": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "ValueError: (InvalidArgument) The number of input's channels should be equal to filter's channels * groups for Op(Conv). But received: the input's channels is 1, the input's shape is [1, 1, 1, 3]; the filter's channels is 3, the filter's shape is [3, 3, 2, 2]; the groups is 1, the data_format is NCHW. The error may come from wrong data_format setting.\n  [Hint: Expected input_channels == filter_channels * groups, but received input_channels:1 != filter_channels * groups:3.] (at ..\\paddle\\phi\\infermeta\\binary.cc:664)\n",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          1,
+          1,
+          3
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilations": [
+          2,
+          1
+        ],
+        "data_format": "NHWC",
+        "api": "tf.nn.conv2d"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilations": [
+          2,
+          1
+        ],
+        "data_format": "NHWC",
+        "api": "paddle.nn.functional.conv2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[1, 0], [0, 1]] of size 2",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filters'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding to be a list of length 4 when specified as explicit list (e.g., [1,0,0,1]), not 2x2; PaddlePaddle paddle.nn.functional.conv2d uses 'filter' not 'filters', and 'data_format' is 'data_format' but expects 'channels_first'/'channels_last' via 'data_format', and padding format differs: Paddle accepts [[1,0],[0,1]] only for 'EXPLICIT' mode with 'padding_algorithm=None', but standard usage requires flat list or string. Also strides/dilations must be 4-element for NHWC in TF, but Paddle uses 2-element. Repair aligns parameter names, shapes, and padding formats per docs."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "dilations": [
+          1,
+          2,
+          1,
+          1
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          1,
+          0,
+          0,
+          1
+        ],
+        "dilation": [
+          2,
+          1
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When `padding` is a list, each element of `padding` must be a list/tuple of size 2. Received: padding=[1, 0, 0, 1] with element at index 0 of type <class 'int'>",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filter'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow要求padding为list of lists when explicit, so [1,0,0,1] must become [[1,0],[0,1]]; PaddlePaddle uses 'filter' param but expects NCHW layout while TF uses NHWC, so filter shape must be reordered to [2,1,1,2]→[2,1,1,2] is correct for NCHW input [1,3,2,1], but stride/dilation must match spatial dims; also Paddle does not accept 4D strides — use 2D stride [1,1]; dilations in TF are [1,2,1,1] → spatial dilation [2,1] matches Paddle's [2,1]; padding format differs: TF explicit padding requires [[top,bottom],[left,right]], Paddle accepts [top,bottom,left,right] only for string 'SAME'/'VALID', so for explicit list, Paddle requires [[top,bottom],[left,right]] too."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilations": [
+          1,
+          2,
+          1,
+          1
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "dilation": [
+          2,
+          1
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: When padding is a list, it must be of size 4. Received: padding=[[1, 0], [0, 1]] of size 2",
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filter'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "paddle_shape": null,
+        "tf_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.conv2d requires padding list to have length 4 when specified as explicit list (for NHWC: [[top,bottom],[left,right]] → must be [[0,0],[top,bottom],[left,right],[0,0]]), and PaddlePaddle uses 'filter' param but expects NCHW input layout while TF uses NHWC; also dilations/dilation order and dimensionality mismatch: TF dilations is 4D [1,2,1,1] for NHWC, Paddle dilation is 2D [2,1] for H,W in NCHW — need to align layout and padding format."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filters": {
+          "shape": [
+            1,
+            2,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "dilations": [
+          1,
+          2,
+          1,
+          1
+        ],
+        "data_format": "NHWC"
+      },
+      "paddle_test_case": {
+        "api": "paddle.nn.functional.conv2d",
+        "input": {
+          "shape": [
+            1,
+            3,
+            2,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "filter": {
+          "shape": [
+            2,
+            1,
+            1,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "dilation": [
+          2,
+          1
+        ],
+        "data_format": "NCHW"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.conv2d",
+        "paddle_api": "paddle.nn.functional.conv2d",
+        "tf_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "paddle_error": "TypeError: conv2d() got an unexpected keyword argument 'filter'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          2,
+          2
+        ],
+        "paddle_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "paddle_dtype": null,
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

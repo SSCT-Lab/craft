@@ -1,0 +1,125 @@
+来源文件: llm_enhanced_torch_addmm_20251202_125541.json
+样例编号: 8
+paddle_error 错误信息: The input Variable x's width must be equal with Variable y' height. But received x's shape = [4, 3], y's shape = [2, 3].
+
+【PyTorch 测试用例】
+{
+  "api": "torch.addmm",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -1,
+      -8,
+      -2,
+      8,
+      9,
+      -4
+    ]
+  },
+  "mat1": {
+    "shape": [
+      2,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      9,
+      -7,
+      6,
+      8,
+      6,
+      3,
+      -10,
+      -10
+    ]
+  },
+  "mat2": {
+    "shape": [
+      4,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      -10,
+      -6,
+      7,
+      3,
+      6,
+      -3,
+      1,
+      -6,
+      3
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.addmm",
+  "input": {
+    "shape": [
+      2,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -1,
+      -8,
+      -2,
+      8,
+      9,
+      -4
+    ]
+  },
+  "x": {
+    "shape": [
+      2,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      7,
+      -3,
+      -3,
+      0,
+      -1,
+      8,
+      4,
+      -9
+    ]
+  },
+  "y": {
+    "shape": [
+      4,
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -10,
+      8,
+      4,
+      -3,
+      2,
+      1,
+      9,
+      6,
+      9,
+      -9
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.addmm` 要求输入的 `x` 和 `y` 进行矩阵乘法时，必须满足 `x.shape[1] == y.shape[0]`（即 x 的列数等于 y 的行数），而当前输入中 `x.shape = [2, 4]`，`y.shape = [4, 3]`，满足该条件（4 == 4），但错误信息显示“x's width must be equal with y's height”，实际应为 `x.width=4`，`y.height=4`，逻辑上是匹配的。
+   - 然而错误信息明确指出 `x.shape=[2,3]`, `y.shape=[2,3]`，这与测试用例中提供的 `x=[2,4]`, `y=[4,3]` 完全不符，说明在执行前存在**参数混淆或传参错误**，极可能是将 `input` 当成了 `x`，或将 `mat1` 错误映射为 `x`，导致实际传入的 `x` 是 `[2,3]`，而 `y` 是 `[2,3]`，从而违反了矩阵乘法维度约束。
+
+3. 修复建议：
+   - 修正参数映射逻辑，确保 PyTorch 中的 `mat1` 对应 PaddlePaddle 的 `x`，`mat2` 对应 `y`，且 `input` 保持为 `input`；当前错误源于 `x` 实际被传入了 `[2,3]`，应检查是否误将 `input` 或 `mat1` 的值错位赋给 `x`。

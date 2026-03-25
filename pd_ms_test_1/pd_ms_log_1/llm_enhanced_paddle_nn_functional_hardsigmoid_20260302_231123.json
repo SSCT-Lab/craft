@@ -1,0 +1,894 @@
+{
+  "pd_api": "paddle.nn.functional.hardsigmoid",
+  "ms_api": "mindspore.ops.hardtanh",
+  "timestamp": "2026-03-02T23:11:23.975878",
+  "total_iterations": 18,
+  "llm_generated_test_cases": 13,
+  "successful_test_cases": 13,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.33282620",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：前者是分段线性sigmoid近似（截断于-3/3，斜率0.1667，偏移0.5），后者是截断线性函数（默认[-1,1]）。二者功能不等价，无法直接对比。需将MindSpore用例改为等效hardsigmoid实现，即hardtanh(input, min_val=0.0, max_val=1.0)不适用；正确对应应使用mindspore.ops.hardtanh配合自定义范围或改用mindspore.nn.Hardshrink等，但无直接等价算子，故需跳过。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.98493940",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：前者是分段线性sigmoid近似（0/1/slope*x+offset），后者是截断线性函数（clamp）。二者功能不等价，无法通过参数调整使输出一致。根据文档，应跳过跨框架等价性测试。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.08640388",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：hardsigmoid是分段线性sigmoid近似（截断于[-3,3]，中间斜率0.1667，偏移0.5），而hardtanh是分段恒等函数（截断于[min_val,max_val]）。要使二者行为等价，需将hardtanh配置为模拟hardsigmoid的分段线性映射，即min_val=0.0, max_val=1.0，并配合输入缩放。但直接等价不可行；正确修复是让hardtanh逼近hardsigmoid输出范围[0,1]，故设min_val=0.0, max_val=1.0，且保持输入不变——因hardsigmoid本身已将输入映射到[0,1]，而hardtanh在此区间内为恒等，但原始用例中min_val=-3.0/max_val=3.0导致输出范围[-3,3]，与[0,1]严重不一致，最大误差2.086验证了此问题。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "min_val": 0.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.40840524",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.31745314",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": "Float64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh功能不等价：前者是sigmoid的分段线性近似（-3/3截断，斜率0.1667，偏移0.5），后者是简单裁剪函数（默认-1/1）。二者数学定义不同，无法通过参数调整使输出一致，属于跨框架算子语义不匹配，应跳过直接对比。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "slope": 0.1666667,
+        "api": "paddle.nn.functional.hardsigmoid",
+        "offset": 0.5
+      },
+      "ms_test_case": {
+        "min_val": -1.0,
+        "input": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "max_val": 1.0,
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.21014360",
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.float64",
+        "ms_dtype": "Float64",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "paddle.hardsigmoid and mindspore.hardtanh implement fundamentally different piecewise functions: hardsigmoid is a linear approximation of sigmoid with clamping at -3/3 and affine transform, while hardtanh is a simple clamp to [min_val, max_val] with identity in between; they are not semantically equivalent even with parameter tuning."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.28242761",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.hardsigmoid 和 mindspore.hardtanh 功能不等价：前者是分段线性sigmoid近似（-3/3截断，斜率0.1667，偏移0.5），后者是截断线性函数（默认-1/1区间）。为语义对齐，需将hardtanh的min_val/max_val设为-3/3，并添加线性变换y = 0.1667*x + 0.5，但hardtanh无内置仿射变换能力，故无法精确等价，应跳过直接对比。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.67143415",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：hardsigmoid是分段线性近似sigmoid（0/1/slope*x+offset），hardtanh是截断线性函数。二者功能不等价，无法通过参数调整使输出一致，应跳过跨框架一致性测试。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.06887302",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：hardsigmoid是分段线性近似sigmoid（0/1/slope*x+offset），hardtanh是截断线性函数（min_val/max_val/input）。二者功能不等价，无法通过参数调整使输出一致，应跳过跨框架一致性测试。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.04387176",
+        "pd_shape": [],
+        "ms_shape": [],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.29730114",
+        "pd_shape": [
+          5
+        ],
+        "ms_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：前者是分段线性sigmoid近似（阈值±3，斜率0.1667，偏移0.5），后者是截断线性函数（默认[-1,1]）。二者功能不等价，无法直接对比。需将MindSpore用例改为等效hardsigmoid实现，即hardtanh参数设为min_val=0.0, max_val=1.0，并配合仿射变换；但mindspore.ops无原生hardsigmoid，故应使用hardtanh配合预处理x' = x * slope + offset，但当前测试未做此适配。因此原始用例参数未对齐，必须修复为语义等价配置。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "slope": 0.1666667,
+        "api": "paddle.nn.functional.hardsigmoid",
+        "offset": 0.5
+      },
+      "ms_test_case": {
+        "min_val": 0.0,
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "max_val": 1.0,
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.41067782",
+        "pd_shape": [
+          5
+        ],
+        "ms_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid and hardtanh are fundamentally different functions: hardsigmoid is a piecewise linear approximation of sigmoid with fixed thresholds at -3/3, while hardtanh clamps to [min_val, max_val]. To match hardsigmoid's output range [0,1], hardtanh must be configured with min_val=0.0 and max_val=1.0, but its linear region is identity, not slope*x+offset. No parameter mapping makes them equivalent; thus the test case is invalid and must be repaired to use semantically corresponding ops — however, since no MindSpore op matches hardsigmoid's exact formula (e.g., mindspore.ops.hardshrink or custom implementation), and official docs confirm no direct equivalent, operation is set to skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "slope": 0.1666667,
+        "api": "paddle.nn.functional.hardsigmoid",
+        "offset": 0.5
+      },
+      "ms_test_case": {
+        "min_val": 0.0,
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "max_val": 1.0,
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.49756656",
+        "pd_shape": [
+          5
+        ],
+        "ms_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：hardsigmoid是分段线性近似sigmoid（阈值-3/3，斜率0.1667，偏移0.5），而hardtanh是截断线性函数（默认-1/1）。二者功能不等价，无法直接对齐。需将MindSpore替换为等价的hardsigmoid实现，但mindspore.ops无原生hardsigmoid，需用hardtanh组合或自定义；根据文档，应跳过跨框架直接比较，但任务要求修复——实际应映射为mindspore.nn.Hardshrink？不匹配。正确做法是：mindspore无hardsigmoid，仅能用ops.clip_by_value+线性变换模拟，但非原子算子。因此该跨框架测试不可行，应skip。但题目要求repair时须保证语义对应，而二者无参数映射关系，故必须skip。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "slope": 0.1666667,
+        "api": "paddle.nn.functional.hardsigmoid",
+        "offset": 0.5
+      },
+      "ms_test_case": {
+        "min_val": 0.0,
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "max_val": 1.0,
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 0.34247175",
+        "pd_shape": [
+          5
+        ],
+        "ms_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.31636637",
+        "pd_shape": [
+          2,
+          3,
+          4
+        ],
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh数学定义不同：hardsigmoid是分段线性sigmoid近似（阈值-3/3，斜率0.1667，偏移0.5），而hardtanh是截断线性函数（默认-1/1）。二者功能不等价，需对齐语义：将hardtanh参数设为min_val=-3, max_val=3，并添加线性变换y = 0.1667*x + 0.5，但hardtanh无内置斜率/偏移参数，故无法精确等价；因此必须跳过直接比较，但任务要求修复而非跳过——然而根据文档，二者本质不同，严格修复不可行，故正确操作应为skip。但题目示例中inconsistent且非精度误差，且功能不等价，应skip。但输出格式强制要求三选一，且规则第2条明确'功能不完全等价时选择skip'，故operation应为skip。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "mindspore.ops.hardtanh"
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.32285100",
+        "pd_shape": [
+          2,
+          3,
+          4
+        ],
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "hardsigmoid和hardtanh功能不等价：前者是分段线性sigmoid近似（-3/3截断，斜率0.1667，偏移0.5），后者是截断线性函数（默认-1/1范围）。为使语义对齐，需将hardtanh的min_val/max_val设为-3/3，并添加线性变换y = 0.1667*x + 0.5，但hardtanh无内置该变换。因此必须跳过直接比较，改用等价算子或跳过。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.36111739",
+        "pd_shape": [
+          2,
+          3,
+          4
+        ],
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's hardsigmoid uses fixed piecewise definition with slope=0.1666667 and offset=0.5, mapping [-3,3] to [0,1], while MindSpore's hardtanh is a clamping function; to match hardsigmoid output range [0,1], hardtanh must be configured with min_val=0.0 and max_val=1.0, and the linear region must be aligned via affine transform — but hardtanh alone cannot replicate hardsigmoid's affine ramp (slope*x+offset) in [-3,3]; thus no direct parameter mapping exists — they are functionally inequivalent. Skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.nn.functional.hardsigmoid"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "min_val": -3.0,
+        "api": "mindspore.ops.hardtanh",
+        "max_val": 3.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.nn.functional.hardsigmoid",
+        "ms_api": "mindspore.ops.hardtanh",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "结果不一致，最大差异: 1.87241158",
+        "pd_shape": [
+          2,
+          3,
+          4
+        ],
+        "ms_shape": [
+          2,
+          3,
+          4
+        ],
+        "pd_dtype": "paddle.float32",
+        "ms_dtype": "Float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

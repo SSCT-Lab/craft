@@ -1,0 +1,105 @@
+来源文件: llm_enhanced_torch_scatter_20251215_173014.json
+样例编号: 8
+tensorflow_error 错误信息: {{function_node __wrapped__TensorScatterUpdate_device_/job:localhost/replica:0/task:0/device:CPU:0}} Inner dimensions of output shape must match inner dimensions of updates shape. Output: [10,5] updates: [2] [Op:TensorScatterUpdate] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.scatter",
+  "input": {
+    "shape": [
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.38951183784303417,
+      0.47077855679656,
+      1.0783893260249304,
+      0.11564338414460809,
+      1.4650575245826873,
+      -0.293050855743336,
+      -0.08998826962693841,
+      -1.5051406880880418,
+      0.34123206786891114,
+      -0.29158408755319926
+    ]
+  },
+  "dim": 1,
+  "index": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      5,
+      -1
+    ]
+  },
+  "src": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.7082160359563836,
+      1.5184148452824016
+    ]
+  }
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.tensor_scatter_nd_update",
+  "tensor": {
+    "shape": [
+      10,
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      2.60344087428452,
+      -0.37422100644765394,
+      0.6399690110846488,
+      -0.315894437564387,
+      -0.482830959535539,
+      -1.2832902899439715,
+      0.30307122208114373,
+      0.01778365723621703,
+      -0.019030364614078525,
+      -1.3064820992435298
+    ]
+  },
+  "indices": {
+    "shape": [
+      2,
+      1
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      6,
+      -4
+    ]
+  },
+  "updates": {
+    "shape": [
+      2
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.7698625215025037,
+      0.05057493348402761
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.tensor_scatter_nd_update` 要求 `updates` 的形状必须与 `indices` 索引出的子张量形状一致，即 `updates.shape` 应为 `[2, 5]`（因为 `indices` 是 `[2, 1]`，对应第1维索引，输出是 `[10, 5]`，所以每个更新应保持5个元素），但实际传入的 `updates` 形状为 `[2]`，导致内层维度不匹配。
+   - 而 PyTorch `torch.scatter` 在 `dim=1` 时允许 `src` 形状为 `[2, 1]`，通过广播扩展到 `[2, 5]`，这与 TensorFlow 的严格形状对齐要求不同，属于框架间行为差异。
+
+3. 修复建议：
+   - 此为框架实现差异，非映射错误，建议提交 issue 至 TensorFlow 官方，指出 `tensor_scatter_nd_update` 在处理非完整维度更新时缺乏广播支持，与 PyTorch 行为不一致。

@@ -1,0 +1,948 @@
+{
+  "operator": "torch.sort",
+  "timestamp": "2026-01-25T11:07:54.899810",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 9,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.550359852522999,
+            -0.24546141980898648,
+            0.29230961825937474,
+            -2.767208788719784,
+            -0.48006653263603327,
+            -1.3065135301998638,
+            0.60929406006808,
+            0.3315323495789718,
+            -0.428985907969694,
+            -0.9887142466109075
+          ]
+        },
+        "dim": 1,
+        "descending": true,
+        "api": "torch.sort"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.550359852522999,
+            -0.24546141980898648,
+            0.29230961825937474,
+            -2.767208788719784,
+            -0.48006653263603327,
+            -1.3065135301998638,
+            0.60929406006808,
+            0.3315323495789718,
+            -0.428985907969694,
+            -0.9887142466109075
+          ]
+        },
+        "dim": 1,
+        "descending": true,
+        "api": "paddle.sort"
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "paddle.sort() received unexpected keyword argument 'dim'. \nDid you mean to use paddle.compat.sort() instead?",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 49, in wrapper\n    processed_args, processed_kwargs = self.process(args, kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 415, in process\n    raise TypeError(\nTypeError: paddle.sort() received unexpected keyword argument 'dim'. \nDid you mean to use paddle.compat.sort() instead?\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的paddle.sort API不接受'dim'参数，而应使用'axis'参数，这与PyTorch的'dim'语义相同；同时PaddlePaddle的paddle.sort返回单个Tensor（values），而PyTorch返回(values, indices)元组，但本测试仅关注values一致性，因此需将paddle_test_case中的'dim'改为'axis'以匹配API签名，否则会抛出'Unexpected keyword argument dim'错误。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.18155909973458545,
+            0.9023691100897171,
+            1.1091220972319824,
+            -0.7706345066816316,
+            -0.5530630541854359,
+            -1.5882281942634187,
+            1.7436009756118698,
+            -0.19696773743607282,
+            -0.7365253924753484,
+            0.817486687879148
+          ]
+        },
+        "dim": 1,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.18155909973458545,
+            0.9023691100897171,
+            1.1091220972319824,
+            -0.7706345066816316,
+            -0.5530630541854359,
+            -1.5882281942634187,
+            1.7436009756118698,
+            -0.19696773743607282,
+            -0.7365253924753484,
+            0.817486687879148
+          ]
+        },
+        "axis": 1,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.sort returns a namedtuple (values, indices) with same shape as input, while PaddlePaddle paddle.sort only returns sorted values (Tensor) — but the error shows shape mismatch: PyTorch output shape is (2, 5, 10, 5) vs Paddle's (5, 10, 5). This indicates the PyTorch test case is *not* just calling torch.sort alone — the reported PyTorch input shape is [5,10,5], yet its output shape is (2,5,10,5), which matches the shape of a *tuple* unpacked incorrectly or misinterpreted. However, the critical functional mismatch is that paddle.sort does NOT return indices, whereas torch.sort always returns (values, indices). Therefore, to compare equivalent outputs, the Paddle test case must be adjusted to *also extract indices*, but paddle.sort does not provide them. Instead, paddle.argsort must be used alongside paddle.sort to get indices — or the test must compare only the 'values' from torch.sort[0] against paddle.sort output. The current test compares full outputs (likely torch.sort() result tuple vs paddle.sort() tensor), causing shape mismatch. Hence, repair is needed: for fair comparison, we must extract values from torch.sort (i.e., torch.sort(...)[0]) and ensure both frameworks output only the sorted values tensor. Also, note that PyTorch’s dim=1 on [5,10,5] gives output shape [5,10,5]; the reported PyTorch output shape (2,5,10,5) suggests the test mistakenly included batch dimension or misread output — but per doc, torch.sort returns two tensors of input shape. So the real issue is test logic: it's comparing a 2-tuple (hence len=2, first elem shape [5,10,5]) to a single tensor — but the comparator sees the tuple as having length 2 and broadcasts/concatenates? No — the error says 'shape mismatch: PyTorch (2, 5, 10, 5) vs Paddle (5, 10, 5)', meaning the PyTorch side is somehow producing a 4D tensor. This only happens if input was actually [2,5,10,5] — but input spec says [5,10,5]. Therefore, the most plausible explanation is that the PyTorch test case unintentionally passed a 4D input due to environment or wrapper bug — but per given input, it should be [5,10,5]. Since the documented behavior differs fundamentally (torch.sort returns two tensors; paddle.sort returns one), and no Paddle API directly mirrors torch.sort’s dual-output behavior, the correct repair is to align comparison to *only the values*, i.e., use torch.sort(...)[0] for PyTorch and paddle.sort(...) for Paddle — but the test case format doesn’t allow indexing in the spec. Thus, the test case must be repaired to reflect that output comparison is only on values, and the Paddle test case is correct as-is, but the PyTorch expectation must be adjusted — however, the test framework likely expects both to return same structure. Since paddle.sort has no indices output, and there's no paddle.sort(..., return_indices=True) (unlike PyTorch), the only sound repair is to change PyTorch test to use torch.sort(...)[0] implicitly — but test case JSON can't express that. Therefore, the proper fix is to recognize that these APIs are *not functionally equivalent in return structure*, and the test must compare only the values tensor. Hence, we keep input identical, but clarify comparison intent by repairing the test to match actual output semantics: PyTorch test case remains valid, but the Paddle test case is incomplete — however, Paddle has paddle.argsort for indices, not combined. So the mismatch is inherent: torch.sort ≠ paddle.sort in interface. Per task requirement: 'if two operators’ functions are not fully equivalent, choose skip'. But wait — the error is shape mismatch, not missing indices. The reported PyTorch output shape (2,5,10,5) is inconsistent with input [5,10,5] and dim=1. The only way torch.sort outputs (2,5,10,5) is if input was (2,5,10,5) and dim=1 → output values shape = (2,5,10,5). So the input shape in PyTorch test case is misreported. Given the output shape mismatch points to input shape discrepancy, and the PyTorch test case declares input shape [5,10,5] but yields 4D output, the PyTorch input must actually be [2,5,10,5]. Therefore, the PyTorch test case input shape is wrong — it should be [2,5,10,5] to match observed output, and Paddle input must match it too for fair comparison. So repair both inputs to [2,5,10,5] to resolve shape mismatch."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            2.3613526834790024,
+            -0.3514009643066692,
+            -0.935648764754545,
+            -0.010105969194982693,
+            -0.07443404079194345,
+            0.1594944676957867,
+            -0.5815776879593484,
+            -1.3698216173469684,
+            0.6027757118153964,
+            0.6549082343453579
+          ]
+        },
+        "dim": 1,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            2.3613526834790024,
+            -0.3514009643066692,
+            -0.935648764754545,
+            -0.010105969194982693,
+            -0.07443404079194345,
+            0.1594944676957867,
+            -0.5815776879593484,
+            -1.3698216173469684,
+            0.6027757118153964,
+            0.6549082343453579
+          ]
+        },
+        "axis": 1,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2, 5, 10, 5) vs PaddlePaddle (2, 5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.sort returns a namedtuple (values, indices) with same shape as input, while PaddlePaddle paddle.sort only returns the sorted values tensor (no indices). The original test cases compare outputs directly, but they have fundamentally different return structures: PyTorch output is a tuple of two tensors, whereas PaddlePaddle output is a single tensor. Therefore, the 'shape mismatch' error arises from comparing a tuple (whose first element has shape [2,5,10,5]) against a single tensor — but the reported shapes '(2, 2, 5, 10, 5) vs (2, 5, 10, 5)' suggest an additional unintended dimension in PyTorch output, which indicates the test likely unpacked or misinterpreted the namedtuple. However, the core issue is that paddle.sort does NOT return indices, so direct output comparison is invalid. To make tests comparable, we must extract only the 'values' from torch.sort (i.e., output[0]) and compare it with paddle.sort's output. Also, the reported PyTorch shape '(2, 2, 5, 10, 5)' is inconsistent with input shape [2,5,10,5] and dim=1 — this implies the test may have erroneously used torch.sort(..., out=(...)) or mislogged; but per docs and behavior, torch.sort(input, dim=1) returns (values, indices), both of shape [2,5,10,5]. Thus the shape mismatch points to incorrect test harness logic — but since the task is to fix the test case for valid cross-framework comparison, we must ensure both frameworks produce comparable outputs: i.e., only sorted values. No change to parameters is needed, but the test must be repaired to compare values-only outputs. However, the JSON schema requires test cases — and the current cases are syntactically correct. The real repair is conceptual: the test runner must extract values[0] from torch.sort and compare to paddle.sort. Since we cannot modify test runner logic here, and the *observed* shape mismatch suggests the PyTorch side accidentally included indices or used wrong dim handling, the most plausible root cause is that the PyTorch test case was run with default dim=-1 (not dim=1) somewhere — but the provided case explicitly sets dim=1. Rechecking: input shape [2,5,10,5], dim=1 → sorting along axis 1 (size 5), so output values shape must remain [2,5,10,5]. The reported PyTorch shape '(2,2,5,10,5)' implies dim was -1 or 0 was misinterpreted — but more critically, the official PaddlePaddle doc states paddle.sort returns only the sorted tensor, while PyTorch returns two tensors. Therefore, to enable valid comparison, the test case itself is not faulty, but the evaluation logic is. However, per task requirement: when outputs are structurally incompatible (tuple vs scalar tensor), and no indices equivalent exists in Paddle, the correct action is to repair the test to align semantics — but since the API contracts differ fundamentally (one returns indices, the other doesn't), and the user expects 'compared' result, the only sound resolution is to adjust the test to extract values from PyTorch and compare with Paddle's output. But the JSON output format does not allow specifying extraction logic — only test case dicts. Hence, the test cases as written are *correct*, but the comparison protocol is broken. Given the instruction 'if not consistent and functional equivalence holds but output structure differs', and since paddle.sort has no indices counterpart, this is a known functional non-equivalence in return signature. However, the error says 'shape mismatch', not 'type mismatch', meaning the test harness tried to compare a tuple as if it were a tensor — which is a harness bug. But per task, we must decide operation. Since both APIs executed successfully, and the *values* part of torch.sort should match paddle.sort exactly (same shape, same data), the shape discrepancy indicates the PyTorch output logged includes indices concatenated or misformatted. The most likely explanation is that the test accidentally called torch.sort without unpacking and printed the whole namedtuple's string repr, causing confusion. To resolve, we must ensure the test cases are used in a way that extracts values — but again, we can only mutate test case dicts. Therefore, the minimal repair is to add 'stable' parameter to both to ensure identical algorithmic behavior (as stable sort is supported by both and affects tie-breaking), and verify dim/axis consistency. However, the critical insight is: the reported PyTorch shape '(2, 2, 5, 10, 5)' matches what you'd get if someone did torch.sort(input, dim=0) on a [2,5,10,5] tensor and then stacked values and indices — but that's not happening here. Given ambiguity, and per strict reading of docs: torch.sort returns (values, indices), both same shape as input; paddle.sort returns only values, same shape. So expected shape for both values is [2,5,10,5]. The fact that PyTorch side shows (2,2,5,10,5) means the test harness incorrectly took the entire output tuple and measured its len() or something. Since we cannot fix the harness, and the test cases are syntactically and semantically correct, the appropriate action is to repair by making the test cases explicitly extract comparable entities — but the format forbids that. Therefore, the only safe, spec-compliant repair is to acknowledge that direct comparison is invalid due to return signature mismatch, and thus the test case must be skipped. However, the instructions say: 'if you think the two cross-framework operators are not fully equivalent, choose skip'. And indeed: torch.sort returns two tensors; paddle.sort returns one. There is no paddle equivalent to torch.sort(...)[1] (indices) — paddle.argsort exists for that. So comparing torch.sort to paddle.sort is comparing apples to oranges. Hence, the correct operation is 'skip'. But wait — the error says 'shape mismatch', not 'type mismatch', and both executed successfully. That implies the test runner attempted tensor-to-tensor comparison and failed on shape, meaning it treated torch.sort's output as a tensor, which it is not. So the test case is misused. Therefore, the test case should not be used as-is for comparison — it must be skipped. Final decision: skip."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.4975398175990877,
+            1.7163263904988615,
+            -1.4192465532723644,
+            1.151365870621893,
+            -0.7554403481633826,
+            1.2574035542311655,
+            -2.18764101944929,
+            -0.22137372587161022,
+            -0.5528661960007187,
+            0.6695009879922509
+          ]
+        },
+        "dim": 1,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.4975398175990877,
+            1.7163263904988615,
+            -1.4192465532723644,
+            1.151365870621893,
+            -0.7554403481633826,
+            1.2574035542311655,
+            -2.18764101944929,
+            -0.22137372587161022,
+            -0.5528661960007187,
+            0.6695009879922509
+          ]
+        },
+        "axis": 1,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2, 5, 10, 5) vs PaddlePaddle (2, 5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -2.443692373573972,
+            1.2993634937555982,
+            2.171731255588154,
+            -0.5199386238199326,
+            -0.5908242095063827,
+            0.47073285275564797,
+            -0.5413759361596489,
+            -0.026389974969268516,
+            -0.8364226660129134,
+            -0.48239211106653057
+          ]
+        },
+        "dim": 1,
+        "descending": true,
+        "api": "torch.sort"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -2.443692373573972,
+            1.2993634937555982,
+            2.171731255588154,
+            -0.5199386238199326,
+            -0.5908242095063827,
+            0.47073285275564797,
+            -0.5413759361596489,
+            -0.026389974969268516,
+            -0.8364226660129134,
+            -0.48239211106653057
+          ]
+        },
+        "dim": 1,
+        "descending": true,
+        "api": "paddle.sort"
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "paddle.sort() received unexpected keyword argument 'dim'. \nDid you mean to use paddle.compat.sort() instead?",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 49, in wrapper\n    processed_args, processed_kwargs = self.process(args, kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 415, in process\n    raise TypeError(\nTypeError: paddle.sort() received unexpected keyword argument 'dim'. \nDid you mean to use paddle.compat.sort() instead?\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.sort does not accept 'dim' as a parameter name; according to its documentation, the equivalent parameter is 'axis'. The error message explicitly states 'paddle.sort() received unexpected keyword argument \"dim\"', so we must replace 'dim' with 'axis' in the PaddlePaddle test case. PyTorch uses 'dim', Paddle uses 'axis' — this is a parameter naming mismatch, not a functional discrepancy. Both APIs support the same sorting behavior (ascending/descending) and dimension specification, so the fix is purely syntactic."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.18438956403463383,
+            -0.18497512514363468,
+            -1.2711766269993567,
+            0.6772244692813838,
+            0.7017964481650846,
+            -0.5400080112268256,
+            0.36636543662886706,
+            0.5134903453889073,
+            -0.45774558664873566,
+            1.5122254348850017
+          ]
+        },
+        "dim": 1,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.18438956403463383,
+            -0.18497512514363468,
+            -1.2711766269993567,
+            0.6772244692813838,
+            0.7017964481650846,
+            -0.5400080112268256,
+            0.36636543662886706,
+            0.5134903453889073,
+            -0.45774558664873566,
+            1.5122254348850017
+          ]
+        },
+        "axis": 1,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.sort returns a namedtuple (values, indices) with same shape as input, while PaddlePaddle paddle.sort only returns the sorted values tensor (no indices). The original test compares only the output tensor, but PyTorch's output is a tuple — hence shape mismatch: PyTorch result is tuple containing tensor of shape (5,10,5), but comparison mistakenly treats the entire tuple as a tensor and extracts wrong dimension. However, the error message says 'PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)' — this implies the test code incorrectly unpacked or accessed torch.sort's output (e.g., used `out[0]` but then misinterpreted its batch dim). But more critically: the documented return for torch.sort is (values, indices), both of input shape; paddle.sort returns only values (no indices). Therefore, to compare equivalent outputs, we must extract `values` from torch.sort (i.e., first element of returned tuple), and ensure both frameworks compute same values. The shape mismatch error indicates the test compared full torch.sort() result (tuple) as if it were a tensor — but that’s a test harness bug. However, per task requirement, we must fix the *test case* to align semantics: since paddle.sort does not return indices, the valid comparison is only on sorted values. But the reported shapes — (2,5,10,5) vs (5,10,5) — suggest the PyTorch test case unintentionally created a 4D input (e.g., via unsqueeze or broadcast) or the harness applied dim=1 on a tensor that became 4D. Re-examining the input spec: input shape is [5,10,5], dim=1 → sorting along axis 1 → output values shape must remain [5,10,5]. So (2,5,10,5) is impossible unless there's an implicit batch or the test actually constructed a different tensor. The most plausible root cause is that the PyTorch test case was run with `torch.sort(..., out=(..., ...))` or used `torch.sort(...)[0]` in a context where the harness added a leading dim — but the provided test case shows no such usage. Given the documented behavior and the shape mismatch, the only consistent repair is to ensure both frameworks are tested for *values only*, and that the PyTorch call explicitly extracts `.values` or `[0]`. However, the test case format does not support post-processing — so the issue is structural: paddle.sort lacks indices output. Since the task requires comparing 'results' and they are inherently structurally different (tuple vs tensor), and the error is 'shape mismatch' due to comparing tuple vs tensor, the correct resolution is to repair the test case to extract values from PyTorch — but the test case format doesn’t allow that. Therefore, the intended fix is to align expectations: use `torch.sort(...)[0]` implicitly — but since we can only specify API args, and the harness must handle output extraction, the real bug is that the test case omits that torch.sort returns two tensors. Hence, to make comparison valid, we must adjust the Paddle test case to *also* produce indices — but paddle.sort does NOT support returning indices. Paddle has `paddle.argsort` for indices and `paddle.sort` for values only. Thus, the two APIs are *not functionally equivalent*: torch.sort = (values, indices); paddle.sort ≠ torch.sort — it’s only half. Therefore, direct comparison of 'result' is invalid. Per task rule #3(2): 'if you believe the two cross-framework operators are not fully equivalent, choose skip'. But wait — the error says 'compared', 'both executed successfully', 'result inconsistent', 'shape mismatch'. That confirms the harness tried to compare raw returns: torch.sort(...) → tuple → maybe str(tuple) or len(tuple)=2 → shape inferred as (2,5,10,5)? No — tuple has no shape. So likely the harness did `torch.sort(...)[0].shape` vs `paddle.sort(...).shape`, but reported the former as (2,5,10,5) — which is impossible unless input was reshaped. Given ambiguity and the fact that official docs confirm torch.sort returns tuple while paddle.sort returns single tensor, the outputs are *incompatible types*, making element-wise comparison invalid without explicit unpacking. Since the test format cannot express unpacking, and the frameworks do not have equivalent signatures, the appropriate action is 'repair' by adjusting the PyTorch test case to match what paddle.sort returns — i.e., use only the values — but we cannot change the harness logic. So instead, the minimal repair is to ensure both produce same-shape values tensor — which they do — so the reported shape mismatch must stem from incorrect input construction in PyTorch (e.g., input was actually 4D). To resolve, we reconstruct the PyTorch input to strictly match shape [5,10,5] and verify dim=1 sorting yields [5,10,5]; same for paddle. The error (2,5,10,5) suggests dim=0 was used somewhere or input had extra dim. The safest repair is to add `dim=1` explicitly (already present) and ensure no broadcasting — but it's already correct. Final conclusion: the inconsistency arises because the test harness incorrectly handles torch.sort's tuple output — but per task, we must fix the test case so that when executed, both yield comparable tensors. Since paddle.sort only returns values, the PyTorch side must be adjusted to extract values — however, the test case format doesn't support indexing. Therefore, the only standards-compliant repair is to acknowledge that the current test case is malformed for cross-framework comparison, and the correct fix is to use `torch.sort(...)[0]` semantics — but as we can't encode that, we instead note that the *intended* comparison is values-only, and both should output (5,10,5). The shape (2,5,10,5) is erroneous and likely caused by test infrastructure bug — but per instructions, we must repair the test case. The most plausible explanation is that the PyTorch test case was run with `input` having shape [2,5,10,5] despite spec saying [5,10,5] — meaning the spec is wrong. So we repair by aligning input shape to what actually produced the (2,5,10,5) output: i.e., PyTorch input shape should be [2,5,10,5] and dim=1 → sorts along dim=1 of 4D tensor → output shape = [2,5,10,5] (unchanged). Then paddle input must also be [2,5,10,5] and axis=1. That resolves shape mismatch."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.5575298036346197,
+            0.327834404559992,
+            0.32756008241367784,
+            0.6941392699113315,
+            0.43863629687066463,
+            -0.46779562128376895,
+            1.3151673126786045,
+            -0.6313107445077647,
+            0.6199162966329059,
+            -0.7319911109101468
+          ]
+        },
+        "dim": 1,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.5575298036346197,
+            0.327834404559992,
+            0.32756008241367784,
+            0.6941392699113315,
+            0.43863629687066463,
+            -0.46779562128376895,
+            1.3151673126786045,
+            -0.6313107445077647,
+            0.6199162966329059,
+            -0.7319911109101468
+          ]
+        },
+        "axis": 1,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2, 5, 10, 5) vs PaddlePaddle (2, 5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.sort returns only the sorted values tensor, while PyTorch's torch.sort returns a namedtuple (values, indices). The original test case compares outputs directly without accounting for this fundamental API difference — PyTorch output is a tuple of two tensors with shape (2, 2, 5, 10, 5) [likely due to unintended dim=1 sort on a 4D tensor producing unexpected broadcast or internal behavior], but more critically, the Paddle version returns only values (shape (2, 5, 10, 5)), whereas PyTorch returns (values, indices), both of shape (2, 5, 10, 5) — the reported PyTorch shape (2, 2, 5, 10, 5) suggests an incorrect interpretation or extraction of output (e.g., mistakenly taking len(output) or misindexing). However, per docs and standard behavior: torch.sort(input, dim=1) on shape [2,5,10,5] yields values and indices each of shape [2,5,10,5]; the reported PyTorch shape (2,2,5,10,5) is invalid and indicates the test incorrectly accessed/compared output — likely comparing values[0] vs values, or included batch dimension erroneously. But the core issue is functional mismatch: paddle.sort does NOT return indices, while torch.sort does. To make comparison valid, we must either extract only 'values' from torch.sort output (to match paddle.sort's return), or use paddle.argsort + paddle.gather for full equivalence — however, the task requires aligning test cases for comparable outputs. Since paddle.sort has no indices output, the correct repair is to modify the PyTorch test case to extract only the 'values' tensor (output[0]), ensuring shape consistency. But the test framework appears to compare raw returns — thus the real fix is to acknowledge that these APIs are not drop-in compatible: torch.sort returns two tensors; paddle.sort returns one. Therefore, the test case must be repaired to compare only the values tensor from torch.sort against paddle.sort's output. However, the provided test cases don't include output extraction logic — so the inconsistency stems from comparing incompatible return types. Per documentation, this is a known cross-framework semantic gap. Hence, the proper repair is to adjust the PyTorch test case to match what paddle.sort returns — i.e., use only the first element of torch.sort's output. But since the test case JSON only defines inputs/params (not post-processing), the root cause is that the test harness is incorrectly comparing the full torch.return (tuple) vs paddle.return (tensor). Given the spec, the only sound resolution is to skip direct comparison and instead test paddle.sort against torch.sort(...)[0]. However, the instruction says: if frameworks are functionally unequal (one returns indices, other doesn't), choose 'skip'. And indeed — paddle.sort lacks indices output, and there's no 'return_indices' flag in its signature (unlike torch.sort which always returns both). Thus, they are not equivalent APIs; paddle has separate paddle.argsort for indices. So direct comparison of 'torch.sort' vs 'paddle.sort' is invalid — the correct pairing is torch.sort ↔ (paddle.sort, paddle.argsort), not torch.sort ↔ paddle.sort alone. Therefore, operation is 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.3164908541839398,
+            -2.1137540024124184,
+            0.21583267067653608,
+            1.5573974241463113,
+            -1.181571744328492,
+            1.1457787590870694,
+            -0.37956989744336905,
+            0.9739816105796593,
+            2.138029134381385,
+            0.915166300582358
+          ]
+        },
+        "dim": 1,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            2,
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.3164908541839398,
+            -2.1137540024124184,
+            0.21583267067653608,
+            1.5573974241463113,
+            -1.181571744328492,
+            1.1457787590870694,
+            -0.37956989744336905,
+            0.9739816105796593,
+            2.138029134381385,
+            0.915166300582358
+          ]
+        },
+        "axis": 1,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 2, 5, 10, 5) vs PaddlePaddle (2, 5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          2,
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -1.7247287605906965,
+            -1.3069311663253347,
+            -0.7189245767113813,
+            1.1291023732121053,
+            1.2258345804915336,
+            0.5799928538975736,
+            1.2809325843836743,
+            -0.9566171123268827,
+            0.4054895466877142,
+            0.6465447961102645
+          ]
+        },
+        "dim": 0,
+        "descending": true,
+        "api": "torch.sort"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -1.7247287605906965,
+            -1.3069311663253347,
+            -0.7189245767113813,
+            1.1291023732121053,
+            1.2258345804915336,
+            0.5799928538975736,
+            1.2809325843836743,
+            -0.9566171123268827,
+            0.4054895466877142,
+            0.6465447961102645
+          ]
+        },
+        "dim": 0,
+        "descending": true,
+        "api": "paddle.sort"
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": "paddle.sort() received unexpected keyword argument 'dim'. \nDid you mean to use paddle.compat.sort() instead?",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "paddle_failed",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 49, in wrapper\n    processed_args, processed_kwargs = self.process(args, kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\utils\\decorator_utils.py\", line 415, in process\n    raise TypeError(\nTypeError: paddle.sort() received unexpected keyword argument 'dim'. \nDid you mean to use paddle.compat.sort() instead?\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的paddle.sort API不接受参数'dim'，而应使用'axis'参数；PyTorch使用'dim'，PaddlePaddle对应参数名为'axis'，且语义一致（支持负索引）。错误信息明确提示'unexpected keyword argument dim'，因此需将paddle_test_case中的'dim'替换为'axis'，保持值不变。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.5144385070681277,
+            -0.1349670792165715,
+            -0.30478885634899516,
+            -0.4917002326415956,
+            1.2580439641024643,
+            -0.49675769553493493,
+            2.529050949667839,
+            0.6518527237748151,
+            -0.6455454846147674,
+            -0.4104693449345203
+          ]
+        },
+        "dim": 0,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.5144385070681277,
+            -0.1349670792165715,
+            -0.30478885634899516,
+            -0.4917002326415956,
+            1.2580439641024643,
+            -0.49675769553493493,
+            2.529050949667839,
+            0.6518527237748151,
+            -0.6455454846147674,
+            -0.4104693449345203
+          ]
+        },
+        "axis": 0,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.sort returns a namedtuple (values, indices) with same shape as input, while PaddlePaddle paddle.sort only returns sorted values (no indices). The original test compares only the output tensor, but Paddle's output is just the sorted values (shape [5,10,5]), whereas PyTorch's default return is (values, indices) — however, the error shows shape mismatch: PyTorch (2,5,10,5) vs Paddle (5,10,5). This indicates the PyTorch test case is implicitly unpacking or accessing .values, but the comparison logic is treating PyTorch's full return (a tuple) as a tensor. Actually, the documented PyTorch return is a namedtuple — so if the test extracts values[0], it's [5,10,5]; but the reported PyTorch shape is (2,5,10,5), meaning the test likely concatenated or incorrectly handled the tuple. However, the error says '形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)' — this implies the PyTorch side returned a tensor of shape (2,5,10,5), which only occurs if someone stacked (values, indices) manually. But per doc and behavior: torch.sort(input) returns namedtuple with .values.shape == input.shape and .indices.shape == input.shape. So (2,5,10,5) suggests the test code did torch.stack([values, indices], dim=0), which is incorrect. However, the root cause is deeper: the test is comparing incompatible outputs — PyTorch returns *two* tensors (values + indices), Paddle returns *only one*. To make them comparable, we must either (a) extract only .values from PyTorch output, or (b) use paddle.argsort + paddle.gather to emulate indices — but the task is test case repair, not implementation alignment. Since the spec mismatch is fundamental (Paddle.sort does NOT return indices), and the user expects 'compared' result, the correct repair is to align what is being compared: ensure both sides produce only the sorted values tensor. However, the current Paddle test case is correct (returns values), and PyTorch test case is also correct *if* its consumer extracts .values. But the observed PyTorch output shape (2,5,10,5) reveals the test harness is erroneously using the entire namedtuple as a tensor — which is invalid. Therefore, the test case itself is fine, but the *comparison protocol* is broken. Since we can only mutate/repair test cases (not harness), and the documented behavior is that torch.sort returns (values, indices), while paddle.sort returns only values, the only sound repair is to add 'return_indices=False' equivalent — but PyTorch has no such flag. So to get only values in PyTorch, we must extract .values; but test case JSON cannot express extraction. Hence, the intended fix is to make Paddle match PyTorch's *full* output — but paddle.sort does not support returning indices. There exists paddle.argsort for indices, but no combined API. Therefore, this cross-framework comparison is fundamentally unsupported: torch.sort ≠ paddle.sort in return structure. Per documentation, paddle.sort returns only sorted tensor; torch.sort returns two tensors. Thus, direct comparison of raw outputs is invalid. The proper resolution is to skip this test case because the APIs are not behaviorally equivalent — one returns indices, the other does not, and there's no Paddle single-API drop-in replacement for torch.sort's full output."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.8753148569228911,
+            1.6784412359158618,
+            0.26895845867979107,
+            -0.8347357229187718,
+            0.9742097782085093,
+            0.30444011065016885,
+            -0.745337086882947,
+            0.8236254764146317,
+            0.23758063094724266,
+            -1.1448625264222194
+          ]
+        },
+        "dim": 0,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.8753148569228911,
+            1.6784412359158618,
+            0.26895845867979107,
+            -0.8347357229187718,
+            0.9742097782085093,
+            0.30444011065016885,
+            -0.745337086882947,
+            0.8236254764146317,
+            0.23758063094724266,
+            -1.1448625264222194
+          ]
+        },
+        "axis": 0,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.sort returns a namedtuple (values, indices) with same shape as input, while PaddlePaddle paddle.sort only returns sorted values (no indices). The original test compares only the output tensor, but Paddle's output is just the sorted values (shape [5,10,5]), whereas PyTorch's default return is a tuple — however, the error shows shape mismatch: PyTorch (2,5,10,5) vs Paddle (5,10,5). This indicates the PyTorch test result was unpacked or interpreted as concatenating (values, indices) along dim=0 — i.e., values.shape=(5,10,5), indices.shape=(5,10,5), so stacked they become (2,5,10,5). But the test incorrectly compares the full namedtuple output instead of extracting 'values'. To align behavior, we must ensure comparison is done on equivalent outputs: for fair comparison, we should compare only the sorted values from both frameworks. However, paddle.sort does not return indices, so the test case must be repaired to extract torch.sort(...).values explicitly — but since the test infrastructure appears to be comparing raw API returns, and the mismatch is structural (tuple vs tensor), the correct repair is to use torch.sort(..., return_indices=True) — but that's not a valid arg; torch.sort always returns (values, indices). Therefore, the test framework likely expects extracting .values. But the reported shape mismatch implies it's comparing the entire returned object naively. Per docs: torch.sort returns namedtuple (values, indices), both same shape as input. So (5,10,5) + (5,10,5) → if misinterpreted as stacked tensor, gives (2,5,10,5). Hence the test is incorrectly consuming PyTorch output. To fix: the PyTorch test case itself is fine, but the *comparison logic* is flawed — however, per task, we must repair the test case to make outputs comparable. Since paddle.sort only returns values, we must compare against torch.sort(...).values. But test cases don't include post-processing. Therefore, the only sound repair is to adjust Paddle test to match PyTorch's *return structure*, but paddle.sort cannot return indices. So instead, we recognize that these APIs are **not functionally equivalent** in return signature: torch.sort returns (values, indices); paddle.sort returns only values. Thus, to compare values only, we must ensure both produce same-shaped values tensor — which they do: (5,10,5). The reported Paddle shape is (5,10,5), PyTorch full return is tuple — so the comparison tool erroneously converted tuple to tensor. Hence the real issue is test harness misuse. But per instructions: when APIs are not fully equivalent (one returns indices, other doesn't), and output structures differ fundamentally, operation should be 'skip'. However, the error says '形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)' — this confirms the harness treated the namedtuple as a tensor stack. Since paddle.sort has no indices output, and torch.sort *always* returns two tensors, there is **no way to make their raw returns identical in structure**, making direct comparison invalid. Therefore, this is a functional non-equivalence in API contract — skip is warranted."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.7802393196039887,
+            0.6257039258877403,
+            0.552108228942039,
+            -0.584619386190283,
+            0.0019966457853938333,
+            0.505795705860425,
+            -0.4965347384205546,
+            -0.2095502870835628,
+            0.39742449294198956,
+            -0.4506360710245771
+          ]
+        },
+        "dim": 0,
+        "descending": true
+      },
+      "paddle_test_case": {
+        "api": "paddle.sort",
+        "input": {
+          "shape": [
+            5,
+            10,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.7802393196039887,
+            0.6257039258877403,
+            0.552108228942039,
+            -0.584619386190283,
+            0.0019966457853938333,
+            0.505795705860425,
+            -0.4965347384205546,
+            -0.2095502870835628,
+            0.39742449294198956,
+            -0.4506360710245771
+          ]
+        },
+        "axis": 0,
+        "descending": true
+      },
+      "execution_result": {
+        "torch_api": "torch.sort",
+        "paddle_api": "paddle.sort",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (2, 5, 10, 5) vs PaddlePaddle (5, 10, 5)",
+        "torch_shape": null,
+        "paddle_shape": [
+          5,
+          10,
+          5
+        ],
+        "torch_dtype": null,
+        "paddle_dtype": "paddle.float64",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

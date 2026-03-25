@@ -1,0 +1,1720 @@
+{
+  "pd_api": "paddle.baddbmm",
+  "pytorch_api": "torch.baddbmm",
+  "timestamp": "2026-02-12T23:34:46.810521",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            10,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "torch.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 10, 5].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          2,
+          10,
+          5
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'x's width must equal y's height'，即bmm要求x.shape[-1] == y.shape[-2]；当前x=[2,10,10], y=[2,10,5]不满足（10≠10? 等等：实际是x@y需x[B,M,K] * y[B,K,N] → y应为[2,10,5]则K=10，故x应为[2,?,10]，但x是[2,10,10]→合法；错误根源是Paddle中baddbmm参数顺序为(input, x, y)，而用户误将x/y传反。PyTorch是baddbmm(input, batch1, batch2)，Paddle同名API参数顺序一致，但报错表明用户把batch1和batch2形状设错：batch1应为[2,10,10]，batch2应为[2,10,5] → 不兼容，因batch1@batch2要求batch1.shape[-1]==batch2.shape[-2] → 10==10 ✓，但batch2.shape=[2,10,5]意味着其是[batch, M, N]，则batch1必须是[batch, K, M]即[2,K,10]，故batch1应为[2,?,10]，当前x=[2,10,10]可作batch1，y=[2,10,5]是[2,M,N]，则M=10，要求batch1.shape[-1]==M=10 → x最后一维=10 ✓，所以合法；但Paddle报错说明其内部校验逻辑将x视为左矩阵、y为右矩阵，且检查x.shape[-1] == y.shape[-2]，而y.shape[-2]=10，x.shape[-1]=10 → 应通过。实际问题：Paddle文档明确baddbmm(input, x, y)中x和y需满足x.shape[-1] == y.shape[-2]，当前x=[2,10,10], y=[2,10,5] → x.shape[-1]=10, y.shape[-2]=10 → 合法。错误原因实为用户混淆了参数名：Paddle用例中'x'对应PyTorch的'batch1'，'y'对应'batch2'，但原始用例中x=[2,10,10], y=[2,10,5]，则batch1@batch2 = [2,10,10] @ [2,10,5] → 非法（因[10,10] @ [10,5]才合法，但此处是[10,10] @ [10,5]？不，PyTorch要求 batch1: [b,m,k], batch2: [b,k,n]，所以batch1应为[2,10,10] → m=10,k=10；batch2应为[2,10,5] → k=10,n=5 → 正确。因此Paddle报错是bug或版本差异，但根据任务要求，需修复用例使Paddle能运行：将y改为[2,10,5]不变，x改为[2,10,10]不变，但Paddle可能要求input与输出形状一致且broadcastable，而input=[2,10,5]，输出应为[2,10,5]，所以batch1@batch2必须是[2,10,5]，故batch1=[2,10,k], batch2=[2,k,5]，因此k=10 → batch1=[2,10,10], batch2=[2,10,5] → 错！batch2应为[2,10,5]即[k,n]=[10,5]，所以batch2.shape=[2,10,5]是[2,k,n]，则batch1.shape应为[2,m,k]=[2,m,10]，所以batch1最后一维必须是10，当前x=[2,10,10] → m=10,k=10 ✓；因此合法。唯一可能是Paddle将参数顺序理解为baddbmm(x, y, input)而非(input, x, y)。查Paddle文档确认：paddle.baddbmm(input, x, y) — 是的。但报错信息显示'x's width must equal y's height'，即检查x.shape[-1] == y.shape[-2]，当前x=[2,10,10]→width=10, y=[2,10,5]→height=y.shape[-2]=10 → 应通过。因此最可能原因是Paddle版本对baddbmm的输入验证有误，或用户用例中参数名与实际传入位置不匹配。安全修复：调整y为[2,10,5]保持不变，x改为[2,10,10]不变，但确保input形状与输出一致，而输出由x@y决定：x=[2,10,10], y=[2,10,5]不满足矩阵乘法维度（需x为[2,10,10]即[batch,m,k], y为[2,10,5]即[batch,k,n] → k=10 for x, but y's k-dim is 10 (dim=-2), so y must be [2,10,5] meaning k=10, n=5 → correct. Therefore the error is spurious; however, to make Paddle pass, we must satisfy its internal check: set x=[2,10,10], y=[2,10,5] → fails because Paddle checks x.shape[-1] == y.shape[-2] → 10==10 ✓, so why error? The error message says 'x's width must be equal with Variable y's height', and shows x's shape=[2,10,5], y's shape=[2,10,5] — wait! The error shows x's shape = [2, 10, 5], but in the test case x is [2,10,10]. This indicates a mismatch: the actual x passed to Paddle is [2,10,5], not [2,10,10]. Therefore the test case JSON has a typo: the 'x' field in Paddle test case is incorrectly set to [2,10,5] in execution, but the JSON shows [2,10,10]. Since the error states x's shape=[2,10,5], y's shape=[2,10,5], the real issue is that the user passed x=[2,10,5] and y=[2,10,5], which violates x.shape[-1]==y.shape[-2] (5!=10). So the repair is to fix x to have last dim matching y's second-last dim: y=[2,10,5] → y.shape[-2]=10, so x.shape[-1] must be 10 → x should be [2,?,10]. To keep output shape [2,10,5], x should be [2,10,10] (so m=10,k=10), y=[2,10,5] (k=10,n=5) → correct. Thus the original test case is right, but the execution used wrong x. However, per task, we repair the test case to ensure Paddle accepts it: use x=[2,10,10], y=[2,10,5], input=[2,10,5] — but Paddle still errors? Then try making y=[2,10,5] → no, instead swap: perhaps Paddle interprets args as baddbmm(x, y, input) — checking Paddle docs: yes! PaddlePaddle's paddle.baddbmm signature is paddle.baddbmm(x, y, beta=1.0, alpha=1.0, out=None, name=None) where x is input, y is batch1, and third arg is batch2? No — official Paddle doc (v2.5+) states: paddle.baddbmm(input, batch1, batch2, beta=1.0, alpha=1.0, out=None, name=None). So input, batch1, batch2. In the test case, 'x' is intended as batch1, 'y' as batch2, but the error shows x's shape=[2,10,5], meaning the first argument (input) was passed as [2,10,5], and the second argument (batch1) was also [2,10,5] — hence the error. Therefore the test case mislabels: the field 'x' in JSON is actually the 'input', 'y' is 'batch1', and there's no 'batch2'. So the repair is to reorder: Paddle needs input, batch1, batch2. Given input=[2,10,5], batch1 must be [2,10,10] (so batch1.shape[-1]=10), batch2 must be [2,10,5] → no, batch2 must be [2,10,5] means [b,k,n] → k=10, so batch1 must be [b,m,k]=[2,m,10]. To get output [2,10,5], m must be 10 → batch1=[2,10,10], batch2=[2,10,5] → but batch2=[2,10,5] is [b,k,n] with k=10, n=5 ✓. So batch1=[2,10,10], batch2=[2,10,5] is correct. The error occurs because the code passed batch1=[2,10,5] and batch2=[2,10,5]. Therefore the JSON field 'x' is mistakenly batch1 but set to [2,10,5] in execution. To repair, we set batch1 (x) to [2,10,10], batch2 (y) to [2,10,5], input to [2,10,5]. But the error says x's shape=[2,10,5], so in the buggy run, 'x' was [2,10,5]. Thus the repair is to correct the 'x' shape to [2,10,10] in Paddle test case, and ensure 'y' is [2,10,5], 'input' is [2,10,5]. This matches the provided JSON, so the issue is elsewhere. Given time, safest repair is to use shapes that unambiguously satisfy Paddle's check: set batch1=[2,10,8], batch2=[2,8,5], input=[2,10,5]. Then x=[2,10,8], y=[2,8,5], input=[2,10,5]. This satisfies x.shape[-1]==y.shape[-2] (8==8), and output shape [2,10,5]."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 8, 5].",
+        "pytorch_error": "RuntimeError: The expanded size of the tensor (5) must match the existing size (8) at non-singleton dimension 2.  Target sizes: [2, 10, 5].  Tensor sizes: [2, 10, 8]",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle和PyTorch的baddbmm要求input与batch1@batch2形状一致。原始用例中Paddle input为[2,10,5]，但x@y结果为[2,10,5]，而PyTorch input为[2,10,8]，与batch1@batch2=[2,10,5]不匹配。需统一input形状为[2,10,5]以满足广播和加法要求。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 8, 5].",
+        "pytorch_error": "RuntimeError: The expanded size of the tensor (5) must match the existing size (8) at non-singleton dimension 2.  Target sizes: [2, 10, 5].  Tensor sizes: [2, 10, 8]",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle和PyTorch的baddbmm要求input与batch1@batch2形状一致。原始用例中Paddle input为[2,10,5]但x@y结果为[2,10,5]，而PyTorch input为[2,10,8]与x@y=[2,10,5]不匹配。需统一input形状为[2,10,5]以满足广播加法要求。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            2,
+            10,
+            8
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            2,
+            8,
+            5
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 10, 5], y's shape = [2, 8, 5].",
+        "pytorch_error": "RuntimeError: The expanded size of the tensor (5) must match the existing size (8) at non-singleton dimension 2.  Target sizes: [2, 10, 5].  Tensor sizes: [2, 10, 8]",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "torch.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "RuntimeError: (NotFound) The kernel with key (CPU, Undefined(AnyLayout), float16) of kernel `baddbmm` is not registered. Selected wrong DataType `float16`. Paddle support following DataTypes: float32, float64.\n  [Hint: Expected kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU != true, but received kernel_iter == iter->second.end() && kernel_key.backend() == Backend::CPU:1 == true:1.] (at ..\\paddle\\phi\\core\\kernel_factory.cc:324)\n",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float16",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle baddbmm does not support float16 on CPU per error message; only float32/float64 are supported. PyTorch supports float16, but to enable cross-framework comparison, we must align dtype to Paddle's supported types. Repair by changing dtype to float32 in both frameworks."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 11.60140824",
+        "pd_shape": [
+          1,
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch torch.baddbmm expects 'batch1' and 'batch2' as positional args, not 'x' and 'y'; also 'beta' and 'alpha' are keyword-only in PyTorch but positional in Paddle; mismatched parameter binding causes functional inconsistency. Must align arg names: use 'batch1'/'batch2' for PyTorch and keep 'x'/'y' for Paddle, and ensure beta/alpha passed as kwargs in PyTorch."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 13.34578133",
+        "pd_shape": [
+          1,
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.baddbmm expects batch1 and batch2 as the matrices to multiply, while Paddle's paddle.baddbmm uses x and y. The original test cases use identical shapes but do not ensure equivalent numerical inputs — both frameworks must use the same random or deterministic values for input/x/batch1 and y/batch2 to compare correctly. Also, PyTorch requires explicit out_dtype only in specific CUDA cases, but mismatched tensor values (not just shapes) cause large numerical divergence (>13). Repair by adding consistent 'value' fields to all tensor specs to guarantee identical initialization."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            1,
+            10,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": true,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "pytorch_error": null,
+        "comparison_error": "结果不一致，最大差异: 10.83171538",
+        "pd_shape": [
+          1,
+          10,
+          10
+        ],
+        "pytorch_shape": [
+          1,
+          10,
+          10
+        ],
+        "pd_dtype": "paddle.float32",
+        "pytorch_dtype": "torch.float32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "bfloat16"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "bfloat16"
+        },
+        "input": {
+          "shape": [
+            2,
+            50,
+            1
+          ],
+          "dtype": "bfloat16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "bfloat16"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "bfloat16"
+        },
+        "input": {
+          "shape": [
+            2,
+            50,
+            1
+          ],
+          "dtype": "bfloat16"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "torch.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 1], y's shape = [2, 5, 10].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          2,
+          50,
+          10
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'x's width must equal y's height'，即x.shape[-1]必须等于y.shape[-2]。原始用例中x=[2,50,5], y=[2,5,10]满足该条件（5==5），但input=[2,50,1]与结果维度不匹配：baddbmm输出应为[2,50,10]，故input必须广播兼容此形状。PyTorch允许input为[2,50,10]或支持广播的形状（如[1,50,10],[50,10]等），而Paddle严格要求input.shape == output.shape。修复为input=[2,50,10]以满足Paddle约束。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            5,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 10], y's shape = [2, 5, 10].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          2,
+          50,
+          10
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.baddbmm expects input shape to match output shape of x@y, i.e., [2,50,10] @ [2,10,5] → [2,50,5], so input must be [2,50,5]. But original paddle case wrongly set input=[2,50,10], causing shape mismatch. PyTorch case correctly sets input=[2,50,5]. Repair: align paddle input shape to [2,50,5] and ensure x,y shapes satisfy matmul compatibility: x=[2,50,10], y=[2,10,5]."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 5], y's shape = [2, 10, 5].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          2,
+          50,
+          5
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle's paddle.baddbmm expects input shape to match output shape of x @ y, i.e., input must be [2, 50, 5], but original Paddle case incorrectly used [2, 50, 5] as input while x=[2,50,10], y=[2,10,5] implies x@y yields [2,50,5], so input must be [2,50,5]. PyTorch test case mistakenly swapped input and x shapes — correct alignment requires both frameworks to have input.shape == (batch, m, n), x.shape == (batch, m, k), y.shape == (batch, k, n). Fixed by making input=[2,50,5] in both."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            2,
+            50,
+            10
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            2,
+            50,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            10,
+            5
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [2, 50, 5], y's shape = [2, 10, 5].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          2,
+          50,
+          5
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            1,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0,
+        "alpha": 0.5,
+        "api": "paddle.baddbmm"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "input": {
+          "shape": [
+            1,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "beta": 2.0,
+        "alpha": 0.5,
+        "api": "torch.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The dimension of x, y should be 3 but receive x's shape: [1, 15], y's shape: [1, 10, 15]",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          50,
+          15
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.baddbmm requires 'input' to have same batch dimension as x/y (3D), but test case gives input shape [1, 15] (2D). Per PyTorch doc and Paddle's requirement, input must be 3D with shape [batch, m, n] matching output dim; here x@y yields [1,50,15], so input must be [1,50,15]."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 2.0,
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.baddbmm",
+        "beta": 2.0,
+        "x": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 50, 15], y's shape = [1, 10, 15].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          50,
+          15
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的baddbmm要求x.shape[-2] == y.shape[-1]（即x的矩阵列数等于y的矩阵行数），而原始用例中x=[1,50,10], y=[1,10,15]满足该条件，但input=[1,50,15]与x@y结果维度[1,50,15]匹配；错误源于Paddle将input误认为x或y的维度校验对象。根据文档，input应与x@y同shape，故需统一input为[1,50,15]，x为[1,50,10]，y为[1,10,15]，且PyTorch用例中input形状错误，应同步修复为[1,50,15]以保证语义一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 2.0,
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.baddbmm",
+        "beta": 2.0,
+        "x": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 50, 15], y's shape = [1, 10, 15].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          50,
+          15
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle的baddbmm要求x.shape[-2] == y.shape[-1]（即x的矩阵列数等于y的矩阵行数），而原始用例中x=[1,50,10], y=[1,10,15]满足该条件，但input=[1,50,15]与x@y结果维度[1,50,15]匹配；错误源于Paddle将input误认为x或y的维度校验对象。根据文档，input应与x@y同shape，故需统一input为[1,50,15]，x为[1,50,10]，y为[1,10,15]，且PyTorch用例中input形状错误，应同步修复为[1,50,15]以保证语义一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 2.0,
+        "x": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            50,
+            10
+          ],
+          "dtype": "float64"
+        },
+        "api": "torch.baddbmm",
+        "beta": 2.0,
+        "x": {
+          "shape": [
+            1,
+            50,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            1,
+            10,
+            15
+          ],
+          "dtype": "float64"
+        },
+        "alpha": 0.5
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 50, 15], y's shape = [1, 10, 15].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          50,
+          15
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "paddle.baddbmm"
+      },
+      "pytorch_test_case": {
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "beta": 1.0,
+        "alpha": 1.0,
+        "api": "torch.baddbmm"
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          3,
+          2
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错'x's width must be equal with y's height'，但原始用例中x=[1,3,4], y=[1,4,2]满足矩阵乘法维度兼容（3x4 @ 4x2 → 3x2），与input=[1,3,2]匹配；错误表明Paddle可能误判了batch维度处理。根据文档，baddbmm要求x和y前两维为batch，最后两维需满足矩阵乘法：x[..., M, K] * y[..., K, N] → [..., M, N]。原始用例合法，但Paddle实际实现可能对batch维度解析异常，需确保x和y的batch维度一致且非空，同时验证K维度对齐。修复为显式保持K=4一致，并确认input形状匹配输出。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": true,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "pytorch_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": [
+          1,
+          3,
+          2
+        ],
+        "pd_dtype": null,
+        "pytorch_dtype": "torch.float32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因x.shape[2] != y.shape[1]（3×4和4×2合法，但原始用例中x为[1,3,2]、y为[1,4,2]导致2≠4），而PyTorch用例中input形状[1,3,4]与x@y结果维度不匹配；需统一使x@y可乘且output shape与input一致：x=[1,3,4], y=[1,4,2] → x@y=[1,3,2]，故input必须为[1,3,2]；PyTorch中input也应为[1,3,2]以保证语义一致。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "pytorch_error": "RuntimeError: The expanded size of the tensor (2) must match the existing size (4) at non-singleton dimension 2.  Target sizes: [1, 3, 2].  Tensor sizes: [1, 3, 4]",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle报错因input形状[1,3,2]与x@y结果[1,3,2]不匹配（x=[1,3,4], y=[1,4,2] → x@y=[1,3,2]），但input需与x@y同形；PyTorch报错因input=[1,3,4]≠x@y=[1,3,2]。根据文档，input必须与输出同shape，即必须等于x@y的shape=[1,3,2]。故统一修复input为[1,3,2]。"
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.baddbmm",
+        "beta": 1.0,
+        "x": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "pytorch_test_case": {
+        "batch1": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "input": {
+          "shape": [
+            1,
+            3,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "api": "torch.baddbmm",
+        "beta": 1.0,
+        "batch2": {
+          "shape": [
+            1,
+            4,
+            2
+          ],
+          "dtype": "float32"
+        },
+        "alpha": 1.0
+      },
+      "execution_result": {
+        "pd_api": "paddle.baddbmm",
+        "pytorch_api": "torch.baddbmm",
+        "pd_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "pd_error": "ValueError: The input Variable x's width must be equal with Variable y's height. But received x's shape = [1, 3, 2], y's shape = [1, 4, 2].",
+        "pytorch_error": "RuntimeError: The expanded size of the tensor (2) must match the existing size (4) at non-singleton dimension 2.  Target sizes: [1, 3, 2].  Tensor sizes: [1, 3, 4]",
+        "comparison_error": null,
+        "pd_shape": null,
+        "pytorch_shape": null,
+        "pd_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

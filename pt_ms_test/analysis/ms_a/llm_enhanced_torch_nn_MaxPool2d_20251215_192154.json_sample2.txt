@@ -1,0 +1,56 @@
+来源文件: llm_enhanced_torch_nn_MaxPool2d_20251215_192154.json
+样例编号: 2
+mindspore_error 错误信息: for MaxPool3DWithArgmax, shape of out is [2, 3, 1, 0, 2]. It should be not less than zero.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer//max_pool3d_with_argmax.cc:267 mindspore::ops::MaxPool3DWithArgmaxInferShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.MaxPool2d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "kernel_size": 3,
+  "stride": 2,
+  "padding": 1,
+  "return_indices": true
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.MaxPool2d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "kernel_size": 3,
+  "stride": 2,
+  "padding": 1,
+  "return_indices": true,
+  "pad_mode": "pad"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - 错误信息 `shape of out is [2, 3, 1, 0, 2]` 中出现维度为 0（即 `H_in = 0`），导致输出形状中某维为 0，而 MindSpore 在 `MaxPool2d` 的 `pad_mode="pad"` 情况下对输入维度的合法性有严格检查，当输入高度或宽度为 0 时，无法进行有效池化操作，且其内部实现逻辑（如 `max_pool3d_with_argmax.cc:267`）会校验输出形状是否非负，此处 `0` 被视为非法（尽管数学上可接受，但框架内部处理不兼容）。
+   - 对比 PyTorch：PyTorch 的 `torch.nn.MaxPool2d` 允许输入包含 0 维（如 `shape=[2,3,0,4]`），并返回对应输出形状为 `[2,3,1,2]`（在 `stride=2, kernel_size=3, padding=1` 下计算后生成），而 MindSpore 在该场景下由于算子实现限制（尤其在 `return_indices=True` 时触发 `MaxPool3DWithArgmax`）直接报错，说明两者对空维度的处理策略存在差异。
+
+3. 修复建议：
+   - 该问题属于框架行为差异，建议提交 issue 至 MindSpore 官方仓库，反馈在 `return_indices=True` 且输入含 0 维时应支持合理输出而非直接报错，以提升与 PyTorch 的兼容性。

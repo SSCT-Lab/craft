@@ -1,0 +1,75 @@
+来源文件: llm_enhanced_torch_float_power_20251215_184208.json
+样例编号: 1
+mindspore_error 错误信息: For 'Pow', input1.shape and input2.shape need to broadcast. The value of input1.shape[4] or input2.shape[2] must be 1 or -1 when they are not the same, but got input1.shape = [3, 1, 6, 0] and input2.shape = [5, 1]
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\ops_utils\op_utils.cc:87 mindspore::ops::CalBroadCastShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.float_power",
+  "input": {
+    "shape": [
+      3,
+      1,
+      6,
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "exponent": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -10,
+      -5,
+      -5,
+      7,
+      -5
+    ]
+  }
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.float_power",
+  "input": {
+    "shape": [
+      3,
+      1,
+      6,
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "exponent": {
+    "shape": [
+      5,
+      1
+    ],
+    "dtype": "int32",
+    "sample_values": [
+      -10,
+      -5,
+      -5,
+      7,
+      -5
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `mint.float_power` 在广播规则上要求输入张量的维度必须能正确广播，特别地，当某维不相等时，该维度必须为 1 或 -1 才允许广播。本例中 `input.shape = [3, 1, 6, 0]` 包含形状为 0 的维度（即第4维为0），而 `exponent.shape = [5, 1]`，两者在第4维和第3维上无法广播（0 与 5 不同且非1或-1），因此触发了广播失败错误。
+   - 更关键的是，**空维度（shape 中包含 0）在 MindSpore 中通常被视为无效或未定义状态**，尤其是在算子执行阶段，即使在 PyTorch 中允许零长度维度（如 `torch.Size([3, 1, 6, 0])` 可以存在但无实际元素），但 MindSpore 在广播逻辑中对这类形状处理更严格，会直接报错，这属于框架间对“零长度维度”的行为差异。
+
+3. 修复建议：
+   - 该问题反映的是框架在零长度维度上的广播行为不一致，建议提交 issue 给 MindSpore 官方，说明其对 `shape=[..., 0]` 的张量在 broadcast 时应更宽容地兼容 PyTorch 行为，或明确文档说明此类情况不支持。

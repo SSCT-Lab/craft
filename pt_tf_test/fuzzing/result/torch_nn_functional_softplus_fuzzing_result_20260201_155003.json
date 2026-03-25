@@ -1,0 +1,686 @@
+{
+  "operator": "torch_nn_functional_softplus",
+  "torch_api": "torch.nn.functional.softplus",
+  "tensorflow_api": "tf.nn.softplus",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T15:50:03.547260",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softplus_20260123_212433.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softplus",
+        "input": {
+          "shape": [
+            784,
+            1200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.057633399963379,
+            -1.4010566473007202,
+            -0.40677401423454285,
+            0.2379835695028305,
+            -0.7785131931304932,
+            0.18989674746990204,
+            0.19054241478443146,
+            0.3062611222267151,
+            0.00980289001017809,
+            0.04292435571551323
+          ]
+        },
+        "beta": 1,
+        "threshold": 20
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.nn.softplus",
+        "input": {
+          "shape": [
+            784,
+            1200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.057633399963379,
+            -1.4010566473007202,
+            -0.40677401423454285,
+            0.2379835695028305,
+            -0.7785131931304932,
+            0.18989674746990204,
+            0.19054241478443146,
+            0.3062611222267151,
+            0.00980289001017809,
+            0.04292435571551323
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值触发softplus的数值稳定性分支（如线性近似、log(1+exp)边界处理），易暴露两框架在特殊浮点处理、渐近行为或阈值逻辑上的不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              784,
+              1200
+            ],
+            "tensorflow_shape": [
+              784,
+              1200
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量(shape=[0])与含特殊浮点值的标量输入",
+          "mutation_reason": "空张量测试框架对零元素张量的处理一致性；标量+特殊值（inf/nan/-0.0）易暴露数值稳定性实现差异，且数学定义明确等价。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0
+            ],
+            "tensorflow_shape": [
+              0
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下软加算子对极端值的数值稳定性",
+          "mutation_reason": "float16动态范围小，易在exp(β*x)或log(1+exp(β*x))中触发溢出/下溢；PyTorch和TensorFlow的softplus数值保护逻辑（如threshold分支）在低精度下实现细节可能不同，导致inf/nan/线性回退点不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                784,
+                1200
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              784,
+              1200
+            ],
+            "tensorflow_shape": [
+              784,
+              1200
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softplus_20260123_212433.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softplus",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7119380831718445
+          ]
+        },
+        "beta": 1.0,
+        "threshold": 20
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.nn.softplus",
+        "input": {
+          "shape": [
+            1,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.7119380831718445
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：覆盖inf, -inf, nan, -0.0, subnormal, overflow",
+          "mutation_reason": "softplus在边界值（如inf/-inf）应严格满足数学定义；NaN传播、-0.0符号处理、极小/极大值下溢/溢出行为不一致可能暴露实现bug",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1.0,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              8
+            ],
+            "tensorflow_shape": [
+              8
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量(shape=[])和包含负零、无穷、NaN的样本值",
+          "mutation_reason": "标量输入易暴露框架对退化形状的处理差异；负零、无穷、NaN是数值稳定性边界，可能触发不同分支实现。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            },
+            "beta": 1.0,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0,
+                "inf",
+                "-inf",
+                "nan"
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16低精度下softplus数值稳定性差异",
+          "mutation_reason": "float16动态范围小、精度低，易暴露两框架在log(1+exp(x))近似、阈值切换、梯度计算等方面的实现差异，尤其在临界区域。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.7119380831718445
+              ]
+            },
+            "beta": 1.0,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                -0.7119380831718445
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "tensorflow_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_softplus_20260123_212433.json",
+        "iteration": 2,
+        "case_number": 2,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.softplus",
+        "input": {
+          "shape": [
+            1200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7778710722923279,
+            1.1135859489440918,
+            -2.693551540374756,
+            -0.8725017309188843,
+            -0.07148713618516922,
+            0.6899244785308838,
+            0.8322768807411194,
+            -0.5486584305763245,
+            0.5869573354721069,
+            1.0288704633712769
+          ]
+        },
+        "beta": 1,
+        "threshold": 20
+      },
+      "original_tensorflow_test_case": {
+        "api": "tf.nn.softplus",
+        "input": {
+          "shape": [
+            1200
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.7778710722923279,
+            1.1135859489440918,
+            -2.693551540374756,
+            -0.8725017309188843,
+            -0.07148713618516922,
+            0.6899244785308838,
+            0.8322768807411194,
+            -0.5486584305763245,
+            0.5869573354721069,
+            1.0288704633712769
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些值触发边界分支（如渐近线、溢出保护、NaN传播），易暴露两框架在数值稳定性处理上的不一致，如阈值判断、log(1+exp)优化路径差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                1200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                20.0,
+                -20.0
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                1200
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                20.0,
+                -20.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1200
+            ],
+            "tensorflow_shape": [
+              1200
+            ],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）与特殊浮点值组合",
+          "mutation_reason": "标量是张量的退化情形，框架对0维张量的softplus实现易出现广播、梯adients或数值分支逻辑不一致；加入inf/nan/-0.0可暴露边界处理差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "tensorflow_shape": [],
+            "torch_dtype": "torch.float32",
+            "tensorflow_dtype": "<dtype: 'float32'>"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float16精度下特殊值（inf/-inf/nan/零）的数值稳定性差异",
+          "mutation_reason": "float16动态范围小、精度低，易在softplus的log(1+exp(x))分支中暴露框架对溢出、下溢、NaN传播的不同处理逻辑，导致数学等价性失效。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.softplus",
+            "input": {
+              "shape": [
+                1200
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            },
+            "beta": 1,
+            "threshold": 20
+          },
+          "tensorflow_test_case": {
+            "api": "tf.nn.softplus",
+            "input": {
+              "shape": [
+                1200
+              ],
+              "dtype": "float16",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                0.001,
+                1000.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "tensorflow_success": true,
+            "torch_error": null,
+            "tensorflow_error": null,
+            "results_match": false,
+            "comparison_error": "数值不一致，最大差异: 4.76837158203125e-07",
+            "torch_shape": [
+              1200
+            ],
+            "tensorflow_shape": [
+              1200
+            ],
+            "torch_dtype": "torch.float16",
+            "tensorflow_dtype": "<dtype: 'float16'>"
+          },
+          "is_bug_candidate": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+来源文件: llm_enhanced_torch_nn_functional_prelu_20251125_152418.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) For mode 'all', size of weight Alpha must be one. But received alpha's size: 0.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.prelu",
+  "input": {
+    "shape": [
+      2,
+      0,
+      4,
+      5,
+      6
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "weight": {
+    "shape": [
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.prelu",
+  "input": {
+    "shape": [
+      2,
+      0,
+      4,
+      5,
+      6
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "weight": {
+    "shape": [
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.functional.prelu` 要求 `weight` 的形状为 `[]`、`[1]` 或 `[in]`（即通道数），且在 `mode='all'` 时，`weight` 必须是标量（大小为 1）。当前输入中 `weight.shape = [0]`，表示一个零元素的张量，这在 PaddlePaddle 中是非法的，因为其无法作为可学习参数使用。
+   - 虽然 PyTorch 允许 `weight` 为 0 维或 0 长度的张量（在某些情况下会按空参数处理），但 PaddlePaddle 明确要求 `weight` 至少有一个元素（如文档所述“size of weight Alpha must be one”），因此该空张量触发了运行时校验失败。
+
+3. 修复建议：
+   - 此为框架间对空张量（shape=[0]）处理逻辑不一致导致的行为差异，建议提交 issue 至 PaddlePaddle 官方仓库，指出其在 `prelu` API 中对 `weight` 为空张量（shape=[0]）的严格校验与 PyTorch 不一致，可能影响兼容性测试。

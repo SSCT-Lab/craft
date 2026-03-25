@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_outer_20251202_130247.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 0] and the shape of Y = [1, 5]. Received [0] in X is not equal to [5] in Y at i:1.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.outer",
+  "input": {
+    "shape": [
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "vec2": {
+    "shape": [
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.0741725383403204,
+      -0.1612589448748043,
+      -0.484679735463386,
+      -0.1889169519812339,
+      -0.41400925711951014
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.outer",
+  "input": {
+    "shape": [
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "vec2": {
+    "shape": [
+      5
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      0.0741725383403204,
+      -0.1612589448748043,
+      -0.484679735463386,
+      -0.1889169519812339,
+      -0.41400925711951014
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.outer` 不支持输入张量形状中包含 0 的情况（如 `[0]`），而 PyTorch 的 `torch.outer` 在处理空向量时允许该行为，但 PaddlePaddle 在广播阶段检测到维度不匹配（[0] ≠ [5]）时直接报错。
+   - 根据官方文档，`paddle.outer` 要求输入为非空一维张量，且两向量的长度必须大于 0，否则无法进行外积运算，因此当输入形如 `[0]` 时，框架内部会触发广播失败。
+
+3. 修复建议：
+   - 建议提交 issue 给 PaddlePaddle 官方，指出其在处理零长度向量时与 PyTorch 行为不一致，属于潜在的兼容性问题。

@@ -1,0 +1,924 @@
+{
+  "operator": "torch_narrow",
+  "torch_api": "torch.narrow",
+  "paddle_api": "paddle.slice",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T17:43:43.073056",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_narrow_20260124_190932.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.narrow",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            3.105797290802002,
+            -0.39836713671684265,
+            0.7925093173980713,
+            0.5556166768074036,
+            -0.7028176784515381,
+            0.05638262629508972,
+            0.8682910799980164,
+            1.466478943824768,
+            1.5248453617095947,
+            -0.5706192255020142
+          ]
+        },
+        "dim": 1,
+        "start": 2,
+        "length": 2
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.slice",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            3.105797290802002,
+            -0.39836713671684265,
+            0.7925093173980713,
+            0.5556166768074036,
+            -0.7028176784515381,
+            0.05638262629508972,
+            0.8682910799980164,
+            1.466478943824768,
+            1.5248453617095947,
+            -0.5706192255020142
+          ]
+        },
+        "axes": [
+          1
+        ],
+        "starts": [
+          2
+        ],
+        "ends": [
+          4
+        ]
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层边界处理差异，如NaN传播规则、无穷大截断逻辑、次正规数舍入不一致等，可能暴露slice/narrow实现中的数值鲁棒性bug。",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                3.105797290802002,
+                -0.39836713671684265,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1,
+            "start": 2,
+            "length": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                3.105797290802002,
+                -0.39836713671684265,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axes": [
+              1
+            ],
+            "starts": [
+              2
+            ],
+            "ends": [
+              4
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              2,
+              5
+            ],
+            "paddle_shape": [
+              5,
+              2,
+              5
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1,1,1]）和极端索引",
+          "mutation_reason": "单元素张量下start=0/length=1与starts=[0]/ends=[1]应严格等价；极端索引易暴露框架对边界检查或存储共享的实现差异。",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.23456789
+              ]
+            },
+            "dim": 1,
+            "start": 0,
+            "length": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                1,
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.23456789
+              ]
+            },
+            "axes": [
+              1
+            ],
+            "starts": [
+              0
+            ],
+            "ends": [
+              1
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 int64，覆盖整数类型边界行为",
+          "mutation_reason": "整数类型下框架对溢出、截断、索引越界等处理逻辑更易暴露实现差异，且 int64 在两框架 CPU 均完全支持，数学语义严格等价",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                3,
+                -1,
+                0,
+                2,
+                -2,
+                1,
+                4,
+                -3,
+                5,
+                0
+              ]
+            },
+            "dim": 1,
+            "start": 2,
+            "length": 2
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                3,
+                -1,
+                0,
+                2,
+                -2,
+                1,
+                4,
+                -3,
+                5,
+                0
+              ]
+            },
+            "axes": [
+              1
+            ],
+            "starts": [
+              2
+            ],
+            "ends": [
+              4
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              5,
+              2,
+              5
+            ],
+            "paddle_shape": [
+              5,
+              2,
+              5
+            ],
+            "torch_dtype": "torch.int64",
+            "paddle_dtype": "paddle.int64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_narrow_20260124_190932.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.narrow",
+        "input": {
+          "shape": [
+            3,
+            4,
+            2,
+            6
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            2,
+            3,
+            -9,
+            3,
+            4,
+            -1,
+            4,
+            9,
+            -6,
+            7
+          ]
+        },
+        "dim": 1,
+        "start": -2,
+        "length": 1
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.slice",
+        "input": {
+          "shape": [
+            3,
+            4,
+            2,
+            6
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            2,
+            3,
+            -9,
+            3,
+            4,
+            -1,
+            4,
+            9,
+            -6,
+            7
+          ]
+        },
+        "axes": [
+          1
+        ],
+        "starts": [
+          -2
+        ],
+        "ends": [
+          -1
+        ]
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端浮点值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露边界处理差异，如负索引与无穷大交互、NaN传播规则、下溢/上溢截断行为不一致。",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                3,
+                4,
+                2,
+                6
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1,
+            "start": -2,
+            "length": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                3,
+                4,
+                2,
+                6
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axes": [
+              1
+            ],
+            "starts": [
+              -2
+            ],
+            "ends": [
+              -1
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              1,
+              2,
+              6
+            ],
+            "paddle_shape": [
+              3,
+              1,
+              2,
+              6
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量（shape=[1]）和负索引边界",
+          "mutation_reason": "单元素张量在负索引（如 start=-2）时易触发框架对越界处理逻辑的差异，PyTorch允许start=-2 on dim size 1 → clamped to 0，而Paddle可能未正确规约负索引，导致静默截断或错误。",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                42
+              ]
+            },
+            "dim": 0,
+            "start": -2,
+            "length": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                42
+              ]
+            },
+            "axes": [
+              0
+            ],
+            "starts": [
+              -2
+            ],
+            "ends": [
+              -1
+            ]
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": true,
+            "torch_error": "IndexError: start out of range (expected to be in range of [-1, 1], but got -2)",
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": null,
+            "paddle_shape": [
+              0
+            ],
+            "torch_dtype": null,
+            "paddle_dtype": "paddle.int64"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 int64 变异为 float32，并在 sample_values 中引入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "浮点边界值（inf, -inf, nan, -0.0）易暴露框架对特殊浮点数的索引/切片处理差异，尤其在负索引解析和长度推导逻辑中",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                3,
+                4,
+                2,
+                6
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": 1,
+            "start": -2,
+            "length": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                3,
+                4,
+                2,
+                6
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axes": [
+              1
+            ],
+            "starts": [
+              -2
+            ],
+            "ends": [
+              -1
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              3,
+              1,
+              2,
+              6
+            ],
+            "paddle_shape": [
+              3,
+              1,
+              2,
+              6
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_narrow_20260124_190932.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.narrow",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.4633219540119171,
+            0.874578595161438,
+            -0.5348895192146301,
+            -0.18305110931396484,
+            -0.3396250307559967,
+            -0.26556676626205444,
+            -1.8796583414077759,
+            -0.2210572063922882,
+            0.7595152258872986,
+            -2.075923204421997
+          ]
+        },
+        "dim": -1,
+        "start": -1,
+        "length": 0
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.slice",
+        "input": {
+          "shape": [
+            2,
+            3,
+            4,
+            5,
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.4633219540119171,
+            0.874578595161438,
+            -0.5348895192146301,
+            -0.18305110931396484,
+            -0.3396250307559967,
+            -0.26556676626205444,
+            -1.8796583414077759,
+            -0.2210572063922882,
+            0.7595152258872986,
+            -2.075923204421997
+          ]
+        },
+        "axes": [
+          -1
+        ],
+        "starts": [
+          -1
+        ],
+        "ends": [
+          -1
+        ]
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露边界处理差异，如负索引与无穷/NaN交互时框架对start/end截断或传播行为不一致。",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": -1,
+            "start": -1,
+            "length": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axes": [
+              -1
+            ],
+            "starts": [
+              -1
+            ],
+            "ends": [
+              -1
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5,
+              0
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              4,
+              5,
+              0
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用空张量（shape=[0,3,4,5,1]）测试零大小维度行为",
+          "mutation_reason": "narrow在dim=-1且length=0时应返回空切片；空输入张量可能暴露框架对零维边界处理的不一致（如负索引解析、长度截断逻辑差异）",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                0,
+                3,
+                4,
+                5,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "dim": -1,
+            "start": -1,
+            "length": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                0,
+                3,
+                4,
+                5,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "axes": [
+              -1
+            ],
+            "starts": [
+              -1
+            ],
+            "ends": [
+              -1
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              3,
+              4,
+              5,
+              0
+            ],
+            "paddle_shape": [
+              0,
+              3,
+              4,
+              5,
+              0
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float32变异为int64，覆盖整数类型边界行为",
+          "mutation_reason": "整数类型下负索引、零长度切片的截断/溢出处理更易暴露框架间索引逻辑差异，且int64在两框架CPU均完全支持。",
+          "torch_test_case": {
+            "api": "torch.narrow",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5,
+                1
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                1,
+                -1,
+                0,
+                9223372036854775807,
+                -9223372036854775808
+              ]
+            },
+            "dim": -1,
+            "start": -1,
+            "length": 0
+          },
+          "paddle_test_case": {
+            "api": "paddle.slice",
+            "input": {
+              "shape": [
+                2,
+                3,
+                4,
+                5,
+                1
+              ],
+              "dtype": "int64",
+              "sample_values": [
+                1,
+                -1,
+                0,
+                9223372036854775807,
+                -9223372036854775808
+              ]
+            },
+            "axes": [
+              -1
+            ],
+            "starts": [
+              -1
+            ],
+            "ends": [
+              -1
+            ]
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              2,
+              3,
+              4,
+              5,
+              0
+            ],
+            "paddle_shape": [
+              2,
+              3,
+              4,
+              5,
+              0
+            ],
+            "torch_dtype": "torch.int64",
+            "paddle_dtype": "paddle.int64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

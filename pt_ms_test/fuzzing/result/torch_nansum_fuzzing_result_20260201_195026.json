@@ -1,0 +1,262 @@
+{
+  "operator": "torch_nansum",
+  "torch_api": "torch.nansum",
+  "mindspore_api": "mindspore.ops.nansum",
+  "total_cases": 1,
+  "total_fuzzing_rounds": 3,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T19:50:26.404902",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nansum_20260126_131133.json",
+        "iteration": 4,
+        "case_number": 3,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nansum",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.08932656938197986,
+            -1.963111011775308,
+            1.601820027935348,
+            0.07002962858839719,
+            -1.641747387268816,
+            1.0136052000565954,
+            0.33717510232090353,
+            1.1128241115274526,
+            0.9357237475152426,
+            0.38996530361401144
+          ]
+        }
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.nansum",
+        "input": {
+          "shape": [
+            5,
+            5,
+            5
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.08932656938197986,
+            -1.963111011775308,
+            1.601820027935348,
+            0.07002962858839719,
+            -1.641747387268816,
+            1.0136052000565954,
+            0.33717510232090353,
+            1.1128241115274526,
+            0.9357237475152426,
+            0.38996530361401144
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "这些特殊值触发NaN处理边界逻辑，易暴露两框架对inf/nan求和的数学一致性差异（如inf+(-inf)是否为nan、nan传播规则等）",
+          "torch_test_case": {
+            "api": "torch.nansum",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.08932656938197986,
+                -1.963111011775308,
+                "nan",
+                1.601820027935348,
+                0.07002962858839719,
+                -1.641747387268816,
+                1.0136052000565954,
+                0.33717510232090353,
+                "inf",
+                "-inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                "nan",
+                2.0
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.nansum",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.08932656938197986,
+                -1.963111011775308,
+                "nan",
+                1.601820027935348,
+                0.07002962858839719,
+                -1.641747387268816,
+                1.0136052000565954,
+                0.33717510232090353,
+                "inf",
+                "-inf",
+                -0.0,
+                1e-38,
+                1e+38,
+                "nan",
+                2.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：空张量（shape=[0, 5, 5]）",
+          "mutation_reason": "空张量是求和算子的关键边界场景，PyTorch和MindSpore对空维度的nansum归约行为（如返回0.0 vs NaN）可能存在实现差异，易暴露初始化或循环终止逻辑bug。",
+          "torch_test_case": {
+            "api": "torch.nansum",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.nansum",
+            "input": {
+              "shape": [
+                0,
+                5,
+                5
+              ],
+              "dtype": "float64",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": false,
+            "torch_error": null,
+            "mindspore_error": "RuntimeError: The inner_size is zero.\n\n----------------------------------------------------\n- Framework Unexpected Exception Raised:\n----------------------------------------------------\nThis exception is caused by framework's unexpected error. Please create an issue at https://gitee.com/mindspore/mindspore/issues to get help.\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore\\ops\\kernel\\cpu\\masked_fill_cpu_kernel.cc:81 mindspore::kernel::masked_fill_cpu::MaskedFillCpuKernelMod::Resize\n",
+            "results_match": false,
+            "comparison_error": "执行状态不一致：一方成功一方失败",
+            "torch_shape": [],
+            "mindspore_shape": null,
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": null
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将dtype从float64变异为float32，并注入典型边界特殊值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float32精度更低、动态范围更小，且NaN/Inf处理在低精度下易暴露框架间浮点异常传播差异；两框架对inf/nan的sum规约行为需严格一致。",
+          "torch_test_case": {
+            "api": "torch.nansum",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.08932657,
+                -1.963111,
+                1.6018201,
+                0.07002963,
+                -1.6417474,
+                1.0136052,
+                0.3371751,
+                1.1128241,
+                0.9357237,
+                0.3899653,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.nansum",
+            "input": {
+              "shape": [
+                5,
+                5,
+                5
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.08932657,
+                -1.963111,
+                1.6018201,
+                0.07002963,
+                -1.6417474,
+                1.0136052,
+                0.3371751,
+                1.1128241,
+                0.9357237,
+                0.3899653,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

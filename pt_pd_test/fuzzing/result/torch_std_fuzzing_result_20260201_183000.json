@@ -1,0 +1,728 @@
+{
+  "operator": "torch_std",
+  "torch_api": "torch.std",
+  "paddle_api": "paddle.std",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 1,
+  "timestamp": "2026-02-01T18:30:00.314358",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_std_20260125_011729.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.std",
+        "input": {
+          "shape": [
+            1024,
+            2048
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.679255485534668,
+            -1.3860760927200317,
+            0.802615761756897,
+            -0.4336640238761902,
+            2.0889973640441895,
+            -0.4452079236507416,
+            -0.9164553880691528,
+            -1.9412591457366943,
+            -0.00546623021364212,
+            -2.3019278049468994
+          ]
+        },
+        "dim": 1
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.std",
+        "input": {
+          "shape": [
+            1024,
+            2048
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.679255485534668,
+            -1.3860760927200317,
+            0.802615761756897,
+            -0.4336640238761902,
+            2.0889973640441895,
+            -0.4452079236507416,
+            -0.9164553880691528,
+            -1.9412591457366943,
+            -0.00546623021364212,
+            -2.3019278049468994
+          ]
+        },
+        "axis": 1
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值稳定性差异或NaN传播逻辑不一致，暴露std实现中对异常值处理的bug",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                1024,
+                2048
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.679255485534668,
+                -1.3860760927200317,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.802615761756897,
+                -0.4336640238761902
+              ]
+            },
+            "dim": 1,
+            "correction": 1,
+            "keepdim": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                1024,
+                2048
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.679255485534668,
+                -1.3860760927200317,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.802615761756897,
+                -0.4336640238761902
+              ]
+            },
+            "axis": 1,
+            "unbiased": true,
+            "keepdim": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              1024
+            ],
+            "paddle_shape": [
+              1024
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1,1])和含inf/nan的sample_values",
+          "mutation_reason": "单元素张量在std计算中理论结果应为0.0，但框架对inf/nan的传播规则或空-reduction边界处理可能不一致，易暴露数值稳定性bug",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "dim": 1
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                1,
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf"
+              ]
+            },
+            "axis": 1
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将 dtype 从 float32 变异为 float64，并注入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "float64 提高数值精度，暴露浮点实现差异；inf/nan/-0.0 是标准偏差计算的敏感边界，易触发框架对特殊值处理不一致（如 NaN propagation、inf 平方/开方、-0.0 符号保留）",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                1024,
+                2048
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.679255485534668,
+                -1.3860760927200317,
+                0.802615761756897,
+                -0.4336640238761902,
+                2.0889973640441895,
+                -0.4452079236507416,
+                -0.9164553880691528,
+                -1.9412591457366943,
+                -0.00546623021364212,
+                -2.3019278049468994,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "dim": 1,
+            "correction": 1,
+            "keepdim": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                1024,
+                2048
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.679255485534668,
+                -1.3860760927200317,
+                0.802615761756897,
+                -0.4336640238761902,
+                2.0889973640441895,
+                -0.4452079236507416,
+                -0.9164553880691528,
+                -1.9412591457366943,
+                -0.00546623021364212,
+                -2.3019278049468994,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "axis": 1,
+            "unbiased": true,
+            "keepdim": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1024
+            ],
+            "paddle_shape": [
+              1024
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_std_20260125_011729.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.std",
+        "input": {
+          "shape": [
+            1,
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": 1,
+        "correction": 0,
+        "keepdim": true
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.std",
+        "input": {
+          "shape": [
+            1,
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": 1,
+        "unbiased": false,
+        "keepdim": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易触发框架底层数值稳定性差异或边界处理bug，尤其在空维度std计算中可能暴露NaN传播、inf处理或除零逻辑不一致。",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                1,
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "dim": 1,
+            "correction": 0,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                1,
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            },
+            "axis": 1,
+            "unbiased": false,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用标量输入（shape=[]）测试零维张量行为",
+          "mutation_reason": "标量是空维度的极端情况，两框架对dim/axis参数的处理逻辑（如dim=0在标量上是否合法）易出现不一致，且数学上std(标量)=0，理论输出唯一，便于捕捉实现bug",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                42.0
+              ]
+            },
+            "dim": null,
+            "correction": 0,
+            "keepdim": false
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                42.0
+              ]
+            },
+            "axis": null,
+            "unbiased": false,
+            "keepdim": false
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将输入 dtype 从 float32 变异为 float64，并填入含 inf/nan/-0.0 的边界值样本",
+          "mutation_reason": "float64 更高精度可能暴露框架在空维度、特殊浮点值下的数值稳定性差异；inf/nan/-0.0 是标准偏差定义的数学边界情况，易触发实现分歧。",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                1,
+                0
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "nan",
+                "inf",
+                "-inf",
+                -0.0
+              ]
+            },
+            "dim": 1,
+            "correction": 0,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                1,
+                0
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "nan",
+                "inf",
+                "-inf",
+                -0.0
+              ]
+            },
+            "axis": 1,
+            "unbiased": false,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_std_20260125_011729.json",
+        "iteration": 4,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.std",
+        "input": {
+          "shape": [
+            0,
+            1,
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "dim": [
+          0,
+          2
+        ],
+        "correction": 2,
+        "keepdim": true
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.std",
+        "input": {
+          "shape": [
+            0,
+            1,
+            0
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "axis": [
+          0,
+          2
+        ],
+        "unbiased": true,
+        "keepdim": true
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在空维/边界情形下的NaN传播、inf处理或除零逻辑差异，尤其当correction>num_elements时",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                0,
+                1,
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "dim": [
+              0,
+              2
+            ],
+            "correction": 2,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                0,
+                1,
+                0
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "axis": [
+              0,
+              2
+            ],
+            "unbiased": true,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：使用单元素张量(shape=[1])与特殊浮点值混合",
+          "mutation_reason": "单元素张量在std计算中理论结果应为0.0（无论correction/unbiased），但框架对N=1时的divisor处理或空-reduction边界逻辑可能存在差异；加入inf/nan可暴露异常传播行为不一致。",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan"
+              ]
+            },
+            "dim": null,
+            "correction": 2,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                1
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan"
+              ]
+            },
+            "axis": null,
+            "unbiased": true,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1
+            ],
+            "paddle_shape": [
+              1
+            ],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "将输入 dtype 从 float32 变异为 float64，并注入 inf/-inf/nan/-0.0 边界值",
+          "mutation_reason": "float64 更高精度可暴露数值稳定性差异；inf/nan/-0.0 是标准偏差计算中易触发框架分支逻辑不一致的边界情况，尤其在空维度（0-size）下处理未定义行为时",
+          "torch_test_case": {
+            "api": "torch.std",
+            "input": {
+              "shape": [
+                0,
+                1,
+                0
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "dim": [
+              0,
+              2
+            ],
+            "correction": 2,
+            "keepdim": true
+          },
+          "paddle_test_case": {
+            "api": "paddle.std",
+            "input": {
+              "shape": [
+                0,
+                1,
+                0
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0
+              ]
+            },
+            "axis": [
+              0,
+              2
+            ],
+            "unbiased": true,
+            "keepdim": true
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              1,
+              1
+            ],
+            "paddle_shape": [
+              1,
+              1,
+              1
+            ],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

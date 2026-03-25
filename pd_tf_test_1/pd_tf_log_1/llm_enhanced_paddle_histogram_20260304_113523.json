@@ -1,0 +1,1149 @@
+{
+  "pd_api": "paddle.histogram",
+  "tensorflow_api": "tf.histogram_fixed_width",
+  "timestamp": "2026-03-04T11:35:23.094320",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 14,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'bins'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.histogram_fixed_width does not accept 'bins' parameter; it uses 'nbins'. Also, 'min' and 'max' must be passed as a 2-element tensor 'value_range'. Paddle's 'min'/'max' are scalars. Need to align semantics: replace 'bins'→'nbins', and 'min'/'max'→'value_range=[min,max]'."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1,
+          5
+        ],
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram uses inclusive [min, max] bin range with bins covering exactly (max-min)/bins width, while TF's tf.histogram_fixed_width defines bins as: (-inf, value_range[0]), [value_range[0], r1), ..., [r_{n-2}, value_range[1]), [value_range[1], +inf), making outer bins unbounded and inner bins half-open. To align semantics, we must set value_range to [min, max] but adjust for TF's open/closed behavior by extending range slightly or using consistent bounded logic; however, per doc example, TF maps values <= value_range[0] → hist[0] and >= value_range[1] → hist[-1], so to match Paddle's fully bounded [min,max] inclusive behavior, we need to ensure no values fall outside — thus input must be clamped or range widened. But since test uses synthetic shape-only spec without actual data, the inconsistency arises from semantic mismatch in bin boundary handling. Repair: use same min/max, but for TF, set value_range = [min - eps, max + eps] is invalid per doc (must be finite and ordered); instead, correct approach is to recognize that paddle.histogram with min=1, max=5, bins=5 creates bins: [1,2), [2,3), [3,4), [4,5), [5,5] — but wait, Paddle doc says 'inclusive', and example shows [0,3] with bins=4 → [0,1), [1,2), [2,3), [3,3]? No — official Paddle example: inputs=[1,2,1], bins=4, min=0, max=3 → output [0,2,1,0], meaning bin edges are [0,0.75), [0.75,1.5), [1.5,2.25), [2.25,3.0] — i.e., equal-width closed-left/open-right bins spanning [min,max], with max included in last bin. TF's tf.histogram_fixed_width with value_range=[0,3], nbins=4 gives bins: (-inf,0.75), [0.75,1.5), [1.5,2.25), [2.25,3.0), [3.0,+inf) — so hist[0] catches <=0.75, hist[-1] catches >=3.0. Thus to match Paddle’s bounded [min,max] behavior, TF must *exclude* out-of-range counts — but TF has no flag for that. Therefore, the only faithful repair is to ensure all input values lie strictly within (min, max), and adjust value_range to [min, max] *and* use identical deterministic input data — but current test case only specifies shape/dtype, not values. Hence, inconsistency stems from undefined input values. Repair: add concrete 'x' values known to lie in (min, max) and avoid boundaries, e.g., [1.5, 2.0, 2.5, 3.0, 3.5, 4.5] reshaped to (2,3), all strictly inside (1,5), avoiding 1 and 5 to prevent TF assigning to edge bins differently. Also, Paddle supports int64 but TF histogram_fixed_width requires float-like dtype for values — per TF doc: 'values: Numeric', and examples use float; int64 may trigger implicit cast but behavior differs. So repair: change dtype to float32 for both, and provide explicit controlled values."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "max": 5.0,
+        "min": 1.0,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0
+        ],
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 5.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram uses inclusive [min, max] bin edges and counts values equal to max in the last bin, while TF's tf.histogram_fixed_width maps values >= value_range[1] to the last bin but defines bins as half-open: [min, min+width), ..., [max-width, max), with values >= max going to last bin. To align semantics, we must ensure identical bin boundaries and edge handling; the original test uses same min/max/value_range but different bin inclusion logic. Repair by using identical input data (not just shape/dtype) and adjusting TF's value_range to be [min, max + epsilon] to match Paddle's inclusive upper bound behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "max": 5.0,
+        "min": 1.0,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0001
+        ],
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 6.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'bins'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.histogram_fixed_width does not accept 'bins' parameter; it uses 'nbins'. Also, 'min' and 'max' must be passed as a 2-element tensor 'value_range'. Paddle's 'min'/'max' are scalars. Need to align semantics: replace 'bins'→'nbins', and 'min'/'max'→'value_range=[min,max]'."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1,
+          5
+        ],
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 4.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram uses inclusive [min, max] bin range with bins covering exactly (max-min)/bins width, while TF's tf.histogram_fixed_width defines bins as: (-inf, v0), [v0,v1), ..., [v_{n-2},v_{n-1}), [v_{n-1}, +inf) — so value_range[0] and value_range[1] are *bin edges*, not inclusive bounds. To align semantics, TF's value_range must be extended to cover same closed interval [min, max] by adjusting to [min - eps, max + eps] or use consistent bin edge logic; but per doc example, values <= value_range[0] → hist[0], values >= value_range[1] → hist[-1]. Thus for inclusive [1,5] in Paddle, TF requires value_range = [1, 5 + (5-1)/5] = [1, 5.8] to make 5 equal-width bins spanning [1,5], or better: set value_range = [1 - 0.5*dw, 5 + 0.5*dw] where dw=(5-1)/5=0.8 → [0.6, 5.4] to center bins on [1,5]. However simplest correct alignment is using value_range=[1, 5.0001] to ensure 5 bins cover [1,5] inclusively without overflow. But official TF example shows value_range=[0.0,5.0] with nbins=5 yields bins: (-inf,1), [1,2), [2,3), [3,4), [4,inf); so to get inclusive [1,5], we need value_range=[1, 6] to produce bins [1,2), [2,3), [3,4), [4,5), [5,6) — then values==5 fall into last bin, matching Paddle's inclusive max. Hence repair: TF value_range → [1, 6]."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1,
+          6
+        ],
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 2.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram uses [min, max] as inclusive bounds for bin edges, while TF's tf.histogram_fixed_width maps values <= value_range[0] to bin 0 and >= value_range[1] to last bin, with bins covering [value_range[0], value_range[1]) — i.e., right-open interval. To align semantics, TF's value_range must be [min, max + bin_width] to make the last bin inclusive of max. Here bins=5, range width=4 (5-1), bin_width=0.8; so value_range should be [1, 5.8] to cover up to 5 inclusively. But simpler & exact fix: use value_range=[1, 6] as in original, but note that TF's bin edges are [1, 2, 3, 4, 5, 6], so 5 falls in bin index 4 (i.e., [5,6)), matching Paddle's inclusive [1,5] with 5 bins → edges: 1, 2, 3, 4, 5, 6. So original value_range [1,6] is actually correct. However, Paddle's min=1/max=5 implies range length 4, while TF's [1,6] implies length 5 → mismatch. To align range length, TF value_range must be [1, 5] → but TF requires value_range[1] > value_range[0], and bins=5 ⇒ edges spaced by (5-1)/5 = 0.8 → last edge = 1 + 5*0.8 = 5. So value_range should be [1, 5] to match Paddle's [min,max] = [1,5] with bins=5. But TF docs state 'values >= value_range[1] go to last bin', so to include max=5 in last bin, value_range[1] must be >5. Standard fix: set value_range=[1, 5+1e-6] or [1, 5.0001]. However, per doc example: value_range=[0.0,5.0], nbins=5 → bins: (-inf,1), [1,2), [2,3), [3,4), [4,inf); so 5.0 maps to last bin. Thus [1,6] is correct for covering [1,5] with 5 equal-width bins: edges = linspace(1,6,6) = [1,2,3,4,5,6], bins = [1,2), [2,3), [3,4), [4,5), [5,6] — and since Paddle's bins are inclusive on both ends *per bin*, but actual implementation uses left-inclusive, right-exclusive except last bin which is inclusive on right — same as TF. So the real issue is Paddle treats [min,max] as inclusive bounds for the *entire range*, then divides into bins of width (max-min)/bins, with first bin [min, min+dw), ..., last bin [max-dw, max]. So to match, TF value_range must be [min, max] — but TF requires value_range[1] > value_range[0] and maps >= value_range[1] to last bin, so setting value_range=[min, max] would exclude max. Hence correct alignment is value_range=[min, max + (max-min)/bins] = [1, 5 + 0.8] = [1, 5.8]. But simpler and documented-compatible fix: use value_range=[min, max] in TF *only if* we accept that max maps to last bin — and TF docs confirm values >= value_range[1] go to last bin, so to include max, set value_range[1] = max. However, example shows value_range=[0,5] includes 5 in last bin. So [1,5] is valid. Therefore original TF value_range=[1,6] is wrong — should be [1,5]."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1,
+          5
+        ],
+        "x": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 3.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "weight": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "weight": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'weight'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.histogram_fixed_width does not support 'weight' parameter, unlike paddle.histogram. To achieve semantic equivalence, we must remove 'weight' from TensorFlow test case. Also, tf.histogram_fixed_width expects 'value_range' (a 2-element tensor) instead of separate 'min'/'max', and has no 'density' equivalent. Paddle's case keeps weight for correctness; TF case is repaired by removing weight and mapping min/max to value_range."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "weight": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1,
+          5
+        ],
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 123.90048218",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram supports 'weight' parameter but TF's tf.histogram_fixed_width does not; weight must be removed for semantic equivalence. Also, TF's bins are left-open/right-closed except edges, while Paddle's bins are inclusive of both min and max — to align behavior, we must ensure identical bin boundaries and avoid weight-induced divergence."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1,
+          5
+        ],
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 104.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.histogram uses inclusive [min, max] bin edges with bins evenly spaced, while tf.histogram_fixed_width uses half-open intervals: (-inf, value_range[0]] -> bin0, [value_range[0], value_range[1]) for inner bins, [value_range[1], +inf) -> last bin. To align semantics, value_range must be extended to cover same inclusive range and account for edge behavior; also, tf requires explicit 'values' arg (not 'x'), and paddle's min/max=1,5 implies inclusive [1,5], so tf value_range should be [1-eps,5+eps] to approximate inclusivity; but per doc, values <= value_range[0] go to bin0 and >= value_range[1] go to last bin — thus to match paddle's [1,5] inclusive binning with 5 bins, we must set value_range=[1,5] and manually adjust bin logic. However, the core mismatch is that paddle distributes bins as [1,2),[2,3),[3,4),[4,5],[5,5] (last bin includes max), while TF maps [1,5] as 5 equal-width bins: width=0.8, so bins are [1,1.8),[1.8,2.6),[2.6,3.4),[3.4,4.2),[4.2,5]. This causes systematic misalignment. Correct repair: use same bin boundaries by setting TF value_range=[1,5.0001] to force 5 bins covering [1,5] inclusively in practice, and ensure input dtype consistency."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0001
+        ],
+        "values": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 109.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "density": true,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "density": true,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'density'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.histogram_fixed_width does not support 'density' parameter, unlike paddle.histogram. To achieve semantic equivalence, we must remove 'density' from TF test case and instead manually normalize the output if needed; also, TF requires 'value_range' (2-element tensor) instead of separate 'min'/'max', and input must be flattened as TF expects 1D values."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "density": true,
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "input": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0
+        ],
+        "values": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 114.16666663",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram with density=True returns PDF values normalized such that integral over [min,max] equals 1, i.e., bin_width * sum(hist) = 1. TensorFlow's tf.histogram_fixed_width only returns raw counts, and has no density mode. To make outputs comparable, we must disable density in Paddle (density=False) and ensure identical binning semantics: both use inclusive min, exclusive max for inner bins, but TF maps values <= value_range[0] → bin[0] and >= value_range[1] → bin[-1], while Paddle uses [min, max] inclusive for all bins. So we align by using same input flattening, same bins=5, same range [1.0,5.0], and disable density to compare raw counts."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "density": false,
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "input": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0
+        ],
+        "values": {
+          "shape": [
+            120
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 99.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram uses inclusive [min, max] bin range with bins covering exactly [min, max], while TF's tf.histogram_fixed_width maps values <= value_range[0] to bin 0 and >= value_range[1] to last bin, with open-closed intervals: (-inf, r0], (r0, r1], ..., (r_{n-2}, r_{n-1}], (r_{n-1}, +inf). To align semantics, we must extend Paddle's min/max to cover same effective bin boundaries — set Paddle min=1-eps, max=5+eps (but eps not allowed in int/float bins); instead, use value_range-aligned bins: for nbins=5 over [1,5], bin width = 0.8; TF’s actual bins are [1,1.8), [1.8,2.6), [2.6,3.4), [3.4,4.2), [4.2,5]. So Paddle must set min=1, max=5, but TF treats [1,5] as *exclusive upper bound in division* — so to match bin edges, Paddle needs max=5.0 and TF value_range=[1.0,5.0], but TF assigns values==5.0 to last bin, while Paddle includes 5.0 in last bin — they *are* consistent on inclusivity of max. However, the root inconsistency arises from input flattening: Paddle input is [10,12] but TF values is [120] — that’s fine. The real issue is that Paddle’s default behavior when min=max=0 uses data-derived range, but here min/max are explicit. The documented Paddle example uses [0,3] with bins=4 → bin width=0.75, bins: [0,0.75), [0.75,1.5), [1.5,2.25), [2.25,3]. But TF with value_range=[0,3], nbins=4 gives bins: (-inf,0], (0,0.75], (0.75,1.5], (1.5,2.25], (2.25,+inf) — no, wait: TF docs state 'values <= value_range[0] → hist[0]', 'values >= value_range[1] → hist[-1]', and bins are *n* equal-width bins *between* value_range[0] and value_range[1], i.e., the interior (value_range[0], value_range[1]) is divided into nbins, and edge values go to outermost bins. So for value_range=[1,5], nbins=5, interior width=4, bin width=0.8, interior bins: (1,1.8], (1.8,2.6], (2.6,3.4], (3.4,4.2], (4.2,5]. Then values<=1 go to bin 0, values>=5 go to bin 4. Whereas Paddle’s [min,max] is fully inclusive *and* covers only [min,max], with all values outside clipped to min/max before binning. So to align: Paddle must clip input to [min,max] first (it does internally), and assign values=min to bin 0, values=max to bin -1. TF does not clip — it assigns out-of-range to edge bins. Thus, to make outputs comparable, inputs must lie strictly within (min,max) or we must adjust bin semantics. The minimal repair is to ensure identical input distribution *and* use same effective bin boundaries. Since original input shape differs only in layout (10×12 vs flat 120), that’s OK. But the critical mismatch is bin interval definition: Paddle uses left-inclusive, right-exclusive *except* last bin is inclusive on right; TF uses left-open, right-closed for interior bins, plus two infinite tails. They are *not* semantically equivalent unless input is guaranteed inside (min,max). So to repair: restrict input to (min, max) — but we can’t control values, only shape/dtype. Instead, use density=False, same bins, same range, and ensure no values equal min or max by adjusting min/max slightly? No — spec says Paddle includes min/max. Correct repair: use TF’s behavior-aware setup — but task requires functional equivalence. Since docs confirm Paddle’s bins are 'between min and max' with 'inclusive' endpoints, and TF’s value_range is also inclusive endpoints *for assignment logic*, the intended equivalence is that both partition [min,max] into nbins equal subintervals. However, TF’s official example shows value_range=[0.0,5.0], nbins=5 → bins interpreted as (-inf,1), [1,2), [2,3), [3,4), [4,inf), which contradicts 'equal width between value_range'. Actually, reading TF doc again: 'The bins are equal width and determined by the arguments value_range and nbins' and 'values <= value_range[0] will be mapped to hist[0], values >= value_range[1] will be mapped to hist[-1]'. So the *finite* bins correspond to (value_range[0], value_range[1]), split into nbins → width = (max-min)/nbins, and finite bins are: (min, min+w], (min+w, min+2w], ..., (min+(nbins-1)w, max]. So bin i covers (min+i*w, min+(i+1)*w] for i=0..nbins-2, and bin nbins-1 covers (min+(nbins-1)*w, max], while bin 0 gets <=min, and bin nbins-1 also gets >=max. Wait — no: TF has nbins total bins, indexed 0 to nbins-1. From example: value_range=[0.0,5.0], nbins=5 → w=1.0, and bins are: (-inf, 0.0] → bin 0? But example says [-1.0,0.0] → bin 0, [1.5,2.0] → bin 1, [5.0] → bin 4. And output is [2,1,1,0,2]. So -1.0 and 0.0 → bin 0; 1.5→bin1; 2.0→bin1? No — 2.0 is at boundary. Example says: 'Bins will be: (-inf, 1), [1, 2), [2, 3), [3, 4), [4, inf)' — that’s 5 bins, each half-open, covering full real line, with break points at 1,2,3,4, and value_range=[0.0,5.0] used only to compute breaks: breaks = linspace(value_range[0], value_range[1], nbins+1) = [0,1,2,3,4,5], then bins are [breaks[i], breaks[i+1]) for i=0..nbins-1. Yes! That matches: [0,1), [1,2), [2,3), [3,4), [4,5). But then 0.0 falls in bin0, 5.0 is *excluded*, so 5.0 would go to bin5 — but there is no bin5. So TF actually does: values < breaks[0] → bin0? No — doc says '<= value_range[0] → bin0', and value_range[0]=0.0, so 0.0 → bin0. Contradiction. Resolving: TF source confirms tf.histogram_fixed_width uses: bucket_id = floor((x - value_range[0]) / ((value_range[1] - value_range[0]) / nbins)), then clips bucket_id to [0, nbins-1]. So for x=value_range[0], bucket_id = 0; for x=value_range[1], bucket_id = floor((max-min)/(width)) = floor(nbins) = nbins → then clipped to nbins-1. So bin boundaries are effectively: bin i covers [min + i*width, min + (i+1)*width) for i=0..nbins-2, and bin nbins-1 covers [min + (nbins-1)*width, max] (since clipped). So last bin is inclusive of max. Thus, Paddle’s [min,max] inclusive with nbins equal bins is *identical*: bin i = [min + i*width, min + (i+1)*width], with last bin inclusive of max → but Paddle doc says 'between min and max', and example [0,3], bins=4 → width=0.75, bins: [0,0.75], (0.75,1.5], (1.5,2.25], (2.25,3]? No — Paddle example output [0,2,1,0] for input [1,2,1] → 1 falls in bin1? Let's compute: [0,3] / 4 → width=0.75 → bin0: [0,0.75), bin1: [0.75,1.5), bin2: [1.5,2.25), bin3: [2.25,3]. Then 1 ∈ bin1, 2 ∈ bin2, 1 ∈ bin1 → counts [0,2,1,0] — matches. So Paddle uses [min, min+width), [min+width, min+2*width), ..., [min+(nbins-1)*width, max] — but max = min+nbins*width, so last interval is [min+(nbins-1)*width, min+nbins*width] = [min+(nbins-1)*width, max], and since it's inclusive on right, and others left-inclusive right-exclusive, it's consistent only if max = min+nbins*width. In example: min=0, max=3, bins=4 → width=0.75, min+nbins*width = 0+4*0.75=3 = max. So Paddle assumes max = min + bins * bin_width. Therefore, to match TF, we must ensure max = min + bins * bin_width, and TF’s value_range[1] = max, value_range[0] = min. So original case min=1, max=5, bins=5 → width=0.8, min+5*0.8=5 → OK. So ranges are aligned. Then why result inconsistent? Because TF assigns x=1.0 to bin0 ([1.0,1.8)), and x=5.0 to bin4 ([4.2,5.0]) — same as Paddle. So inputs must be identical. But original Paddle input is [10,12] float32 (120 elements), TF values is [120] float32 — same size. So inconsistency must stem from different random initialization or uncontrolled input values. Since test cases only specify shape/dtype, not values, the frameworks generate different random tensors → outputs differ. To repair: fix seed or use deterministic input. But test format doesn’t support seed. So the only robust repair is to use a *controlled deterministic input* — e.g., linear ramp or known values. However, the test schema only allows shape/dtype. Therefore, the correct repair is to acknowledge that shape-only spec yields non-deterministic inputs → outputs diverge. But task says 'execution successful' on both, so inputs were generated, just differently. To make comparison meaningful, we must enforce identical input values. Since test format doesn’t allow 'value' field, we cannot fix that. Hence, the root cause is semantic: Paddle and TF histogram APIs are *not* drop-in equivalents due to differing handling of ties, rounding, and bin edge conventions under floating-point arithmetic — and the problem states 'result inconsistent' with max diff 99.0, suggesting complete mismatch (e.g., one returns all zeros, other doesn’t), likely because Paddle’s default min=max=0 triggered auto-range while TF didn’t — but here min/max are explicit. Rechecking original: Paddle has 'min': 1, 'max': 5; TF has 'value_range': [1.0,5.0] — aligned. The only remaining explanation is that Paddle’s histogram expects 1D input? No — doc says input can be N-D. But TF’s values must be 1D. So flattening is required. Original Paddle input shape [10,12] is fine; TF values shape [120] is flattened — correct. So the repair is to ensure both use identical numerical input — impossible without value field. Therefore, per task instruction #3(3): 'if ... two算子功能也等价,那就是测试用例构造问题，请根据算子文档对用例进行修复'. Since functionality *is* equivalent (both compute histograms over [min,max] with nbins equal bins), the construction problem is lack of input value control. But test format forbids adding 'value'. So the only valid repair within constraints is to adjust parameters to reduce sensitivity: use integer inputs and exact bin boundaries. Change dtype to int32, and choose min, max, bins so bin edges are integers, avoiding floating-point ambiguity. Also, use small, fixed-size input like [6] with known values."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "density": false,
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "input": {
+          "shape": [
+            6
+          ],
+          "dtype": "int32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0
+        ],
+        "values": {
+          "shape": [
+            6
+          ],
+          "dtype": "int32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Cannot convert [1.0, 5.0] to EagerTensor of dtype int32",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "weight": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "density": true,
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "x": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "bins": 5,
+        "min": 1,
+        "max": 5,
+        "weight": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "density": true,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": "TypeError: Got an unexpected keyword argument 'density'",
+        "comparison_error": null,
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": null,
+        "pd_dtype": "paddle.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.histogram_fixed_width does not support 'density' parameter, unlike paddle.histogram. Also, it requires 'value_range' (not 'min'/'max') as a 2-element tensor, and has no 'weight' parameter. We must remove 'density' and 'weight', and replace 'min'/'max' with 'value_range' to align semantics."
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "density": false,
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "input": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0
+        ],
+        "values": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 99.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "paddle.histogram uses inclusive [min, max] range with equal-width bins, while tf.histogram_fixed_width maps values <= value_range[0] to bin 0 and >= value_range[1] to last bin, effectively using half-open intervals [value_range[0], value_range[1]) for interior bins. To align semantics, value_range must be extended to [min, max + epsilon] or input must be clipped; here we adjust value_range to [1.0, 5.0001] to ensure max=5 is included in last bin, matching paddle's inclusive upper bound."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "density": false,
+        "bins": 5,
+        "max": 5,
+        "min": 1,
+        "input": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0001
+        ],
+        "values": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 105.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Paddle's paddle.histogram uses inclusive [min, max] range, while TF's tf.histogram_fixed_width maps values <= value_range[0] to bin 0 and >= value_range[1] to last bin, with open-closed intervals in between. To align semantics, value_range must be set to [min, max + epsilon] where epsilon ensures max is included in the last bin; using [1.0, 5.0] causes truncation of value 5.0 in TF. Also, Paddle's min/max are scalars, TF's value_range must exactly match Paddle's [min, max] for equivalence."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "density": false,
+        "bins": 5,
+        "max": 5.0,
+        "min": 1.0,
+        "input": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "api": "paddle.histogram"
+      },
+      "tensorflow_test_case": {
+        "value_range": [
+          1.0,
+          5.0
+        ],
+        "values": {
+          "shape": [
+            10,
+            12
+          ],
+          "dtype": "float32"
+        },
+        "nbins": 5,
+        "api": "tf.histogram_fixed_width"
+      },
+      "execution_result": {
+        "pd_api": "paddle.histogram",
+        "tensorflow_api": "tf.histogram_fixed_width",
+        "pd_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "结果不一致，最大差异: 100.00000000",
+        "pd_shape": [
+          5
+        ],
+        "tensorflow_shape": [
+          5
+        ],
+        "pd_dtype": "paddle.int64",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,138 @@
+{
+  "operator": "torch.get_rng_state",
+  "timestamp": "2026-01-25T10:28:56.556213",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 3,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "api": "torch.get_rng_state"
+      },
+      "paddle_test_case": {
+        "api": "paddle.get_rng_state"
+      },
+      "execution_result": {
+        "torch_api": "torch.get_rng_state",
+        "paddle_api": "paddle.get_rng_state",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (5056,) vs PaddlePaddle (1,)",
+        "torch_shape": [
+          5056
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.uint8",
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.get_rng_state() returns a 1D tensor of shape (5056,) containing the current RNG state bytes, while PaddlePaddle's paddle.get_rng_state() returns a list of GeneratorState objects (not a tensor) and its default behavior differs — it requires no input but returns structured state per device. The original test cases are invalid because they omit required/optional parameters and misalign return types: PyTorch returns a raw byte tensor, Paddle returns a list of generator states. According to Paddle docs, 'device' is an optional str parameter (default None), but the API does not accept tensor inputs — so no 'x' or 'input' should be present. The mismatch '(5056,) vs (1,)' indicates Paddle returned a singleton list (e.g., [state]) while PyTorch returned a flat tensor; thus, direct numerical comparison is invalid. To align semantics, we must remove spurious tensor input fields and ensure both calls are invoked without inputs (as both APIs are stateful and input-less), but since return types are inherently incompatible (tensor vs list[GeneratorState]), the only valid repair is to invoke both APIs correctly *without* attempting tensor-based comparison — however, the test framework expects comparable outputs. Given the fundamental type incompatibility (no shared numeric tensor output), and that neither API accepts inputs, the correct action is to repair by removing all invalid input fields and using canonical zero-argument calls — but the comparison failure proves they are not drop-in equivalents. Per documentation and behavior, this is a functional non-equivalence: torch.get_rng_state returns raw state tensor; paddle.get_rng_state returns high-level generator state objects. Therefore, the test case cannot be meaningfully compared numerically — operation must be 'skip'."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.get_rng_state"
+      },
+      "paddle_test_case": {
+        "api": "paddle.get_rng_state"
+      },
+      "execution_result": {
+        "torch_api": "torch.get_rng_state",
+        "paddle_api": "paddle.get_rng_state",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (5056,) vs PaddlePaddle (1,)",
+        "torch_shape": [
+          5056
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.uint8",
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.get_rng_state() returns a 1D tensor of shape (5056,) containing the current RNG state bytes, while PaddlePaddle's paddle.get_rng_state() returns a list of GeneratorState objects (not a tensor) and its default behavior without device argument may not match PyTorch's global CPU RNG state representation. The shape mismatch (5056 vs 1) indicates fundamental API divergence in return type and structure. According to PaddlePaddle documentation, paddle.get_rng_state() returns 'list[GeneratorState]', not a tensor, whereas torch.get_rng_state() returns a torch.ByteTensor. Since the return types are inherently incompatible (tensor vs list of generator states), and no parameterization can make them produce comparable tensors, the correct action is to repair by aligning usage: Paddle requires explicit device='cpu' to target CPU RNG, and we must extract comparable raw state — but Paddle does not expose raw byte state like PyTorch. Therefore, this cross-framework comparison is invalid by design; however, per task requirement, we repair by adding consistent device='cpu' to both sides and using Paddle's documented signature. Note: Paddle's API does not accept input tensors — it's state-query-only, so no 'x' or 'input' field should exist. Original test cases incorrectly treated it as tensor-input op. Repair removes spurious input fields and adds device='cpu' to ensure deterministic CPU RNG state retrieval in both frameworks."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.get_rng_state"
+      },
+      "paddle_test_case": {
+        "api": "paddle.get_rng_state",
+        "device": "cpu"
+      },
+      "execution_result": {
+        "torch_api": "torch.get_rng_state",
+        "paddle_api": "paddle.get_rng_state",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (5056,) vs PaddlePaddle (1,)",
+        "torch_shape": [
+          5056
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.uint8",
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch's torch.get_rng_state() returns a 1D tensor of shape (5056,) containing the current RNG state (CPU generator state), while Paddle's paddle.get_rng_state(device='cpu') returns a list of GeneratorState objects — but in practice, current PaddlePaddle versions (2.6+) return a single-element list containing a 1D tensor of shape (1,) when device='cpu', which is inconsistent with PyTorch's raw state tensor. According to Paddle documentation, paddle.get_rng_state() returns 'list[GeneratorState]', and the actual returned object is not directly comparable to PyTorch's flat byte/state tensor. The fundamental mismatch is structural: PyTorch returns a flat state tensor; Paddle returns a list of generator state objects (each possibly encapsulated). Since the APIs are not semantically equivalent — torch.get_rng_state() returns the *raw CPU generator state tensor*, whereas paddle.get_rng_state() returns *generator state handles/objects* (not raw bytes) — direct numerical comparison is invalid. However, the documented behavior implies they should represent equivalent RNG states. The root cause is that Paddle's default 'cpu' generator state retrieval does not yield a flat tensor matching PyTorch’s format. To align, we must omit 'device' in Paddle (letting it use current device context, like PyTorch), and verify whether output type/shape becomes compatible. But per docs and observed error (5056 vs 1), even without device, Paddle returns a singleton list. Therefore, correct repair is to acknowledge non-interoperable return types: PyTorch returns torch.Tensor, Paddle returns list. Since no parameter adjustment makes their outputs numerically comparable (they’re different abstractions), and the spec says Paddle returns 'list[GeneratorState]' while PyTorch returns 'Tensor', the APIs are functionally *not equivalent* for direct state tensor comparison. Hence, this test case is invalid for cross-framework numeric comparison — operation is 'skip'."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.get_rng_state"
+      },
+      "paddle_test_case": {
+        "api": "paddle.get_rng_state"
+      },
+      "execution_result": {
+        "torch_api": "torch.get_rng_state",
+        "paddle_api": "paddle.get_rng_state",
+        "torch_success": true,
+        "paddle_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "paddle_error": null,
+        "comparison_error": "形状不匹配: PyTorch (5056,) vs PaddlePaddle (1,)",
+        "torch_shape": [
+          5056
+        ],
+        "paddle_shape": null,
+        "torch_dtype": "torch.uint8",
+        "paddle_dtype": null,
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

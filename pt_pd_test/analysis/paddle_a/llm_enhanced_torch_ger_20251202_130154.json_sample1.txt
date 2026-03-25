@@ -1,0 +1,73 @@
+来源文件: llm_enhanced_torch_ger_20251202_130154.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Broadcast dimension mismatch. Operands could not be broadcast together with the shape of X = [0, 0] and the shape of Y = [1, 512]. Received [0] in X is not equal to [512] in Y at i:1.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.ger",
+  "input": {
+    "shape": [
+      0
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "vec2": {
+    "shape": [
+      512
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.5971234412128231,
+      -0.4040146248538725,
+      -0.04658459655610249,
+      0.5732248046908474,
+      -0.5172722864776413,
+      0.377708286284976,
+      1.199041091953026,
+      1.399044883953909,
+      0.18283045092497915,
+      0.04109082312036269
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.ger",
+  "input": {
+    "shape": [
+      0
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "vec2": {
+    "shape": [
+      512
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.5971234412128231,
+      -0.4040146248538725,
+      -0.04658459655610249,
+      0.5732248046908474,
+      -0.5172722864776413,
+      0.377708286284976,
+      1.199041091953026,
+      1.399044883953909,
+      0.18283045092497915,
+      0.04109082312036269
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.ger` 在处理形状为 `[0]` 的输入张量时，会触发广播维度不匹配错误（如 `Received [0] in X is not equal to [512] in Y at i:1`），因为当第一个输入维度为 0 时，其“扁平化”后无法与第二个向量 `[512]` 正常进行外积运算，而 PyTorch 的 `torch.ger` 虽然也已弃用，但其对空张量的处理在语义上允许生成形状为 `[0, 512]` 的结果（即零行、512 列），而 PaddlePaddle 在此场景下未正确支持该行为。
+   - 官方文档中虽未明确说明 `ger` 是否支持形状含 0 的输入，但从实际执行错误看，当前实现不允许第一维为 0 且第二维非 0 的情况，表明 PaddlePaddle 在空张量外积上的广播规则比 PyTorch 更严格。
+
+3. 修复建议：
+   - 建议提交一个 issue 给 PaddlePaddle 官方，指出 `paddle.ger` 在输入形状包含 0 时的行为与 PyTorch 不一致，应支持生成 `[0, 512]` 的输出。

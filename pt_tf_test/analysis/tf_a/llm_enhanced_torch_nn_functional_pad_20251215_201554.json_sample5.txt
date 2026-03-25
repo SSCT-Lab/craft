@@ -1,0 +1,93 @@
+来源文件: llm_enhanced_torch_nn_functional_pad_20251215_201554.json
+样例编号: 5
+tensorflow_error 错误信息: {{function_node __wrapped__MirrorPad_device_/job:localhost/replica:0/task:0/device:CPU:0}} paddings must be less than the dimension size: 1, 1 not less than 1 [Op:MirrorPad]
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.pad",
+  "input": {
+    "shape": [
+      1,
+      264,
+      1,
+      33
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.4412168860435486,
+      0.22251471877098083,
+      0.9367600679397583,
+      0.08654554188251495,
+      0.16751132905483246,
+      -1.2984055280685425,
+      -1.3431774377822876,
+      1.0717182159423828,
+      1.6022781133651733,
+      1.0582695007324219
+    ]
+  },
+  "pad": [
+    1,
+    1,
+    0,
+    0
+  ],
+  "mode": "reflect",
+  "value": 0
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.pad",
+  "input": {
+    "shape": [
+      1,
+      264,
+      1,
+      33
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.4412168860435486,
+      0.22251471877098083,
+      0.9367600679397583,
+      0.08654554188251495,
+      0.16751132905483246,
+      -1.2984055280685425,
+      -1.3431774377822876,
+      1.0717182159423828,
+      1.6022781133651733,
+      1.0582695007324219
+    ]
+  },
+  "paddings": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "mode": "REFLECT",
+  "constant_values": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.pad` 在 `mode="REFLECT"` 时要求填充量必须严格小于对应维度的尺寸，否则会报错。本例中在第3维（shape为1）上尝试填充 `[1, 1]`，即向两侧各加1个元素，但该维度大小为1，无法满足“填充量 < 维度大小”的条件，因此触发错误。
+   - PyTorch 的 `torch.nn.functional.pad(mode='reflect')` 对于维度为1的情况有特殊处理（允许反射填充），而 TensorFlow 的实现更严格，不支持在尺寸为1的维度上进行反射填充，这是两框架在边界处理上的行为差异。
+
+3. 修复建议：
+   - 此为框架间语义不一致导致的行为差异，可提交 issue 至 TensorFlow 官方仓库，建议放宽 `REFLECT` 模式下对维度大小为1的限制以与 PyTorch 对齐。

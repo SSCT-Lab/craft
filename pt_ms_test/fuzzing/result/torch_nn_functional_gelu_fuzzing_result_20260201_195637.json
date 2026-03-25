@@ -1,0 +1,716 @@
+{
+  "operator": "torch_nn_functional_gelu",
+  "torch_api": "torch.nn.functional.gelu",
+  "mindspore_api": "mindspore.ops.gelu",
+  "total_cases": 3,
+  "total_fuzzing_rounds": 9,
+  "bug_candidates": 2,
+  "timestamp": "2026-02-01T19:56:37.521716",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_gelu_20260126_143232.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            1,
+            17,
+            4096
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.45904138684272766,
+            0.17791031301021576,
+            0.2683682441711426,
+            -0.3487641215324402,
+            0.9095982909202576,
+            -0.4882182776927948,
+            0.12286675721406937,
+            -0.5324187278747559,
+            1.293875813484192,
+            1.1008397340774536
+          ]
+        },
+        "api": "torch.nn.functional.gelu"
+      },
+      "original_mindspore_test_case": {
+        "input": {
+          "shape": [
+            1,
+            17,
+            4096
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.45904138684272766,
+            0.17791031301021576,
+            0.2683682441711426,
+            -0.3487641215324402,
+            0.9095982909202576,
+            -0.4882182776927948,
+            0.12286675721406937,
+            -0.5324187278747559,
+            1.293875813484192,
+            1.1008397340774536
+          ]
+        },
+        "api": "mindspore.ops.gelu"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "GELU的CDF计算在边界处易受数值稳定性影响，不同框架对无穷和NaN的CDF处理（如Phi(inf)=1, Phi(-inf)=0）可能不一致，暴露实现差异。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [
+                1,
+                17,
+                4096
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.45904138684272766,
+                0.17791031301021576,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [
+                1,
+                17,
+                4096
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.45904138684272766,
+                0.17791031301021576,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              1,
+              17,
+              4096
+            ],
+            "mindspore_shape": [
+              1,
+              17,
+              4096
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量（shape=[]）和含0维张量（shape=[0, 17, 4096]）",
+          "mutation_reason": "标量和空张量易触发框架对广播、维度归约或CDF计算的边界处理差异；GELU在x=0、±inf、nan处数学定义明确，可暴露CDF实现不一致或特殊值处理bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0,
+                0.0,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0,
+                0.0,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试float64精度下GELU在极端值（inf/nan/-0.0）处的实现一致性",
+          "mutation_reason": "float64可暴露浮点精度差异，inf/nan/-0.0是GELU数学定义的边界点，两框架对CDF和tanh近似的数值稳定性处理可能不同",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [
+                1,
+                17,
+                4096
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.45904138684272766,
+                0.17791031301021576,
+                0.2683682441711426,
+                -0.3487641215324402,
+                0.9095982909202576,
+                -0.4882182776927948,
+                0.12286675721406937,
+                -0.5324187278747559,
+                1.293875813484192,
+                1.1008397340774536,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [
+                1,
+                17,
+                4096
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.45904138684272766,
+                0.17791031301021576,
+                0.2683682441711426,
+                -0.3487641215324402,
+                0.9095982909202576,
+                -0.4882182776927948,
+                0.12286675721406937,
+                -0.5324187278747559,
+                1.293875813484192,
+                1.1008397340774536,
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              1,
+              17,
+              4096
+            ],
+            "mindspore_shape": [
+              1,
+              17,
+              4096
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_gelu_20260126_143232.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.gelu",
+        "input": {
+          "shape": [
+            0,
+            17,
+            4096
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "approximate": "tanh"
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.gelu",
+        "input": {
+          "shape": [
+            0,
+            17,
+            4096
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "approximate": "tanh"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在边界条件下的数值稳定性差异，如NaN传播、inf处理、次正规数精度、负零符号保持等实现不一致问题。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [
+                0,
+                17,
+                4096
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "tanh"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [
+                0,
+                17,
+                4096
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "tanh"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              17,
+              4096
+            ],
+            "mindspore_shape": [
+              0,
+              17,
+              4096
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：标量输入（shape=[]）配合极端浮点值",
+          "mutation_reason": "标量是张量的退化情形，易暴露框架对0维张量的广播、梯adients或特殊值处理差异；inf/nan/-0.0等值可触发数值稳定性bug。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "tanh"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "tanh"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型及边界值（inf, -inf, nan, -0.0）的 gelu 行为一致性",
+          "mutation_reason": "float64 提供更高精度，可暴露浮点实现差异；边界值易触发框架对特殊浮点处理逻辑不一致（如 tanh(inf)、GELU(nan) 的传播规则），是发现底层数学实现 bug 的高价值场景。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [
+                0,
+                17,
+                4096
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "tanh"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [
+                0,
+                17,
+                4096
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "tanh"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              0,
+              17,
+              4096
+            ],
+            "mindspore_shape": [
+              0,
+              17,
+              4096
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_nn_functional_gelu_20260126_143232.json",
+        "iteration": 3,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.nn.functional.gelu",
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.30690336227417
+          ]
+        },
+        "approximate": "none"
+      },
+      "original_mindspore_test_case": {
+        "api": "mindspore.ops.gelu",
+        "input": {
+          "shape": [
+            1
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.30690336227417
+          ]
+        },
+        "approximate": "none"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "GELU的CDF计算在边界值（如±inf、NaN、极小/极大浮点数）处易因数值稳定性或特殊值处理逻辑差异引发框架间不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "none"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "none"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": false,
+            "comparison_error": "NaN 位置不一致",
+            "torch_shape": [
+              8
+            ],
+            "mindspore_shape": [
+              8
+            ],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": true
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试标量（shape=[]）和含负零、无穷、NaN的单元素张量",
+          "mutation_reason": "标量输入易暴露框架对0维张量的CDF实现差异；负零、inf、nan是GELU数学定义的边界点，两框架在极限处理或特殊值分支上可能不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "approximate": "none"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [],
+              "dtype": "float32",
+              "sample_values": [
+                -0.0
+              ]
+            },
+            "approximate": "none"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "mindspore_shape": [],
+            "torch_dtype": "torch.float32",
+            "mindspore_dtype": "Float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "复杂类型变异：测试float64及边界值（inf, -inf, nan, -0.0）",
+          "mutation_reason": "float64更高精度可能暴露数值实现差异；inf/-inf/nan/-0.0是GELU数学定义的边界点，易触发框架对CDF或特殊值处理不一致。",
+          "torch_test_case": {
+            "api": "torch.nn.functional.gelu",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "none"
+          },
+          "mindspore_test_case": {
+            "api": "mindspore.ops.gelu",
+            "input": {
+              "shape": [
+                8
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                1.0,
+                -1.0,
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38
+              ]
+            },
+            "approximate": "none"
+          },
+          "execution_result": {
+            "torch_success": true,
+            "mindspore_success": true,
+            "torch_error": null,
+            "mindspore_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [
+              8
+            ],
+            "mindspore_shape": [
+              8
+            ],
+            "torch_dtype": "torch.float64",
+            "mindspore_dtype": "Float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

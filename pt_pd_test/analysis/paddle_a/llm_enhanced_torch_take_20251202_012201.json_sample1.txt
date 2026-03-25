@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_take_20251202_012201.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) Variable value (index) of OP(index_select) expected >= 0 and < 0, but got -7. Please check input value.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.take",
+  "input": {
+    "shape": [
+      0,
+      5,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "index": {
+    "shape": [
+      2,
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      -1,
+      8,
+      -1
+    ]
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.take",
+  "input": {
+    "shape": [
+      0,
+      5,
+      5
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "index": {
+    "shape": [
+      2,
+      2
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -7,
+      -1,
+      8,
+      -1
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.take` 在默认 `mode='raise'` 下，对索引值有严格限制：必须在有效范围内（即 `0 <= index < numel(input)`），而输入张量形状为 `[0, 5, 5]`，其总元素数为 0，因此索引范围是空集。当传入 `-7`、`8` 等无效索引时，会直接抛出错误，即使在 PyTorch 中 `torch.take` 也允许负索引和越界索引（但行为依赖实现），但此处由于输入为空张量，两个框架的语义边界不一致。  
+   - 关键差异在于：PyTorch 对空张量的 `take` 操作可能容忍索引存在（尽管结果为空），而 PaddlePaddle 在 `mode='raise'` 时会立即校验索引合法性，导致 `index=-7` 超出 0 到 -1 的范围（因为无元素）而报错。
+
+3. 修复建议：  
+   - 此类行为差异属于框架对空张量与越界索引处理的不一致，可提交 issue 至 PaddlePaddle 官方仓库，建议在空张量情况下对 `paddle.take` 更宽松地处理或明确文档说明该行为。

@@ -1,0 +1,925 @@
+{
+  "operator": "torch.tril",
+  "timestamp": "2026-01-23T21:22:02.341139",
+  "total_iterations": 12,
+  "llm_generated_test_cases": 9,
+  "successful_test_cases": 9,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.180894136428833,
+            0.004070140887051821,
+            0.008955721743404865,
+            0.7032410502433777,
+            -1.707044005393982,
+            0.6222264766693115,
+            -0.27931419014930725,
+            0.25747591257095337,
+            1.183396816253662,
+            -1.339513897895813
+          ]
+        },
+        "diagonal": 1,
+        "api": "torch.tril"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.180894136428833,
+            0.004070140887051821,
+            0.008955721743404865,
+            0.7032410502433777,
+            -1.707044005393982,
+            0.6222264766693115,
+            -0.27931419014930725,
+            0.25747591257095337,
+            1.183396816253662,
+            -1.339513897895813
+          ]
+        },
+        "diagonal": 1,
+        "api": "tf.linalg.band_part"
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "matrix_band_part() got an unexpected keyword argument 'diagonal'",
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\nTypeError: matrix_band_part() got an unexpected keyword argument 'diagonal'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.linalg.band_part does not accept a 'diagonal' parameter; instead, it uses 'num_lower' and 'num_upper' to specify the number of sub/super diagonals to keep. To emulate torch.tril(input, diagonal=k), we need num_lower = k (if k >= 0) or num_lower = k (if k < 0, but note torch.tril counts from main diagonal: diagonal=0 is main, diagonal=1 includes first super-diagonal, diagonal=-1 excludes main and keeps only strict lower). Actually, torch.tril(input, diagonal=d) keeps all entries where row >= col - d. This corresponds to keeping 'd' super-diagonals *in addition to* the main diagonal — i.e., total lower band width is unbounded above, but upper band is limited: we want to zero out everything above the d-th super-diagonal → that means keep 'num_upper = d' (if d >= 0), and 'num_lower = -1' (meaning all lower diagonals). However, tf.linalg.band_part(x, num_lower, num_upper) keeps diagonals from -num_lower to +num_upper. So torch.tril(x, diagonal=d) ≡ tf.linalg.band_part(x, -1, d) when d >= 0; for d < 0, it's tf.linalg.band_part(x, d-1, 0) — but here diagonal=1 is positive. Also, tf.linalg.band_part requires explicit 'x' argument (not 'input'), and no 'diagonal' kwarg. Hence, repair: replace 'diagonal': 1 with 'num_lower': -1, 'num_upper': 1, and rename 'input' → 'x'."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.09901509433984756,
+            0.22777073085308075,
+            0.8796780705451965,
+            -0.11139193177223206,
+            1.1753978729248047,
+            -0.8106587529182434,
+            0.7833215594291687,
+            1.163124442100525,
+            -0.7011314034461975,
+            -0.9510422348976135
+          ]
+        },
+        "diagonal": 1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "x": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.308494210243225,
+            -2.413543701171875,
+            -0.23915354907512665,
+            0.15860319137573242,
+            0.34918874502182007,
+            -0.5094894766807556,
+            1.2023179531097412,
+            0.5793914794921875,
+            0.11769168823957443,
+            1.0865446329116821
+          ]
+        },
+        "num_lower": -1,
+        "num_upper": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 5.194904327392578",
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.tril和TensorFlow的tf.linalg.band_part在功能上可以等价，但当前测试用例中TensorFlow的num_lower设置为-1，表示保留所有下对角线元素，而PyTorch的diagonal=1表示包含主对角线上方一条对角线。为了使两者行为一致，应将TensorFlow的num_lower设为足够大的值（如10）以保留所有下三角部分，同时num_upper=1对应diagonal=1的上偏移。原用例中num_lower=-1虽在TF中合法，但语义上不如显式大值清晰，且可能导致实现差异。因此修复为明确的等价参数。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.1188043355941772,
+            0.5324335694313049,
+            -1.070789098739624,
+            0.06937695294618607,
+            -1.2717480659484863,
+            0.27777621150016785,
+            -2.7391645908355713,
+            0.48512473702430725,
+            1.8004848957061768,
+            -1.0197880268096924
+          ]
+        },
+        "diagonal": 1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "x": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.03896738588809967,
+            1.49215829372406,
+            -0.5161039233207703,
+            0.10821454226970673,
+            -1.4857505559921265,
+            1.1472949981689453,
+            -1.1496227979660034,
+            0.8575320243835449,
+            1.6231118440628052,
+            1.0245206356048584
+          ]
+        },
+        "num_lower": 10,
+        "num_upper": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 5.68393611907959",
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "torch.tril(input, diagonal=k) extracts the lower triangular part including the k-th diagonal above the main diagonal (i.e., keeps rows i >= j - k). tf.linalg.band_part(x, num_lower, num_upper) keeps band where i - j <= num_lower and j - i <= num_upper. To match torch.tril(..., diagonal=1), we need to keep all lower part (num_lower = -1 or full lower) and only the first super-diagonal (num_upper = 1). However, num_lower must be >= 0 in tf.linalg.band_part; using num_lower = -1 is invalid. Correct mapping: torch.tril(..., diagonal=k) corresponds to tf.linalg.band_part(..., num_lower = tf.shape(x)[-2]-1, num_upper = max(0, k)) — but more precisely, for diagonal=k, it includes diagonals from -inf to k, i.e., num_lower must be unbounded (all rows below/main), so set num_lower = -1 is *not allowed*; instead, use num_lower = a sufficiently large number (e.g., 100) or better: use tf.linalg.band_part with num_lower = tf.shape(x)[-2] - 1 (but static shape known here: 10 → num_lower = 9) and num_upper = 1. However, note: torch.tril with diagonal=1 includes main diagonal + one super-diagonal → that means it zeros out only elements where j > i+1, i.e., upper band width = 1. So num_upper = 1 is correct, but num_lower should be 'all' → set to -1 is invalid in TF; per doc, num_lower=-1 means 'no limit', but actual TF requires non-negative int or None? Wait: TF doc says num_lower/num_upper are '0-D int32 Tensor' and 'must be >= -1'. Actually, TF allows -1 meaning 'no limit'. But the test used num_lower=10 which is > 9 (max possible lower index for 10x10), so it's effectively unlimited. However, the mismatch arises because torch.tril(input, diagonal=1) keeps entries where j <= i + 1, while tf.linalg.band_part(x, num_lower=a, num_upper=b) keeps where -a <= i-j <= b. So for lower triangle with diagonal=1, we require i-j >= -1 → i.e., j <= i+1 → so upper band width = 1, and lower band width must be full → num_lower = -1. Since TF supports num_lower=-1 (per doc: 'If -1, no lower limit'), the original TF case used num_lower=10 which is insufficiently general and may cause off-by-one in batched case or due to interpretation. But more critically: the correct correspondence is num_lower = -1 (unlimited lower), num_upper = diagonal_value. So for diagonal=1, use num_upper=1 and num_lower=-1. Also, TF requires explicit dtype consistency and eager execution; but no error occurred, only numerical mismatch — likely due to incorrect num_lower bound causing some elements not masked. Thus repair: set num_lower=-1."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.43661269545555115,
+            1.5906236171722412,
+            0.28374576568603516,
+            -0.09085763990879059,
+            -1.2339012622833252,
+            0.49324488639831543,
+            1.4902654886245728,
+            1.2626224756240845,
+            -0.4299454987049103,
+            0.31162184476852417
+          ]
+        },
+        "diagonal": 1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "x": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.0073312520980835,
+            -0.12957321107387543,
+            1.560652256011963,
+            -0.22667038440704346,
+            0.047750890254974365,
+            0.7657652497291565,
+            -1.3515243530273438,
+            -0.03812546283006668,
+            2.1962056159973145,
+            1.3836249113082886
+          ]
+        },
+        "num_lower": -1,
+        "num_upper": 1
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 4.799689292907715",
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.2157819708643073,
+            1.72394216915346,
+            -0.3463396443544374,
+            2.1713588331107982,
+            1.0505658033177787,
+            -1.7362259624976704,
+            1.0785435931479954,
+            0.46307225636512295,
+            -2.2859479794058633,
+            -0.005966275146677193
+          ]
+        },
+        "diagonal": -1,
+        "api": "torch.tril"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.2157819708643073,
+            1.72394216915346,
+            -0.3463396443544374,
+            2.1713588331107982,
+            1.0505658033177787,
+            -1.7362259624976704,
+            1.0785435931479954,
+            0.46307225636512295,
+            -2.2859479794058633,
+            -0.005966275146677193
+          ]
+        },
+        "diagonal": -1,
+        "api": "tf.linalg.band_part"
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "matrix_band_part() got an unexpected keyword argument 'diagonal'",
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float64",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\nTypeError: matrix_band_part() got an unexpected keyword argument 'diagonal'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow's tf.linalg.band_part does not accept a 'diagonal' parameter; instead, it uses 'num_lower' and 'num_upper' to specify the number of sub/super diagonals to keep. To emulate torch.tril(input, diagonal=k), we need num_lower = k (if k >= 0) or num_lower = k (but note: for negative k, torch.tril zeros out main diagonal and |k| super-diagonals, so equivalent band_part requires num_lower = k and num_upper = -1 to keep only below the k-th diagonal). Specifically, torch.tril(..., diagonal=-1) keeps entries on and below the first sub-diagonal (i.e., where i >= j+1), which corresponds to tf.linalg.band_part(..., num_lower=-1, num_upper=0) is incorrect — correct mapping is: for torch.tril with diagonal=k, set num_lower = k and num_upper = -1 (meaning no upper band). However, when k is negative, e.g., k=-1, it means exclude main diagonal and keep only rows where i > j+0? Actually, per PyTorch doc: diagonal=0 is main diagonal, diagonal=-1 is first sub-diagonal (i>j), so torch.tril(..., diagonal=-1) keeps entries where i >= j-1? No — correction: torch.tril(input, diagonal=k) keeps elements where i - j >= k. So diagonal=-1 means i-j >= -1 → i >= j-1 → includes main and first sub-diagonal? Wait — no: standard definition: tril with diagonal=k includes main diagonal (k=0) and all diagonals below it. diagonal=-1 excludes main diagonal and includes only diagonals strictly below (i > j). Yes: from PyTorch docs — 'diagonal: the diagonal to consider. Default: 0. The diagonal = 0 is the main diagonal, diagonal < 0 is below the main diagonal, and diagonal > 0 is above the main diagonal.' And 'returns lower triangular part', meaning for diagonal=k, it keeps entries where j <= i + k. So for k=-1: j <= i -1 → i >= j+1 → strict lower triangle (excluding main). To replicate in tf.linalg.band_part: we want a band where only rows satisfying i >= j+1 are kept → that is a lower band with num_lower = -1? No — tf.linalg.band_part(x, num_lower, num_upper) keeps x[i,j] where max(0, j-i) <= num_upper and max(0, i-j) <= num_lower. So to keep only i >= j+1 → i-j >= 1 → max(0,i-j) >=1 → we need num_lower >= 1. Specifically, setting num_lower = 1 and num_upper = 0 yields exactly the strict lower triangle (i-j >= 1 and j-i <= 0 → i>=j+1 and j<=i). Thus, torch.tril(..., diagonal=-1) ↔ tf.linalg.band_part(..., num_lower=1, num_upper=0). Also, input tensor must be named 'input' in PyTorch but 'input' is not a valid arg name in TF — TF expects 'input' as positional or 'x'; however, TF API uses 'input' as the first arg name in signature, but actual param name is 'input' in recent versions — but error says 'unexpected keyword argument diagonal', so the issue is passing 'diagonal' to TF. Therefore, repair: remove 'diagonal' key and add 'num_lower' and 'num_upper' correctly. For diagonal=-1 → num_lower=1, num_upper=0."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.3215316290896073,
+            0.041402763445830056,
+            -0.08603423338090117,
+            0.7319805330636616,
+            -1.0521724277884814,
+            1.8555479950288376,
+            0.2824768120476439,
+            0.5148302132674295,
+            1.1061315144106747,
+            1.0488468737721404
+          ]
+        },
+        "diagonal": -1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            0.3215316290896073,
+            0.041402763445830056,
+            -0.08603423338090117,
+            0.7319805330636616,
+            -1.0521724277884814,
+            1.8555479950288376,
+            0.2824768120476439,
+            0.5148302132674295,
+            1.1061315144106747,
+            1.0488468737721404
+          ]
+        },
+        "num_lower": 1,
+        "num_upper": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 2.7561098532592547",
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.tril和TensorFlow的tf.linalg.band_part在功能上等价，但参数设置有误。torch.tril的diagonal=-1表示不包含主对角线，只保留下三角部分中主对角线下方的一条对角线以下的元素；而tf.linalg.band_part中num_lower=1表示保留主对角线下方1条对角线（包含主对角线），num_upper=0表示不保留主对角线上方的任何对角线。因此，当diagonal=-1时，应对应num_lower=0而非1。原测试用例中TensorFlow的num_lower=1导致多保留了一条对角线，造成数值结果不一致。修复为num_lower=0以与torch.tril(input, diagonal=-1)对齐。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.6008253888064011,
+            -1.7359723317374263,
+            0.5600623298640234,
+            -1.3164101441349114,
+            1.1824320854009178,
+            -0.6469476561609918,
+            0.23977694390363458,
+            -2.09702798885074,
+            1.1283212894079497,
+            -0.7076778577851752
+          ]
+        },
+        "diagonal": -1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            -0.6008253888064011,
+            -1.7359723317374263,
+            0.5600623298640234,
+            -1.3164101441349114,
+            1.1824320854009178,
+            -0.6469476561609918,
+            0.23977694390363458,
+            -2.09702798885074,
+            1.1283212894079497,
+            -0.7076778577851752
+          ]
+        },
+        "num_lower": 0,
+        "num_upper": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 3.1997713387605953",
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.tril和TensorFlow的tf.linalg.band_part在功能上可以等价，但当前测试用例中参数配置不匹配。torch.tril(input, diagonal=-1)表示保留主对角线下方第一条对角线以下的部分（即不包含主对角线），这等价于只保留严格下三角部分。而tf.linalg.band_part(input, num_lower=0, num_upper=0)表示只保留主对角线，其余全部置零，这与torch.tril(..., diagonal=-1)语义不同。正确的对应应为：diagonal=k 在torch.tril中表示保留从第k条对角线开始到主对角线的所有下三角元素；在tf.linalg.band_part中，num_lower表示允许保留的下三角对角线条数（包括主对角线），因此torch.tril(..., diagonal=-1)应映射为tf.linalg.band_part(..., num_lower=0, num_upper=-1)？不对。实际上，当diagonal=-1时，torch.tril保留的是行索引>=列索引+(-1)+1 -> 行>列 的部分？更准确地说：对于diagonal=k，保留所有满足i >= j - k的位置(i,j)。所以diagonal=-1时，保留i >= j + 1，即严格下三角（不包含主对角线）。而在tf.linalg.band_part中，num_lower表示可以向下延伸多少条对角线，num_upper表示向上延伸多少条。要实现仅严格下三角（不含主对角线），需要num_lower > 0 且 num_upper = -1（或负数）来屏蔽上三角和主对角线？但根据文档，num_upper=0会屏蔽上三角（含主对角线上方），而num_lower=0则只允许主对角线。因此，要得到torch.tril(..., diagonal=-1)的结果，即不含主对角线的下三角部分，应该设置num_lower=任意正整数（如4，因为矩阵是10x10）以允许所有下三角行，同时设置num_upper=-1来屏蔽所有上三角和主对角线？但这样也不对。正确方式是：torch.tril(..., diagonal=k) 等价于 tf.linalg.band_part(input, num_lower=k if k>=0 else max(0, n_rows - n_cols + k), num_upper=-1 if k < 0 else ...) 实际上没有直接等价。经过分析，torch.tril(..., diagonal=-1) 应该对应 tf.linalg.band_part(input, num_lower=4, num_upper=-1)？不成立。实际上，标准做法是：torch.tril(input, diagonal=k) ≡ tf.linalg.band_part(input, num_lower=k, num_upper=tf.shape(input)[-1]) 但限制上三角为无穷大。但更简单的是：tril等价于 band_part with num_upper=-1 and num_lower=k when k>=0? 不对。正确映射是：torch.tril(input, diagonal=k) 等价于 tf.linalg.band_part(input, num_lower=k, num_upper=tf.shape(input)[-1] + k)？复杂。查阅资料可知：tf.linalg.band_part(input, num_lower=a, num_upper=b) 中，band[i,j]为真当且仅当 (i - j <= a) 且 (j - i <= b)。而torch.tril(diagonal=k)保留的是 i >= j - k 的位置。即 j - i <= k。对比得：j - i <= k 对应 num_upper = k，而下三角无限制？不对，tril只关心上界。实际上，tril不限制下三角范围，只要求 j - i <= k。因此，要模拟torch.tril(..., diagonal=k)，应设num_lower=tf.shape(input)[-2]-1（即允许所有下三角），num_upper=k。但在本例中k=-1，所以num_upper=-1，意味着 j - i <= -1 → j < i，即严格下三角，这正是我们想要的。同时num_lower应设为足够大（如input.shape[-2]-1）以允许所有行。原测试用例中num_lower=0是错误的，它只允许i-j<=0即i<=j，也就是主对角线及上三角的一部分，与意图不符。因此，修复方案是将TensorFlow的num_lower改为input.shape[-2]-1（即9，因为是10x10矩阵），num_upper改为-1。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.298234127453243,
+            1.1930946040267796,
+            0.43692104109282515,
+            1.3055202070341854,
+            3.1294690375639025,
+            0.46319686661017617,
+            0.23660591682550172,
+            1.2219462105101362,
+            -0.464507534513345,
+            -0.12564797645411716
+          ]
+        },
+        "diagonal": -1
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float64",
+          "sample_values": [
+            1.298234127453243,
+            1.1930946040267796,
+            0.43692104109282515,
+            1.3055202070341854,
+            3.1294690375639025,
+            0.46319686661017617,
+            0.23660591682550172,
+            1.2219462105101362,
+            -0.464507534513345,
+            -0.12564797645411716
+          ]
+        },
+        "num_lower": 9,
+        "num_upper": -1
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "数值不匹配，最大差异: 3.1294690375639025",
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float64",
+        "tensorflow_dtype": "<dtype: 'float64'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.1061803102493286,
+            0.9322008490562439,
+            0.14806513488292694,
+            0.7125588059425354,
+            -0.7651152014732361,
+            1.0909442901611328,
+            0.9343521595001221,
+            -0.5704857707023621,
+            -0.7366215586662292,
+            -0.9738559126853943
+          ]
+        },
+        "diagonal": 2,
+        "api": "torch.tril"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.1061803102493286,
+            0.9322008490562439,
+            0.14806513488292694,
+            0.7125588059425354,
+            -0.7651152014732361,
+            1.0909442901611328,
+            0.9343521595001221,
+            -0.5704857707023621,
+            -0.7366215586662292,
+            -0.9738559126853943
+          ]
+        },
+        "diagonal": 2,
+        "api": "tf.linalg.band_part"
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "matrix_band_part() got an unexpected keyword argument 'diagonal'",
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\nTypeError: matrix_band_part() got an unexpected keyword argument 'diagonal'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.linalg.band_part API不接受'diagonal'作为参数名，正确的参数应为'num_lower'和'num_upper'来指定带状部分。根据PyTorch中tril的行为，保留对角线上方2个对角线意味着所有上三角部分都被保留（即num_upper=2），而下三角完整保留（num_lower=-1表示全部保留）。因此需要将diagonal映射为对应的num_lower和num_upper参数以实现等效功能。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6591835618019104,
+            -1.676877737045288,
+            -0.973950207233429,
+            -0.010280449874699116,
+            -0.15632766485214233,
+            1.1205204725265503,
+            1.1183277368545532,
+            -0.25887367129325867,
+            1.1972806453704834,
+            -0.3978991210460663
+          ]
+        },
+        "diagonal": 2
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            5,
+            10,
+            10
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6591835618019104,
+            -1.676877737045288,
+            -0.973950207233429,
+            -0.010280449874699116,
+            -0.15632766485214233,
+            1.1205204725265503,
+            1.1183277368545532,
+            -0.25887367129325867,
+            1.1972806453704834,
+            -0.3978991210460663
+          ]
+        },
+        "num_lower": -1,
+        "num_upper": 2
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          5,
+          10,
+          10
+        ],
+        "tensorflow_shape": [
+          5,
+          10,
+          10
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，说明当前用例已通过跨框架一致性验证；根据任务要求，需进行fuzzing变异以提升测试覆盖率。考虑边界情况：diagonal参数在PyTorch中支持负值（表示主对角线下方的对角线），对应TensorFlow中num_upper应同步调整；同时引入极端形状[0, 5, 5]（空batch）和[1, 1]（最小非空矩阵）以检验框架对退化情形的处理能力；此外，增加int64 dtype测试以覆盖整型输入场景，确保算子泛化性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "diagonal": -3
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            0,
+            5,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_lower": -1,
+        "num_upper": -3
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          0,
+          5,
+          5
+        ],
+        "tensorflow_shape": [
+          0,
+          5,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例在PyTorch和TensorFlow中均执行成功且结果一致，但存在明显参数映射问题：torch.tril(diagonal=-3) 表示保留主对角线下方第-3条对角线及以下（即从主对角线向上数3条，实际是排除更多上三角区域），而tf.linalg.band_part(num_lower=-1, num_upper=-3)是非法的——根据TF文档，num_lower和num_upper必须为非负整数或-1（-1表示无限制），但num_upper=-3违反约束，当前能执行成功属未触发校验的偶然行为；需变异为语义等价且合法的参数组合：torch.tril(diagonal=k) 等价于 tf.linalg.band_part(num_lower=k, num_upper=0) 当k>=0；但对k<0（如-3），应映射为 num_lower=-1（全部下三角）且 num_upper = k（负值表示从主对角线向上保留|k|条对角线，但TF中num_upper=-3非法），正确等价映射应为：torch.tril(input, diagonal=d) ≡ tf.linalg.band_part(input, num_lower=-1, num_upper=max(d, -1)) 不成立；实际等价关系是：tril with diagonal=d keeps diagonals from d down to -inf → requires num_lower=-1 and num_upper=d only if d >= 0; for d < 0, TF cannot express 'upper bound at negative diagonal' directly — band_part's num_upper=-3 is invalid and undefined. Hence original TF case is malformed but accidentally passed; we mutate to a valid, semantically aligned case: use diagonal=0 (main diagonal) which maps cleanly to num_lower=-1, num_upper=0, and also test edge shape [1, 0, 5] to stress empty dimensions."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.tril",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "diagonal": 0
+      },
+      "tensorflow_test_case": {
+        "api": "tf.linalg.band_part",
+        "input": {
+          "shape": [
+            1,
+            0,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": []
+        },
+        "num_lower": -1,
+        "num_upper": 0
+      },
+      "execution_result": {
+        "torch_api": "torch.tril",
+        "tensorflow_api": "tf.linalg.band_part",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          1,
+          0,
+          5
+        ],
+        "tensorflow_shape": [
+          1,
+          0,
+          5
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'float32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    }
+  ]
+}

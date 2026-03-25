@@ -1,0 +1,87 @@
+来源文件: llm_enhanced_torch_repeat_interleave_20251202_000653.json
+样例编号: 5
+paddle_error 错误信息: (InvalidArgument) repeats must grater or equal than 0, but got -4
+
+【PyTorch 测试用例】
+{
+  "api": "torch.repeat_interleave",
+  "input": {
+    "shape": [
+      3,
+      1,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      8,
+      -10,
+      -3,
+      0,
+      -2,
+      -9,
+      7,
+      9,
+      7
+    ]
+  },
+  "repeats": {
+    "shape": [
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -4,
+      -5,
+      -7
+    ]
+  },
+  "dim": 0
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.repeat_interleave",
+  "input": {
+    "shape": [
+      3,
+      1,
+      4
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -3,
+      8,
+      -10,
+      -3,
+      0,
+      -2,
+      -9,
+      7,
+      9,
+      7
+    ]
+  },
+  "repeats": {
+    "shape": [
+      3
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -4,
+      -5,
+      -7
+    ]
+  },
+  "dim": 0
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `paddle.repeat_interleave` 明确要求 `repeats` 中的值必须 ≥ 0（文档中虽未显式说明，但错误信息 `(InvalidArgument) repeats must grater or equal than 0, but got -4` 直接表明该限制），而 PyTorch 的 `torch.repeat_interleave` 允许负数 `repeats`（此时会将其解释为 0，即不重复）。  
+   - 本测试用例中 `repeats` 输入为 `[-4, -5, -7]`，包含负数，导致 PaddlePaddle 在执行时直接报错，而 PyTorch 可以正常处理。
+
+3. 修复建议：  
+   - 该问题反映 PaddlePaddle 与 PyTorch 在 `repeats` 参数语义上存在行为不一致，建议提交 issue 给 PaddlePaddle 官方，反馈其对负数 `repeats` 的严格校验与 PyTorch 不一致的问题。

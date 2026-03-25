@@ -1,0 +1,449 @@
+{
+  "operator": "torch_trace",
+  "torch_api": "torch.trace",
+  "paddle_api": "paddle.trace",
+  "total_cases": 2,
+  "total_fuzzing_rounds": 6,
+  "bug_candidates": 0,
+  "timestamp": "2026-02-01T18:31:14.388065",
+  "results": [
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_trace_20260124_181204.json",
+        "iteration": 1,
+        "case_number": 1,
+        "is_llm_generated": false
+      },
+      "original_torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.2879054546356201,
+            0.1938844621181488,
+            0.003030965570360422,
+            0.892270028591156,
+            -0.047624118626117706,
+            1.2168991565704346,
+            0.8302453756332397,
+            0.42425110936164856,
+            -1.5739960670471191
+          ]
+        },
+        "api": "torch.trace"
+      },
+      "original_paddle_test_case": {
+        "input": {
+          "shape": [
+            3,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.2879054546356201,
+            0.1938844621181488,
+            0.003030965570360422,
+            0.892270028591156,
+            -0.047624118626117706,
+            1.2168991565704346,
+            0.8302453756332397,
+            0.42425110936164856,
+            -1.5739960670471191
+          ]
+        },
+        "api": "paddle.trace"
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在NaN propagation、无穷算术、下溢/溢出处理上的实现差异，尤其trace对角线求和时未定义行为可能被不同框架以不同方式处理。",
+          "torch_test_case": {
+            "api": "torch.trace",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan",
+                1e-38,
+                -0.0,
+                1e+38,
+                "inf",
+                -1.0,
+                "-inf",
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.trace",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "nan",
+                1e-38,
+                -0.0,
+                1e+38,
+                "inf",
+                -1.0,
+                "-inf",
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试1D输入（shape=[3]）触发隐式2D升维行为差异",
+          "mutation_reason": "torch.trace requires 2D input and raises error on 1D, while paddle.trace may auto-squeeze or mishandle 1D; this exposes inconsistent dimension validation or broadcasting logic.",
+          "torch_test_case": {
+            "api": "torch.trace",
+            "input": {
+              "shape": [
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.2879054546356201,
+                0.1938844621181488,
+                0.003030965570360422
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.trace",
+            "input": {
+              "shape": [
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                -0.2879054546356201,
+                0.1938844621181488,
+                0.003030965570360422
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": false,
+            "paddle_success": false,
+            "torch_error": "RuntimeError: trace: expected a matrix, but got tensor with dim 1",
+            "paddle_error": "IndexError: (OutOfRange) Input(x)'s dim is out of range (expected at least 2, but got 1).\n  [Hint: Expected x_dims.size() >= 2, but received x_dims.size():1 < 2:2.] (at ..\\paddle\\phi\\infermeta\\unary.cc:5723)\n",
+            "results_match": false,
+            "comparison_error": null,
+            "torch_shape": null,
+            "paddle_shape": null,
+            "torch_dtype": null,
+            "paddle_dtype": null
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下 trace 对 inf/-inf/nan 的处理一致性",
+          "mutation_reason": "高精度浮点类型可能暴露框架对特殊值（inf/nan）累加顺序、传播规则或NaN抑制逻辑的差异，而数学上sum(diag)应完全一致。",
+          "torch_test_case": {
+            "api": "torch.trace",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "inf",
+                -0.0,
+                1.0,
+                -1.0,
+                "nan",
+                2.0,
+                3.0,
+                4.0,
+                "-inf"
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.trace",
+            "input": {
+              "shape": [
+                3,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                "inf",
+                -0.0,
+                1.0,
+                -1.0,
+                "nan",
+                2.0,
+                3.0,
+                4.0,
+                "-inf"
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    },
+    {
+      "original_case_info": {
+        "source_file": "llm_enhanced_torch_trace_20260124_181204.json",
+        "iteration": 2,
+        "case_number": 1,
+        "is_llm_generated": true
+      },
+      "original_torch_test_case": {
+        "api": "torch.trace",
+        "input": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.25757861137390137,
+            -0.02853858470916748,
+            2.286858081817627,
+            0.8884362578392029,
+            0.9542592763900757,
+            1.3223754167556763,
+            1.3985505104064941,
+            -0.6368865966796875,
+            -0.34341323375701904,
+            -0.7056798934936523
+          ]
+        }
+      },
+      "original_paddle_test_case": {
+        "api": "paddle.trace",
+        "input": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.25757861137390137,
+            -0.02853858470916748,
+            2.286858081817627,
+            0.8884362578392029,
+            0.9542592763900757,
+            1.3223754167556763,
+            1.3985505104064941,
+            -0.6368865966796875,
+            -0.34341323375701904,
+            -0.7056798934936523
+          ]
+        }
+      },
+      "fuzzing_results": [
+        {
+          "round": 1,
+          "success": true,
+          "mutation_strategy": "极端数值变异：注入inf, -inf, nan, -0.0, 1e-38, 1e38",
+          "mutation_reason": "特殊浮点值易暴露框架在求和/对角线提取时的NaN传播、无穷大处理或边界舍入差异，尤其trace需累加对角元，不同框架对inf+(-inf)或nan+val的语义可能不一致。",
+          "torch_test_case": {
+            "api": "torch.trace",
+            "input": {
+              "shape": [
+                4,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.trace",
+            "input": {
+              "shape": [
+                4,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": [
+                "inf",
+                "-inf",
+                "nan",
+                -0.0,
+                1e-38,
+                1e+38,
+                0.0,
+                1.0
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 2,
+          "success": true,
+          "mutation_strategy": "边界形状变异：测试空张量（shape=[0, 3]）",
+          "mutation_reason": "空矩阵的迹在数学上定义为0；框架可能未正确处理零行/零列情形，导致返回NaN、报错或非零值，暴露边界实现差异。",
+          "torch_test_case": {
+            "api": "torch.trace",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.trace",
+            "input": {
+              "shape": [
+                0,
+                3
+              ],
+              "dtype": "float32",
+              "sample_values": []
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float32",
+            "paddle_dtype": "paddle.float32"
+          },
+          "is_bug_candidate": false
+        },
+        {
+          "round": 3,
+          "success": true,
+          "mutation_strategy": "测试 float64 类型下 trace 对 inf/-inf/nan 的处理一致性",
+          "mutation_reason": "高精度浮点类型更易暴露数值稳定性差异；inf/nan 在求和时可能因框架 NaN 传播规则或累加顺序不同导致结果不等",
+          "torch_test_case": {
+            "api": "torch.trace",
+            "input": {
+              "shape": [
+                4,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.25757861137390137,
+                -0.02853858470916748,
+                "inf",
+                0.8884362578392029,
+                0.9542592763900757,
+                "-inf",
+                1.3985505104064941,
+                -0.6368865966796875,
+                "nan",
+                -0.7056798934936523
+              ]
+            }
+          },
+          "paddle_test_case": {
+            "api": "paddle.trace",
+            "input": {
+              "shape": [
+                4,
+                3
+              ],
+              "dtype": "float64",
+              "sample_values": [
+                -0.25757861137390137,
+                -0.02853858470916748,
+                "inf",
+                0.8884362578392029,
+                0.9542592763900757,
+                "-inf",
+                1.3985505104064941,
+                -0.6368865966796875,
+                "nan",
+                -0.7056798934936523
+              ]
+            }
+          },
+          "execution_result": {
+            "torch_success": true,
+            "paddle_success": true,
+            "torch_error": null,
+            "paddle_error": null,
+            "results_match": true,
+            "comparison_error": null,
+            "torch_shape": [],
+            "paddle_shape": [],
+            "torch_dtype": "torch.float64",
+            "paddle_dtype": "paddle.float64"
+          },
+          "is_bug_candidate": false
+        }
+      ]
+    }
+  ]
+}

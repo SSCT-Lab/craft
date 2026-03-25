@@ -1,0 +1,47 @@
+来源文件: llm_enhanced_torch_unsqueeze_20251216_013948.json
+样例编号: 1
+mindspore_error 错误信息: dim value error. dim:4, dim value should be in [-4, 4).
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+mindspore\ops\view\view_strides_calculator.cc:91 mindspore::ops::DynamicDimWrap
+
+【PyTorch 测试用例】
+{
+  "api": "torch.unsqueeze",
+  "input": {
+    "shape": [
+      1,
+      0,
+      2
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dim": 4
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.mint.unsqueeze",
+  "input": {
+    "shape": [
+      1,
+      0,
+      2
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "dim": 4
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - MindSpore 的 `mint.unsqueeze` 对 `dim` 参数有严格范围限制，文档虽未明确说明，但错误信息 `dim value should be in [-4, 4)` 表明其支持的维度范围为 `[-rank, rank)`，而输入张量形状为 `[1, 0, 2]`（rank=3），因此合法 `dim` 范围应为 `[-3, 3)`。传入 `dim=4` 超出该范围，导致执行失败。  
+   - 相比之下，PyTorch 的 `torch.unsqueeze` 允许任意 `dim` 值（正负均可，只要不超出新维度的合理位置），且对包含 0 的 shape 无特殊限制，行为更宽松。
+
+3. 修复建议：  
+   - 该差异属于框架行为不一致，建议提交 issue 至 MindSpore 官方仓库，指出 `unsqueeze` 在处理超出秩范围的 `dim` 时应与 PyTorch 保持一致，或至少提供更清晰的错误提示。

@@ -1,0 +1,162 @@
+{
+  "operator": "torch.range",
+  "timestamp": "2026-01-23T21:14:04.189618",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 2,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "start": 1,
+        "end": 20,
+        "api": "torch.range"
+      },
+      "tensorflow_test_case": {
+        "start": 1,
+        "end": 20,
+        "api": "tf.range"
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "tensorflow_api": "tf.range",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "Got an unexpected keyword argument 'end'",
+        "comparison_error": null,
+        "torch_shape": [
+          20
+        ],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\dispatch.py\", line 1254, in op_dispatch_handler\n    result = api_dispatcher.Dispatch(args, kwargs)\nTypeError: Got an unexpected keyword argument 'end'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow的tf.range API不接受关键字参数'end'，根据TensorFlow官方文档，tf.range有三个参数：start、limit和delta，分别对应起始值、结束值（不包含）和步长。而原始测试用例中使用了'end'作为参数名，这在TensorFlow中是无效的。需要将'end'改为'limit'以符合TensorFlow的API签名。此外，PyTorch的torch.range已被弃用，推荐使用torch.arange，但当前仍支持。为了使两个框架的行为一致，需修复TensorFlow测试用例中的参数名为'limit'。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 1,
+        "end": 20
+      },
+      "tensorflow_test_case": {
+        "api": "tf.range",
+        "start": 1,
+        "limit": 20
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "tensorflow_api": "tf.range",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": "形状不匹配: PyTorch (20,) vs TensorFlow (19,)",
+        "torch_shape": [
+          20
+        ],
+        "tensorflow_shape": [
+          19
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch的torch.range和TensorFlow的tf.range在语义上存在差异：torch.range包含end值，而tf.range不包含limit值（半开区间[start, limit)）。原始用例中PyTorch生成的是从1到20（含）的序列，共20个元素；TensorFlow生成的是从1到20（不含）的序列，共19个元素，导致形状不匹配。为了使两个框架行为一致，应调整TensorFlow的limit为21，使其覆盖相同范围。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 1,
+        "end": 20
+      },
+      "tensorflow_test_case": {
+        "api": "tf.range",
+        "start": 1,
+        "limit": 21
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "tensorflow_api": "tf.range",
+        "torch_success": true,
+        "tensorflow_success": true,
+        "results_match": true,
+        "torch_error": null,
+        "tensorflow_error": null,
+        "comparison_error": null,
+        "torch_shape": [
+          20
+        ],
+        "tensorflow_shape": [
+          20
+        ],
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": "<dtype: 'int32'>",
+        "status": "compared"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始测试用例执行一致，但覆盖范围有限（仅整数start/end、默认step=1）；根据PyTorch文档，torch.range支持float start/end/step且dtype推断规则明确，而tf.range支持float start/limit/delta且语义等价；为提升鲁棒性与边界覆盖，需变异为浮点参数、负步长、小数步长、跨零区间等场景，同时确保tf.range的limit参数仍满足等价映射（即torch.range(start, end, step) ≡ tf.range(start, end if step>0 else end-1, step)需修正为正确对齐逻辑：torch.range(start, end, step)生成包含start、不超过end（step>0）或不低于end（step<0）的序列，其上界在tf.range中需用limit = end + (step>0 ? 0 : 0) 调整，但实际等价映射应为tf.range(start, end + (step>0 ? step : -step), step)不成立；正确等价是：torch.range(start, end, step) has floor((end-start)/step)+1 elements, ending at start + step*floor((end-start)/step); tf.range(start, limit, delta) produces elements start, start+delta, ..., < limit. So to match torch.range(start, end, step), we need limit = end + (step > 0 ? (step - 1e-6) : (step + 1e-6)) — but that's unstable. Instead, safest mutation is using exact same numeric logic: use step=2.5, start=0.5, end=10.5 → torch produces [0.5,3.0,5.5,8.0], length=floor((10.5-0.5)/2.5)+1=floor(10/2.5)+1=4+1=5? Wait: (10.5-0.5)=10.0, 10.0/2.5=4.0 → floor(4.0)+1=5, values: 0.5,3.0,5.5,8.0,10.5 — yes, inclusive of end if divisible. So tf.range must use limit = 10.5 + (2.5 if step>0? no — tf.range is exclusive of limit, so to include 10.5, limit must be >10.5, e.g., 10.5+eps. But per doc, tf.range with float is inclusive of start and exclusive of limit, while torch.range is inclusive of both start and end *if end is reachable*. Therefore, to ensure equivalence, we set limit = end + (step * 1e-6) for positive step — however, for fuzzing we prioritize diversity over fragile alignment: use non-divisible end (e.g., end=10.6) to trigger floor behavior, and test dtype=float32 explicitly. Also add negative step case: start=10, end=0, step=-3 → torch: [10,7,4,1], length=floor((0-10)/(-3))+1=floor(10/3)+1=3+1=4; tf.range(10, 0-1, -3) is wrong — correct is tf.range(10, -1, -3) → [10,7,4,1], so limit must be end - (step>0?0:abs(step)) for strict inclusivity. But per task, since original is consistent and we only need fuzzing (not perfect alignment for all edge cases), we mutate to three diverse cases: (1) float args + explicit dtype=torch.float32/tf.float32, (2) negative step, (3) step smaller than 1. We choose one representative high-coverage mutation: start=0.1, end=1.0, step=0.3, dtype=float32 — this triggers floating point precision sensitivity and floor division behavior in both."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.range",
+        "start": 0.1,
+        "end": 1.0,
+        "step": 0.3,
+        "dtype": "torch.float32"
+      },
+      "tensorflow_test_case": {
+        "api": "tf.range",
+        "start": 0.1,
+        "limit": 1.01,
+        "delta": 0.3,
+        "dtype": "tf.float32"
+      },
+      "execution_result": {
+        "torch_api": "torch.range",
+        "tensorflow_api": "tf.range",
+        "torch_success": false,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": "range(): argument 'dtype' must be torch.dtype, not str",
+        "tensorflow_error": "Cannot convert the argument `type_value`: 'tf.float32' to a TensorFlow DType.",
+        "comparison_error": null,
+        "torch_shape": null,
+        "tensorflow_shape": null,
+        "torch_dtype": null,
+        "tensorflow_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 616, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: range(): argument 'dtype' must be torch.dtype, not str\n",
+        "tensorflow_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_tf_test\\llm_enhanced_compare.py\", line 655, in execute_test_case\n    tensorflow_result = tensorflow_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\util\\traceback_utils.py\", line 153, in error_handler\n    raise e.with_traceback(filtered_tb) from None\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\tensorflow\\python\\framework\\dtypes.py\", line 889, in as_dtype\n    raise TypeError(f\"Cannot convert the argument `type_value`: {type_value!r} \"\nTypeError: Cannot convert the argument `type_value`: 'tf.float32' to a TensorFlow DType.\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+来源文件: llm_enhanced_torch_copysign_20251202_134856.json
+样例编号: 2
+paddle_error 错误信息: (InvalidType) Type promotion only support calculations between floating-point numbers and between complex and real numbers. But got different data type x: float32, y: int32. (at ..\paddle/phi/common/type_promotion.h:233)
+
+【PyTorch 测试用例】
+{
+  "api": "torch.copysign",
+  "input": {
+    "shape": [
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      5,
+      1,
+      0,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.copysign",
+  "input": {
+    "shape": [
+      0,
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "other": {
+    "shape": [
+      5,
+      1,
+      0,
+      4
+    ],
+    "dtype": "int32",
+    "sample_values": []
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.copysign` 要求输入 `x` 和 `y` 的数据类型必须同为浮点型或复数与实数之间兼容，而当前输入 `x` 为 `float32`，`y` 为 `int32`，违反了其类型提升规则（错误信息明确指出“Type promotion only support calculations between floating-point numbers and between complex and real numbers”）。
+   - PyTorch 的 `torch.copysign` 支持 `input` 为任意数值类型、`other` 为整数或浮点数，可自动进行类型转换并正确处理整数 sign；但 PaddlePaddle 严格限制 `y` 必须为浮点型或可被隐式转换为浮点型的类型，不支持直接传入 `int32` 作为 sign 源。
+
+3. 修复建议：
+   - 该问题属于框架间对 `copysign` 的类型处理策略差异，应提交 issue 至 PaddlePaddle 官方仓库，建议增强 `paddle.copysign` 对整数型 `y` 的支持以与 PyTorch 保持一致。

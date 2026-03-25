@@ -1,0 +1,63 @@
+来源文件: llm_enhanced_torch_searchsorted_20251215_210257.json
+样例编号: 2
+tensorflow_error 错误信息: {{function_node __wrapped__StridedSlice_device_/job:localhost/replica:0/task:0/device:CPU:0}} slice index -1 of dimension 0 out of bounds. [Op:StridedSlice] name: strided_slice/
+
+【PyTorch 测试用例】
+{
+  "api": "torch.searchsorted",
+  "sorted_sequence": {
+    "shape": [
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.6722537577740646,
+      -0.1802921456482839,
+      -0.308134407464967,
+      0.41222408742035566
+    ]
+  },
+  "input": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "right": true
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.searchsorted",
+  "sorted_sequence": {
+    "shape": [
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.6722537577740646,
+      -0.1802921456482839,
+      -0.308134407464967,
+      0.41222408742035566
+    ]
+  },
+  "values": {
+    "shape": [],
+    "dtype": "float64",
+    "sample_values": [
+      1.0
+    ]
+  },
+  "side": "right"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - 错误信息 `slice index -1 of dimension 0 out of bounds` 表明在 `StridedSlice` 操作中尝试访问索引 -1，但该维度长度为 4，合法索引范围是 [0, 3]。  
+   - 虽然 `tf.searchsorted` 在文档中未明确说明对空形状输入的处理方式，但其底层实现依赖于 `StridedSlice` 等操作，而当输入值（如 `values`）为标量（shape=[]）且 `side="right"` 时，可能触发了内部索引计算错误，尤其是当 `sorted_sequence` 为一维且无显式广播支持时，某些路径会错误地将 `right=True` 解释为取 `size` 位置，但实际逻辑中却尝试用 `-1` 索引访问边界。
+
+3. 修复建议：  
+   - 此问题可能是 TensorFlow 内部 `searchsorted` 实现对标量输入与 `side="right"` 组合下边界处理不严谨所致，建议提交 issue 至 TensorFlow 官方仓库，指出在 `tf.searchsorted` 输入为标量且 `side="right"` 时出现 `StridedSlice` 索引越界的问题。

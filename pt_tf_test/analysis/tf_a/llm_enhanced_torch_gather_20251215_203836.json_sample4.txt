@@ -1,0 +1,102 @@
+来源文件: llm_enhanced_torch_gather_20251215_203836.json
+样例编号: 4
+tensorflow_error 错误信息: {{function_node __wrapped__GatherV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} indices[0,2] = -9 is not in [0, 10) [Op:GatherV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.gather",
+  "input": {
+    "shape": [
+      10,
+      10
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.8449425188849153,
+      -1.0268826039985965,
+      0.37279989015893583,
+      0.02375899137354498,
+      0.769565646282304,
+      0.8082119374311669,
+      -0.8739431437218329,
+      -0.554988519884078,
+      -1.121093256742466,
+      -0.030440911965265723
+    ]
+  },
+  "dim": 0,
+  "index": {
+    "shape": [
+      5,
+      10
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      -6,
+      6,
+      -5,
+      4,
+      -2,
+      -5,
+      -3,
+      -1,
+      -5,
+      -1
+    ]
+  },
+  "sparse_grad": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.gather",
+  "input": {
+    "shape": [
+      10,
+      10
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.8449425188849153,
+      -1.0268826039985965,
+      0.37279989015893583,
+      0.02375899137354498,
+      0.769565646282304,
+      0.8082119374311669,
+      -0.8739431437218329,
+      -0.554988519884078,
+      -1.121093256742466,
+      -0.030440911965265723
+    ]
+  },
+  "axis": 0,
+  "indices": {
+    "shape": [
+      5,
+      10
+    ],
+    "dtype": "int64",
+    "sample_values": [
+      6,
+      5,
+      -9,
+      4,
+      1,
+      2,
+      8,
+      0,
+      6,
+      9
+    ]
+  }
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - TensorFlow 的 `tf.gather` 要求 `indices` 中的值必须在合法索引范围内（即 `[0, input.shape[axis])`），而错误信息明确指出 `indices[0,2] = -9` 不在 `[0, 10)` 范围内，导致执行失败。
+   - 尽管 PyTorch 的 `torch.gather` 支持负索引（如 -1 表示倒数第一个元素），但 TensorFlow 的 `tf.gather` **不支持负索引**，这是两个框架在索引语义上的关键行为差异。
+
+3. 修复建议：
+   - 该问题属于框架行为差异，可考虑提交 issue 至 TensorFlow 官方仓库，建议增强 `tf.gather` 对负索引的支持以与 PyTorch 更一致。

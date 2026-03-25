@@ -1,0 +1,47 @@
+来源文件: llm_enhanced_torch_topk_20251215_164432.json
+样例编号: 3
+tensorflow_error 错误信息: {{function_node __wrapped__TopKV2_device_/job:localhost/replica:0/task:0/device:CPU:0}} input must have at least k columns. Had 0, needed 1 [Op:TopKV2] name:
+
+【PyTorch 测试用例】
+{
+  "api": "torch.topk",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "k": 1,
+  "dim": 2,
+  "largest": false,
+  "sorted": false
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.math.top_k",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0
+    ],
+    "dtype": "float32",
+    "sample_values": []
+  },
+  "k": 1,
+  "sorted": false
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.math.top_k` 要求输入张量在指定维度上至少有 `k` 个元素，而本例中输入 shape 为 `[2, 3, 0]`，即第 2 维（dim=2）长度为 0，导致无法选取任何元素，违反了 `TopKV2` 操作的前置条件。  
+   - 官方文档虽未明确说明“空维度”是否允许，但实际执行时会抛出“input must have at least k columns. Had 0, needed 1”错误，表明 TensorFlow 对空维的处理比 PyTorch 更严格，属于框架间对空张量（shape 包含 0）的语义不一致。
+
+3. 修复建议：  
+   - 该问题反映的是框架行为差异，可考虑提交 issue 至 TensorFlow 官方仓库，指出其对空维度 `top_k` 处理过于严格，而 PyTorch 允许此类情况（尽管结果为空），建议统一行为或增加容错提示。

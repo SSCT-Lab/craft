@@ -1,0 +1,449 @@
+{
+  "operator": "torch.bincount",
+  "timestamp": "2026-01-24T23:06:49.283332",
+  "total_iterations": 8,
+  "llm_generated_test_cases": 6,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -1,
+            -8,
+            2,
+            7,
+            2
+          ]
+        },
+        "api": "torch.bincount"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -1,
+            -8,
+            2,
+            7,
+            2
+          ]
+        },
+        "api": "paddle.bincount"
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount only supports 1-d non-negative integral inputs.",
+        "paddle_error": "(InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-8 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: bincount only supports 1-d non-negative integral inputs.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 2605, in bincount\n    return _C_ops.bincount(x, weights, minlength)\nValueError: (InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-8 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks require 1-D non-negative integer inputs, but the original test case only specifies shape and dtype without actual tensor values. The error messages indicate that the input contains negative values (PyTorch: 'non-negative integral inputs', Paddle: '-8 < 0'), meaning the generated tensor likely contains negative integers by default. To satisfy both APIs' constraints, we must ensure the input tensor contains only non-negative integers. Since the test case lacks explicit values, we need to repair it by specifying a valid non-negative integer tensor. Also, PyTorch's bincount requires int tensor, and Paddle's weights must match input shape if provided; but since no weights are used in original, we keep minimal valid input: [0,1,2,3,4] as concrete values to guarantee non-negativity and 1-D structure."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.bincount",
+        "input": {
+          "value": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "dtype": "int64"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bincount",
+        "input": {
+          "value": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount(): argument 'input' (position 1) must be Tensor, not dict",
+        "paddle_error": "'dict' object has no attribute 'dtype'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: bincount(): argument 'input' (position 1) must be Tensor, not dict\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 2596, in bincount\n    if x.dtype not in [\nAttributeError: 'dict' object has no attribute 'dtype'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例中input字段为dict类型，但torch.bincount和paddle.bincount均要求input为Tensor类型。PyTorch报错'argument input must be Tensor, not dict'，Paddle报错'dict object has no attribute dtype'，说明测试框架未将input字典正确构造为Tensor。根据API文档，两个算子均只接受1-D非负整数Tensor作为主输入，且PyTorch参数名为input，Paddle参数名为x；此外，原始用例缺少Tensor构造逻辑（如未指定shape或未包装为Tensor对象）。修复方式：将input从字典改为合法Tensor表示，即使用'value'作为data、'dtype'指定类型，并补充shape字段（1-D张量），同时适配参数名差异：PyTorch保持'input'，Paddle改为'x'。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.bincount",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            3,
+            3,
+            -4,
+            1,
+            -7
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bincount",
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            5,
+            8,
+            -1,
+            5,
+            -6
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount only supports 1-d non-negative integral inputs.",
+        "paddle_error": "(InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-6 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: bincount only supports 1-d non-negative integral inputs.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 2605, in bincount\n    return _C_ops.bincount(x, weights, minlength)\nValueError: (InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-6 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例仅定义了输入张量的shape和dtype，但未提供实际数据值；而torch.bincount和paddle.bincount均要求输入为1-D非负整数Tensor，且PyTorch报错'bincount only supports 1-d non-negative integral inputs'，Paddle报错明确指出元素必须非负（-6 < 0）。因此需修复为合法的非负整数输入张量，并确保两框架输入语义一致：PyTorch使用'input'参数，Paddle使用'x'参数；同时需补充具体数值（如[0,1,1,2]）以满足非负、1-D约束； minlength和weights为可选参数，当前用例未涉及，保持省略即可。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.bincount",
+        "input": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            5,
+            -10,
+            -6,
+            2
+          ]
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bincount",
+        "x": {
+          "shape": [
+            4
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            2,
+            -8,
+            6,
+            8
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount only supports 1-d non-negative integral inputs.",
+        "paddle_error": "(InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-8 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: bincount only supports 1-d non-negative integral inputs.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 2605, in bincount\n    return _C_ops.bincount(x, weights, minlength)\nValueError: (InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-8 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -6,
+            -6,
+            4,
+            -1,
+            1
+          ]
+        },
+        "api": "torch.bincount"
+      },
+      "paddle_test_case": {
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64",
+          "sample_values": [
+            -6,
+            -6,
+            4,
+            -1,
+            1
+          ]
+        },
+        "api": "paddle.bincount"
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount only supports 1-d non-negative integral inputs.",
+        "paddle_error": "(InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-6 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nRuntimeError: bincount only supports 1-d non-negative integral inputs.\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 2605, in bincount\n    return _C_ops.bincount(x, weights, minlength)\nValueError: (InvalidArgument) The elements in input tensor must be non-negative ints\n  [Hint: Expected *std::min_element(input_data, input_data + input_numel) >= static_cast<InputT>(0), but received *std::min_element(input_data, input_data + input_numel):-6 < static_cast<InputT>(0):0.] (at ..\\paddle\\phi\\kernels\\cpu\\bincount_kernel.cc:49)\n\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "Both frameworks require 1-D non-negative integer input tensors, but the original test case only specifies shape and dtype without actual tensor values. The error messages indicate that the generated input contains negative values (e.g., -6 in Paddle) or fails the non-negative check. According to both API docs, input must be a 1-D tensor of non-negative integers. Therefore, we must fix the test case to provide valid concrete input data (e.g., non-negative integers) instead of relying on shape/dtype-only generation which may produce invalid values. Also, PyTorch requires weights to be same size as input if provided, and minlength must be non-negative — but since no weights/minlength were specified originally, the core issue is invalid input values. We repair by specifying a valid non-negative integer tensor value."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.bincount",
+        "input": {
+          "value": [
+            0,
+            1,
+            1,
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bincount",
+        "input": {
+          "value": [
+            0,
+            1,
+            1,
+            2,
+            3
+          ],
+          "dtype": "int64"
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount(): argument 'input' (position 1) must be Tensor, not dict",
+        "paddle_error": "'dict' object has no attribute 'dtype'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: bincount(): argument 'input' (position 1) must be Tensor, not dict\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\n  File \"D:\\anaconda3\\envs\\tf_env\\lib\\site-packages\\paddle\\tensor\\linalg.py\", line 2596, in bincount\n    if x.dtype not in [\nAttributeError: 'dict' object has no attribute 'dtype'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "原始测试用例中 input 字段为 dict 类型，但 torch.bincount 和 paddle.bincount 均要求 input 参数为 Tensor 类型，而非字典。PyTorch 报错 'argument input must be Tensor, not dict'，Paddle 报错 'dict object has no attribute dtype'，说明测试框架误将配置字典直接传入 API 而未构造 Tensor。根据文档，两个 API 均只接受 1-D int tensor 作为主输入，且 PyTorch 的参数名为 input，Paddle 的参数名为 x；此外，dtype 应在 Tensor 构造时指定，而非作为 input 字典的字段。因此需修复为合法 Tensor 输入：将 input 字典转为实际 Tensor（即 value 列表），并确保 dtype 正确传递；同时补充缺失的必需参数结构（如 PyTorch 需 input=Tensor，Paddle 需 x=Tensor）。注意 minlength 和 weights 为可选参数，当前用例未使用，保持省略即可。"
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.bincount",
+        "args": {
+          "input": {
+            "value": [
+              0,
+              1,
+              1,
+              2,
+              3
+            ],
+            "dtype": "int64"
+          }
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bincount",
+        "args": {
+          "x": {
+            "value": [
+              0,
+              1,
+              1,
+              2,
+              3
+            ],
+            "dtype": "int64"
+          }
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount() missing 1 required positional arguments: \"input\"",
+        "paddle_error": "bincount() got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: bincount() missing 1 required positional arguments: \"input\"\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: bincount() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PyTorch error 'bincount() missing 1 required positional arguments: \"input\"' indicates the test case is malformed — it wraps the input tensor in an object with 'value' and 'dtype' keys, but PyTorch expects a raw Tensor. Similarly, PaddlePaddle error 'got an unexpected keyword argument \"args\"' suggests the test harness incorrectly passed a top-level 'args' dict instead of unpacking it. However, per the given test case structure, the issue is that the framework-specific test runner expects *unwrapped* tensor values (not nested dicts) for leaf arguments. The current JSON format treats 'input' and 'x' as objects with 'value' and 'dtype', but both torch.bincount and paddle.bincount require actual Tensor inputs — so the test case must be repaired to use proper tensor construction: for PyTorch, 'input' must be a 1D int tensor; for Paddle, 'x' must be a 1D int tensor. Also, minlength must be non-negative and weights (if present) must match shape — but here no weights are used, so minimal valid repair is to ensure input is 1D int tensor and all args are correctly named and typed. Crucially, the original test case uses dict-wrapped tensors (e.g., {\"value\": [...], \"dtype\": \"int64\"}), which is invalid for direct API call — this is a test harness misinterpretation. To fix, we reconstruct args to match documented signatures: PyTorch requires 'input' as tensor (so we keep value/dtype but note that test runner must convert it), but the *test case representation* must conform to expected schema — however, per task requirement #3, 'tensor parameters must use {\"shape\": [...], \"dtype\": \"...\"} format', and scalar params directly. So the repair is to replace 'value' with 'shape' and 'dtype', and ensure shape is [5] (1D), and add explicit minlength=0 to satisfy non-negativity constraint and align with Paddle's default. Also, PyTorch's minlength default is 0, but docs say 'should be non-negative', and omission may cause signature mismatch in some versions — explicitly setting minlength=0 ensures both APIs receive same well-defined args."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.bincount",
+        "args": {
+          "input": {
+            "shape": [
+              5
+            ],
+            "dtype": "int64"
+          },
+          "minlength": 0
+        }
+      },
+      "paddle_test_case": {
+        "api": "paddle.bincount",
+        "args": {
+          "x": {
+            "shape": [
+              5
+            ],
+            "dtype": "int64"
+          },
+          "minlength": 0
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.bincount",
+        "paddle_api": "paddle.bincount",
+        "torch_success": false,
+        "paddle_success": false,
+        "results_match": false,
+        "torch_error": "bincount() missing 1 required positional arguments: \"input\"",
+        "paddle_error": "bincount() got an unexpected keyword argument 'args'",
+        "comparison_error": null,
+        "torch_shape": null,
+        "paddle_shape": null,
+        "torch_dtype": null,
+        "paddle_dtype": null,
+        "status": "both_failed",
+        "torch_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 622, in execute_test_case\n    torch_result = torch_func(*args, **kwargs)\nTypeError: bincount() missing 1 required positional arguments: \"input\"\n",
+        "paddle_traceback": "Traceback (most recent call last):\n  File \"D:\\graduate\\DFrameworkTest\\pt_pd_test\\llm_enhanced_compare.py\", line 661, in execute_test_case\n    paddle_result = paddle_func(*args, **kwargs)\nTypeError: bincount() got an unexpected keyword argument 'args'\n"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+来源文件: llm_enhanced_torch_nn_AvgPool3d_20251202_000207.json
+样例编号: 1
+paddle_error 错误信息: (InvalidArgument) the output size must be greater than or equal to 0. But received: output_size = -1 due to the settings of input_size(0), padding(0,0), k_size(2) and stride(1). Please check again!
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.functional.avg_pool3d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "kernel_size": [
+    2,
+    2,
+    2
+  ],
+  "stride": [
+    1,
+    1,
+    1
+  ]
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.functional.avg_pool3d",
+  "input": {
+    "shape": [
+      2,
+      3,
+      0,
+      4,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": []
+  },
+  "kernel_size": [
+    2,
+    2,
+    2
+  ],
+  "stride": [
+    1,
+    1,
+    1
+  ]
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - PaddlePaddle 的 `avg_pool3d` 在输入张量的深度维度（D）为 0 时，会计算输出尺寸为 `(input_size + 2*padding - kernel_size) / stride + 1`，当 input_size=0、kernel_size=2、stride=1 时，结果为 `-1`，违反了 PaddlePaddle 对输出大小必须 ≥ 0 的校验。  
+   - 虽然 PyTorch 允许在 `input_size=0` 时返回形状为 `[N, C, 0, H, W]` 的空张量（如其文档未禁止），但 PaddlePaddle 显式限制输出尺寸不能为负，因此该场景下执行失败。
+
+3. 修复建议：  
+   - 建议提交 issue 至 PaddlePaddle 官方仓库，指出在输入维度为 0 时应允许输出也为 0（与 PyTorch 行为对齐），当前错误检查过于严格且不符合实际使用场景。

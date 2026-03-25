@@ -1,0 +1,67 @@
+来源文件: llm_enhanced_torch_chunk_20251215_232345.json
+样例编号: 5
+tensorflow_error 错误信息: {{function_node __wrapped__Split_num_split_2_device_/job:localhost/replica:0/task:0/device:CPU:0}} Number of ways to split should evenly divide the split dimension, but got split_dim 1 (size = 3) and num_split 2 [Op:Split] name: split
+
+【PyTorch 测试用例】
+{
+  "api": "torch.chunk",
+  "input": {
+    "shape": [
+      8,
+      3,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.9224079847335815,
+      0.18530845642089844,
+      -2.358954668045044,
+      -0.23361270129680634,
+      0.7638142704963684,
+      0.32373693585395813,
+      -0.9129444360733032,
+      -0.3028843402862549,
+      -0.7136338353157043,
+      -0.06292974203824997
+    ]
+  },
+  "chunks": 2,
+  "dim": 1
+}
+
+【TensorFlow 测试用例】
+{
+  "api": "tf.split",
+  "input": {
+    "shape": [
+      8,
+      3,
+      1
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      0.9224079847335815,
+      0.18530845642089844,
+      -2.358954668045044,
+      -0.23361270129680634,
+      0.7638142704963684,
+      0.32373693585395813,
+      -0.9129444360733032,
+      -0.3028843402862549,
+      -0.7136338353157043,
+      -0.06292974203824997
+    ]
+  },
+  "num_or_size_splits": 2,
+  "axis": 1
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：  
+   - TensorFlow 的 `tf.split` 要求分割维度的大小必须能被 `num_split` 整除，而输入张量在 `dim=1`（即第二维）上大小为 3，尝试拆分为 2 个部分，3 不能被 2 整除，违反了 `tf.split` 的基本约束。  
+   - 相比之下，PyTorch 的 `torch.chunk` 允许不均等分割，当无法均分时会返回少于指定数量的块（如一个大小为 3 的维度拆成 2 块时，可能为 [1,2] 或 [2,1]），因此不会报错。
+
+3. 修复建议：  
+   - 此为框架间语义差异，非映射错误，但属于可预见的行为不一致；建议提交 issue 至 TensorFlow 官方，说明 `tf.split` 在非整除情况下抛出异常与 PyTorch `torch.chunk` 的容错设计存在不一致性，可能影响模型移植兼容性。

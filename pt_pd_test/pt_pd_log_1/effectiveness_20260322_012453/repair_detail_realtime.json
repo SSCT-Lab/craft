@@ -1,0 +1,43 @@
+{
+  "updated_at": "2026-03-22T01:27:16.131626",
+  "records": [
+    {
+      "operator": "torch.symeig",
+      "case_number": 1,
+      "initial_symbol": "✗",
+      "repaired_round": null,
+      "skipped": false,
+      "post_repair_mutation_success": {
+        "1": false,
+        "2": false,
+        "3": false
+      },
+      "rounds": [
+        {
+          "iteration": 1,
+          "operation": "repair",
+          "reason": "torch.symeig is deprecated and removed since PyTorch 1.9; it must be replaced with torch.linalg.eigh. paddle.linalg.eigh does not accept 'eigenvectors' parameter — instead, it always returns both eigenvalues and eigenvectors (like torch.linalg.eigh), and uses 'UPLO' (not 'upper') to control triangular part usage. The original test case uses invalid parameters for both frameworks: 'eigenvectors' is unrecognized in Paddle, and 'upper' is invalid in modern PyTorch. Correct mapping: 'upper=True' → 'UPLO=\"U\"' for both; 'upper=False' → 'UPLO=\"L\"'. Also, torch.linalg.eigh (not symeig) is the valid replacement. Thus, both test cases must be repaired to use torch.linalg.eigh and paddle.linalg.eigh with consistent UPLO and no 'eigenvectors' flag.",
+          "execute_symbol": "✗",
+          "torch_success": false,
+          "paddle_success": true
+        },
+        {
+          "iteration": 2,
+          "operation": "repair",
+          "reason": "PyTorch torch.symeig is deprecated since 1.9.0 and removed in favor of torch.linalg.eigh; however, the original test case incorrectly uses torch.linalg.eigh but labels the API as 'torch.symeig' in the metadata, and more critically: torch.linalg.eigh does NOT accept 'UPLO' parameter — it only supports upper/lower triangular extraction via 'UPLO' in *paddle.linalg.eigh*, while PyTorch's torch.linalg.eigh always uses the full matrix and has no UPLO argument. The error '_symeig() got an unexpected keyword argument 'UPLO'' confirms the test mistakenly passed UPLO to a deprecated/incorrect API. Since torch.symeig itself never supported UPLO (it only computed eigenvalues/vectors of symmetric matrices assuming full input), and torch.linalg.eigh also doesn't support UPLO, the PyTorch side must drop 'UPLO'. Moreover, torch.symeig was removed entirely; thus using torch.linalg.eigh is correct for modern PyTorch, but without UPLO. Therefore, repair: remove 'UPLO' from PyTorch test case (it's invalid), keep it for PaddlePaddle as documented. Also, ensure dtype compatibility: torch.linalg.eigh requires float32/float64/complex64/complex128 — float64 is valid. No shape change needed.",
+          "execute_symbol": "✗",
+          "torch_success": false,
+          "paddle_success": true
+        },
+        {
+          "iteration": 3,
+          "operation": "repair",
+          "reason": "torch.symeig is deprecated and removed since PyTorch 1.9; the correct replacement is torch.linalg.eigh, which matches paddle.linalg.eigh in semantics and signature. The original PyTorch test case incorrectly uses 'torch.linalg.eigh' (not 'torch.symeig') in the api field but the error message confirms torch.symeig was attempted — indicating inconsistency in test setup. To ensure cross-framework equivalence: (1) PyTorch must use torch.linalg.eigh with UPLO='U' to match Paddle's UPLO='U'; (2) both frameworks must use identical input tensor (same shape, dtype, and numeric values); (3) the original test cases lack actual tensor data — only shape/dtype — so we repair by generating a valid symmetric input tensor and aligning UPLO. Since the error states torch.symeig is removed and torch.linalg.eigh is the official replacement, and paddle.linalg.eigh is the direct counterpart, we repair both test cases to use torch.linalg.eigh and paddle.linalg.eigh with identical UPLO='U', same symmetric input tensor.",
+          "execute_symbol": "✗",
+          "torch_success": false,
+          "paddle_success": true
+        }
+      ]
+    }
+  ]
+}

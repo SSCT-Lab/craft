@@ -1,0 +1,1620 @@
+{
+  "tf_api": "tf.nn.avg_pool",
+  "mindspore_api": "mindspore.ops.avg_pool2d",
+  "timestamp": "2026-02-27T14:18:19.985490",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.avg_pool"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "mindspore.ops.avg_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: avg_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d不接受'ksize'参数，应改为'kernel_size'；不支持'same' padding字符串，需转换为等效整数padding值；输入需为NCHW格式，原NHWC需转置；stride和kernel_size应为2D（仅H,W维度）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires input in NCHW format (4D with channels first), but original input shape [1,8,8,8] is ambiguous — it's interpreted as [N,H,W,C] in TF/NHWC but MindSpore expects [N,C,H,W]. To align semantics, reshape input to [1,8,8,8] → treat as [N,C,H,W] meaning C=8, H=8, W=8; then kernel_size [3,3] and stride [2,2] are valid. However, padding [1,1,1,1] is accepted, but the critical fix is ensuring data_format alignment: TF uses NHWC so input tensor must be transposed to NCHW for MindSpore, but since test case only specifies shape/dtype (no actual tensor), we fix by correcting shape interpretation — no transpose needed in shape spec, but MindSpore’s input shape [1,8,8,8] is valid as NCHW if we assign C=8, H=8, W=8. The real error was padding type: MindSpore avg_pool2d accepts int or 4-tuple, and [1,1,1,1] is valid; the TypeError 'kernel_size should be int or tuple of length 2' occurred because original ksize [1,3,3,1] was incorrectly mapped — but in MindSpore test case kernel_size is already [3,3], so error likely came from invalid usage elsewhere. Rechecking: the provided MindSpore test case *does* have kernel_size=[3,3], so the error suggests the test runner passed malformed args. To repair: ensure kernel_size is strictly tuple of 2 ints (not list) per MindSpore doc — cast to tuple — and confirm padding is int or 4-tuple. Since [1,1,1,1] is valid, the minimal repair is to keep all values but guarantee kernel_size is tuple (not list) in actual call; however, test case JSON uses array — which is acceptable as JSON representation. Therefore, the true mismatch is data_format: TF NHWC input [1,8,8,8] means H=8,W=8,C=8, but MindSpore NCHW expects C at dim1, so shape [1,8,8,8] in MindSpore implies C=8, H=8, W=8 — same spatial dims, so it's compatible. The error message indicates kernel_size validation failure, which only occurs if kernel_size was passed as [1,3,3,1] by mistake. Thus, repair is to ensure kernel_size = [3,3] (correct) and remove any spurious leading/trailing dims — it already is. So the actual issue is that MindSpore avg_pool2d does not support 'SAME' padding natively — it requires explicit padding values. The original TF 'SAME' with ksize [1,3,3,1], strides [1,2,2,1] on [1,8,8,8] NHWC implies padding such that output height = ceil(8/2)=4, width=ceil(8/2)=4. For NCHW input [1,8,8,8], to get output H=4,W=4 with kernel [3,3] and stride [2,2], required padding is (top,bottom,left,right) = (1,1,1,1) — which matches. So the test case is logically correct. But MindSpore’s error says 'kernel_size should be int or tuple of length 2' — meaning the test harness likely passed kernel_size as a list of 4 elements due to incorrect mapping from TF’s ksize. Therefore, repair is to enforce kernel_size = [3,3] (already done), and ensure no extra dimensions. No change needed to values — but the error implies the test runner mis-mapped ksize. So minimal repair is to keep kernel_size=[3,3], stride=[2,2], padding=[1,1,1,1], and add divisor_override=0 to match default behavior, though not required. However, per docs, divisor_override=0 is default, so omit. Final repair: the case is already correct; the error arose from test infrastructure passing wrong kernel_size. Thus, no change to parameters — but to prevent TypeError, we must guarantee kernel_size is exactly length-2. It already is. So the only actionable repair is to validate that input shape is unambiguous: [1,8,8,8] in MindSpore is valid NCHW (N=1,C=8,H=8,W=8), matching TF’s NHWC interpretation where C=8 is last — but spatial dims are same. So case is valid. Therefore, the error is infrastructural; the repair is to keep all params as-is, because they conform to MindSpore doc requirements."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ceil_mode": true,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires NCHW input format (shape [N,C,H,W]), but original test case uses NHWC-like shape [1,8,8,8] which misaligns channel and spatial dims; must reshape to [1,8,8,8] → interpret as NCHW: [1,8,8,8] is valid only if C=8, H=8, W=8, but TF's NHWC [1,8,8,8] means H=8,W=8,C=8 — so MindSpore input must be permuted to [1,8,8,8] with correct semantics. However, the critical error is padding type: TF 'SAME' requires computed padding, but MindSpore avg_pool2d padding param is explicit (not 'SAME'/'VALID'). So padding must be computed manually for SAME behavior using ceil_mode=True and proper padding values."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            8,
+            8,
+            8
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ceil_mode": true,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          4,
+          4,
+          8
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC",
+        "api": "tf.nn.avg_pool"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC",
+        "api": "mindspore.ops.avg_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: avg_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d不接受'ksize'参数，应改为'kernel_size'；不支持'padding'为字符串'VALID'，需转为整数padding=0；要求输入为NCHW格式，原NHWC需调整shape为[1,1,4,4]；strides需为2元tuple；data_format参数MindSpore不支持。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires input in NCHW format, but original test case uses NHWC shape [1,4,4,1] which MindSpore interprets as [N,C,H,W] = [1,4,4,1], causing channel=4 and spatial dims=4x1 — invalid for 2D pooling. Must transpose to NCHW: [1,1,4,4] and adjust kernel_size/stride accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires input shape (N, C, H, W), but given [1,4,4,1] is interpreted as NHWC; must transpose to NCHW format [1,1,4,4] to match MindSpore's expected channel-first layout."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW",
+        "api": "tf.nn.avg_pool"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            1,
+            3,
+            6,
+            6
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          2
+        ],
+        "padding": "SAME",
+        "data_format": "NCHW",
+        "api": "mindspore.ops.avg_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": false,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": "UnimplementedError: {{function_node __wrapped____MklNativeAvgPool_device_/job:localhost/replica:0/task:0/device:CPU:0}} MaxPooling supports exactly one of pooling across depth or pooling across width/height. [Op:AvgPool] name: ",
+        "mindspore_error": "TypeError: avg_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": null,
+        "mindspore_shape": null,
+        "tf_dtype": null,
+        "mindspore_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.nn.avg_pool requires ksize/strides of length 4 for NCHW, but MindSpore avg_pool2d only accepts 2D kernel_size and stride (int or tuple of 2), and does not support 'data_format' or 'ksize' as list. Also 'SAME' padding is unsupported in MindSpore avg_pool2d — must use explicit int/tuple padding. TensorFlow error occurs due to MKL backend limitation with NCHW + non-1 depth pooling; switching to NHWC and adjusting ksize/strides fixes TF, while MS requires kernel_size=(3,3), stride=(1,2), padding computed for SAME equivalence."
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            6,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            6,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          1,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          0,
+          0
+        ],
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          6,
+          3,
+          3
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires input in NCHW format, but original test case uses NHWC (shape [1,6,6,3]). Must transpose to [1,3,6,6] and adjust padding to match SAME semantics. Also, MindSpore padding=[1,1,0,0] is invalid for SAME — must compute correct explicit padding or use 'same' mode via padding='same' (but avg_pool2d doesn't support string padding; so compute equivalent explicit padding: for H=6, k=3, s=1 → pad_h = ((6-1)//1+1)*1-6 = 2 → top=1,bottom=1; for W=6, k=3, s=2 → pad_w = ((6-1)//2+1)*2-6 = 2 → left=1,right=1)."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            6,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            6,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          1,
+          2
+        ],
+        "padding": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          6,
+          3,
+          3
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires input in NCHW format, but original test case uses NHWC shape [1,6,6,3]. Must transpose to [1,3,6,6] and adjust padding to match SAME semantics. Also, padding=[1,1,1,1] is invalid for SAME mode; use padding=0 with ceil_mode=False and count_include_pad=True to align with TF's SAME behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            6,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          3,
+          3,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            6,
+            6,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          3,
+          3
+        ],
+        "stride": [
+          1,
+          2
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          6,
+          3,
+          3
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC",
+        "api": "tf.nn.avg_pool"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC",
+        "api": "mindspore.ops.avg_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: avg_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          2
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d不接受ksize参数，需改为kernel_size；输入需为NCHW格式（而非NHWC），故需调整shape顺序；padding不支持'VALID'字符串，需转为整数tuple；strides和kernel_size需适配2D语义（仅H,W维度）。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          2
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires kernel_size as int or 2-tuple, but TF's ksize=[1,2,2,1] includes batch/channel dims. Must strip non-spatial dims (1st and 4th) to match MindSpore's 2D-only kernel_size=[2,2]. Also, MindSpore input must be NCHW, so shape must be reordered from [1,4,4,2] to [1,2,4,4], and padding format adjusted accordingly."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          2
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires NCHW input format (shape [N,C,H,W]), but test case uses NHWC [1,4,4,2]. Must transpose input to [1,2,4,4] and adjust kernel_size/stride to match spatial dims (H,W=4,4). Also padding must be int or 4-tuple; 0 is valid, but input layout mismatch causes semantic failure."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "padding": "VALID",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            2
+          ],
+          "dtype": "float64"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          1,
+          1
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          3,
+          3,
+          2
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float64'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "input": {
+          "shape": [
+            0,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "tf.nn.avg_pool"
+      },
+      "mindspore_test_case": {
+        "input": {
+          "shape": [
+            0,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC",
+        "api": "mindspore.ops.avg_pool2d"
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: avg_pool2d() got an unexpected keyword argument 'ksize'",
+        "comparison_error": null,
+        "tf_shape": [
+          0,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d不接受'ksize'参数，应改为'kernel_size'；不支持'same' padding字符串，需转为整数padding值；输入shape需为[N,C,H,W]即[0,1,4,4]（NHWC→NCHW）；且batch_size=0非法，需修正为正整数如1。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ceil_mode": true,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires kernel_size to be int or tuple of length 2, but original TF ksize [1,2,2,1] includes batch and channel dims; must drop leading/trailing 1s to match 2D spatial kernel. Also padding in MindSpore must be int or 4-tuple, and 'SAME' padding logic must be manually approximated via explicit padding values."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore avg_pool2d requires input in NCHW format, but original test case uses NHWC shape [1,4,4,1]. Must transpose to [1,1,4,4] and adjust kernel_size/stride to match 2D spatial dims; padding must be int or 4-tuple, and data_format mismatch is resolved by input layout fix."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.nn.avg_pool",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "ksize": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "strides": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "padding": "SAME",
+        "data_format": "NHWC"
+      },
+      "mindspore_test_case": {
+        "api": "mindspore.ops.avg_pool2d",
+        "input": {
+          "shape": [
+            1,
+            4,
+            4,
+            1
+          ],
+          "dtype": "float32"
+        },
+        "kernel_size": [
+          2,
+          2
+        ],
+        "stride": [
+          2,
+          2
+        ],
+        "padding": 0,
+        "ceil_mode": false,
+        "count_include_pad": true
+      },
+      "execution_result": {
+        "tf_api": "tf.nn.avg_pool",
+        "mindspore_api": "mindspore.ops.avg_pool2d",
+        "tf_success": true,
+        "mindspore_success": false,
+        "results_match": false,
+        "tf_error": null,
+        "mindspore_error": "TypeError: For avg_pool2d, kernel_size should be int or tuple of length 2.",
+        "comparison_error": null,
+        "tf_shape": [
+          1,
+          2,
+          2,
+          1
+        ],
+        "mindspore_shape": null,
+        "tf_dtype": "<dtype: 'float32'>",
+        "mindspore_dtype": null,
+        "status": "mindspore_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+来源文件: llm_enhanced_torch_multinomial_20251202_012420.json
+样例编号: 6
+paddle_error 错误信息: (InvalidArgument) The input of multinomial distribution should be >= 0, but got -0.466759.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.46675872802734375,
+      -1.3729047775268555,
+      0.2828347682952881,
+      -0.47562816739082336
+    ]
+  },
+  "num_samples": 4,
+  "replacement": true
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.multinomial",
+  "input": {
+    "shape": [
+      4
+    ],
+    "dtype": "float32",
+    "sample_values": [
+      -0.46675872802734375,
+      -1.3729047775268555,
+      0.2828347682952881,
+      -0.47562816739082336
+    ]
+  },
+  "num_samples": 4,
+  "replacement": true
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.multinomial` 要求输入张量的每个元素必须 ≥ 0（且不能全为 0），这是其对概率分布输入的严格约束；而 PyTorch 的 `torch.multinomial` 允许输入包含负值，会将其视为未归一化的权重（即“logits”），并自动进行 softmax 处理后再采样。
+   - 当前测试用例中输入包含负值（如 -0.46675872802734375），虽然 PyTorch 可以接受并正确处理，但 PaddlePaddle 会直接抛出错误：“The input of multinomial distribution should be >= 0, but got -0.466759”，导致执行失败。
+
+3. 修复建议：
+   - 该差异属于框架语义设计上的根本区别，非映射或参数问题，建议提交 issue 至 PaddlePaddle 官方仓库，指出其与 PyTorch 在 `multinomial` 输入处理上的不一致行为，提议增加对 logits 形式输入的支持（如通过参数 `logits=True` 显式启用）。

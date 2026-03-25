@@ -1,0 +1,60 @@
+来源文件: llm_enhanced_torch_nn_MaxPool1d_20251214_171513.json
+样例编号: 3
+mindspore_error 错误信息: for MaxPool3DWithArgmax, shape of out is [1, 1, 1, 1, 0]. It should be not less than zero.
+----------------------------------------------------
+- C++ Call Stack: (For framework developers)
+----------------------------------------------------
+kins/agent-working-dir/workspace/Compile_CPU_Win310/mindspore/mindspore/ops/infer//max_pool3d_with_argmax.cc:267 mindspore::ops::MaxPool3DWithArgmaxInferShape
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.MaxPool1d",
+  "input": {
+    "shape": [
+      1,
+      1,
+      2
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.7072866124896634,
+      0.09102682833794593
+    ]
+  },
+  "kernel_size": 3,
+  "stride": 3,
+  "return_indices": true
+}
+
+【MindSpore 测试用例】
+{
+  "api": "mindspore.nn.MaxPool1d",
+  "input": {
+    "shape": [
+      1,
+      1,
+      2
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      -0.7072866124896634,
+      0.09102682833794593
+    ]
+  },
+  "kernel_size": 3,
+  "stride": 3,
+  "return_indices": true,
+  "pad_mode": "pad"
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - MindSpore 的 `MaxPool1d` 在 `pad_mode="pad"` 时，要求 `padding >= 0`，但当前输入的 `kernel_size=3`、`stride=3`、`input_length=2`，导致输出长度计算为：  
+     $ L_{out} = \left\lfloor \frac{2 + 2 \times padding - 1 \times (3 - 1) - 1}{3} + 1 \right\rfloor $。  
+     即使 `padding=0`，也得 $ L_{out} = \left\lfloor \frac{2 - 2 - 1}{3} + 1 \right\rfloor = \left\lfloor -1/3 + 1 \right\rfloor = 0 $，即输出 shape 为 `[1, 1, 0]`，而 MindSpore 在 `MaxPool3DWithArgmaxInferShape` 中检查到输出维度为 0 时报错：“It should be not less than zero”。
+   - PyTorch 的 `MaxPool1d` 在 `kernel_size > input_length` 且无 padding 时会返回空输出（如 `[1,1,0]`），但其内部允许该情况；而 MindSpore 在此场景下对输出维度为 0 有严格限制，且错误提示明确指出“shape of out is [1, 1, 1, 1, 0]”，说明框架在形状推导阶段直接拒绝了零维输出。
+
+3. 修复建议：
+   - 此为框架行为不一致问题，建议提交 issue 至 MindSpore 官方仓库，指出在 `pad_mode="pad"` 且 `kernel_size > input_length` 时，应允许输出维度为 0（与 PyTorch 保持一致），否则需提前校验并报错更清晰。

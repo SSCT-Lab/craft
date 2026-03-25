@@ -1,0 +1,1270 @@
+{
+  "pd_api": "paddle.searchsorted",
+  "ms_api": "mindspore.ops.searchsorted",
+  "timestamp": "2026-03-02T23:31:14.464731",
+  "total_iterations": 20,
+  "llm_generated_test_cases": 15,
+  "successful_test_cases": 10,
+  "results": [
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "right": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "right": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int64",
+        "ms_dtype": "Int64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为边界场景——sorted_sequence含重复值和inf，values含nan；同时测试out_int32=True和side='right'参数，覆盖文档中强调的right/side互斥约束及NaN/Inf行为。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "side": "left",
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "left",
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: searchsorted() got an unexpected keyword argument 'side'",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Int32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.searchsorted does not support 'side' parameter — it only supports 'right' (bool). The error 'got an unexpected keyword argument side' occurs because 'side' is MindSpore-specific. Per Paddle docs, 'side' is not a valid param; 'right' must be used instead. So we remove 'side' and ensure 'right=False' matches 'side=left' semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 12 and the dimension of output 12\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          3
+        ],
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错'For SearchSorted, the dimension of v and output must be equal, but got dimension of v 12 and output 12' indicates internal shape mismatch; however, original shapes [4] and [3] are valid. The error suggests MindSpore's CPU kernel has stricter internal constraints — likely requiring sorted_sequence to be 1D and values to broadcast-compatible; docs state sorted_sequence must be increasing on innermost dim, and sorter=None is only supported on CPU/GPU. No doc mismatch found, so repair by ensuring values rank matches expected behavior: use explicit 1D tensors and avoid ambiguous broadcasting. Also, MindSpore requires 'values' to be same-rank or broadcastable per kernel logic — safest fix is to keep both 1D and add side='left' for explicit alignment with right=False."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "side": "left",
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "left",
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: searchsorted() got an unexpected keyword argument 'side'",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Int32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int32"
+        },
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int32"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int32"
+        },
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int64",
+        "ms_dtype": "Int64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：将sorted_sequence改为非单调序列（需配合sorter参数），values增加nan/inf边界值，并测试out_int32=True和side='right'等语义等价但参数形式不同的组合。"
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "right": false,
+        "out_int32": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "right": true,
+        "out_int32": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: searchsorted() got an unexpected keyword argument 'side'",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Int32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.searchsorted does not accept 'side' parameter; it uses 'right' bool only. The test case incorrectly passes 'side': 'right' while also setting 'right': false, causing TypeError. Per Paddle docs, 'side' is not supported — must remove 'side' and align 'right' value with MindSpore's behavior (i.e., set right=true to match MindSpore's right=true in the original MS case)."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 16 and the dimension of output 16\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          3
+        ],
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错'For SearchSorted, the dimension of v and output must be equal, but got dimension of v 16 and output 16' indicates internal shape mismatch; however, the original shapes [4] and [3] are valid. The error suggests MindSpore's CPU kernel has stricter internal constraints — likely requiring sorted_sequence and values to have same rank or compatible broadcasting. Per docs, both support 1D inputs, so issue is likely due to unsupported 'right=True' with certain dtypes or missing 'side' parameter alignment. MindSpore prefers 'side' over 'right'; using 'side=\"right\"' instead of 'right=True' fixes compatibility."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 12 and the dimension of output 12\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          3
+        ],
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "right": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "int64"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "int64"
+        },
+        "right": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int64",
+        "ms_dtype": "Int64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为边界场景——sorted_sequence含重复值和inf/nan，values为单元素及空张量，并测试right=True和side='right'等参数组合，验证两框架对边界行为的一致性。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            0
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            0
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          0
+        ],
+        "ms_shape": [
+          0
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "原始用例执行一致，但values为空张量（shape=[0]）属于边界情况，需增强覆盖：变异为单元素values、高维values（2D）、含inf/nan值、不同dtype组合，以及测试side参数替代right的等价性。"
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: searchsorted() got an unexpected keyword argument 'side'",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Int64",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.searchsorted does not accept 'side' parameter — it only supports 'right' (bool) as documented; 'side' is MindSpore-specific alias. To fix, replace 'side': 'right' with 'right': True in PaddlePaddle test case while keeping 'side': 'right' for MindSpore to maintain semantic equivalence."
+      },
+      "is_llm_generated": true,
+      "case_number": 3
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": false,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int64",
+        "ms_dtype": "Int64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 3,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "right": false,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "right": false,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int64",
+        "ms_dtype": "Int64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：变异为边界场景——sorted_sequence含重复值且values含nan/inf，同时测试out_int32=True和side='right'等参数组合，验证两框架对边界条件和参数别名的一致性。"
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 12 and the dimension of output 12\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          3
+        ],
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错'For SearchSorted, the dimension of `v` and output must be equal, but got the dimension of `v` 12 and the dimension of output 12' indicates internal shape validation mismatch; however, the actual issue is that MindSpore's searchsorted requires sorted_sequence to be 1-D *and* values to be 1-D with compatible broadcasting — but the error message misreports dimensions (12 vs 12). The root cause is that MindSpore CPU/GPU backend currently only supports `sorter=None` and strictly enforces sorted_sequence monotonicity; our test uses float64 but lacks actual sorted data. Repair: provide explicitly sorted 1-D data and ensure values shape matches expected broadcast behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": null,
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 24 and the dimension of output 12\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          3
+        ],
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错'For SearchSorted, the dimension of v and output must be equal, but got dimension of v 24 and output 12' indicates shape mismatch due to internal broadcasting or stride assumption; official doc requires sorted_sequence to be increasing on innermost dim and values shape must align—fix by ensuring both inputs are 1D and compatible; remove ambiguous 'side=null' since right=True already sets semantics."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            4
+          ],
+          "dtype": "float64"
+        },
+        "values": {
+          "shape": [
+            3
+          ],
+          "dtype": "float64"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 24 and the dimension of output 12\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          3
+        ],
+        "ms_shape": [
+          3
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "pd_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "x": {
+          "shape": [
+            5
+          ],
+          "dtype": "float64"
+        },
+        "y": {
+          "shape": [
+            2,
+            3
+          ],
+          "dtype": "float64"
+        },
+        "right": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": true,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": [
+          2,
+          3
+        ],
+        "ms_shape": [
+          2,
+          3
+        ],
+        "pd_dtype": "paddle.int64",
+        "ms_dtype": "Int64",
+        "status": "consistent"
+      },
+      "llm_operation": {
+        "operation": "mutation",
+        "reason": "执行结果一致，需进行fuzzing以增强测试覆盖：引入边界场景——sorted_sequence含重复值、values含nan/inf、空张量、int32输入、side参数替代right、out_int32=True，验证两框架对边界条件的鲁棒性与语义一致性。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    },
+    {
+      "iteration": 2,
+      "pd_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": false,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": "TypeError: searchsorted() got an unexpected keyword argument 'side'",
+        "ms_error": null,
+        "comparison_error": null,
+        "pd_shape": null,
+        "ms_shape": [
+          1,
+          4
+        ],
+        "pd_dtype": null,
+        "ms_dtype": "Int32",
+        "status": "paddle_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "PaddlePaddle paddle.searchsorted does not support 'side' parameter; it only supports 'right' (bool). Per Paddle docs, 'side' is an alias for 'right' but is not accepted — must replace 'side': 'right' with 'right': True. MindSpore accepts both, so align Paddle usage to its supported parameter."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 3,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            1,
+            4
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 16 and the dimension of output 16\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          1,
+          4
+        ],
+        "ms_shape": [
+          1,
+          4
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "MindSpore报错'For SearchSorted, the dimension of v and output must be equal, but got dimension of v 16 and output 16' indicates shape compatibility issue; MindSpore's searchsorted requires sorted_sequence and values to have compatible innermost dimensions — values shape [1,4] is rank-2 while sorted_sequence [6] is rank-1; per docs, both frameworks require broadcasting along non-innermost dims, but MindSpore CPU/GPU implementation restricts values to match sorted_sequence's innermost dim semantics — fix by making values 1D [4] to align with sorted_sequence's innermost dim (6), ensuring consistent broadcasting behavior."
+      },
+      "is_llm_generated": true,
+      "case_number": 5
+    },
+    {
+      "iteration": 4,
+      "pd_test_case": {
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "right": true,
+        "api": "paddle.searchsorted"
+      },
+      "ms_test_case": {
+        "side": "right",
+        "sorted_sequence": {
+          "shape": [
+            6
+          ],
+          "dtype": "float32"
+        },
+        "values": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        },
+        "out_int32": true,
+        "api": "mindspore.ops.searchsorted"
+      },
+      "execution_result": {
+        "pd_api": "paddle.searchsorted",
+        "ms_api": "mindspore.ops.searchsorted",
+        "pd_success": true,
+        "ms_success": true,
+        "results_match": false,
+        "pd_error": null,
+        "ms_error": null,
+        "comparison_error": "比较异常: For 'SearchSorted', the dimension of `v` and output must be equal, but got the dimension of `v` 16 and the dimension of output 16\n\n----------------------------------------------------\n- C++ Call Stack: (For framework developers)\n----------------------------------------------------\nmindspore/ops/kernel/cpu/native/searchsorted_cpu_kernel.cc:104 mindspore::kernel::searchsorted_cpu::SearchSortedCpuKernelMod::CheckParam\n",
+        "pd_shape": [
+          4
+        ],
+        "ms_shape": [
+          4
+        ],
+        "pd_dtype": "paddle.int32",
+        "ms_dtype": "Int32",
+        "status": "inconsistent"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 5,
+      "is_llm_generated": true
+    }
+  ]
+}

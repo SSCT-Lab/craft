@@ -1,0 +1,439 @@
+{
+  "operator": "torch.nn.functional.l1_loss",
+  "timestamp": "2026-01-23T18:56:59.504304",
+  "total_iterations": 4,
+  "llm_generated_test_cases": 3,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "torch_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9429489374160767,
+            -0.9639793038368225,
+            -1.8986592292785645,
+            -0.5347931981086731,
+            -0.8546971678733826,
+            0.8913698196411133,
+            1.8832879066467285,
+            0.1906048208475113,
+            -0.45258018374443054,
+            -0.6557221412658691
+          ]
+        },
+        "target": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.5558137893676758,
+            -0.3115115463733673,
+            1.0785235166549683,
+            0.48877623677253723,
+            -0.14444467425346375,
+            0.10724536329507828,
+            1.7876142263412476,
+            0.27338874340057373,
+            2.093452215194702,
+            -0.9143133163452148
+          ]
+        },
+        "reduction": "mean",
+        "api": "torch.nn.functional.l1_loss"
+      },
+      "tensorflow_test_case": {
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.9429489374160767,
+            -0.9639793038368225,
+            -1.8986592292785645,
+            -0.5347931981086731,
+            -0.8546971678733826,
+            0.8913698196411133,
+            1.8832879066467285,
+            0.1906048208475113,
+            -0.45258018374443054,
+            -0.6557221412658691
+          ]
+        },
+        "target": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -1.5558137893676758,
+            -0.3115115463733673,
+            1.0785235166549683,
+            0.48877623677253723,
+            -0.14444467425346375,
+            0.10724536329507828,
+            1.7876142263412476,
+            0.27338874340057373,
+            2.093452215194702,
+            -0.9143133163452148
+          ]
+        },
+        "reduction": "mean",
+        "api": "tf.keras.losses.mean_absolute_error"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.l1_loss",
+        "tensorflow_api": "tf.keras.losses.mean_absolute_error",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "TensorFlow算子 tf.keras.losses.mean_absolute_error 未找到",
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow中tf.keras.losses.mean_absolute_error是一个 loss function，其签名是 mean_absolute_error(y_true, y_pred)，不接受reduction参数；它返回逐元素的绝对误差（未reduced），而PyTorch的l1_loss默认reduction='mean'。因此，为功能对齐，TensorFlow侧应使用tf.keras.losses.MeanAbsoluteError类（支持reduction）或手动应用tf.reduce_mean。但根据测试用例原始意图和API映射惯例，更准确的等价TF API是tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.MEAN)的call方法，或直接使用tf.reduce_mean(tf.abs(y_true - y_pred))。由于原测试用例指定api为字符串'tf.keras.losses.mean_absolute_error'且执行报错'未找到'，说明该字符串不能直接调用（它是函数而非可调用对象？实际在TF中它是函数，但需注意：tf.keras.losses.mean_absolute_error(y_true, y_pred)存在，但无reduction参数）。因此修复方案是：(1) 移除reduction参数（因TF函数不支持），(2) 使用正确的函数调用方式，并确保输入顺序为(y_true=target, y_pred=input)；同时，为保持语义一致（mean reduction），需在外层包裹tf.reduce_mean。但测试框架可能仅支持直接API字符串调用，故更稳妥的修复是改用tf.keras.losses.MeanAbsoluteError类实例的call方法，但该类不是函数字符串。权衡后，最兼容且文档支持的修复是：将TF api改为'tf.reduce_mean'，并嵌套tf.abs(tf.subtract(target, input))，但不符合'loss API映射'初衷。查阅TF官方文档确认：tf.keras.losses.mean_absolute_error is a function with signature (y_true, y_pred) → tensor of same shape, no reduction. Therefore, to match torch.nn.functional.l1_loss(..., reduction='mean'), we must manually reduce. However, the test framework expects a single API string. Since the error is 'operator not found', and the actual function exists, the issue is likely that the test harness tried to pass 'reduction' as kwarg to tf.keras.losses.mean_absolute_error, which doesn't accept it. So repair: remove 'reduction' from TF test case, and rely on post-processing — but the test format doesn't allow post-processing. Hence, correct repair is to replace TF api with 'tf.keras.losses.MeanAbsoluteError' (class) and use its __call__ with reduction, but that's not a function string. Alternatively, use 'tf.keras.losses.mean_absolute_error' without reduction and adjust expectation — but test requires same reduction behavior. Final decision: the minimal repair is to remove the unsupported 'reduction' parameter from TF test case, because tf.keras.losses.mean_absolute_error does not accept it (per TF API spec), and let the test harness handle reduction separately — but since harness failed on API lookup, likely it tried dynamic import with reduction kwarg causing AttributeError. So removing 'reduction' makes the API string valid and callable. Also, ensure input order: PyTorch is l1_loss(input, target), TF is mean_absolute_error(y_true=target, y_pred=input). So shapes are compatible. Thus repair: delete 'reduction' key from TF test case."
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 2,
+      "torch_test_case": {
+        "api": "torch.nn.functional.l1_loss",
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5907416939735413,
+            0.223035529255867,
+            1.0850416421890259,
+            0.747161865234375,
+            -0.9384399056434631,
+            -0.3591230809688568,
+            -0.2930508255958557,
+            0.7109180092811584,
+            -0.5156142711639404,
+            1.2381176948547363
+          ]
+        },
+        "target": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6079729795455933,
+            -1.9596648216247559,
+            -0.47489577531814575,
+            0.22196990251541138,
+            -1.2417285442352295,
+            2.318498373031616,
+            -0.26735225319862366,
+            0.5174253582954407,
+            -0.28068849444389343,
+            -0.02401941828429699
+          ]
+        },
+        "reduction": "mean"
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.losses.mean_absolute_error",
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5907416939735413,
+            0.223035529255867,
+            1.0850416421890259,
+            0.747161865234375,
+            -0.9384399056434631,
+            -0.3591230809688568,
+            -0.2930508255958557,
+            0.7109180092811584,
+            -0.5156142711639404,
+            1.2381176948547363
+          ]
+        },
+        "target": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.6079729795455933,
+            -1.9596648216247559,
+            -0.47489577531814575,
+            0.22196990251541138,
+            -1.2417285442352295,
+            2.318498373031616,
+            -0.26735225319862366,
+            0.5174253582954407,
+            -0.28068849444389343,
+            -0.02401941828429699
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.l1_loss",
+        "tensorflow_api": "tf.keras.losses.mean_absolute_error",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "TensorFlow算子 tf.keras.losses.mean_absolute_error 未找到",
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow中tf.keras.losses.mean_absolute_error是一个 loss function callable, not a direct function that accepts 'input' and 'target' as named arguments in the same way as PyTorch's l1_loss. It expects y_true and y_pred tensors (order reversed vs PyTorch's input/target), and it does not accept a 'reduction' parameter — it returns per-sample or per-element losses that must be manually reduced (e.g., via tf.reduce_mean). Moreover, the API path 'tf.keras.losses.mean_absolute_error' is correct, but it must be called as a function with positional/keyword args y_true, y_pred, and cannot be used declaratively like a module. The original test case incorrectly treats it as if it accepts 'input'/'target' keys and lacks proper invocation structure. Repair involves replacing the TensorFlow test case to use tf.keras.losses.MeanAbsoluteError() class (which supports reduction) or correctly call the function + manual reduction, but since the test harness expects a direct API string and tensor args, the most compatible fix is to use tf.keras.losses.MeanAbsoluteError(reduction='auto') (equivalent to 'mean') and invoke it properly — however, the test format only supports functional-style API strings. Therefore, the correct repair is to switch to the canonical functional equivalent: tf.math.abs(tf.subtract(y_true, y_pred)) followed by tf.reduce_mean, but that’s not a single API. Instead, the standard practice is to use tf.keras.losses.mae (alias) + explicit reduction. However, per TF docs, tf.keras.losses.mean_absolute_error *is* the function — but it returns unreduced element-wise loss. So to match PyTorch's 'reduction=\"mean\"', we must wrap it with tf.reduce_mean. Since the test framework expects a single API string and tensor args, and the error says 'not found', it implies the symbol resolution failed — likely because tf.keras.losses.mean_absolute_error is not directly importable as a top-level callable in some TF versions without proper context. The robust repair is to use the class-based loss 'tf.keras.losses.MeanAbsoluteError' which *does* support reduction and is reliably available, and adjust args to match its call signature: it takes y_true, y_pred (not 'input'/'target'), and reduction is set at construction. So we repair by changing API to 'tf.keras.losses.MeanAbsoluteError', adding 'reduction': 'mean' in args, and renaming 'input'→'y_pred', 'target'→'y_true'."
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 3,
+      "torch_test_case": {
+        "api": "torch.nn.functional.l1_loss",
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.1472408026456833,
+            -1.1420676708221436,
+            0.5610599517822266,
+            -0.08746932446956635,
+            0.9768637418746948,
+            0.881392240524292,
+            -0.09389166533946991,
+            1.1325709819793701,
+            -0.886318564414978,
+            -0.4626297652721405
+          ]
+        },
+        "target": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            1.2215064764022827,
+            -1.1374019384384155,
+            1.250343918800354,
+            -2.257957935333252,
+            -1.47552490234375,
+            0.5139985084533691,
+            -0.9112598896026611,
+            0.23770003020763397,
+            -0.33876216411590576,
+            0.08512233942747116
+          ]
+        },
+        "reduction": "mean"
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.losses.MeanAbsoluteError",
+        "y_true": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            2.453125238418579,
+            -0.7543982863426208,
+            0.9165512323379517,
+            -1.280767798423767,
+            -0.49927350878715515,
+            -1.0131117105484009,
+            1.2753002643585205,
+            1.706017017364502,
+            1.071594476699829,
+            0.6677106022834778
+          ]
+        },
+        "y_pred": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5566743612289429,
+            -1.2592564821243286,
+            -1.4118061065673828,
+            1.584147572517395,
+            -0.89052414894104,
+            0.9571421146392822,
+            -0.7283560037612915,
+            0.25052332878112793,
+            -0.11727900058031082,
+            -1.344505786895752
+          ]
+        },
+        "reduction": "mean"
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.l1_loss",
+        "tensorflow_api": "tf.keras.losses.mean_absolute_error",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "TensorFlow算子 tf.keras.losses.mean_absolute_error 未找到",
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow错误信息显示'tf.keras.losses.mean_absolute_error未找到'，说明原始测试用例中使用的API名'tf.keras.losses.MeanAbsoluteError'（类名）与期望的函数式API'tf.keras.losses.mean_absolute_error'（函数名）不匹配；根据TensorFlow官方惯例，mean_absolute_error是函数式loss，而MeanAbsoluteError是类式loss，二者调用方式不同；原始TF测试用例错误地将类名当作函数名使用，且传入了reduction参数——但函数式API不接受reduction参数，它总是返回逐样本损失（batch-wise），需配合tf.reduce_mean等手动规约；而PyTorch的l1_loss内置reduction；因此修复为：(1) 使用正确的函数式API名'tf.keras.losses.mean_absolute_error'；(2) 移除reduction参数（因其不支持）；(3) 保持y_true/y_pred命名与函数签名一致；注意该函数返回shape为[batch_size]的Tensor，需与PyTorch 'reduction=mean'语义对齐，故在测试比对逻辑中应额外应用tf.reduce_mean，但测试用例本身只描述API调用，因此TF用例中不包含reduction，由测试框架负责等价规约；同时确认该函数存在且无需额外导入。"
+      },
+      "is_llm_generated": true,
+      "case_number": 1
+    },
+    {
+      "iteration": 4,
+      "torch_test_case": {
+        "api": "torch.nn.functional.l1_loss",
+        "input": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.8219889402389526,
+            1.6491456031799316,
+            -1.3312407732009888,
+            -1.983573079109192,
+            0.8827431201934814,
+            0.9473152160644531,
+            -0.612606942653656,
+            -0.03540881350636482,
+            -0.8496527671813965,
+            2.0714540481567383
+          ]
+        },
+        "target": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            -0.9558817744255066,
+            0.02286476455628872,
+            0.10102927684783936,
+            1.7737890481948853,
+            -0.007194239180535078,
+            1.559722900390625,
+            0.6460434198379517,
+            -0.84250807762146,
+            2.631594181060791,
+            1.1372506618499756
+          ]
+        },
+        "reduction": "mean"
+      },
+      "tensorflow_test_case": {
+        "api": "tf.keras.losses.mean_absolute_error",
+        "y_true": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.373547226190567,
+            -0.6704524755477905,
+            -0.4882597327232361,
+            -0.747285783290863,
+            1.4314842224121094,
+            -0.5803787112236023,
+            -0.07355741411447525,
+            1.2000703811645508,
+            1.2705276012420654,
+            0.8634273409843445
+          ]
+        },
+        "y_pred": {
+          "shape": [
+            3,
+            5
+          ],
+          "dtype": "float32",
+          "sample_values": [
+            0.5367801785469055,
+            2.813709020614624,
+            -0.5746793150901794,
+            0.34573718905448914,
+            -0.77130126953125,
+            -0.2266310155391693,
+            0.4595591127872467,
+            0.6847816109657288,
+            -0.9834762215614319,
+            0.40755829215049744
+          ]
+        }
+      },
+      "execution_result": {
+        "torch_api": "torch.nn.functional.l1_loss",
+        "tensorflow_api": "tf.keras.losses.mean_absolute_error",
+        "torch_success": true,
+        "tensorflow_success": false,
+        "results_match": false,
+        "torch_error": null,
+        "tensorflow_error": "TensorFlow算子 tf.keras.losses.mean_absolute_error 未找到",
+        "comparison_error": null,
+        "torch_shape": [],
+        "tensorflow_shape": null,
+        "torch_dtype": "torch.float32",
+        "tensorflow_dtype": null,
+        "status": "tensorflow_failed"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 1,
+      "is_llm_generated": true
+    }
+  ]
+}

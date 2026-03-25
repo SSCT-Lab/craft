@@ -1,0 +1,663 @@
+{
+  "tf_api": "tf.math.segment_prod",
+  "pytorch_api": "torch.scatter_reduce",
+  "timestamp": "2026-02-09T23:46:26.937056",
+  "total_iterations": 11,
+  "llm_generated_test_cases": 6,
+  "successful_test_cases": 0,
+  "results": [
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "int32"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.math.segment_prod"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "int32"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "tf.math.segment_prod 和 torch.scatter_reduce 功能不等价：前者是按 segment_ids 分组求积（类似 reduce_by_key），要求 segment_ids 非负且单调非减；后者是沿指定 dim 对 index 处的 src 元素执行归约操作，需显式提供 input, dim, index, src, reduce 五个参数。二者语义、参数结构和使用范式完全不同，无法构造语义对齐的跨框架测试用例。"
+      },
+      "is_llm_generated": false,
+      "case_number": 1
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.math.segment_prod"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.segment_prod requires sorted and contiguous segment_ids (e.g., [0,0,1,1,2,...]), but original segment_ids shape-only spec doesn't guarantee that. PyTorch torch.scatter_reduce is not a functional equivalent — it requires explicit input, dim, index, src, reduce args and operates on scatter semantics, not segment-wise reduction. Thus, direct comparison is invalid; we must replace PyTorch with torch.segment_reduce (if available) or emulate segment_prod via scatter + cumprod, but torch.segment_reduce doesn't exist in stable PyTorch. Correct approach: use torch_scatter (third-party) or manual implementation. Since torch.scatter_reduce cannot emulate segment_prod without index/dim/src mapping, and official PyTorch has no native segment_prod, the cross-framework test is fundamentally mismatched — repair by using valid TF segment_ids and replacing PyTorch with a semantically closest *manual* equivalent using scatter + unique segments."
+      },
+      "is_llm_generated": false,
+      "case_number": 2
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.math.segment_prod",
+        "data": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "value": [
+            0,
+            0,
+            1,
+            1,
+            1,
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "value": [
+            0,
+            0,
+            1,
+            1,
+            1,
+            2,
+            2,
+            3,
+            3,
+            3
+          ],
+          "dtype": "long"
+        },
+        "src": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "prod"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "ValueError: Attempt to convert a value ({'value': [0, 0, 1, 1, 1, 2, 2, 3, 3, 3], 'dtype': 'int32'}) with an unsupported type (<class 'dict'>) to a Tensor.",
+        "pytorch_error": "TypeError: scatter_reduce(): argument 'index' must be Tensor, not dict",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.segment_prod expects 'data' and 'segment_ids' as tensor inputs, but test case passes segment_ids as dict; PyTorch torch.scatter_reduce is not semantically equivalent — it scatters reduction into output shape, while segment_prod groups by segment IDs and reduces per group. Correct mapping requires torch.segment_reduce (introduced in 2.1+) or manual scatter + reduce. Since torch.scatter_reduce cannot emulate segment_prod behavior directly, and the original test misuses both APIs, we repair to use valid tf.math.segment_prod and replace PyTorch with torch.segment_reduce (if available) or skip — but per docs torch.segment_reduce exists and matches semantics. However, torch.segment_reduce requires 'length' and 'offsets', not 'index'; thus true functional equivalence requires restructuring. Given both frameworks failed due to malformed dict inputs (not tensors), repair is to convert dicts to proper tensor specs."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.math.segment_prod",
+        "data": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.segment_reduce",
+        "data": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "prod",
+        "lengths": {
+          "shape": [
+            4
+          ],
+          "dtype": "float32"
+        }
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.segment_prod requires sorted, non-decreasing segment_ids; PyTorch has no direct segment_prod — torch.scatter_reduce is not equivalent (it scatters into output tensor along dim, not segments by ID). Correct PyTorch equivalent is torch.ops.aten.segment_reduce or manual grouped prod; but since torch.segment_reduce doesn't exist and scatter_reduce signature mismatches, we must use torch.tensor_scatter_nd_*-like logic or skip. However, per docs and error, the correct repair is: (1) fix TF segment_ids to be sorted & contiguous starting from 0; (2) replace PyTorch API with manual segment-wise prod using torch.unique + torch.prod, but test case must use valid APIs — so switch to torch.scatter_reduce with proper args: input=output placeholder, dim=0, index=segment_ids, src=data, reduce='prod'. Also lengths param is invalid — remove it."
+      },
+      "is_llm_generated": true,
+      "case_number": 2
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.math.segment_prod",
+        "data": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            4,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            10
+          ],
+          "dtype": "float32"
+        },
+        "src": {
+          "shape": [
+            10,
+            3
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "prod"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Segment id 7 out of range [0, 5), possibly because 'segment_ids' input is not sorted. [Op:SegmentProd] name: ",
+        "pytorch_error": "RuntimeError: scatter(): Expected dtype int64 for index",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 2,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "complex64"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.math.segment_prod"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            10,
+            2
+          ],
+          "dtype": "complex64"
+        },
+        "segment_ids": {
+          "shape": [
+            10
+          ],
+          "dtype": "int32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Segment id 4 out of range [0, 3), possibly because 'segment_ids' input is not sorted. [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "tf.math.segment_prod 和 torch.scatter_reduce 功能不等价：前者按 segment_ids 分组求积（类似 reduce_prod over segments），后者是沿指定维度 scatter-reduce 操作，需显式提供 input, dim, index, src, reduce 参数。二者语义、参数结构和使用场景完全不同，无法构造语义对齐的跨框架测试用例。"
+      },
+      "is_llm_generated": false,
+      "case_number": 3
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.math.segment_prod"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.segment_prod requires sorted and contiguous segment_ids (e.g., [0,0,1,1,2]), while PyTorch torch.scatter_reduce is not a direct equivalent—it requires input, dim, index, src, reduce args and performs scatter+reduce along a dim, not segment-wise reduction. The APIs are functionally incompatible; correct PyTorch equivalent is torch.segment_reduce (introduced in 2.0+) or manual grouped reduction. We repair by using torch.segment_reduce with 'prod' and matching sorted segment_ids."
+      },
+      "is_llm_generated": false,
+      "case_number": 4
+    },
+    {
+      "iteration": 2,
+      "tf_test_case": {
+        "api": "tf.math.segment_prod",
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.segment_reduce",
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        },
+        "reduce": "prod"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.segment_prod requires sorted, non-negative segment_ids with contiguous IDs starting from 0; PyTorch has no direct segment_prod — torch.scatter_reduce is not equivalent (it scatters into output tensor along dim, not segments). Correct PyTorch equivalent is torch.ops.aten.segment_reduce or manual grouped prod; but since torch.segment_reduce doesn't exist and scatter_reduce signature mismatches, we must use torch.tensor_scatter_nd_*-like logic — however, no native segment_prod. Thus, repair to valid TF input (sorted segment_ids) and replace PyTorch with manual grouped product using torch.unique + torch.prod."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 3,
+      "tf_test_case": {
+        "api": "tf.math.segment_prod",
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.tensor",
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        },
+        "reduce": "prod"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "repair",
+        "reason": "TensorFlow tf.math.segment_prod requires sorted, non-negative segment_ids with contiguous IDs starting from 0; PyTorch torch.scatter_reduce is not a functional equivalent—it requires input, dim, index, src, and reduce, and operates on scatter semantics, not segment reduction. Correct PyTorch equivalent is torch.segment_reduce (introduced in 2.1+) or manual grouped prod; but since original PyTorch test uses wrong API (torch.tensor) and missing args, we repair to use torch.segment_reduce if available, else skip—but per docs and error, torch.scatter_reduce is misused. However, torch.segment_reduce does not exist in stable <2.1; thus safest repair is to align both to valid segment_prod semantics: fix segment_ids to be sorted & valid, and replace PyTorch call with manual grouped product using torch.bincount + torch.gather or equivalent. But per task constraint to use only documented APIs and avoid custom logic, and since torch.scatter_reduce cannot emulate segment_prod (different indexing model), operation must be 'repair' to use correct PyTorch API where possible. However, torch.segment_reduce is undocumented in provided URL and not in legacy PyTorch—so actual correct repair is to use torch.scatter_reduce with proper args emulating segment_prod: need dim=0, index=segment_ids, src=data, reduce='prod', input=zeros(output_size). But output_size unknown. So minimal repair: fix segment_ids to be sorted [0,0,1,1,1,2,2,3,4], ensure data/segment_ids same length, and construct valid torch.scatter_reduce call with inferred output shape."
+      },
+      "is_llm_generated": true,
+      "case_number": 4
+    },
+    {
+      "iteration": 4,
+      "tf_test_case": {
+        "api": "tf.math.segment_prod",
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        }
+      },
+      "pytorch_test_case": {
+        "api": "torch.scatter_reduce",
+        "input": {
+          "shape": [
+            5
+          ],
+          "dtype": "float32"
+        },
+        "dim": 0,
+        "index": {
+          "shape": [
+            9
+          ],
+          "dtype": "int64"
+        },
+        "src": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "reduce": "prod"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} Segment id 4 out of range [0, 1), possibly because 'segment_ids' input is not sorted. [Op:SegmentProd] name: ",
+        "pytorch_error": "RuntimeError: index 7 is out of bounds for dimension 0 with size 5",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "final_execution",
+        "reason": "执行最后一次LLM生成的用例"
+      },
+      "case_number": 4,
+      "is_llm_generated": true
+    },
+    {
+      "iteration": 1,
+      "tf_test_case": {
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        },
+        "api": "tf.math.segment_prod"
+      },
+      "pytorch_test_case": {
+        "data": {
+          "shape": [
+            9
+          ],
+          "dtype": "float32"
+        },
+        "segment_ids": {
+          "shape": [
+            9
+          ],
+          "dtype": "int32"
+        },
+        "api": "torch.scatter_reduce"
+      },
+      "execution_result": {
+        "tf_api": "tf.math.segment_prod",
+        "pytorch_api": "torch.scatter_reduce",
+        "tf_success": false,
+        "pytorch_success": false,
+        "results_match": false,
+        "tf_error": "InvalidArgumentError: {{function_node __wrapped__SegmentProd_device_/job:localhost/replica:0/task:0/device:CPU:0}} segment ids are not increasing [Op:SegmentProd] name: ",
+        "pytorch_error": "TypeError: scatter_reduce() missing 5 required positional argument: \"input\", \"dim\", \"index\", \"src\", \"reduce\"",
+        "comparison_error": null,
+        "tf_shape": null,
+        "pytorch_shape": null,
+        "tf_dtype": null,
+        "pytorch_dtype": null,
+        "status": "both_error"
+      },
+      "llm_operation": {
+        "operation": "skip",
+        "reason": "tf.math.segment_prod和torch.scatter_reduce功能不等价：前者是segment-wise product（需sorted segment_ids），后者是scatter-based reduction（需dim/index/src参数）。PyTorch无直接对应segment_prod算子，且API签名、语义、输入要求完全不同，无法构造语义一致的跨框架测试用例。"
+      },
+      "is_llm_generated": false,
+      "case_number": 5
+    }
+  ]
+}

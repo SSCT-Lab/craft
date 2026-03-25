@@ -1,0 +1,69 @@
+来源文件: llm_enhanced_torch_nn_GroupNorm_20251202_010342.json
+样例编号: 2
+paddle_error 错误信息: (InvalidArgument) The type of data we are trying to retrieve (float32) does not match the type of data (float64) currently contained in the container.
+
+【PyTorch 测试用例】
+{
+  "api": "torch.nn.GroupNorm",
+  "input": {
+    "shape": [
+      2,
+      6,
+      4,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.191979793910273,
+      1.7935099328415494,
+      1.9202934697746037,
+      1.184526404452755,
+      0.28672914906455227,
+      0.1878152962079411,
+      -0.2769924011658997,
+      0.03513129619011364,
+      0.24631344620621698,
+      0.2891422266060032
+    ]
+  },
+  "num_groups": 3,
+  "num_channels": 6
+}
+
+【PaddlePaddle 测试用例】
+{
+  "api": "paddle.nn.GroupNorm",
+  "input": {
+    "shape": [
+      2,
+      6,
+      4,
+      4
+    ],
+    "dtype": "float64",
+    "sample_values": [
+      1.191979793910273,
+      1.7935099328415494,
+      1.9202934697746037,
+      1.184526404452755,
+      0.28672914906455227,
+      0.1878152962079411,
+      -0.2769924011658997,
+      0.03513129619011364,
+      0.24631344620621698,
+      0.2891422266060032
+    ]
+  },
+  "num_groups": 3,
+  "num_channels": 6
+}
+
+【LLM 分析结果】
+1. 结论标签：A 框架行为差异
+
+2. 原因分析：
+   - PaddlePaddle 的 `paddle.nn.GroupNorm` 在内部实现中对输入张量的 dtype 有严格要求，虽然文档未明确限制，但其底层计算（如方差、均值计算）使用 float32 进行中间运算，当输入为 float64 时，会触发类型不匹配错误（如错误信息所示：期望 float32 但实际为 float64），导致运行时无法从容器中正确读取数据。
+   - 与 PyTorch 行为不同：PyTorch `torch.nn.GroupNorm` 明确支持 float64 输入并能正常处理，而 PaddlePaddle 当前实现存在 dtype 精度不兼容问题，属于框架在高精度浮点数处理上的行为差异。
+
+3. 修复建议：
+   - 建议提交 issue 给 PaddlePaddle 官方，指出 `GroupNorm` 对 float64 输入的支持不足，属于框架行为不一致问题。
