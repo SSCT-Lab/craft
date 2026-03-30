@@ -9,7 +9,7 @@
 ## 流程图
 
 ```
-testcases_ms/                  (333 个 MindSpore 算子测试文件)
+testcases_ms/                  (333 个来自官方仓库的 MindSpore 算子测试文件)
       │
       ▼
 ┌─────────────────────┐
@@ -19,7 +19,7 @@ testcases_ms/                  (333 个 MindSpore 算子测试文件)
           │
           ▼
 ┌───────────────────────────┐
-│ Step 1.5: 验证 MS API      │   filter_existing_ms_apis.py
+│ Step 1.5: 验证MS API的存在性│   filter_existing_ms_apis.py
 │ 输出: ms_apis_existing.json│
 └─────────┬─────────────────┘
           │
@@ -53,6 +53,7 @@ testcases_ms/                  (333 个 MindSpore 算子测试文件)
 │ - LLM 并发调用                         │
 │ - 算子串行执行                          │
 │ - 两框架共享输入张量                     │
+│ - LLM 进行修复/变异/跳过                │
 │ 输出: ms_pt_log_1/*.json               │
 └─────────┬─────────────────────────────┘
           │

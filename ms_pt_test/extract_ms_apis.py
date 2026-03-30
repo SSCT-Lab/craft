@@ -443,15 +443,15 @@ def main():
     print("=" * 80)
     print("Step 1: 从 MindSpore 官方测试文件中提取 MS API 列表")
     print("=" * 80)
-    print(f"📁 测试文件目录: {args.ms_dir}")
-    print(f"📁 输出文件: {args.output}")
+    print(f"- 测试文件目录: {args.ms_dir}")
+    print(f"- 输出文件: {args.output}")
 
     if not os.path.isdir(args.ms_dir):
-        print(f"❌ 目录不存在: {args.ms_dir}")
+        print(f"- 目录不存在: {args.ms_dir}")
         sys.exit(1)
 
     # 提取 API 列表
-    print(f"\n📂 开始扫描目录: {args.ms_dir}\n")
+    print(f"\n- 开始扫描目录: {args.ms_dir}\n")
     apis = extract_all_apis(args.ms_dir)
 
     # 统计
@@ -464,7 +464,7 @@ def main():
         method_counts[method] = method_counts.get(method, 0) + 1
 
     print(f"\n{'=' * 80}")
-    print(f"📊 提取结果汇总")
+    print(f"- 提取结果汇总")
     print(f"{'=' * 80}")
     print(f"  总API数量: {len(apis)}")
     print(f"\n  按类型分布:")
@@ -490,8 +490,8 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-    print(f"\n💾 已保存到: {args.output}")
-    print(f"📋 前10个API: {', '.join(a['ms_api'] for a in apis[:10])}")
+    print(f"\n- 已保存到: {args.output}")
+    print(f"- 前10个API: {', '.join(a['ms_api'] for a in apis[:10])}")
 
 
 if __name__ == "__main__":

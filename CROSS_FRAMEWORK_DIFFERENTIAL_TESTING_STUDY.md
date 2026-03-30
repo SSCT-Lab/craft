@@ -1,7 +1,7 @@
 # Execution-Guided Cross-Project Differential Testing for Deep Learning Frameworks
 
 ## Abstract
-This project studies the semantic consistency of operators across four major deep learning frameworks: PyTorch, TensorFlow, PaddlePaddle, and MindSpore. We build a unified differential-testing pipeline that (1) mines framework APIs from official test suites, (2) generates cross-framework API mappings with LLM support, (3) executes paired operators under shared inputs, and (4) iteratively repairs or mutates test cases using LLM feedback. Across 12 pairwise directories, we report large-scale evidence of both semantic equivalence and non-equivalence. For 9 standardized pairwise campaigns with structured CSV reports, we analyze 1,699 mapped operators and 32,953 execution iterations. We observe 810 consistent operators, 578 inconsistent operators, 297 error-dominant operators, and 14 unknown operators. We further benchmark LLM-driven adaptation against converter-based baselines (MindConverter, X2Paddle, ONNX routes) in 3 legacy PyTorch-centric campaigns, where LLM-driven execution success is consistently higher than conversion run success. In addition, we add selected-pair ablation code for LLM vs non-LLM strategies and dedicated effectiveness-validation scripts that quantify repair/mutation gains in a unified way. Additionally, our method reveals a number of previously unreported framework bugs, with approximately 50 issues submitted to the corresponding repositories. The study demonstrates that LLM-guided iterative repair is effective for cross-framework compatibility testing, while also revealing systematic sources of disagreement (parameter semantics, dtype constraints, reduction definitions, and unsupported kernels).
+This project studies the semantic consistency of operators across four major deep learning frameworks: PyTorch, TensorFlow, PaddlePaddle, and MindSpore. We build a unified differential-testing pipeline that (1) mines framework APIs from official test suites, (2) generates cross-framework API mappings with LLM support, (3) executes paired operators under shared inputs, and (4) iteratively repairs or mutates test cases using LLM feedback. Across 12 pairwise directories, we report large-scale evidence of both semantic equivalence and non-equivalence. For 12 standardized pairwise campaigns with structured CSV reports, we analyze 2,888 mapped operators and 42,467 execution iterations. We observe 1,297 consistent operators, 932 inconsistent operators, 645 error-dominant operators, and 14 unknown operators. We further benchmark LLM-driven adaptation against converter-based baselines (MindConverter, X2Paddle, ONNX routes) in 3 legacy PyTorch-centric campaigns, where LLM-driven execution success is consistently higher than conversion run success. In addition, we add selected-pair ablation code for LLM vs non-LLM strategies and dedicated effectiveness-validation scripts that quantify repair/mutation gains in a unified way. Additionally, our method reveals a number of previously unreported framework bugs, with approximately 50 issues submitted to the corresponding repositories. The study demonstrates that LLM-guided iterative repair is effective for cross-framework compatibility testing, while also revealing systematic sources of disagreement (parameter semantics, dtype constraints, reduction definitions, and unsupported kernels).
 
 
 ## 1. Research Motivation and Questions
@@ -60,29 +60,29 @@ The study covers 12 directories:
 - PyTorch-first (legacy style): `pt_ms_test`, `pt_pd_test`, `pt_tf_test`
 - TensorFlow-first: `tf_ms_test_1`, `tf_pd_test_1`, `tf_pt_test`
 
-Nine directories provide standardized `analysis_report_*.csv` files with unified fields. Three PyTorch-first legacy directories provide structured global comparison JSONs against converter baselines.
+All twelve directories now provide standardized `analysis_report_*.csv` files with unified fields. The three PyTorch-first directories additionally provide structured global comparison JSONs against converter baselines for baseline-oriented analysis.
 
 For the newly added methodology checks, we selected representative framework pairs for code-level validation:
 
 - **Effectiveness-validation scripts added**: `pt_tf_test`, `pt_pd_test`, `pt_ms_test`, `tf_pd_test_1`, `pd_ms_test_1`, `ms_pt_test`
 - **LLM-vs-non-LLM comparison scripts available in selected pairs**: e.g., `ms_pd_test_1`, `tf_ms_test_1`, `pd_pt_test`, `pt_tf_test`, `tf_pt_test`, `pt_pd_test`, `pt_ms_test`
 
-## 4. Quantitative Results (9 Standardized Campaigns)
+## 4. Quantitative Results (12 Standardized Campaigns)
 
 ### 4.1 Operator-Level Outcomes
-From 9 standardized reports:
+From 12 standardized reports:
 
-- Total mapped operators: 1,699
-- `consistent`: 810 (47.67%)
-- `inconsistent`: 578 (34.02%)
-- `error`: 297 (17.48%)
-- `unknown`: 14 (0.82%)
+- Total mapped operators: 2,888
+- `consistent`: 1,297 (44.91%)
+- `inconsistent`: 932 (32.27%)
+- `error`: 645 (22.33%)
+- `unknown`: 14 (0.48%)
 
 ### 4.2 Iteration-Level Outcomes
-- Total iterations: 32,953
-- Consistent iterations: 16,280
-- Inconsistent iterations: 4,178
-- Both-error iterations: 3,991
+- Total iterations: 42,467
+- Consistent iterations: 20,175
+- Inconsistent iterations: 5,524
+- Both-error iterations: 5,627
 
 ### 4.3 Pairwise Breakdown
 
@@ -94,6 +94,9 @@ From 9 standardized reports:
 | pd_ms_test_1 | 221 | 101 | 99 | 21 | 0 | 4,368 |
 | pd_pt_test | 277 | 195 | 69 | 13 | 0 | 5,448 |
 | pd_tf_test_1 | 210 | 98 | 100 | 12 | 0 | 4,076 |
+| pt_ms_test | 403 | 170 | 75 | 158 | 0 | 3,183 |
+| pt_pd_test | 420 | 198 | 139 | 83 | 0 | 3,329 |
+| pt_tf_test | 366 | 119 | 140 | 107 | 0 | 3,002 |
 | tf_ms_test_1 | 97 | 29 | 41 | 27 | 0 | 1,822 |
 | tf_pd_test_1 | 114 | 57 | 50 | 7 | 0 | 2,269 |
 | tf_pt_test | 128 | 48 | 60 | 20 | 0 | 2,501 |
@@ -192,8 +195,8 @@ This converts differential testing from a one-shot pass/fail process into a guid
    - Some APIs are fundamentally non-isomorphic (e.g., option sets differ by design).
 3. Hardware/software environment bias
    - CPU-only kernels and version-specific behavior affect reproducibility.
-4. Legacy-vs-standardized metric heterogeneity
-   - Three PyTorch-first campaigns use different reporting schemas from the 9 standardized campaigns.
+4. Metric heterogeneity across analysis goals
+   - Although operator-level differential reports are now standardized across 12 directories, baseline-comparison metrics (e.g., converter run success) still follow campaign-specific schemas and should be interpreted separately.
 
 ## 9. Conclusion
 This project demonstrates a practical and scalable framework for semantic differential testing across PyTorch, TensorFlow, PaddlePaddle, and MindSpore. The combined evidence from 12 directories shows that:
@@ -209,7 +212,7 @@ The project provides both methodological value (LLM-in-the-loop differential tes
 ## Appendix A. Core Artifacts Used
 
 - Standardized pairwise workflows and scripts:
-  - `ms_pd_test_1`, `ms_tf_test_1`, `ms_pt_test`, `pd_ms_test_1`, `pd_pt_test`, `pd_tf_test_1`, `tf_ms_test_1`, `tf_pd_test_1`, `tf_pt_test`
+   - `ms_pd_test_1`, `ms_tf_test_1`, `ms_pt_test`, `pd_ms_test_1`, `pd_pt_test`, `pd_tf_test_1`, `pt_ms_test`, `pt_pd_test`, `pt_tf_test`, `tf_ms_test_1`, `tf_pd_test_1`, `tf_pt_test`
 - Standardized reports:
   - `analysis/analysis_report_*.csv`, `analysis/analysis_report_*.txt`
   - `analysis/inconsistent_success_samples*.json`, `analysis/*_error_only_samples*.json`, `analysis/issue_candidates_*.json`
