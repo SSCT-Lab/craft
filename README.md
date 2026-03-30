@@ -109,11 +109,6 @@ python pt_tf_test/analyze_errors.py
 python ms_pd_test_1/analyze_results_with_samples.py
 ```
 
-5. **Craft Documentation Analysis Module**
-```bash
-python component/doc/doc_analyzer.py "error message" --test-file test.py
-```
-
 ## Key Highlights
 
 - ✅ **Research-Grade Automation**: End-to-end differential testing from mapping to analysis
