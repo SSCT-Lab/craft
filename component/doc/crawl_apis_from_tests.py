@@ -1,6 +1,6 @@
-"""从测试文件中提取的 API 批量下载文档
+"""Batch download docs for APIs extracted from test files.
 
-使用 extract_apis_from_tests.py 提取的 API 列表，批量下载文档。
+Uses API list from extract_apis_from_tests.py to download docs in batch.
 """
 import json
 import argparse
@@ -16,22 +16,22 @@ from component.doc.doc_crawler_factory import crawl_doc  # noqa: E402
 
 
 def main():
-    parser = argparse.ArgumentParser(description="从测试 API 列表批量下载文档")
+    parser = argparse.ArgumentParser(description="Batch download docs from test API list")
     parser.add_argument(
         "--input",
         default="data/analysis/test_apis.jsonl",
-        help="输入 API 列表文件（JSONL，每行包含 framework 和 api）"
+        help="Input API list file (JSONL, each line has framework and api)"
     )
     parser.add_argument(
         "--output",
         default="data/analysis/test_api_docs.jsonl",
-        help="输出文档文件（JSONL）"
+        help="Output doc file (JSONL)"
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=-1,
-        help="限制下载数量（-1 表示全部）"
+        help="Limit download count (-1 means all)"
     )
     args = parser.parse_args()
     
@@ -40,10 +40,10 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     if not input_path.exists():
-        print(f"[ERROR] 输入文件不存在: {input_path}")
+        print(f"[ERROR] Input file not found: {input_path}")
         return
     
-    # 读取 API 列表
+    # Read API list
     apis = []
     for line in input_path.open():
         line = line.strip()
@@ -57,11 +57,11 @@ def main():
     if args.limit > 0:
         apis = apis[:args.limit]
     
-    print(f"[INFO] 将下载 {len(apis)} 个 API 的文档")
+    print(f"[INFO] Will download docs for {len(apis)} APIs")
     
-    # 下载文档
+    # Download docs
     with output_path.open("w", encoding="utf-8") as fout:
-        for item in tqdm(apis, desc="下载文档"):
+        for item in tqdm(apis, desc="Downloading docs"):
             framework = item.get("framework", "")
             api = item.get("api", "")
             
@@ -88,7 +88,7 @@ def main():
             fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
             fout.flush()
     
-    print(f"\n[DONE] 文档下载完成: {output_path}")
+    print(f"\n[DONE] Doc download complete: {output_path}")
 
 
 if __name__ == "__main__":

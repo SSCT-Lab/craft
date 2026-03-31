@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 4: 基于 LLM 的 TensorFlow 与 MindSpore 算子差分测试框架
+Step 4: LLM-based TensorFlow vs MindSpore operator differential testing framework.
 
-功能：
-- 从 JSON 文件加载 TF 测试用例和 TF→MindSpore 映射
-- 对每对等价算子，执行 TF 和 MindSpore 并比较结果
-- 使用 LLM 进行测试用例修复（repair）、变异（mutation）和跳过（skip）
-- 支持并发测试多个用例（执行阶段用锁串行，避免 BLAS/MKL 并发冲突）
-- 保存详细测试结果和批量日志
+Purpose:
+- Load TF test cases and TF->MindSpore mappings from JSON.
+- For each equivalent operator pair, run TF and MindSpore and compare results.
+- Use LLM to repair, mutate, or skip test cases.
+- Support concurrent testing (serialized execution to avoid BLAS/MKL conflicts).
+- Save detailed test results and batch logs.
 
-用法：
+Usage:
     conda activate tf_env
     python tf_ms_test_1/llm_enhanced_compare.py \
         [--max-iterations 3] [--num-cases 5] [--workers 6] \
@@ -19,7 +19,7 @@ Step 4: 基于 LLM 的 TensorFlow 与 MindSpore 算子差分测试框架
 
 import os
 
-# ==================== 环境变量设置（必须在导入 TensorFlow/MindSpore 前）====================
+# ==================== Environment variables (must be set before importing TensorFlow/MindSpore) ====================
 os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
 os.environ.setdefault("MKL_THREADING_LAYER", "GNU")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
@@ -70,7 +70,7 @@ DEFAULT_MAPPING_FILE = os.path.join(DATA_DIR, "tf_ms_mapping_validated.csv")
 
 
 class LLMEnhancedComparator:
-    """基于 LLM 的 TensorFlow 与 MindSpore 差分测试框架"""
+    """LLM-based TensorFlow vs MindSpore differential testing framework."""
 
     def __init__(
         self,
@@ -88,7 +88,7 @@ class LLMEnhancedComparator:
         self.stats_lock = Lock()
 
         self.problematic_apis = {
-            "tf.nn.conv3d": "已知在部分 CPU/MKL 环境下不稳定",
+            "tf.nn.conv3d": "Known to be unstable on some CPU/MKL setups",
         }
 
         try:
@@ -103,15 +103,15 @@ class LLMEnhancedComparator:
         )
 
         self.test_cases_data = self._load_test_cases(test_cases_file)
-        self._safe_print(f"📋 已加载 {len(self.test_cases_data)} 个 TF API 的测试用例")
+        self._safe_print(f"📋 Loaded {len(self.test_cases_data)} TF API test cases")
 
         self.api_mapping = self._load_mapping(mapping_file)
-        has_impl = sum(1 for value in self.api_mapping.values() if value != "无对应实现")
-        self._safe_print(f"📋 已加载 {len(self.api_mapping)} 个映射（{has_impl} 个有对应实现）")
+        has_impl = sum(1 for value in self.api_mapping.values() if value != "no_implementation")
+        self._safe_print(f"📋 Loaded {len(self.api_mapping)} mappings ({has_impl} with implementation)")
 
         self.result_dir = os.path.join(ROOT_DIR, "tf_ms_test_1", "tf_ms_log_1")
         os.makedirs(self.result_dir, exist_ok=True)
-        self._safe_print(f"📁 结果存储目录: {self.result_dir}")
+        self._safe_print(f"📁 Result directory: {self.result_dir}")
 
         self.random_seed = 42
         np.random.seed(self.random_seed)
@@ -134,12 +134,12 @@ class LLMEnhancedComparator:
         if api_key:
             return api_key
 
-        self._safe_print("❌ 未找到 API 密钥")
+        self._safe_print("❌ API key not found")
         return ""
 
     def _load_test_cases(self, filepath: str) -> Dict[str, Any]:
         if not os.path.exists(filepath):
-            self._safe_print(f"⚠️ 测试用例文件不存在: {filepath}")
+            self._safe_print(f"⚠️ Test case file does not exist: {filepath}")
             return {}
         with open(filepath, "r", encoding="utf-8") as file:
             data = json.load(file)
@@ -147,7 +147,7 @@ class LLMEnhancedComparator:
 
     def _load_mapping(self, filepath: str) -> Dict[str, str]:
         if not os.path.exists(filepath):
-            self._safe_print(f"⚠️ 映射文件不存在: {filepath}")
+            self._safe_print(f"⚠️ Mapping file does not exist: {filepath}")
             return {}
         mapping: Dict[str, str] = {}
         with open(filepath, "r", encoding="utf-8") as file:
@@ -185,10 +185,10 @@ class LLMEnhancedComparator:
     def convert_api_name(self, tf_api: str) -> Tuple[Optional[str], Optional[str], str]:
         if tf_api in self.api_mapping:
             mindspore_api = self.api_mapping[tf_api]
-            if mindspore_api and mindspore_api != "无对应实现":
-                return tf_api, mindspore_api, "映射表"
-            return tf_api, None, "无对应实现"
-        return tf_api, None, "映射表中未找到"
+            if mindspore_api and mindspore_api != "no_implementation":
+                return tf_api, mindspore_api, "mapping_table"
+            return tf_api, None, "no_implementation"
+        return tf_api, None, "not_in_mapping_table"
 
     def generate_numpy_data(self, data: Any) -> np.ndarray:
         if isinstance(data, dict):
@@ -434,22 +434,22 @@ class LLMEnhancedComparator:
             ms_np = self._to_numpy(mindspore_result)
 
             if tf_np.shape != ms_np.shape:
-                return False, f"形状不匹配: TF={tf_np.shape} vs MindSpore={ms_np.shape}"
+                return False, f"Shape mismatch: TF={tf_np.shape} vs MindSpore={ms_np.shape}"
 
             if tf_np.dtype == np.bool_ or ms_np.dtype == np.bool_:
                 match = np.array_equal(tf_np, ms_np)
-                return (True, "布尔结果完全一致") if match else (False, f"布尔结果不一致，差异元素数: {int(np.sum(tf_np != ms_np))}")
+                return (True, "Boolean results match") if match else (False, f"Boolean results differ, mismatched elements: {int(np.sum(tf_np != ms_np))}")
 
             if np.issubdtype(tf_np.dtype, np.str_) or np.issubdtype(ms_np.dtype, np.str_):
-                return (True, "字符串结果完全一致") if np.array_equal(tf_np, ms_np) else (False, "字符串结果不一致")
+                return (True, "String results match") if np.array_equal(tf_np, ms_np) else (False, "String results differ")
 
             if np.allclose(tf_np, ms_np, atol=tolerance, rtol=tolerance, equal_nan=True):
-                return True, "结果一致（在容差范围内）"
+                return True, "Results match (within tolerance)"
 
             max_diff = np.max(np.abs(tf_np.astype(np.float64) - ms_np.astype(np.float64)))
-            return False, f"结果不一致，最大差异: {max_diff:.8f}"
+            return False, f"Results differ, max diff: {max_diff:.8f}"
         except Exception as error:
-            return False, f"比较异常: {str(error)}"
+            return False, f"Comparison error: {str(error)}"
 
     def execute_test_case(
         self,
@@ -488,7 +488,7 @@ class LLMEnhancedComparator:
         try:
             tf_func = self.get_operator_function(tf_api, "tf")
             if tf_func is None:
-                raise AttributeError(f"无法找到 TF API: {tf_api}")
+                raise AttributeError(f"TF API not found: {tf_api}")
 
             if is_class_tf:
                 init_kwargs = {
@@ -523,7 +523,7 @@ class LLMEnhancedComparator:
         try:
             mindspore_func = self.get_operator_function(mindspore_api, "mindspore")
             if mindspore_func is None:
-                raise AttributeError(f"无法找到 MindSpore API: {mindspore_api}")
+                raise AttributeError(f"MindSpore API not found: {mindspore_api}")
 
             if is_class_ms:
                 init_kwargs = {
@@ -665,21 +665,21 @@ class LLMEnhancedComparator:
             raw = get_doc_content(tf_api, "tensorflow")
             if raw and len(raw) >= min_doc_length:
                 tf_doc = raw[:3000]
-                self._safe_print(f"    📄 TF文档: {len(tf_doc)} 字符")
+                self._safe_print(f"    📄 TF docs: {len(tf_doc)} chars")
             else:
-                self._safe_print("    📄 TF文档: 未获取到有效内容")
+                self._safe_print("    📄 TF docs: no valid content")
         except Exception as error:
-            self._safe_print(f"    ⚠️ TF文档爬取失败: {str(error)[:50]}")
+            self._safe_print(f"    ⚠️ TF docs fetch failed: {str(error)[:50]}")
 
         try:
             raw = get_doc_content(mindspore_api, "mindspore")
             if raw and len(raw) >= min_doc_length:
                 mindspore_doc = raw[:3000]
-                self._safe_print(f"    📄 MindSpore文档: {len(mindspore_doc)} 字符")
+                self._safe_print(f"    📄 MindSpore docs: {len(mindspore_doc)} chars")
             else:
-                self._safe_print("    📄 MindSpore文档: 未获取到有效内容")
+                self._safe_print("    📄 MindSpore docs: no valid content")
         except Exception as error:
-            self._safe_print(f"    ⚠️ MindSpore文档爬取失败: {str(error)[:50]}")
+            self._safe_print(f"    ⚠️ MindSpore docs fetch failed: {str(error)[:50]}")
 
         return tf_doc, mindspore_doc
 
@@ -716,74 +716,74 @@ class LLMEnhancedComparator:
         ms_param_str = ",\n".join(ms_param_examples) if ms_param_examples else '    "x": {"shape": [2, 3], "dtype": "float32"}'
 
         doc_section = ""
-        if tf_doc or mindspore_doc:
-            doc_section = "\n## 官方API文档参考\n\n"
-            if tf_doc:
-                doc_section += f"### TensorFlow {tf_api} 文档\n```\n{tf_doc}\n```\n\n"
-            if mindspore_doc:
-                doc_section += f"### MindSpore {mindspore_api} 文档\n```\n{mindspore_doc}\n```\n\n"
+                if tf_doc or mindspore_doc:
+                        doc_section = "\n## Official API Docs Reference\n\n"
+                        if tf_doc:
+                                doc_section += f"### TensorFlow {tf_api} Docs\n```\n{tf_doc}\n```\n\n"
+                        if mindspore_doc:
+                                doc_section += f"### MindSpore {mindspore_api} Docs\n```\n{mindspore_doc}\n```\n\n"
 
-        return f"""请分析以下算子测试用例在 TensorFlow 和 MindSpore 框架中的执行结果，并根据结果进行测试用例的修复或变异（fuzzing）。
+                return f"""Please analyze the execution results of the following operator test case in TensorFlow and MindSpore, and repair or mutate (fuzz) the test case based on the results.
 
-## 测试信息
+## Test Info
 - **TensorFlow API**: {tf_api}
 - **MindSpore API**: {mindspore_api}
 {doc_section}
-## 执行结果
-- **执行状态**: {status}
-- **TensorFlow执行成功**: {tf_success}
-- **MindSpore执行成功**: {mindspore_success}
-- **结果是否一致**: {results_match}
+## Execution Results
+- **Status**: {status}
+- **TensorFlow success**: {tf_success}
+- **MindSpore success**: {mindspore_success}
+- **Results match**: {results_match}
 
-## 错误信息
-- **TensorFlow错误**: {tf_error if tf_error else "无"}
-- **MindSpore错误**: {mindspore_error if mindspore_error else "无"}
-- **比较错误**: {comparison_error if comparison_error else "无"}
+## Error Info
+- **TensorFlow error**: {tf_error if tf_error else "none"}
+- **MindSpore error**: {mindspore_error if mindspore_error else "none"}
+- **Comparison error**: {comparison_error if comparison_error else "none"}
 
-## 原始测试用例
+## Original Test Cases
 
-### TensorFlow测试用例
+### TensorFlow Test Case
 ```json
 {json.dumps(simplified_tf, indent=2, ensure_ascii=False)}
 ```
 
-### MindSpore测试用例
+### MindSpore Test Case
 ```json
 {json.dumps(simplified_ms, indent=2, ensure_ascii=False)}
 ```
 
-## 任务要求
-请根据以上信息（包括官方API文档），自主判断两框架的比较结果是**一致**、**不一致**还是**执行出错**，并执行以下操作：
+## Task Requirements
+Based on the information above (including official docs), decide whether the cross-framework comparison is **consistent**, **inconsistent**, or **execution error**, then perform the following:
 
-1. **如果一致**：对用例进行**变异（fuzzing）**，例如修改输入张量的形状、修改参数值等（可以考虑一些极端值或边界值）
-2. **如果执行出错**：根据报错原因和官方文档对用例进行**修复**（改变参数名称、数量、类型、取值范围等，不同框架可能不完全一样）或者**跳过**（当该算子不存在或者你认为这两个跨框架算子的功能不完全等价时）
-3. **如果不一致**：判断是否为可容忍的精度误差（1e-3及以下）：（1）如果是可容忍精度误差则**变异**；（2）结合算子文档分析后，认为这两个跨框架算子的功能不完全等价时选择**跳过**；（3）如果既不是可容忍精度误差，两个算子功能也等价，那就是测试用例构造问题，请根据算子文档对用例进行**修复**。
+1. **If consistent**: **mutate (fuzz)** the case, e.g., change input shapes or parameter values (consider extreme/boundary values).
+2. **If execution error**: **repair** the case based on error and docs (change parameter names, counts, types, ranges, etc.) or **skip** (if the operator does not exist or the APIs are not truly equivalent).
+3. **If inconsistent**: decide whether it is a tolerable precision error (<= 1e-3). If tolerable, **mutate**; if APIs are not equivalent, **skip**; otherwise treat as a test construction issue and **repair** based on docs.
 
-## 输出格式要求
-请严格按照以下JSON格式输出，不要包含任何其他文字、注释或markdown标记：
+## Output Format
+Return strictly the following JSON format, with no extra text, comments, or markdown:
 
 {{
-  "operation": "mutation",
-  "reason": "进行该操作的详细原因（不超过150字）",
-  "tensorflow_test_case": {{
-    "api": "{tf_api}",
+    "operation": "mutation",
+    "reason": "Detailed reason for the operation (<= 150 words)",
+    "tensorflow_test_case": {{
+        "api": "{tf_api}",
 {tf_param_str}
-  }},
-  "mindspore_test_case": {{
-    "api": "{mindspore_api}",
+    }},
+    "mindspore_test_case": {{
+        "api": "{mindspore_api}",
 {ms_param_str}
-  }}
+    }}
 }}
 
-**重要说明**：
-1. operation的值必须是 "mutation"、"repair" 或 "skip" 之一
-2. 张量参数必须使用 {{"shape": [...], "dtype": "..."}} 格式
-3. 标量参数直接使用数值
-4. 构造两个框架的用例时必须保证输入相同（必要时进行张量形状转换）、参数在语义上严格对应
-5. TensorFlow和MindSpore测试用例可以有参数名差异（如x vs input），参数值差异或参数数量的差异，只要保证理论上输出相同就行
-6. 如果该算子找不到官方文档或已从当前版本移除，请将 operation 设为 "skip"，不需要尝试修复
-7. 测试用例变异时可探索极端情况：空张量、单元素张量、高维张量、不同数据类型、边界值等
-8. MindSpore 中部分算子可能是类（Primitive）调用，也可能是函数调用，修复时需遵守官方文档参数约束
+**Important Notes**:
+1. operation must be one of "mutation", "repair", or "skip".
+2. Tensor parameters must use the {{"shape": [...], "dtype": "..."}} format.
+3. Scalar parameters should be numeric values.
+4. Ensure inputs are equivalent across frameworks (convert shapes if needed) and parameters are semantically aligned.
+5. TensorFlow and MindSpore test cases may use different parameter names (e.g., x vs input) or counts, as long as outputs should match in theory.
+6. If official docs are missing or the operator is removed, set operation to "skip" without attempting repair.
+7. Explore edge cases during mutation: empty tensors, single-element tensors, high-rank tensors, different dtypes, boundary values.
+8. Some MindSpore operators are class-based (Primitive) while others are functions; follow official parameter constraints when repairing.
 """
 
     def call_llm_for_repair_or_mutation(
@@ -801,7 +801,7 @@ class LLMEnhancedComparator:
                 messages=[
                     {
                         "role": "system",
-                        "content": "你是深度学习框架测试专家，精通 TensorFlow 与 MindSpore API 差异。请仅返回严格 JSON。",
+                        "content": "You are a deep learning framework testing expert who knows TensorFlow and MindSpore API differences. Return strict JSON only.",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -813,21 +813,21 @@ class LLMEnhancedComparator:
             try:
                 return json.loads(raw_response)
             except json.JSONDecodeError:
-                self._safe_print("    ⚠️ LLM返回不是有效JSON，尝试提取...")
+                self._safe_print("    ⚠️ LLM response is not valid JSON, attempting to extract...")
                 json_match = re.search(r"\{.*\}", raw_response, re.DOTALL)
                 if json_match:
                     return json.loads(json_match.group())
                 return {
                     "operation": "skip",
-                    "reason": "LLM返回格式错误",
+                    "reason": "LLM returned invalid format",
                     "tensorflow_test_case": tf_test_case,
                     "mindspore_test_case": mindspore_test_case,
                 }
         except Exception as error:
-            self._safe_print(f"    ❌ 调用LLM失败: {error}")
+            self._safe_print(f"    ❌ LLM call failed: {error}")
             return {
                 "operation": "skip",
-                "reason": f"LLM调用失败: {error}",
+                "reason": f"LLM call failed: {error}",
                 "tensorflow_test_case": tf_test_case,
                 "mindspore_test_case": mindspore_test_case,
             }
@@ -840,33 +840,33 @@ class LLMEnhancedComparator:
         num_workers: int = DEFAULT_WORKERS,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
         self._safe_print(f"\n{'=' * 80}")
-        self._safe_print(f"🎯 开始测试算子: {tf_api}")
-        self._safe_print(f"🔄 每个用例最大迭代次数: {max_iterations}")
+        self._safe_print(f"🎯 Start testing operator: {tf_api}")
+        self._safe_print(f"🔄 Max iterations per case: {max_iterations}")
         self._safe_print(f"{'=' * 80}\n")
 
         stats = {"llm_generated_cases": 0, "successful_cases": 0}
 
         if tf_api in self.problematic_apis:
-            self._safe_print(f"⏭️ 跳过 {tf_api}: {self.problematic_apis[tf_api]}")
+            self._safe_print(f"⏭️ Skipping {tf_api}: {self.problematic_apis[tf_api]}")
             return [], stats
 
         _, mindspore_api, mapping_method = self.convert_api_name(tf_api)
         if mindspore_api is None:
-            self._safe_print(f"❌ {tf_api} 无 MindSpore 对应实现")
+            self._safe_print(f"❌ {tf_api} has no MindSpore implementation")
             return [], stats
 
         self._safe_print(f"✅ TensorFlow API: {tf_api}")
         self._safe_print(f"✅ MindSpore API: {mindspore_api}")
-        self._safe_print(f"✅ 映射方法: {mapping_method}")
+        self._safe_print(f"✅ Mapping method: {mapping_method}")
 
         api_data = self.test_cases_data.get(tf_api, {})
         test_cases = api_data.get("test_cases", [])
         if not test_cases:
-            self._safe_print(f"⚠️ 未找到 {tf_api} 的测试用例，使用默认用例")
-            test_cases = [{"description": "默认", "inputs": {"x": {"shape": [2, 3], "dtype": "float32"}}}]
+            self._safe_print(f"⚠️ No test cases found for {tf_api}, using default case")
+            test_cases = [{"description": "default", "inputs": {"x": {"shape": [2, 3], "dtype": "float32"}}}]
 
         num_test_cases = len(test_cases) if num_test_cases is None else min(num_test_cases, len(test_cases))
-        self._safe_print(f"📋 将测试 {num_test_cases} 个用例 (LLM并发={num_workers}, 执行顺序)")
+        self._safe_print(f"📋 Will test {num_test_cases} cases (LLM workers={num_workers}, sequential execution)")
 
         initial_cases = []
         for case_idx in range(num_test_cases):
@@ -879,7 +879,7 @@ class LLMEnhancedComparator:
 
         if num_workers <= 1:
             for case_number, initial_test_case in initial_cases:
-                self._safe_print(f"\n📋 用例 {case_number}/{num_test_cases}")
+                self._safe_print(f"\n📋 Case {case_number}/{num_test_cases}")
                 case_results = self._test_single_case_with_iterations(
                     tf_api, mindspore_api, initial_test_case, max_iterations, case_number, stats
                 )
@@ -904,10 +904,10 @@ class LLMEnhancedComparator:
         all_results.sort(key=lambda item: (item.get("case_number", 0), item.get("iteration", 0)))
 
         self._safe_print(f"\n{'=' * 80}")
-        self._safe_print("✅ 所有测试完成")
-        self._safe_print(f"📊 共测试 {num_test_cases} 个用例，总计 {len(all_results)} 次迭代")
-        self._safe_print(f"📊 LLM生成的测试用例数: {stats['llm_generated_cases']}")
-        self._safe_print(f"📊 两个框架都执行成功的用例数: {stats['successful_cases']}")
+        self._safe_print("✅ All tests completed")
+        self._safe_print(f"📊 Tested {num_test_cases} cases, total {len(all_results)} iterations")
+        self._safe_print(f"📊 LLM-generated test cases: {stats['llm_generated_cases']}")
+        self._safe_print(f"📊 Cases where both frameworks succeeded: {stats['successful_cases']}")
         self._safe_print(f"{'=' * 80}\n")
 
         return all_results, stats
@@ -929,12 +929,12 @@ class LLMEnhancedComparator:
         current_ms_test_case["api"] = mindspore_api
         is_llm_generated = False
 
-        self._safe_print("  📖 预先爬取API文档...")
+        self._safe_print("  📖 Pre-fetching API docs...")
         tf_doc, mindspore_doc = self._fetch_api_docs(tf_api, mindspore_api)
 
         for iteration in range(max_iterations):
-            source_type = "LLM" if is_llm_generated else "文件"
-            self._safe_print(f"  🔄 迭代 {iteration + 1}/{max_iterations} ({source_type})", end="")
+            source_type = "LLM" if is_llm_generated else "file"
+            self._safe_print(f"  🔄 Iteration {iteration + 1}/{max_iterations} ({source_type})", end="")
 
             try:
                 execution_result = self._execute_test_case_sequential(
@@ -946,17 +946,17 @@ class LLMEnhancedComparator:
                 self._safe_print(f" | TF:{tf_status} MS:{ms_status} Match:{match_status}")
 
                 if execution_result["tf_error"] and not execution_result["tf_success"]:
-                    self._safe_print(f"    ❌ TF错误: {str(execution_result['tf_error'])[:120]}...")
+                    self._safe_print(f"    ❌ TF error: {str(execution_result['tf_error'])[:120]}...")
                 if execution_result["mindspore_error"] and not execution_result["mindspore_success"]:
-                    self._safe_print(f"    ❌ MindSpore错误: {str(execution_result['mindspore_error'])[:120]}...")
+                    self._safe_print(f"    ❌ MindSpore error: {str(execution_result['mindspore_error'])[:120]}...")
                 if execution_result["comparison_error"]:
-                    self._safe_print(f"    ⚠️ 比较: {str(execution_result['comparison_error'])[:120]}...")
+                    self._safe_print(f"    ⚠️ Comparison: {str(execution_result['comparison_error'])[:120]}...")
 
                 if is_llm_generated and execution_result["tf_success"] and execution_result["mindspore_success"]:
                     with self.stats_lock:
                         stats["successful_cases"] += 1
             except Exception as error:
-                self._safe_print(f" | ❌ 严重错误: {str(error)[:80]}...")
+                self._safe_print(f" | ❌ Fatal error: {str(error)[:80]}...")
                 execution_result = {
                     "status": "fatal_error",
                     "tf_success": False,
@@ -987,8 +987,8 @@ class LLMEnhancedComparator:
                     mindspore_doc,
                 )
             except Exception as error:
-                self._safe_print(f"    ❌ LLM调用失败: {str(error)[:80]}...")
-                llm_result = {"operation": "skip", "reason": f"LLM调用失败: {str(error)}"}
+                self._safe_print(f"    ❌ LLM call failed: {str(error)[:80]}...")
+                llm_result = {"operation": "skip", "reason": f"LLM call failed: {str(error)}"}
                 iteration_result["llm_operation"] = llm_result
                 case_results.append(iteration_result)
                 break
@@ -1018,7 +1018,7 @@ class LLMEnhancedComparator:
         if case_results:
             last_op = case_results[-1].get("llm_operation", {}).get("operation", "skip")
             if last_op in ("mutation", "repair"):
-                self._safe_print("  🔄 执行最终LLM用例", end="")
+                self._safe_print("  🔄 Executing final LLM case", end="")
                 try:
                     execution_result = self._execute_test_case_sequential(
                         tf_api, mindspore_api, current_tf_test_case, current_ms_test_case
@@ -1038,13 +1038,13 @@ class LLMEnhancedComparator:
                             "tf_test_case": current_tf_test_case,
                             "mindspore_test_case": current_ms_test_case,
                             "execution_result": execution_result,
-                            "llm_operation": {"operation": "final_execution", "reason": "执行最后一次LLM生成的用例"},
+                            "llm_operation": {"operation": "final_execution", "reason": "Execute the last LLM-generated case"},
                             "case_number": case_number,
                             "is_llm_generated": True,
                         }
                     )
                 except Exception as error:
-                    self._safe_print(f" | ❌ 最终用例执行失败: {str(error)[:80]}...")
+                    self._safe_print(f" | ❌ Final case execution failed: {str(error)[:80]}...")
                     case_results.append(
                         {
                             "iteration": len(case_results) + 1,
@@ -1057,13 +1057,13 @@ class LLMEnhancedComparator:
                                 "results_match": False,
                                 "error": str(error),
                             },
-                            "llm_operation": {"operation": "final_execution", "reason": "最终用例执行失败"},
+                            "llm_operation": {"operation": "final_execution", "reason": "Final case execution failed"},
                             "case_number": case_number,
                             "is_llm_generated": True,
                         }
                     )
 
-        self._safe_print(f"  ✅ 用例 {case_number} 完成，共 {len(case_results)} 次迭代")
+        self._safe_print(f"  ✅ Case {case_number} complete, {len(case_results)} iterations")
         return case_results
 
     def _convert_llm_test_cases(
@@ -1121,17 +1121,17 @@ class LLMEnhancedComparator:
 
         with open(filepath, "w", encoding="utf-8") as file:
             json.dump(output_data, file, indent=2, ensure_ascii=False)
-        self._safe_print(f"💾 结果已保存到: {filepath}")
+        self._safe_print(f"💾 Results saved to: {filepath}")
 
     def get_all_testable_apis(self) -> List[str]:
-        return [tf_api for tf_api in sorted(self.test_cases_data.keys()) if self.api_mapping.get(tf_api, "无对应实现") not in ("", "无对应实现")]
+        return [tf_api for tf_api in sorted(self.test_cases_data.keys()) if self.api_mapping.get(tf_api, "no_implementation") not in ("", "no_implementation")]
 
     def close(self):
         pass
 
 
 def main():
-    parser = argparse.ArgumentParser(description="基于LLM的TensorFlow与MindSpore算子差分测试框架")
+    parser = argparse.ArgumentParser(description="LLM-based TensorFlow vs MindSpore differential testing framework")
     parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS)
     parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES)
     parser.add_argument("--start", type=int, default=1)
@@ -1147,12 +1147,12 @@ def main():
     num_workers = max(1, args.workers)
 
     print("=" * 80)
-    print("基于LLM的TensorFlow与MindSpore算子差分测试框架")
+    print("LLM-based TensorFlow vs MindSpore differential testing framework")
     print("=" * 80)
-    print(f"📌 每个算子的迭代次数: {args.max_iterations}")
-    print(f"📌 每个算子的测试用例数: {args.num_cases}")
-    print(f"📌 LLM并发线程数: {num_workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Iterations per operator: {args.max_iterations}")
+    print(f"📌 Test cases per operator: {args.num_cases}")
+    print(f"📌 LLM worker threads: {num_workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMEnhancedComparator(
@@ -1168,41 +1168,41 @@ def main():
 
     try:
         all_testable = comparator.get_all_testable_apis()
-        print(f"\n🔍 可测试的 TF API 总数: {len(all_testable)}")
+        print(f"\n🔍 Total testable TF APIs: {len(all_testable)}")
 
         if args.operators:
             operator_names = args.operators
-            print(f"📋 指定算子数: {len(operator_names)}")
+            print(f"📋 Explicit operators: {len(operator_names)}")
         else:
             start_idx = max(1, args.start) - 1
             end_idx = args.end if args.end is not None else len(all_testable)
             end_idx = min(end_idx, len(all_testable))
             if start_idx >= end_idx:
-                raise ValueError(f"起始索引 {args.start} 必须小于结束索引 {end_idx}")
+                raise ValueError(f"Start index {args.start} must be less than end index {end_idx}")
             operator_names = all_testable[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} 到第 {end_idx} 个算子")
-            print(f"📋 将测试 {len(operator_names)} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} to {end_idx}")
+            print(f"📋 Will test {len(operator_names)} operators")
 
-        print(f"📋 算子列表: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"📋 Operator list: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
 
         all_operators_summary = []
         batch_log_file = os.path.join(comparator.result_dir, f"batch_test_log_{start_datetime.strftime('%Y%m%d_%H%M%S')}.txt")
         log_file = open(batch_log_file, "w", encoding="utf-8")
         log_file.write("=" * 80 + "\n")
-        log_file.write("TF→MindSpore 差分测试批量日志\n")
+        log_file.write("TF->MindSpore differential test batch log\n")
         log_file.write("=" * 80 + "\n")
-        log_file.write(f"开始时间: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log_file.write("测试配置:\n")
-        log_file.write(f"  - 迭代次数: {args.max_iterations}\n")
-        log_file.write(f"  - 用例数: {args.num_cases}\n")
-        log_file.write(f"  - 并发数: {num_workers}\n")
-        log_file.write(f"  - 测试算子数: {len(operator_names)}\n")
+        log_file.write(f"Start time: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write("Test configuration:\n")
+        log_file.write(f"  - Iterations: {args.max_iterations}\n")
+        log_file.write(f"  - Cases: {args.num_cases}\n")
+        log_file.write(f"  - Workers: {num_workers}\n")
+        log_file.write(f"  - Operators: {len(operator_names)}\n")
         log_file.write("=" * 80 + "\n\n")
         log_file.flush()
 
         for idx, tf_api in enumerate(operator_names, 1):
             print("\n" + "🔷" * 40)
-            print(f"🎯 [{idx}/{len(operator_names)}] 开始测试算子: {tf_api}")
+            print(f"🎯 [{idx}/{len(operator_names)}] Start testing operator: {tf_api}")
             print("🔷" * 40)
             try:
                 results, stats = comparator.llm_enhanced_test_operator(
@@ -1225,19 +1225,19 @@ def main():
                         }
                     )
 
-                    print(f"\n✅ {tf_api} 测试完成")
-                    print(f"   - 总迭代次数: {len(results)}")
-                    print(f"   - LLM生成用例数: {stats.get('llm_generated_cases', 0)}")
-                    print(f"   - 成功执行用例数: {stats.get('successful_cases', 0)}")
+                    print(f"\n✅ {tf_api} test completed")
+                    print(f"   - Total iterations: {len(results)}")
+                    print(f"   - LLM-generated cases: {stats.get('llm_generated_cases', 0)}")
+                    print(f"   - Successful cases: {stats.get('successful_cases', 0)}")
 
                     log_file.write(f"[{idx}/{len(operator_names)}] {tf_api}\n")
-                    log_file.write("  状态: ✅ 完成\n")
-                    log_file.write(f"  总迭代次数: {len(results)}\n")
-                    log_file.write(f"  LLM生成用例数: {stats.get('llm_generated_cases', 0)}\n")
-                    log_file.write(f"  成功执行用例数: {stats.get('successful_cases', 0)}\n")
+                    log_file.write("  Status: ✅ completed\n")
+                    log_file.write(f"  Total iterations: {len(results)}\n")
+                    log_file.write(f"  LLM-generated cases: {stats.get('llm_generated_cases', 0)}\n")
+                    log_file.write(f"  Successful cases: {stats.get('successful_cases', 0)}\n")
                     if stats.get("llm_generated_cases", 0) > 0:
                         rate = stats.get("successful_cases", 0) / stats["llm_generated_cases"] * 100
-                        log_file.write(f"  成功率: {rate:.2f}%\n")
+                        log_file.write(f"  Success rate: {rate:.2f}%\n")
                     log_file.write("\n")
                     log_file.flush()
                 else:
@@ -1251,10 +1251,10 @@ def main():
                         }
                     )
                     log_file.write(f"[{idx}/{len(operator_names)}] {tf_api}\n")
-                    log_file.write("  状态: ⚠️ 无结果\n\n")
+                    log_file.write("  Status: ⚠️ no results\n\n")
                     log_file.flush()
             except Exception as error:
-                print(f"\n❌ {tf_api} 测试失败: {error}")
+                print(f"\n❌ {tf_api} test failed: {error}")
                 all_operators_summary.append(
                     {
                         "operator": tf_api,
@@ -1266,7 +1266,7 @@ def main():
                     }
                 )
                 log_file.write(f"[{idx}/{len(operator_names)}] {tf_api}\n")
-                log_file.write(f"  状态: ❌ 失败\n  错误: {str(error)}\n\n")
+                log_file.write(f"  Status: ❌ failed\n  Error: {str(error)}\n\n")
                 log_file.flush()
 
         end_time = time.time()
@@ -1284,37 +1284,37 @@ def main():
         total_iterations = sum(summary["total_iterations"] for summary in all_operators_summary)
 
         print("\n" + "=" * 80)
-        print("📊 批量测试总体摘要")
+        print("📊 Batch test summary")
         print("=" * 80)
-        print(f"总算子数: {len(operator_names)}")
-        print(f"✅ 成功完成: {completed_count}")
-        print(f"❌ 测试失败: {failed_count}")
-        print(f"⚠️ 无结果: {no_results_count}")
-        print("\n📈 统计数据:")
-        print(f"   - LLM生成的测试用例总数: {total_llm_cases}")
-        print(f"   - 成功执行的用例总数: {total_successful}")
+        print(f"Total operators: {len(operator_names)}")
+        print(f"✅ Completed: {completed_count}")
+        print(f"❌ Failed: {failed_count}")
+        print(f"⚠️ No results: {no_results_count}")
+        print("\n📈 Statistics:")
+        print(f"   - LLM-generated test cases: {total_llm_cases}")
+        print(f"   - Successful cases: {total_successful}")
         if total_llm_cases > 0:
-            print(f"   - 成功执行占比: {total_successful / total_llm_cases * 100:.2f}%")
-        print(f"   - 总迭代次数: {total_iterations}")
-        print(f"\n⏱️ 运行时间: {hours}小时 {minutes}分钟 {seconds}秒")
+            print(f"   - Success rate: {total_successful / total_llm_cases * 100:.2f}%")
+        print(f"   - Total iterations: {total_iterations}")
+        print(f"\n⏱️ Runtime: {hours}h {minutes}m {seconds}s")
 
-        log_file.write("=" * 80 + "\n总体统计\n" + "=" * 80 + "\n")
-        log_file.write(f"结束时间: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log_file.write(f"总运行时间: {hours}h {minutes}m {seconds}s ({total_duration:.2f}s)\n\n")
-        log_file.write("算子结果:\n")
-        log_file.write(f"  - 总算子数: {len(operator_names)}\n")
-        log_file.write(f"  - 成功: {completed_count}\n")
-        log_file.write(f"  - 失败: {failed_count}\n")
-        log_file.write(f"  - 无结果: {no_results_count}\n\n")
-        log_file.write("LLM统计:\n")
-        log_file.write(f"  - 生成用例数: {total_llm_cases}\n")
-        log_file.write(f"  - 成功执行数: {total_successful}\n")
+        log_file.write("=" * 80 + "\nOverall summary\n" + "=" * 80 + "\n")
+        log_file.write(f"End time: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write(f"Total runtime: {hours}h {minutes}m {seconds}s ({total_duration:.2f}s)\n\n")
+        log_file.write("Operator results:\n")
+        log_file.write(f"  - Total operators: {len(operator_names)}\n")
+        log_file.write(f"  - Completed: {completed_count}\n")
+        log_file.write(f"  - Failed: {failed_count}\n")
+        log_file.write(f"  - No results: {no_results_count}\n\n")
+        log_file.write("LLM stats:\n")
+        log_file.write(f"  - Generated cases: {total_llm_cases}\n")
+        log_file.write(f"  - Successful cases: {total_successful}\n")
         if total_llm_cases > 0:
-            log_file.write(f"  - 成功率: {total_successful / total_llm_cases * 100:.2f}%\n")
-        log_file.write(f"  - 总迭代次数: {total_iterations}\n")
+            log_file.write(f"  - Success rate: {total_successful / total_llm_cases * 100:.2f}%\n")
+        log_file.write(f"  - Total iterations: {total_iterations}\n")
         log_file.close()
 
-        print(f"\n💾 总日志已保存到: {batch_log_file}")
+        print(f"\n💾 Full log saved to: {batch_log_file}")
 
         summary_file = os.path.join(comparator.result_dir, f"batch_test_summary_{start_datetime.strftime('%Y%m%d_%H%M%S')}.json")
         with open(summary_file, "w", encoding="utf-8") as file:
@@ -1348,10 +1348,10 @@ def main():
                 indent=2,
                 ensure_ascii=False,
             )
-        print(f"💾 JSON摘要已保存到: {summary_file}")
+        print(f"💾 JSON summary saved to: {summary_file}")
     finally:
         comparator.close()
-        print("\n✅ 批量测试程序执行完成")
+        print("\n✅ Batch test run completed")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PyTorch与PaddlePaddle算子比较测试框架
-比较前20个算子在两个框架中的执行结果是否一致
+PyTorch and PaddlePaddle operator comparison test framework.
+Compare whether the first 20 operators execute consistently across both frameworks.
 """
 
 import pymongo
@@ -21,40 +21,40 @@ from collections import defaultdict
 class PyTorchPaddleComparator:
     def __init__(self, mongo_uri: str = "mongodb://localhost:27017/", db_name: str = "freefuzz-torch"):
         """
-        初始化PyTorch和PaddlePaddle比较器
+        Initialize PyTorch and PaddlePaddle comparator.
         
         Args:
-            mongo_uri: MongoDB连接URI
-            db_name: 数据库名称
+            mongo_uri: MongoDB connection URI
+            db_name: Database name
         """
         self.client = pymongo.MongoClient(mongo_uri)
         self.db = self.client[db_name]
         self.collection = self.db["argVS"]
         
-        # 加载API映射表
+        # Load API mapping table
         self.api_mapping = self.load_api_mapping()
         
-        # 创建结果存储目录 - 使用绝对路径
+        # Create result directory (absolute path)
         self.result_dir = os.path.abspath("pt_pd_log")
         os.makedirs(self.result_dir, exist_ok=True)
-        print(f"📁 结果存储目录: {self.result_dir}")
+        print(f"📁 Result directory: {self.result_dir}")
         
-        # 结果统计
+        # Result stats
         self.comparison_results = []
         
-        # 已废弃的PyTorch算子列表
+        # Deprecated PyTorch operator list
         self.deprecated_torch_apis = {
-            "torch.symeig": "已在PyTorch 1.9版本中移除，请使用torch.linalg.eigh替代"
+            "torch.symeig": "Removed in PyTorch 1.9; use torch.linalg.eigh instead"
         }
         
-        # 固定随机种子以确保可重复性
+        # Fixed random seed for reproducibility
         self.random_seed = 42
         np.random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
         paddle.seed(self.random_seed)
         
     def load_api_mapping(self) -> Dict[str, Dict[str, str]]:
-        """加载PyTorch到PaddlePaddle的API映射表"""
+        """Load PyTorch-to-PaddlePaddle API mapping table."""
         mapping_file = "api_mapping/pt_pd_mapping.csv"
         try:
             df = pd.read_csv(mapping_file)
@@ -66,52 +66,52 @@ class PyTorchPaddleComparator:
                 note = str(row.get("说明", "")).strip()
                 mapping[pt_api] = {"pd_api": pd_api, "note": note}
             
-            print(f"✅ 成功加载API映射表，共 {len(mapping)} 条映射")
+            print(f"✅ API mapping table loaded: {len(mapping)} entries")
             return mapping
         except Exception as e:
-            print(f"❌ 加载API映射表失败: {e}")
+            print(f"❌ Failed to load API mapping table: {e}")
             return {}
     
     def is_class_based_api(self, api_name: str) -> bool:
         """
-        判断API是否是基于类的（通过检查是否包含大写字母）
-        例如: torch.nn.Dropout2d, torch.nn.AvgPool2d
+        Determine whether an API is class-based (by checking for uppercase letters).
+        Example: torch.nn.Dropout2d, torch.nn.AvgPool2d
         """
-        # 获取API的最后一部分（函数/类名）
+        # Get the last part of the API (function/class name)
         parts = api_name.split(".")
         if len(parts) >= 2:
             name = parts[-1]
-            # 检查是否包含大写字母（排除首字母）
+            # Check whether it contains uppercase letters
             return any(c.isupper() for c in name)
         return False
     
     def convert_class_to_functional(self, torch_api: str) -> Tuple[Optional[str], Optional[str]]:
         """
-        将类形式的API转换为函数形式
-        例如: torch.nn.Dropout2d -> torch.nn.functional.dropout2d
-              torch.nn.AvgPool2d -> torch.nn.functional.avg_pool2d
-        返回 (torch_functional_api, paddle_functional_api)
+        Convert class-based API to functional API.
+        Example: torch.nn.Dropout2d -> torch.nn.functional.dropout2d
+                 torch.nn.AvgPool2d -> torch.nn.functional.avg_pool2d
+        Returns (torch_functional_api, paddle_functional_api)
         """
         if not self.is_class_based_api(torch_api):
             return None, None
         
         parts = torch_api.split(".")
         if len(parts) >= 3 and parts[1] == "nn":
-            # 获取类名并转换为snake_case
+            # Convert class name to snake_case
             class_name = parts[-1]
             
-            # 将驼峰命名转换为下划线命名
-            # 例如: AvgPool2d -> avg_pool2d, Dropout2d -> dropout2d
-            # 步骤1: 在大写字母前插入下划线（不在开头和数字后）
-            # (?<!^) 表示不在字符串开头
-            # (?<![0-9]) 表示前面不是数字
-            # ([A-Z]) 匹配大写字母
+            # Convert CamelCase to snake_case
+            # Example: AvgPool2d -> avg_pool2d, Dropout2d -> dropout2d
+            # Step 1: insert underscore before uppercase letters (not at start or after digits)
+            # (?<!^) means not at start
+            # (?<![0-9]) means previous is not a digit
+            # ([A-Z]) matches uppercase letters
             func_name = re.sub(r'(?<!^)(?<![0-9])([A-Z])', r'_\1', class_name).lower()
             
-            # 构建torch functional API
+            # Build torch functional API
             torch_func_api = f"torch.nn.functional.{func_name}"
             
-            # 构建paddle functional API（保持全小写，不做大小写转换）
+            # Build paddle functional API (keep lowercase)
             paddle_func_api = f"paddle.nn.functional.{func_name}"
             
             return torch_func_api, paddle_func_api
@@ -120,90 +120,90 @@ class PyTorchPaddleComparator:
     
     def convert_api_name(self, torch_api: str) -> Tuple[Optional[str], str]:
         """
-        将PyTorch API转换为PaddlePaddle API
-        返回 (转换后的API名称, 使用的方法)
+        Convert PyTorch API to PaddlePaddle API.
+        Returns (converted API name, method used)
         """
-        # 0. 检查是否是类形式的API，如果是则转换为函数形式
+        # 0. If class-based, convert to functional
         if self.is_class_based_api(torch_api):
             torch_func, paddle_func = self.convert_class_to_functional(torch_api)
             if torch_func and paddle_func:
-                # 尝试验证函数是否存在
+                # Validate functions exist
                 torch_func_obj = self.get_operator_function(torch_func, "torch")
                 paddle_func_obj = self.get_operator_function(paddle_func, "paddle")
                 if torch_func_obj and paddle_func_obj:
-                    return paddle_func, "类转函数"
+                    return paddle_func, "Class-to-function"
         
-        # 1. 优先查映射表，且功能一致
+        # 1. Check mapping table first
         if torch_api in self.api_mapping:
             note = self.api_mapping[torch_api]["note"]
             pd_api = self.api_mapping[torch_api]["pd_api"]
             
-            # 检查是否有对应实现
+            # Check whether implementation exists
             if "无对应实现" in note:
-                return None, "无对应实现"
+                return None, "No implementation"
             elif "功能一致" in note:
-                return pd_api, "映射表(功能一致)"
+                return pd_api, "Mapping table (equivalent)"
             else:
-                return pd_api, "映射表(有差异)"
+                return pd_api, "Mapping table (differences)"
         
-        # 2. 默认转换规则（不再进行小写转大写的转换）
+        # 2. Default conversion rule (no lowercase-to-uppercase transform)
         api = torch_api.replace("torch", "paddle", 1)
         
-        return api, "名称转换"
+        return api, "Name conversion"
     
     def convert_dtype(self, torch_dtype_str: str) -> str:
-        """将torch的dtype转换为paddle的dtype"""
+        """Convert torch dtype string to paddle dtype string."""
         if isinstance(torch_dtype_str, str):
             if torch_dtype_str.startswith("torch."):
                 return torch_dtype_str.replace("torch.", "paddle.")
         return torch_dtype_str
     
     def convert_key(self, key: str, paddle_api: str = "") -> str:
-        """转换参数名"""
-        # 通用参数映射
+        """Convert parameter name."""
+        # Common parameter mapping
         key_mapping = {
             "input": "x",
             "other": "y",
-            # "n": "num_rows",      # paddle.eye (3.1版本需要，3.2+支持别名)
-            # "m": "num_columns"    # paddle.eye (3.1版本需要，3.2+支持别名)
+            # "n": "num_rows",      # paddle.eye (needed in 3.1, alias supported in 3.2+)
+            # "m": "num_columns"    # paddle.eye (needed in 3.1, alias supported in 3.2+)
         }
         
-        # API特定的参数映射
+        # API-specific mapping
         if paddle_api == "paddle.nn.functional.avg_pool2d":
             if key == "count_include_pad":
-                return "exclusive"  # PaddlePaddle使用exclusive参数
+                return "exclusive"  # PaddlePaddle uses exclusive
         
         return key_mapping.get(key, key)
     
     def should_skip_param(self, key: str, paddle_api: str) -> bool:
-        """判断是否应该跳过某个参数（Paddle不支持或版本不兼容）"""
-        # 通用的不支持参数（大多数API都不支持）
+        """Check whether a parameter should be skipped (unsupported/incompatible)."""
+        # Common unsupported parameters
         common_skip_params = ["layout", "requires_grad", "out"]
         
-        # API特定的不支持参数
+        # API-specific unsupported parameters
         skip_params = {
             "paddle.nn.functional.selu": ["inplace"],
-            "paddle.nn.functional.avg_pool2d": ["divisor_override"],  # PaddlePaddle不支持divisor_override
-            # "paddle.eye": ["device"],  # 某些版本的paddle.eye不支持device参数
+            "paddle.nn.functional.avg_pool2d": ["divisor_override"],  # PaddlePaddle does not support divisor_override
+            # "paddle.eye": ["device"],  # Some versions do not support device
         }
         
-        # 检查通用跳过参数
+        # Check common skip params
         if key in common_skip_params:
             return True
         
-        # 检查API特定跳过参数
+        # Check API-specific skip params
         if paddle_api in skip_params:
             return key in skip_params[paddle_api]
         
         return False
     
     def should_convert_scalar_to_tensor(self, key: str, paddle_api: str, value: Any) -> bool:
-        """判断是否需要将标量转换为张量"""
-        # 如果值不是标量，不需要转换
+        """Check whether a scalar should be converted to tensor."""
+        # If value is not scalar, no conversion
         if not isinstance(value, (int, float)):
             return False
         
-        # 需要将标量转换为张量的API和参数组合
+        # APIs/params requiring scalar -> tensor conversion
         scalar_to_tensor_apis = {
             "paddle.floor_divide": ["other", "y"],
             "paddle.remainder": ["other", "y"],
@@ -218,15 +218,15 @@ class PyTorchPaddleComparator:
         return False
     
     def convert_scalar_to_paddle_tensor(self, value: Any) -> paddle.Tensor:
-        """将标量转换为PaddlePaddle张量"""
+        """Convert scalar to PaddlePaddle tensor."""
         if isinstance(value, (int, float)):
             return paddle.to_tensor(value)
         else:
             return paddle.to_tensor([value])
     
     def get_default_param_value(self, param_name: str, api_name: str) -> Any:
-        """获取参数的默认值"""
-        # API特定的默认参数值
+        """Get default parameter value."""
+        # API-specific default values
         api_defaults = {
             "torch.nn.AvgPool2d": {
                 "ceil_mode": False,
@@ -256,18 +256,18 @@ class PyTorchPaddleComparator:
         return None
     
     def convert_param_for_paddle(self, param_name: str, value: Any, paddle_api: str) -> Any:
-        """为PaddlePaddle转换特殊参数值"""        
-        # 处理布尔值参数名差异
+        """Convert special parameter values for PaddlePaddle."""        
+        # Handle boolean parameter name differences
         if paddle_api == "paddle.nn.functional.avg_pool2d":
-            if param_name == "exclusive":  # 这里param_name已经被convert_key转换过了
-                # PaddlePaddle的exclusive = not count_include_pad
+            if param_name == "exclusive":  # param_name has already been converted by convert_key
+                # PaddlePaddle exclusive = not count_include_pad
                 if isinstance(value, bool):
                     return not value  # exclusive = not count_include_pad
         
         return value
     
     def generate_numpy_data(self, data: Any) -> np.ndarray:
-        """生成numpy数组作为共享数据源，确保PyTorch和PaddlePaddle使用相同的输入"""
+        """Generate numpy array as shared data source for both frameworks."""
         if isinstance(data, dict):
             dtype_map = {
                 "torch.float64": np.float64,
@@ -290,7 +290,7 @@ class PyTorchPaddleComparator:
                 else:
                     return np.random.randn(*shape).astype(dtype)
             else:
-                # 标量
+                # Scalar
                 if dtype == np.bool_:
                     return np.array(True, dtype=np.bool_)
                 elif dtype in [np.int64, np.int32]:
@@ -306,16 +306,16 @@ class PyTorchPaddleComparator:
     
     def convert_to_tensor_torch(self, data: Any, numpy_data: np.ndarray = None) -> torch.Tensor:
         """
-        转换数据为PyTorch张量
-        如果提供numpy_data，则从numpy数组转换，确保与PaddlePaddle使用相同的数据
+        Convert data to PyTorch tensor.
+        If numpy_data is provided, convert from it to keep data consistent with PaddlePaddle.
         """
         if numpy_data is not None:
-            # 从numpy数组转换，确保数据一致性
+            # Convert from numpy to keep data consistent
             return torch.from_numpy(numpy_data.copy())
         
-        # 兼容旧的转换方式（生成新数据）
+            # Compatibility path (generate new data)
         if isinstance(data, dict):
-            # 生成numpy数据，然后转换
+            # Generate numpy data then convert
             numpy_data = self.generate_numpy_data(data)
             return torch.from_numpy(numpy_data.copy())
         elif isinstance(data, (int, float)):
@@ -327,16 +327,16 @@ class PyTorchPaddleComparator:
     
     def convert_to_tensor_paddle(self, data: Any, numpy_data: np.ndarray = None) -> paddle.Tensor:
         """
-        转换数据为PaddlePaddle张量
-        如果提供numpy_data，则从numpy数组转换，确保与PyTorch使用相同的数据
+        Convert data to PaddlePaddle tensor.
+        If numpy_data is provided, convert from it to keep data consistent with PyTorch.
         """
         if numpy_data is not None:
-            # 从numpy数组转换，确保数据一致性
+            # Convert from numpy to keep data consistent
             return paddle.to_tensor(numpy_data.copy())
         
-        # 兼容旧的转换方式（生成新数据）
+            # Compatibility path (generate new data)
         if isinstance(data, dict):
-            # 生成numpy数据，然后转换
+            # Generate numpy data then convert
             numpy_data = self.generate_numpy_data(data)
             return paddle.to_tensor(numpy_data.copy())
         elif isinstance(data, (int, float)):
@@ -348,37 +348,37 @@ class PyTorchPaddleComparator:
     
     def prepare_shared_numpy_data(self, document: Dict[str, Any], case_index: int) -> Dict[str, Any]:
         """
-        准备共享的numpy数据，确保PyTorch和PaddlePaddle使用相同的输入
-        返回一个字典，键为参数名，值为numpy数组
+        Prepare shared numpy data so PyTorch and PaddlePaddle use the same inputs.
+        Returns dict: param name -> numpy array.
         """
         shared_data = {}
         api_name = document.get("api", "")
         
-        # 对于类形式的API（如torch.nn.Dropout2d），如果没有input参数，生成默认输入
+        # For class-based APIs without input, generate default input
         if self.is_class_based_api(api_name) and "input" not in document:
-            # 根据API类型生成合适的默认输入形状
+            # Generate default input shape based on API type
             if "2d" in api_name.lower() or "2D" in api_name:
-                # 2D操作：生成4D张量 (batch, channel, height, width)
+                # 2D op: 4D tensor (batch, channel, height, width)
                 default_shape = {"shape": [2, 3, 4, 4], "dtype": "torch.float32"}
             elif "1d" in api_name.lower() or "1D" in api_name:
-                # 1D操作：生成3D张量 (batch, channel, length)
+                # 1D op: 3D tensor (batch, channel, length)
                 default_shape = {"shape": [2, 3, 10], "dtype": "torch.float32"}
             elif "3d" in api_name.lower() or "3D" in api_name:
-                # 3D操作：生成5D张量 (batch, channel, depth, height, width)
+                # 3D op: 5D tensor (batch, channel, depth, height, width)
                 default_shape = {"shape": [2, 3, 4, 4, 4], "dtype": "torch.float32"}
             else:
-                # 默认：生成2D张量
+                # Default: 2D tensor
                 default_shape = {"shape": [2, 3], "dtype": "torch.float32"}
             
             shared_data["input"] = self.generate_numpy_data(default_shape)
         
-        # 处理*size参数（不需要转换为numpy）
+        # Handle *size param (no numpy conversion needed)
         if "*size" in document:
             size_data = document["*size"]
             if isinstance(size_data, list) and len(size_data) > case_index:
                 shared_data["*size"] = size_data[case_index]
         
-        # 处理*tensors参数
+        # Handle *tensors param
         if "*tensors" in document:
             tensors_data = document["*tensors"]
             if isinstance(tensors_data, list) and len(tensors_data) > case_index:
@@ -388,7 +388,7 @@ class PyTorchPaddleComparator:
                 else:
                     shared_data["*tensors"] = [self.generate_numpy_data(tensor_list)]
         
-        # 处理其他张量参数
+        # Handle other tensor params
         for param_name in ["condition", "x", "y", "input", "other"]:
             if param_name in document:
                 param_data = document[param_name]
@@ -397,10 +397,10 @@ class PyTorchPaddleComparator:
                     if isinstance(param_value, dict):
                         shared_data[param_name] = self.generate_numpy_data(param_value)
                     else:
-                        # 对于标量值，直接存储，后续在prepare_arguments中处理
+                        # For scalars, store directly and handle later in prepare_arguments
                         shared_data[param_name] = param_value
         
-        # 处理其他参数
+        # Handle other params
         exclude_keys = ["_id", "api", "condition", "x", "y", "input", "other", "*size", "*tensors", "tensors", "out", "eigenvectors", "upper"]
         for key, value in document.items():
             if key not in exclude_keys:
@@ -413,7 +413,7 @@ class PyTorchPaddleComparator:
                         else:
                             shared_data[key] = param_value
                     else:
-                        # 处理空列表：使用API特定的默认值
+                        # Handle empty list: use API-specific default
                         default_value = self.get_default_param_value(key, api_name)
                         if default_value is not None:
                             shared_data[key] = default_value
@@ -423,16 +423,16 @@ class PyTorchPaddleComparator:
         return shared_data
     
     def prepare_arguments_torch(self, document: Dict[str, Any], case_index: int, shared_data: Dict[str, Any] = None) -> Tuple[List[Any], Dict[str, Any]]:
-        """为PyTorch准备参数"""
+        """Prepare arguments for PyTorch."""
         args = []
         kwargs = {}
         api_name = document.get("api", "")
         
-        # 如果没有提供共享数据，则生成新的
+        # Generate shared data if not provided
         if shared_data is None:
             shared_data = self.prepare_shared_numpy_data(document, case_index)
         
-        # 处理*size参数
+        # Handle *size param
         if "*size" in shared_data:
             size_value = shared_data["*size"]
             if isinstance(size_value, list):
@@ -445,12 +445,12 @@ class PyTorchPaddleComparator:
             else:
                 args.append(size_value)
         
-        # 处理*tensors参数
+        # Handle *tensors param
         if "*tensors" in shared_data:
             for numpy_tensor in shared_data["*tensors"]:
                 args.append(self.convert_to_tensor_torch(None, numpy_tensor))
         
-        # 处理其他张量参数
+        # Handle other tensor params
         for param_name in ["condition", "x", "y", "input", "other"]:
             if param_name in shared_data:
                 value = shared_data[param_name]
@@ -458,10 +458,10 @@ class PyTorchPaddleComparator:
                     tensor = self.convert_to_tensor_torch(None, value)
                     args.append(tensor)
                 else:
-                    # 对于标量值，PyTorch可以直接使用
+                    # PyTorch can use scalars directly
                     args.append(value)
         
-        # 处理其他参数
+        # Handle other params
         for key, value in shared_data.items():
             if key not in ["*size", "*tensors", "condition", "x", "y", "input", "other"]:
                 if isinstance(value, np.ndarray):
@@ -469,21 +469,21 @@ class PyTorchPaddleComparator:
                 else:
                     kwargs[key] = value
         
-        # 转换dtype和device参数
+        # Convert dtype and device params
         kwargs = self.convert_dtype_device_params_torch(kwargs)
         
         return args, kwargs
     
     def prepare_arguments_paddle(self, document: Dict[str, Any], case_index: int, paddle_api: str, shared_data: Dict[str, Any] = None) -> Tuple[List[Any], Dict[str, Any]]:
-        """为PaddlePaddle准备参数"""
+        """Prepare arguments for PaddlePaddle."""
         args = []
         kwargs = {}
         
-        # 如果没有提供共享数据，则生成新的
+        # Generate shared data if not provided
         if shared_data is None:
             shared_data = self.prepare_shared_numpy_data(document, case_index)
         
-        # 处理*size参数
+        # Handle *size param
         if "*size" in shared_data:
             size_value = shared_data["*size"]
             if isinstance(size_value, list):
@@ -496,12 +496,12 @@ class PyTorchPaddleComparator:
             else:
                 args.append(size_value)
         
-        # 处理*tensors参数
+        # Handle *tensors param
         if "*tensors" in shared_data:
             for numpy_tensor in shared_data["*tensors"]:
                 args.append(self.convert_to_tensor_paddle(None, numpy_tensor))
         
-        # 处理其他张量参数
+        # Handle other tensor params
         for param_name in ["condition", "x", "y", "input", "other"]:
             if param_name in shared_data:
                 value = shared_data[param_name]
@@ -509,41 +509,41 @@ class PyTorchPaddleComparator:
                     tensor = self.convert_to_tensor_paddle(None, value)
                     args.append(tensor)
                 else:
-                    # 对于标量值，检查是否需要转换为张量
+                    # For scalars, check whether conversion is needed
                     if self.should_convert_scalar_to_tensor(param_name, paddle_api, value):
                         tensor = self.convert_scalar_to_paddle_tensor(value)
                         args.append(tensor)
                     else:
                         args.append(value)
         
-        # 处理其他参数
+        # Handle other params
         for key, value in shared_data.items():
             if key not in ["*size", "*tensors", "condition", "x", "y", "input", "other"]:
-                # 检查是否应该跳过该参数（Paddle不支持）
+                # Skip unsupported params
                 if self.should_skip_param(key, paddle_api):
                     continue
                 
-                # 转换参数名
+                # Convert parameter name
                 new_key = self.convert_key(key, paddle_api)
                 if isinstance(value, np.ndarray):
                     kwargs[new_key] = self.convert_to_tensor_paddle(None, value)
                 else:
-                    # 特殊处理：某些PaddlePaddle算子要求所有参数都是张量
+                    # Some PaddlePaddle ops require all params to be tensors
                     if self.should_convert_scalar_to_tensor(key, paddle_api, value):
-                        # 将标量转换为张量
+                        # Convert scalar to tensor
                         kwargs[new_key] = self.convert_scalar_to_paddle_tensor(value)
                     else:
-                        # 处理PaddlePaddle特殊参数值
+                        # Handle PaddlePaddle special param values
                         converted_value = self.convert_param_for_paddle(key, value, paddle_api)
                         kwargs[new_key] = converted_value
         
-        # 转换dtype和device参数
+        # Convert dtype and device params
         kwargs = self.convert_dtype_device_params_paddle(kwargs)
         
         return args, kwargs
     
     def convert_dtype_device_params_torch(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """转换PyTorch的dtype和device参数"""
+        """Convert PyTorch dtype and device params."""
         if "dtype" in kwargs:
             dtype_value = kwargs["dtype"]
             if isinstance(dtype_value, str):
@@ -577,14 +577,14 @@ class PyTorchPaddleComparator:
         return kwargs
     
     def convert_dtype_device_params_paddle(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """转换PaddlePaddle的dtype和device参数"""
+        """Convert PaddlePaddle dtype and device params."""
         if "dtype" in kwargs:
             dtype_value = kwargs["dtype"]
             if isinstance(dtype_value, str):
                 if dtype_value == "torchdtype":
                     kwargs["dtype"] = paddle.float32
                 else:
-                    # 转换torch dtype到paddle dtype
+                    # Convert torch dtype to paddle dtype
                     torch_dtype = dtype_value
                     if torch_dtype.startswith("torch."):
                         paddle_dtype = torch_dtype.replace("torch.", "paddle.")
@@ -606,16 +606,16 @@ class PyTorchPaddleComparator:
                 }
                 kwargs["dtype"] = int_dtype_map.get(dtype_value, paddle.float32)
         
-        # PaddlePaddle使用字符串表示设备
+        # PaddlePaddle uses string device names
         if "device" in kwargs:
             device_str = kwargs["device"]
             if isinstance(device_str, str):
-                kwargs["device"] = device_str  # paddle直接使用字符串
+                kwargs["device"] = device_str  # paddle uses string directly
         
         return kwargs
     
     def get_operator_function(self, api_name: str, framework: str = "torch"):
-        """获取算子函数"""
+        """Get operator function."""
         try:
             parts = api_name.split(".")
             if len(parts) >= 2:
@@ -644,9 +644,9 @@ class PyTorchPaddleComparator:
             return None
     
     def compare_tensors(self, torch_result, paddle_result, tolerance: float = 1e-5) -> Tuple[bool, str]:
-        """比较两个张量是否相等"""
+        """Compare two tensors for equality."""
         try:
-            # 转换为numpy进行比较
+            # Convert to numpy for comparison
             if hasattr(torch_result, 'detach'):
                 torch_np = torch_result.detach().cpu().numpy()
             else:
@@ -657,57 +657,57 @@ class PyTorchPaddleComparator:
             else:
                 paddle_np = np.array(paddle_result)
             
-            # 检查形状
+            # Check shape
             if torch_np.shape != paddle_np.shape:
-                return False, f"形状不匹配: PyTorch {torch_np.shape} vs PaddlePaddle {paddle_np.shape}"
+                return False, f"Shape mismatch: PyTorch {torch_np.shape} vs PaddlePaddle {paddle_np.shape}"
             
-            # 检查dtype是否为布尔类型或其他非数值类型
+            # Check for bool or non-numeric dtypes
             if torch_np.dtype == np.bool_ or paddle_np.dtype == np.bool_:
-                # 对于布尔类型，直接比较
+                # For bools, compare directly
                 if np.array_equal(torch_np, paddle_np):
-                    return True, "布尔值匹配"
+                    return True, "Boolean values match"
                 else:
                     diff_count = np.sum(torch_np != paddle_np)
-                    return False, f"布尔值不匹配，差异数量: {diff_count}"
+                    return False, f"Boolean mismatch, diff count: {diff_count}"
             
-            # 检查是否为对象类型或其他非数值类型
+            # Check for object or non-numeric dtypes
             if not np.issubdtype(torch_np.dtype, np.number) or not np.issubdtype(paddle_np.dtype, np.number):
-                # 对于非数值类型，使用精确比较
+                # For non-numeric, use exact comparison
                 if np.array_equal(torch_np, paddle_np):
-                    return True, "值匹配"
+                    return True, "Values match"
                 else:
-                    return False, f"值不匹配 (dtype: torch={torch_np.dtype}, paddle={paddle_np.dtype})"
+                    return False, f"Value mismatch (dtype: torch={torch_np.dtype}, paddle={paddle_np.dtype})"
             
-            # 检查数值（仅对数值类型）
+            # Check numeric values
             if np.allclose(torch_np, paddle_np, atol=tolerance, rtol=tolerance, equal_nan=True):
-                return True, "数值匹配"
+                return True, "Numeric values match"
             else:
                 max_diff = np.max(np.abs(torch_np - paddle_np))
-                return False, f"数值不匹配，最大差异: {max_diff}"
+                return False, f"Numeric mismatch, max diff: {max_diff}"
         
         except Exception as e:
-            return False, f"比较过程出错: {str(e)}"
+            return False, f"Comparison error: {str(e)}"
     
     def test_single_case(self, document: Dict[str, Any], case_index: int) -> Dict[str, Any]:
-        """测试单个用例"""
+        """Test a single case."""
         torch_api = document.get("api", "unknown")
         test_id = str(document.get("_id", "unknown"))
         
-        # 检查是否是类形式的API，如果是则转换为函数形式
+        # If class-based, convert to functional
         original_torch_api = torch_api
         if self.is_class_based_api(torch_api):
             torch_func, _ = self.convert_class_to_functional(torch_api)
             if torch_func:
-                # 验证函数是否存在
+                # Verify function exists
                 torch_func_obj = self.get_operator_function(torch_func, "torch")
                 if torch_func_obj:
                     torch_api = torch_func
-                    print(f"    🔄 类转函数: {original_torch_api} -> {torch_api}")
+                    print(f"    🔄 Class-to-function: {original_torch_api} -> {torch_api}")
         
         result = {
             "test_id": test_id,
-            "torch_api": original_torch_api,  # 保留原始API名称用于记录
-            "torch_api_used": torch_api,  # 实际使用的API名称
+            "torch_api": original_torch_api,  # Keep original API name for logging
+            "torch_api_used": torch_api,  # Actual API name used
             "case_index": case_index + 1,
             "status": "unknown",
             "paddle_api": None,
@@ -724,14 +724,14 @@ class PyTorchPaddleComparator:
             "paddle_dtype": None
         }
         
-        # 检查是否为已废弃的算子
+        # Check deprecated operators
         if torch_api in self.deprecated_torch_apis:
             result["status"] = "deprecated"
             result["torch_error"] = self.deprecated_torch_apis[torch_api]
-            result["paddle_error"] = "对应PyTorch算子已废弃，跳过测试"
+            result["paddle_error"] = "Corresponding PyTorch operator is deprecated, skipping"
             return result
         
-        # 获取对应的PaddlePaddle API
+        # Get corresponding PaddlePaddle API
         paddle_api, mapping_method = self.convert_api_name(torch_api)
         result["paddle_api"] = paddle_api
         result["mapping_method"] = mapping_method
@@ -740,15 +740,15 @@ class PyTorchPaddleComparator:
             result["status"] = "no_paddle_equivalent"
             return result
         
-        # 生成共享的numpy数据，确保两个框架使用相同的输入
+        # Generate shared numpy data for consistent inputs
         shared_data = self.prepare_shared_numpy_data(document, case_index)
         
-        # 测试PyTorch
+        # Test PyTorch
         torch_result = None
         try:
             torch_func = self.get_operator_function(torch_api, "torch")
             if torch_func is None:
-                result["torch_error"] = f"PyTorch算子 {torch_api} 未找到"
+                result["torch_error"] = f"PyTorch operator {torch_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_torch(document, case_index, shared_data)
                 with torch.no_grad():
@@ -760,21 +760,21 @@ class PyTorchPaddleComparator:
             error_msg = str(e)
             result["torch_error"] = error_msg
             
-            # 检查是否为已废弃函数的错误
+            # Check for deprecated function error
             if "deprecated" in error_msg.lower() or "removed" in error_msg.lower():
                 if torch_api not in self.deprecated_torch_apis:
-                    # 动态添加到废弃列表
-                    self.deprecated_torch_apis[torch_api] = f"运行时发现已废弃: {error_msg[:100]}..."
+                    # Add to deprecated list dynamically
+                    self.deprecated_torch_apis[torch_api] = f"Deprecated at runtime: {error_msg[:100]}..."
                 result["status"] = "deprecated"
-                result["paddle_error"] = "对应PyTorch算子已废弃，跳过测试"
+                result["paddle_error"] = "Corresponding PyTorch operator is deprecated, skipping"
                 return result
         
-        # 测试PaddlePaddle（使用相同的共享数据）
+        # Test PaddlePaddle (use same shared data)
         paddle_result = None
         try:
             paddle_func = self.get_operator_function(paddle_api, "paddle")
             if paddle_func is None:
-                result["paddle_error"] = f"PaddlePaddle算子 {paddle_api} 未找到"
+                result["paddle_error"] = f"PaddlePaddle operator {paddle_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_paddle(document, case_index, paddle_api, shared_data)
                 paddle_result = paddle_func(*args, **kwargs)
@@ -784,7 +784,7 @@ class PyTorchPaddleComparator:
         except Exception as e:
             result["paddle_error"] = str(e)
         
-        # 比较结果
+        # Compare results
         if result["torch_success"] and result["paddle_success"]:
             try:
                 is_match, comparison_msg = self.compare_tensors(torch_result, paddle_result)
@@ -804,7 +804,7 @@ class PyTorchPaddleComparator:
         return result
     
     def get_num_test_cases(self, document: Dict[str, Any]) -> int:
-        """获取文档中的测试用例数量"""
+        """Get test case count in the document."""
         max_len = 0
         for key, value in document.items():
             if key not in ["_id", "api"] and isinstance(value, list):
@@ -812,22 +812,22 @@ class PyTorchPaddleComparator:
         return max_len if max_len > 0 else 1
     
     def compare_first_n_operators(self, n: int = 20) -> List[Dict[str, Any]]:
-        """比较前N个算子"""
-        print(f"🚀 开始PyTorch与PaddlePaddle算子比较测试 (前{n}个算子)...")
-        print(f"📊 连接MongoDB: {self.client.address}")
+        """Compare the first N operators."""
+        print(f"🚀 Starting PyTorch vs PaddlePaddle operator comparison (first {n} operators)...")
+        print(f"📊 Connected to MongoDB: {self.client.address}")
         
-        # 获取前N个文档
+        # Get first N documents
         documents = list(self.collection.find().limit(n))
         
-        print(f"📋 找到 {len(documents)} 个算子:")
+        print(f"📋 Found {len(documents)} operators:")
         total_cases = 0
         for i, doc in enumerate(documents):
             api_name = doc.get("api", "unknown")
             num_cases = self.get_num_test_cases(doc)
             total_cases += num_cases
-            print(f"  {i+1}. {api_name} ({num_cases} 个测试用例)")
+            print(f"  {i+1}. {api_name} ({num_cases} test cases)")
         
-        print(f"\n🎯 总计需要执行: {total_cases} 个测试用例")
+        print(f"\n🎯 Total test cases to run: {total_cases}")
         
         results = []
         current_case = 1
@@ -836,38 +836,38 @@ class PyTorchPaddleComparator:
             api_name = doc.get("api", "unknown")
             num_cases = self.get_num_test_cases(doc)
             
-            print(f"\n🔧 测试算子 {doc_idx+1}/{len(documents)}: {api_name} ({num_cases} 个用例)")
+            print(f"\n🔧 Testing operator {doc_idx+1}/{len(documents)}: {api_name} ({num_cases} cases)")
             
-            # 测试该算子的每个用例
+            # Test each case for this operator
             for case_idx in range(num_cases):
-                print(f"  用例 {current_case}/{total_cases} (算子用例: {case_idx+1}/{num_cases}): {api_name}")
+                print(f"  Case {current_case}/{total_cases} (operator case: {case_idx+1}/{num_cases}): {api_name}")
                 
                 result = self.test_single_case(doc, case_idx)
                 result["operator"] = api_name
                 result["total_cases_for_operator"] = num_cases
                 results.append(result)
                 
-                # 显示结果
+                # Show results
                 if result["status"] == "compared":
                     if result["results_match"]:
-                        print(f"    ✅ 结果一致")
+                        print("    ✅ Results match")
                     else:
-                        print(f"    ❌ 结果不一致: {result['comparison_error']}")
+                        print(f"    ❌ Results mismatch: {result['comparison_error']}")
                 elif result["status"] == "deprecated":
-                    print(f"    ⏭️ 已废弃算子，跳过测试")
+                    print("    ⏭️ Deprecated operator, skipping")
                 elif result["status"] == "no_paddle_equivalent":
-                    print(f"    ⚠️ PaddlePaddle无对应实现")
+                    print("    ⚠️ No PaddlePaddle implementation")
                 else:
-                    print(f"    ❌ 测试失败: {result['status']}")
+                    print(f"    ❌ Test failed: {result['status']}")
                 
                 current_case += 1
         
-        # 统计结果
+        # Summary
         self.print_summary(results)
         return results
     
     def print_summary(self, results: List[Dict[str, Any]]):
-        """打印测试结果摘要"""
+        """Print test result summary."""
         total = len(results)
         compared = len([r for r in results if r["status"] == "compared"])
         matched = len([r for r in results if r["results_match"]])
@@ -876,37 +876,37 @@ class PyTorchPaddleComparator:
         torch_failed = len([r for r in results if r["status"] in ["torch_failed", "both_failed"]])
         paddle_failed = len([r for r in results if r["status"] in ["paddle_failed", "both_failed"]])
         
-        print(f"\n📊 测试结果摘要:")
+        print(f"\n📊 Test summary:")
         print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(f"📈 总测试用例: {total}")
-        print(f"🔍 成功比较: {compared}")
-        print(f"✅ 结果一致: {matched}")
-        print(f"❌ 结果不一致: {compared - matched}")
-        print(f"⏭️ 已废弃算子: {deprecated}")
-        print(f"⚠️ PaddlePaddle无对应实现: {no_paddle}")
-        print(f"🔴 PyTorch执行失败: {torch_failed}")
-        print(f"🟠 PaddlePaddle执行失败: {paddle_failed}")
+        print(f"📈 Total cases: {total}")
+        print(f"🔍 Compared: {compared}")
+        print(f"✅ Matches: {matched}")
+        print(f"❌ Mismatches: {compared - matched}")
+        print(f"⏭️ Deprecated operators: {deprecated}")
+        print(f"⚠️ No PaddlePaddle implementation: {no_paddle}")
+        print(f"🔴 PyTorch failures: {torch_failed}")
+        print(f"🟠 PaddlePaddle failures: {paddle_failed}")
         
         if compared > 0:
             match_rate = matched / compared * 100
-            print(f"📊 一致性比率: {match_rate:.1f}%")
+            print(f"📊 Match rate: {match_rate:.1f}%")
         
-        # 显示已废弃的算子列表
+        # Show deprecated operators
         if deprecated > 0:
             deprecated_apis = set([r["torch_api"] for r in results if r["status"] == "deprecated"])
-            print(f"\n⏭️ 已废弃的算子 ({len(deprecated_apis)} 个):")
+            print(f"\n⏭️ Deprecated operators ({len(deprecated_apis)}):")
             for api in sorted(deprecated_apis):
                 print(f"  - {api}")
     
     def save_results(self, results: List[Dict[str, Any]], filename: str = None):
-        """保存测试结果"""
+        """Save test results."""
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"pt_pd_comparison_{timestamp}.json"
         
         filepath = os.path.join(self.result_dir, filename)
         
-        # 准备摘要
+        # Prepare summary
         total = len(results)
         compared = len([r for r in results if r["status"] == "compared"])
         matched = len([r for r in results if r["results_match"]])
@@ -935,9 +935,9 @@ class PyTorchPaddleComparator:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
         
-        print(f"💾 结果已保存到: {filepath}")
+        print(f"💾 Results saved to: {filepath}")
         
-        # 保存不一致的用例
+        # Save mismatched cases
         mismatched_cases = [r for r in results if r["status"] == "compared" and not r["results_match"]]
         if mismatched_cases:
             mismatch_filename = f"pt_pd_mismatches_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -946,26 +946,26 @@ class PyTorchPaddleComparator:
             with open(mismatch_filepath, 'w', encoding='utf-8') as f:
                 json.dump(mismatched_cases, f, indent=2, ensure_ascii=False)
             
-            print(f"⚠️ 不一致用例已保存到: {mismatch_filepath}")
+            print(f"⚠️ Mismatched cases saved to: {mismatch_filepath}")
     
     def close(self):
-        """关闭MongoDB连接"""
+        """Close MongoDB connection."""
         self.client.close()
 
 def main():
-    """主函数"""
-    # 初始化比较器
+    """Main function."""
+    # Initialize comparator
     comparator = PyTorchPaddleComparator()
     
     try:
-        # 比较前xx个算子
+        # Compare first N operators
         results = comparator.compare_first_n_operators(5)
         
-        # 保存结果
+        # Save results
         comparator.save_results(results)
         
     finally:
-        # 关闭连接
+        # Close connection
         comparator.close()
 
 if __name__ == "__main__":

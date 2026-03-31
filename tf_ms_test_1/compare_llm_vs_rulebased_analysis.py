@@ -16,7 +16,7 @@ def read_jsonl(path: Path) -> List[Dict]:
     records: List[Dict] = []
 
     if not path.exists():
-        print(f"[WARN] 文件不存在，已跳过: {path}")
+        print(f"[WARN] File not found, skipped: {path}")
         return records
 
     with path.open("r", encoding="utf-8-sig") as file_obj:
@@ -29,7 +29,7 @@ def read_jsonl(path: Path) -> List[Dict]:
                 records.append(json.loads(stripped_line))
             except json.JSONDecodeError as error:
                 print(
-                    f"[WARN] JSON 解析失败，已跳过 {path.name}:{line_number}，原因: {error}"
+                    f"[WARN] JSON parse failed, skipped {path.name}:{line_number}, reason: {error}"
                 )
 
     return records
@@ -89,25 +89,25 @@ def print_summary(
     both_fail = total - both_ok - llm_only_ok - rule_only_ok
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"Rule-based 执行成功: {rule_ok} ({rule_rate:.2f}%)")
-    print(f"双成功: {both_ok}")
-    print(f"仅 LLM 成功: {llm_only_ok}")
-    print(f"仅 Rule-based 成功: {rule_only_ok}")
-    print(f"双失败: {both_fail}")
+    print(f"completed cases: {total}")
+    print(f"LLM success: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"Rule-based success: {rule_ok} ({rule_rate:.2f}%)")
+    print(f"Both success: {both_ok}")
+    print(f"LLM only success: {llm_only_ok}")
+    print(f"Rule-based only success: {rule_only_ok}")
+    print(f"Both fail: {both_fail}")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Conclusion: no completed cases, unable to compare")
         return
 
     diff = llm_rate - rule_rate
     if diff > 0:
-        print(f"对比结论：LLM 优于 Rule-based {diff:.2f} 个百分点")
+        print(f"Conclusion: LLM outperforms Rule-based by {diff:.2f} percentage points")
     elif diff < 0:
-        print(f"对比结论：Rule-based 优于 LLM {-diff:.2f} 个百分点")
+        print(f"Conclusion: Rule-based outperforms LLM by {-diff:.2f} percentage points")
     else:
-        print("对比结论：两者持平")
+        print("Conclusion: tied")
 
 
 def collect_default_files(input_dir: Path, latest: int) -> List[Path]:
@@ -122,40 +122,40 @@ def collect_default_files(input_dir: Path, latest: int) -> List[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="分析 tf_ms_test_1 下 LLM vs Rule-based 实时JSONL结果"
+        description="Analyze LLM vs Rule-based realtime JSONL results under tf_ms_test_1"
     )
     parser.add_argument(
         "--files",
         nargs="*",
         default=None,
-        help="指定要分析的 JSONL 文件路径；不指定则自动读取目录中的最新文件",
+        help="Specify JSONL files to analyze; if omitted, use the latest files in the directory",
     )
     parser.add_argument(
         "--input-dir",
         default="tf_ms_test_1",
-        help="实时JSONL所在目录（默认 tf_ms_test_1）",
+        help="Directory containing realtime JSONL (default tf_ms_test_1)",
     )
     parser.add_argument(
         "--latest",
         type=int,
         default=3,
-        help="未指定 --files 时，自动读取最近 N 个文件（默认3，<=0 表示全部）",
+        help="When --files is not set, read the latest N files (default 3, <=0 means all)",
     )
     args = parser.parse_args()
 
     if args.files:
         files = [Path(path) for path in args.files]
     else:
-        # 与 pt_tf_test 对齐：默认分析固定文件；若不存在再回退到目录扫描。
+        # Align with pt_tf_test: analyze fixed files by default; fall back to directory scan if missing.
         files = [path for path in DEFAULT_FILES if path.exists()]
         if not files:
             files = collect_default_files(Path(args.input_dir), args.latest)
 
     if not files:
-        print("[WARN] 未找到可分析的 JSONL 文件")
+            print("[WARN] No JSONL files found to analyze")
         return
 
-    print("将分析以下文件:")
+    print("Will analyze the following files:")
     for file_path in files:
         print(f"- {file_path}")
 

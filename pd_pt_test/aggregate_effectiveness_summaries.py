@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
-聚合多个 effectiveness 目录中的 repair/mutate summary，
-输出两个字段结构保持不变的新 summary 文件。
+Aggregate repair/mutate summaries across multiple effectiveness directories,
+and output a new summary file with the same field structure.
 """
 
 import argparse
@@ -110,12 +110,12 @@ def main() -> None:
         "--source-dirs",
         nargs="+",
         required=True,
-        help="要聚合的 effectiveness 目录列表",
+        help="List of effectiveness directories to aggregate",
     )
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="输出目录，默认在 pd_pt_log_1 下新建 effectiveness_时间戳",
+        help="Output directory; default creates effectiveness_<timestamp> under pd_pt_log_1",
     )
     args = parser.parse_args()
 
@@ -161,3 +161,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,19 +1,19 @@
-"""基于执行结果 jsonl 做批量文档+LLM 分析（不依赖 migrate_comparison.jsonl）
+"""Batch doc+LLM analysis from execution result JSONL (no migrate_comparison.jsonl).
 
-输入：
-- PT 执行结果：dev/results/pt_exec.jsonl
-- TF 执行结果（可选）：
-  - dev/results/tf_core_exec.jsonl
-  - dev/results/tf_fuzz_exec.jsonl
+Inputs:
+- PT execution results: dev/results/pt_exec.jsonl
+- TF execution results (optional):
+    - dev/results/tf_core_exec.jsonl
+    - dev/results/tf_fuzz_exec.jsonl
 
-思路：
-- 先把 TF / PT 执行结果按「逻辑测试名」对齐，例如：
-  - TF: dev/tf_core/tf_core_testBasic.py      -> key: testBasic
-  - PT: dev/pt_migrated/pt_testBasic.py       -> key: testBasic
-  - TF: dev/tf_fuzz/tf_core_testBasic_fuzz_0.py -> key: testBasic_fuzz_0
-  - PT: dev/pt_migrated/pt_testBasic_fuzz_0.py  -> key: testBasic_fuzz_0
-- 然后只遍历 PT 侧的执行结果，按 key 找到对应的 TF 结果（如果有）
-- 按「有问题的 case」过滤后，调用 doc_analyzer.analyze_test_error 做分析
+Approach:
+- Align TF/PT execution results by logical test name, e.g.:
+    - TF: dev/tf_core/tf_core_testBasic.py      -> key: testBasic
+    - PT: dev/pt_migrated/pt_testBasic.py       -> key: testBasic
+    - TF: dev/tf_fuzz/tf_core_testBasic_fuzz_0.py -> key: testBasic_fuzz_0
+    - PT: dev/pt_migrated/pt_testBasic_fuzz_0.py  -> key: testBasic_fuzz_0
+- Iterate PT results and find corresponding TF results by key (if any)
+- Filter "problematic" cases and call doc_analyzer.analyze_test_error
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from component.doc.doc_analyzer import analyze_test_error  # noqa: E402
-from component.doc.batch_analyze_results import build_error_message  # 直接复用现有逻辑
+from component.doc.batch_analyze_results import build_error_message  # reuse existing logic
 
 
 def load_jsonl(path: Path) -> Iterable[Dict]:
@@ -51,7 +51,7 @@ def load_jsonl(path: Path) -> Iterable[Dict]:
 
 
 def make_pt_key(pt_file: str) -> str:
-    """根据 PT 文件名生成逻辑 key，用于和 TF 对齐"""
+    """Generate logical key from PT filename for TF alignment."""
     name = Path(pt_file).stem  # pt_testArgRenames_fuzz_0
     if name.startswith("pt_"):
         name = name[3:]
@@ -59,7 +59,7 @@ def make_pt_key(pt_file: str) -> str:
 
 
 def make_tf_key(tf_file: str) -> str:
-    """根据 TF 文件名生成逻辑 key，用于和 PT 对齐"""
+    """Generate logical key from TF filename for PT alignment."""
     name = Path(tf_file).stem  # tf_core_testArgRenames_fuzz_0 / tf_core_testBasic
     if name.startswith("tf_core_"):
         name = name[len("tf_core_") :]
@@ -69,7 +69,7 @@ def make_tf_key(tf_file: str) -> str:
 def load_tf_maps(
     tf_core_path: Path, tf_fuzz_path: Path
 ) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
-    """加载 TF core / fuzz 执行结果，按 key 索引"""
+    """Load TF core/fuzz execution results, indexed by key."""
     tf_core_map: Dict[str, Dict] = {}
     tf_fuzz_map: Dict[str, Dict] = {}
 
@@ -97,7 +97,7 @@ def build_combined_records(
     tf_core_path: Path,
     tf_fuzz_path: Path,
 ) -> List[Dict]:
-    """把 TF / PT 执行结果拼成统一结构，类似 migrate_comparison.jsonl"""
+    """Combine TF/PT execution results into a unified structure."""
     tf_core_map, tf_fuzz_map = load_tf_maps(tf_core_path, tf_fuzz_path)
     records: List[Dict] = []
 
@@ -106,16 +106,16 @@ def build_combined_records(
         pt_result = rec.get("pt_result") or {}
         key = make_pt_key(pt_file)
 
-        # 优先用 fuzz TF 结果，其次 core
+        # Prefer fuzz TF results, then core
         tf_result = tf_fuzz_map.get(key) or tf_core_map.get(key) or {}
 
         combined = {
-            "file": pt_file,  # 兼容 batch_analyze_results 的字段名
+            "file": pt_file,  # keep field name compatible with batch_analyze_results
             "pt_file": pt_file,
             "test_name": key,
             "pt_result": pt_result,
             "tf_result": tf_result,
-            # 暂时不做细粒度 comparison，交给 LLM 直接看 status + 日志
+            # Skip fine-grained comparison; LLM will inspect status + logs
             "comparison": {
                 "tf_status": tf_result.get("status"),
                 "pt_status": pt_result.get("status"),
@@ -136,9 +136,9 @@ def pick_interesting_cases_exec(
     items: Iterable[Dict],
     limit: int = -1,
 ) -> List[Dict]:
-    """针对 exec 结果的简单筛选策略：
-    - 重点关注 PT 失败 / 错误的 case
-    - 如果 TF 有结果，且 TF/PT status 不一致，也算一类
+    """Simple filtering for exec results:
+    - Focus on PT failures/errors
+    - If TF has results and TF/PT status mismatch, include
     """
     selected: List[Dict] = []
 
@@ -151,11 +151,11 @@ def pick_interesting_cases_exec(
 
         interesting = False
 
-        # 情况 1: PT 非 pass（fail / error / timeout 等）
+        # Case 1: PT not pass (fail / error / timeout, etc.)
         if pt_status not in (None, "pass"):
             interesting = True
 
-        # 情况 2: TF 有结果且 TF/PT 状态不一致
+        # Case 2: TF has results and TF/PT status mismatch
         if tf_status and pt_status and tf_status != pt_status:
             interesting = True
 
@@ -171,44 +171,44 @@ def pick_interesting_cases_exec(
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="基于执行结果(jsonl) + 文档 + LLM 批量分析迁移质量"
+        description="Batch analyze migration quality using exec results (jsonl) + docs + LLM"
     )
     ap.add_argument(
         "--pt-exec",
         default="dev/results/pt_exec.jsonl",
-        help="PyTorch 执行结果文件",
+        help="PyTorch execution result file",
     )
     ap.add_argument(
         "--tf-core-exec",
         default="dev/results/tf_core_exec.jsonl",
-        help="TF core 执行结果文件（可选）",
+        help="TF core execution result file (optional)",
     )
     ap.add_argument(
         "--tf-fuzz-exec",
         default="dev/results/tf_fuzz_exec.jsonl",
-        help="TF fuzz 执行结果文件（可选）",
+        help="TF fuzz execution result file (optional)",
     )
     ap.add_argument(
         "--out-json",
         default="data/analysis/doc_llm_analysis_exec.jsonl",
-        help="每条 case 的详细分析输出(JSONL)",
+        help="Detailed analysis output per case (JSONL)",
     )
     ap.add_argument(
         "--out-md",
         default="reports/doc_llm_summary_exec.md",
-        help="给老板看的 Markdown 总结",
+        help="Markdown summary for stakeholders",
     )
     ap.add_argument(
         "--limit",
         type=int,
         default=50,
-        help="最多分析多少条 case（默认 50 条，-1 表示全部）",
+        help="Max cases to analyze (default 50, -1 for all)",
     )
     ap.add_argument(
         "--workers",
         type=int,
         default=4,
-        help="并发分析的线程数（默认 4，注意速率限制）",
+        help="Worker threads for analysis (default 4, mind rate limits)",
     )
     args = ap.parse_args()
 
@@ -217,7 +217,7 @@ def main() -> None:
     tf_fuzz_exec_path = Path(args.tf_fuzz_exec)
 
     if not pt_exec_path.exists():
-        print(f"[ERROR] PT 执行结果不存在: {pt_exec_path}")
+        print(f"[ERROR] PT execution results not found: {pt_exec_path}")
         return
 
     out_json = Path(args.out_json)
@@ -225,19 +225,19 @@ def main() -> None:
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"[INFO] 读取 PT 执行结果: {pt_exec_path}")
+    print(f"[INFO] Reading PT execution results: {pt_exec_path}")
     combined_records = build_combined_records(
         pt_exec_path, tf_core_exec_path, tf_fuzz_exec_path
     )
-    print(f"[INFO] 总记录数: {len(combined_records)}")
+    print(f"[INFO] Total records: {len(combined_records)}")
 
-    # 如果 limit 为 -1，则不做过滤，直接分析全部 case
+    # If limit is -1, analyze all cases
     if args.limit == -1:
         cases = list(combined_records)
-        print(f"[INFO] 按要求分析全部 {len(cases)} 条 case（不做筛选）")
+        print(f"[INFO] Analyzing all {len(cases)} cases (no filtering)")
     else:
         cases = pick_interesting_cases_exec(combined_records, limit=args.limit)
-        print(f"[INFO] 选中 {len(cases)} 条需要分析的 case（基于失败/不匹配筛选）")
+        print(f"[INFO] Selected {len(cases)} cases to analyze (failure/mismatch filter)")
 
     analyses: List[Dict] = []
 
@@ -285,16 +285,16 @@ def main() -> None:
                 fj.write(json.dumps(analysis_rec, ensure_ascii=False) + "\n")
                 fj.flush()
 
-    # 汇总为 Markdown 报告（复用 batch_analyze_results 的风格）
+    # Summarize as Markdown report (same style as batch_analyze_results)
     lines: List[str] = []
-    lines.append("# 文档 + LLM 执行结果分析总结\n")
-    lines.append(f"- 总记录数: **{len(combined_records)}**")
-    lines.append(f"- 分析条数: **{len(analyses)}**")
-    lines.append(f"- PT 结果文件: `{pt_exec_path}`")
+    lines.append("# Docs + LLM Exec Result Summary\n")
+    lines.append(f"- Total records: **{len(combined_records)}**")
+    lines.append(f"- Analyzed cases: **{len(analyses)}**")
+    lines.append(f"- PT result file: `{pt_exec_path}`")
     if tf_core_exec_path.exists():
-        lines.append(f"- TF core 结果文件: `{tf_core_exec_path}`")
+        lines.append(f"- TF core result file: `{tf_core_exec_path}`")
     if tf_fuzz_exec_path.exists():
-        lines.append(f"- TF fuzz 结果文件: `{tf_fuzz_exec_path}`")
+        lines.append(f"- TF fuzz result file: `{tf_fuzz_exec_path}`")
     lines.append("")
 
     for idx, a in enumerate(analyses, 1):
@@ -304,26 +304,26 @@ def main() -> None:
 
         lines.append(f"## {title}")
         lines.append("")
-        lines.append(f"- **TF 状态**: `{tf_status}`")
-        lines.append(f"- **PT 状态**: `{pt_status}`")
+        lines.append(f"- **TF status**: `{tf_status}`")
+        lines.append(f"- **PT status**: `{pt_status}`")
 
         comp = a.get("comparison") or {}
         if comp:
-            lines.append(f"- **对比结果(match)**: `{comp.get('match')}`")
+            lines.append(f"- **Comparison (match)**: `{comp.get('match')}`")
             notes = comp.get("notes") or []
             if notes:
-                lines.append(f"- **对比备注**: {', '.join(notes)}")
+                lines.append(f"- **Comparison notes**: {', '.join(notes)}")
 
         lines.append("")
-        lines.append("### LLM 分析结论")
+        lines.append("### LLM Analysis")
         lines.append("")
-        analysis_txt = a.get("analysis") or "（无结果，可能是 LLM 调用失败）"
+        analysis_txt = a.get("analysis") or "(No result; LLM call may have failed)"
         lines.append(analysis_txt)
         lines.append("")
 
     out_md.write_text("\n".join(lines), encoding="utf-8")
-    print(f"[DONE] 详细分析已写入: {out_json}")
-    print(f"[DONE] 总结报告已写入: {out_md}")
+    print(f"[DONE] Detailed analysis written to: {out_json}")
+    print(f"[DONE] Summary report written to: {out_md}")
 
 
 if __name__ == "__main__":

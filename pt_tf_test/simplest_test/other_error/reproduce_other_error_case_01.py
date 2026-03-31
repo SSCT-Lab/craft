@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-# Report Error: 布尔值不匹配，差异数量: 3
+# Report Error: boolean mismatch, number of differences: 3
 
 def get_input_data(shape, dtype, sample_values):
     if not shape:

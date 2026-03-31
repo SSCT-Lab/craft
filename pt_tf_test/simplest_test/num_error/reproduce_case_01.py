@@ -1,18 +1,18 @@
-# 该代码文件用于复现并比较 PyTorch 与 TensorFlow 在数值相关 API 上的行为差异（这里是 cholesky_solve）。
-# 流程概览：
-# 1) 按给定 shape/dtype/sample_values 构造输入的 numpy 数据；
-# 2) 将 numpy 数据分别转换为 torch.tensor 与 tf.constant；
-# 3) 调用对应 API（torch.cholesky_solve 与 tf.linalg.cholesky_solve）；
-# 4) 打印结果形状，并在两者都成功返回时计算两者数值差异的最大值。
+# This code file is used to reproduce and compare the behavioral differences between PyTorch and TensorFlow on numerical APIs (here cholesky_solve）。
+# Process overview：
+# 1) as given shape/dtype/sample_values Construct input numpy data；
+# 2) Convert numpy data to torch.tensor and tf.constant；
+# 3) call corresponding API（torch.cholesky_solve and tf.linalg.cholesky_solve）；
+# 4) Print the result shape and calculate the maximum value of the difference between the two values ​​when both are returned successfully.。
 
 import torch
 import tensorflow as tf
 import numpy as np
 
 def get_input_data(shape, dtype, sample_values):
-    # 根据 shape 与 sample_values 生成一个 numpy 数组：
-    # - 如果 shape 为空，则认为是标量，直接使用 sample_values[0]
-    # - 否则将 sample_values 重复/截断以填满指定的形状，再 reshape
+    # Generate a numpy array based on shape and sample_values：
+    # - If shape is empty, it is considered a scalar and is used directly. sample_values[0]
+    # - Otherwise sample_values ​​will be repeated/Truncate to fill the specified shape, then reshape
     if not shape:
         return np.array(sample_values[0], dtype=dtype)
     
@@ -28,11 +28,11 @@ def get_input_data(shape, dtype, sample_values):
 
 def test_torch():
     print("Testing torch API...")
-    # 构造 torch 端的输入参数字典
+    # Construct a dictionary of input parameters on the torch side
     inputs = {}
     
-    # 处理主输入：此处通过检测固定字典是否包含 'input'（始终为 True），
-    # 从中提取 input 的 shape/dtype/sample_values 来构造 torch.tensor
+    # Processing the main input: here by detecting whether the fixed dictionary contains 'input'（always True），
+    # extract input from shape/dtype/sample_values to construct torch.tensor
     if 'input' in {"api": "torch.cholesky_solve", "input": {"shape": [3, 2], "dtype": "float32", "sample_values": [-0.33505409955978394, 0.5129841566085815, 0.33704325556755066, 0.7546667456626892, -0.8685919642448425, -2.908078908920288]}, "input2": {"shape": [3, 3], "dtype": "float32", "sample_values": [-0.30667033791542053, -1.3762863874435425, 0.06743878871202469, 0.3087283968925476, 1.9169071912765503, 0.17984506487846375, -0.5016515254974365, -0.6793695688247681, 0.34692952036857605]}}:
         input_info = {"api": "torch.cholesky_solve", "input": {"shape": [3, 2], "dtype": "float32", "sample_values": [-0.33505409955978394, 0.5129841566085815, 0.33704325556755066, 0.7546667456626892, -0.8685919642448425, -2.908078908920288]}, "input2": {"shape": [3, 3], "dtype": "float32", "sample_values": [-0.30667033791542053, -1.3762863874435425, 0.06743878871202469, 0.3087283968925476, 1.9169071912765503, 0.17984506487846375, -0.5016515254974365, -0.6793695688247681, 0.34692952036857605]}}['input']
         if isinstance(input_info, dict) and 'shape' in input_info:
@@ -45,7 +45,7 @@ def test_torch():
              # Handle scalar or other types if necessary
              pass
              
-    # 处理其他参数（例如 input2 等），如果是带 shape 的字典，就同样转为 torch.tensor
+    # Process other parameters (such as input2, etc.). If it is a dictionary with shape, it will also be converted to torch.tensor
     params = {"api": "torch.cholesky_solve", "input": {"shape": [3, 2], "dtype": "float32", "sample_values": [-0.33505409955978394, 0.5129841566085815, 0.33704325556755066, 0.7546667456626892, -0.8685919642448425, -2.908078908920288]}, "input2": {"shape": [3, 3], "dtype": "float32", "sample_values": [-0.30667033791542053, -1.3762863874435425, 0.06743878871202469, 0.3087283968925476, 1.9169071912765503, 0.17984506487846375, -0.5016515254974365, -0.6793695688247681, 0.34692952036857605]}}
     for k, v in params.items():
         if k == 'api': continue
@@ -60,8 +60,8 @@ def test_torch():
         else:
             inputs[k] = v
 
-    # 调用 torch API（此处使用字符串反射获取函数对象）
-    # 约定：如果存在 'input' 键，通常作为第一个位置参数，其余作为 kwargs
+    # Call the torch API (here using string reflection to get the function object）
+    # Agreement: If exists 'input' key, usually as the first positional argument and the rest as kwargs
     api_name = "torch.cholesky_solve"
     try:
         if '.' in api_name:
@@ -71,7 +71,7 @@ def test_torch():
         else:
             func = eval(api_name)
             
-        # 组装参数：将 inputs['input'] 放到位置参数，其余作为关键字参数
+        # Assembly parameters: will inputs['input'] into positional parameters, and the rest as keyword parameters
         args = []
         kwargs = {}
         
@@ -91,10 +91,10 @@ def test_torch():
 
 def test_tensorflow():
     print("\nTesting TensorFlow API...")
-    # 构造 TensorFlow 端的输入参数字典
+    # Construct a dictionary of input parameters on the TensorFlow side
     inputs = {}
     
-    # 处理所有参数：带 shape 的字典转换为 tf.constant
+    # Handle all arguments: dictionary with shape converted to tf.constant
     params = {"api": "tf.linalg.cholesky_solve", "rhs": {"shape": [3, 2], "dtype": "float32", "sample_values": [-1.0670522451400757, -0.6584956645965576, -0.8646241426467896, 0.727580189704895, 0.7642821073532104, -1.552671194076538]}, "chol": {"shape": [3, 3], "dtype": "float32", "sample_values": [0.20300863683223724, -1.8740577697753906, -0.4296968877315521, 0.5470719933509827, -0.9220492839813232, -0.9780227541923523, 0.15461786091327667, 0.41276776790618896, -2.111048698425293]}}
     for k, v in params.items():
         if k == 'api': continue
@@ -109,7 +109,7 @@ def test_tensorflow():
         else:
             inputs[k] = v
 
-    # 调用 TF API：通过字符串路径逐层 getattr 获取函数对象
+    # Call TF API: Get the function object layer by layer through string path getattr
     api_name = "tf.linalg.cholesky_solve"
     try:
         if '.' in api_name:
@@ -122,8 +122,8 @@ def test_tensorflow():
         else:
             func = eval(api_name)
             
-        # 说明：TF 通常使用命名参数，此处直接以 kwargs 方式调用；
-        # 如果失败，后续会尝试以位置参数方式重试
+        # Note: TF usually uses named parameters, here it is called directly with kwargs.；
+        # If it fails, it will try again with positional parameters.
         
         args = []
         kwargs = {}
@@ -133,7 +133,7 @@ def test_tensorflow():
         return result.numpy()
     except Exception as e:
         print(f"TensorFlow error: {e}")
-        # 兜底：若命名参数方式失败，尝试按位置参数调用
+        # Bottom line: If the named parameter method fails, try calling by positional parameters
         try:
              print("Retrying with positional args...")
              result = func(*inputs.values())
@@ -144,14 +144,14 @@ def test_tensorflow():
              return None
 
 if __name__ == "__main__":
-    # 主入口：分别运行 torch 与 TF 的测试，然后在两者都成功返回时计算差异
+    # Main entry: run the tests of torch and TF separately, and then calculate the difference when both return successfully
     print(f"Reproducing Case 1: torch.cholesky_solve vs tf.linalg.cholesky_solve")
     torch_res = test_torch()
     tf_res = test_tensorflow()
 
     if torch_res is not None and tf_res is not None:
         try:
-            # 数值差异：对两个 numpy 数组做逐元素差的绝对值，并打印最大差异
+            # Numerical difference: do the absolute value of the element-wise difference between two numpy arrays and print the maximum difference
             diff = np.abs(torch_res - tf_res)
             max_diff = np.max(diff)
             print(f"\nMax difference: {max_diff}")

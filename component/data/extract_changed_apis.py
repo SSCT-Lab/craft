@@ -1,11 +1,11 @@
 # ./component/data/extract_changed_apis.py
 """
-从验证日志中提取需要修改的 API 映射：
-1. 原API和验证后API都有具体值但值不同 + 置信度为high
-2. 原API有具体值 + 验证后API为"无对应实现" + 置信度为high
+Extract API mappings that need updates from validation logs:
+1. Original and validated APIs both have values but differ + confidence=high
+2. Original API has a value + validated API is "无对应实现" + confidence=high
 
-支持可选地更新 api_mappings.csv 文件
-支持文档验证功能：验证 TensorFlow API 文档是否存在，不存在则标记为"无对应实现"
+Optionally update api_mappings.csv.
+Supports doc validation: check whether TensorFlow API docs exist; if not, mark as "无对应实现".
 """
 
 import argparse
@@ -15,36 +15,36 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Tuple
 
-# 添加项目根目录到路径
+# Add project root to path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-# 默认日志目录
+# Default log directory
 LOG_DIR = ROOT / "component" / "data" / "llm_logs"
 
-# 默认 CSV 文件路径
+# Default CSV path
 DEFAULT_CSV_PATH = ROOT / "component" / "data" / "api_mappings.csv"
 
 
 def check_tf_doc_exists(tf_api: str) -> Tuple[bool, str]:
     """
-    检查 TensorFlow API 文档是否存在
-    
+    Check whether TensorFlow API documentation exists.
+
     Args:
-        tf_api: TensorFlow API 名称
-        
+        tf_api: TensorFlow API name
+
     Returns:
-        (文档是否存在, 文档内容或错误信息)
+        (doc_exists, doc_content_or_error)
     """
-    # 延迟导入，避免未启用文档验证时的导入开销
+    # Lazy import to avoid overhead when doc validation is off
     from component.doc.doc_crawler_factory import get_doc_content
     
-    # 如果是"无对应实现"，直接返回 True
+    # If it is "无对应实现", return True directly
     if tf_api == "无对应实现":
         return True, "无对应实现"
     
-    # 处理带参数的 API 名称，如 tf.keras.layers.Activation('gelu')
-    # 提取基础 API 名称
+    # Handle API names with parameters, e.g., tf.keras.layers.Activation('gelu')
+    # Extract base API name
     base_api = tf_api.split('(')[0].strip()
     
     try:
@@ -52,24 +52,24 @@ def check_tf_doc_exists(tf_api: str) -> Tuple[bool, str]:
         if doc_content and len(doc_content.strip()) > 300:
             return True, doc_content[:200] + "..."
         else:
-            return False, f"文档为空或太短: {len(doc_content) if doc_content else 0} 字符"
+            return False, f"Doc is empty or too short: {len(doc_content) if doc_content else 0} chars"
     except Exception as e:
-        return False, f"爬取失败: {str(e)}"
+        return False, f"Crawl failed: {str(e)}"
 
 
 def parse_validation_log(log_path: Path) -> List[Dict[str, str]]:
     """
-    解析验证日志文件，提取每条记录的信息
-    
+    Parse validation log file and extract each record.
+
     Returns:
-        包含每条记录信息的字典列表
+        List of dicts with record info
     """
     records: List[Dict[str, str]] = []
     
     with log_path.open("r", encoding="utf-8") as f:
         content = f.read()
     
-    # 按分隔线分割记录
+    # Split records by separator line
     blocks = re.split(r'-{50,}', content)
     
     for block in blocks:
@@ -79,37 +79,37 @@ def parse_validation_log(log_path: Path) -> List[Dict[str, str]]:
         
         record = {}
         
-        # 提取序号
+        # Extract index
         idx_match = re.search(r'序号:\s*(\d+)', block)
         if idx_match:
             record["index"] = idx_match.group(1)
         
-        # 提取 PyTorch API
+        # Extract PyTorch API
         pt_match = re.search(r'PyTorch API:\s*(.+)', block)
         if pt_match:
             record["pytorch_api"] = pt_match.group(1).strip()
         
-        # 提取原 TensorFlow API
+        # Extract original TensorFlow API
         orig_tf_match = re.search(r'原 TensorFlow API:\s*(.+)', block)
         if orig_tf_match:
             record["original_tf_api"] = orig_tf_match.group(1).strip()
         
-        # 提取验证后 TensorFlow API
+        # Extract validated TensorFlow API
         validated_tf_match = re.search(r'验证后 TensorFlow API:\s*(.+)', block)
         if validated_tf_match:
             record["validated_tf_api"] = validated_tf_match.group(1).strip()
         
-        # 提取置信度
+        # Extract confidence
         confidence_match = re.search(r'置信度:\s*(.+)', block)
         if confidence_match:
             record["confidence"] = confidence_match.group(1).strip()
         
-        # 提取是否修改
+        # Extract change flag
         changed_match = re.search(r'是否修改:\s*(.+)', block)
         if changed_match:
             record["changed"] = changed_match.group(1).strip()
         
-        # 提取理由
+        # Extract reason
         reason_match = re.search(r'理由:\s*(.+)', block)
         if reason_match:
             record["reason"] = reason_match.group(1).strip()
@@ -124,35 +124,37 @@ def filter_changed_mappings(
     records: List[Dict[str, str]]
 ) -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
     """
-    筛选出需要修改的记录，分为两类：
-    
-    类型1: 原API和验证后API都有具体值但值不同 + 置信度为high（映射需更新）
-    类型2: 原API有具体值 + 验证后API为"无对应实现" + 置信度为high（原映射错误）
-    
+    Filter records that need updates, split into two types:
+
+    Type 1: original and validated APIs both have values but differ + confidence=high
+            (mapping needs update)
+    Type 2: original has value + validated is "无对应实现" + confidence=high
+            (original mapping is wrong)
+
     Returns:
-        (类型1记录列表, 类型2记录列表)
+        (type1_records, type2_records)
     """
-    type1_records: List[Dict[str, str]] = []  # 映射更新
-    type2_records: List[Dict[str, str]] = []  # 原映射错误
+    type1_records: List[Dict[str, str]] = []  # mapping update
+    type2_records: List[Dict[str, str]] = []  # original mapping wrong
     
     for record in records:
         original_tf = record.get("original_tf_api", "")
         validated_tf = record.get("validated_tf_api", "")
         confidence = record.get("confidence", "")
         
-        # 置信度必须为 high
+        # Confidence must be high
         if confidence.lower() != "high":
             continue
         
-        # 原 API 必须有具体值（不是"无对应实现"）
+        # Original API must have a concrete value (not "无对应实现")
         if original_tf == "无对应实现" or not original_tf:
             continue
         
-        # 类型1: 两者都有具体值但不同
+        # Type 1: both have concrete values but differ
         if validated_tf and validated_tf != "无对应实现" and original_tf != validated_tf:
             type1_records.append(record)
         
-        # 类型2: 验证后为"无对应实现"
+        # Type 2: validated is "无对应实现"
         elif validated_tf == "无对应实现":
             type2_records.append(record)
     
@@ -167,23 +169,23 @@ def update_csv_with_changed_mappings(
     verify_doc: bool = False,
 ) -> Tuple[int, int, int]:
     """
-    根据需要修改的映射更新 CSV 文件
-    
+    Update CSV mappings based on the changed records.
+
     Args:
-        csv_path: 原 CSV 文件路径
-        type1_records: 类型1记录（映射更新）
-        type2_records: 类型2记录（标记为无对应实现）
-        output_path: 输出文件路径（不指定则覆盖原文件）
-        verify_doc: 是否验证 TensorFlow API 文档存在性
-    
+        csv_path: original CSV path
+        type1_records: type 1 records (mapping updates)
+        type2_records: type 2 records (mark as "无对应实现")
+        output_path: output path (overwrite if omitted)
+        verify_doc: whether to validate TensorFlow API docs
+
     Returns:
-        (类型1更新数, 类型2更新数, 文档验证失败转为无对应实现的数量)
+        (type1_update_count, type2_update_count, doc_fallback_count)
     """
     if output_path is None:
         output_path = csv_path
     
-    # 构建更新字典
-    # 类型1: PyTorch API -> (验证后的 TensorFlow API, 原 TensorFlow API)
+    # Build update dicts
+    # Type 1: PyTorch API -> (validated TensorFlow API, original TensorFlow API)
     type1_dict = {}
     for record in type1_records:
         pt_api = record.get("pytorch_api", "")
@@ -192,14 +194,14 @@ def update_csv_with_changed_mappings(
         if pt_api and validated_tf:
             type1_dict[pt_api] = (validated_tf, original_tf)
     
-    # 类型2: PyTorch API -> "无对应实现"
+    # Type 2: PyTorch API -> "无对应实现"
     type2_dict = {}
     for record in type2_records:
         pt_api = record.get("pytorch_api", "")
         if pt_api:
             type2_dict[pt_api] = "无对应实现"
     
-    # 读取原 CSV
+    # Read original CSV
     rows = []
     with csv_path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -207,36 +209,36 @@ def update_csv_with_changed_mappings(
         for row in reader:
             rows.append(row)
     
-    # 更新记录
+    # Apply updates
     type1_count = 0
     type2_count = 0
-    doc_fallback_count = 0  # 文档验证失败转为无对应实现的数量
+    doc_fallback_count = 0  # doc validation fallback count
     
     for row in rows:
         pt_api = row.get("pytorch-api", "")
         old_value = row.get("tensorflow-api", "")
         
-        # 优先检查类型1（映射更新）
+        # Check type 1 first (mapping update)
         if pt_api in type1_dict:
             validated_tf, original_tf = type1_dict[pt_api]
             new_value = validated_tf
             
-            # 如果启用文档验证，检查 validated TensorFlow API 的文档是否存在
+            # If doc validation is enabled, check validated TensorFlow API docs
             if verify_doc:
-                print(f"\n  检查文档: {pt_api}")
-                print(f"    原映射: {original_tf}")
-                print(f"    新映射: {validated_tf}")
+                print(f"\n  Check doc: {pt_api}")
+                print(f"    Original mapping: {original_tf}")
+                print(f"    New mapping: {validated_tf}")
                 
                 doc_exists, doc_info = check_tf_doc_exists(validated_tf)
                 
                 if doc_exists:
-                    print(f"    ✅ 新映射文档存在")
-                    # 使用 validated 值
+                    print(f"    ✅ New mapping doc exists")
+                    # Use validated value
                     new_value = validated_tf
                 else:
-                    print(f"    ❌ 新映射文档不存在: {doc_info}")
-                    print(f"    ⚠️ 标记为无对应实现")
-                    # 文档不存在，标记为"无对应实现"
+                    print(f"    ❌ New mapping doc missing: {doc_info}")
+                    print(f"    ⚠️ Mark as 无对应实现")
+                    # Doc missing; mark as "无对应实现"
                     new_value = "无对应实现"
                     doc_fallback_count += 1
             
@@ -244,19 +246,19 @@ def update_csv_with_changed_mappings(
                 row["tensorflow-api"] = new_value
                 type1_count += 1
                 if new_value == "无对应实现":
-                    print(f"  [类型1-文档不存在] {pt_api}: {old_value} -> 无对应实现")
+                    print(f"  [Type1-Doc missing] {pt_api}: {old_value} -> 无对应实现")
                 else:
-                    print(f"  [类型1-更新映射] {pt_api}: {old_value} -> {new_value}")
+                    print(f"  [Type1-Update mapping] {pt_api}: {old_value} -> {new_value}")
         
-        # 检查类型2（标记为无对应实现）
+        # Check type 2 (mark as "无对应实现")
         elif pt_api in type2_dict:
             new_value = type2_dict[pt_api]
             if old_value != new_value:
                 row["tensorflow-api"] = new_value
                 type2_count += 1
-                print(f"  [类型2-无对应] {pt_api}: {old_value} -> {new_value}")
+                print(f"  [Type2-No mapping] {pt_api}: {old_value} -> {new_value}")
     
-    # 写入更新后的 CSV
+    # Write updated CSV
     with output_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -270,19 +272,19 @@ def format_output(
     type2_records: List[Dict[str, str]],
     verbose: bool = False,
 ) -> str:
-    """格式化输出结果"""
+    """Format output text."""
     lines = []
     
-    # 标题
+    # Title
     lines.append("=" * 70)
-    lines.append("需要修改的 API 映射（高置信度）")
+    lines.append("API mappings to update (high confidence)")
     lines.append("=" * 70)
     lines.append("")
     
-    # 类型1: 映射更新
+    # Type 1: mapping update
     lines.append("-" * 70)
-    lines.append("【类型1】原API和验证后API都有具体值但值不同")
-    lines.append(f"符合条件的记录数: {len(type1_records)}")
+    lines.append("[Type 1] Original and validated APIs both have values but differ")
+    lines.append(f"Records matched: {len(type1_records)}")
     lines.append("-" * 70)
     
     for i, record in enumerate(type1_records, start=1):
@@ -293,19 +295,19 @@ def format_output(
         
         if verbose:
             lines.append(f"{i}. {pt_api}")
-            lines.append(f"   原映射: {original_tf}")
-            lines.append(f"   新映射: {validated_tf}")
-            lines.append(f"   理由: {reason}")
+            lines.append(f"   Original: {original_tf}")
+            lines.append(f"   New: {validated_tf}")
+            lines.append(f"   Reason: {reason}")
             lines.append("")
         else:
             lines.append(f"{i}. {pt_api}: {original_tf} -> {validated_tf}")
     
     lines.append("")
     
-    # 类型2: 原映射错误
+    # Type 2: original mapping wrong
     lines.append("-" * 70)
-    lines.append("【类型2】原API有具体值但验证后为'无对应实现'")
-    lines.append(f"符合条件的记录数: {len(type2_records)}")
+    lines.append("[Type 2] Original has value but validated is '无对应实现'")
+    lines.append(f"Records matched: {len(type2_records)}")
     lines.append("-" * 70)
     
     for i, record in enumerate(type2_records, start=1):
@@ -315,148 +317,148 @@ def format_output(
         
         if verbose:
             lines.append(f"{i}. {pt_api}")
-            lines.append(f"   原映射: {original_tf}")
-            lines.append(f"   新映射: 无对应实现")
-            lines.append(f"   理由: {reason}")
+            lines.append(f"   Original: {original_tf}")
+            lines.append(f"   New: 无对应实现")
+            lines.append(f"   Reason: {reason}")
             lines.append("")
         else:
             lines.append(f"{i}. {pt_api}: {original_tf} -> 无对应实现")
     
     lines.append("")
     
-    # 汇总
+    # Summary
     lines.append("=" * 70)
-    lines.append(f"汇总: 类型1共 {len(type1_records)} 条，类型2共 {len(type2_records)} 条")
-    lines.append(f"总计需修改: {len(type1_records) + len(type2_records)} 条")
+    lines.append(f"Summary: Type 1 = {len(type1_records)}, Type 2 = {len(type2_records)}")
+    lines.append(f"Total to update: {len(type1_records) + len(type2_records)}")
     lines.append("=" * 70)
     
     return "\n".join(lines)
 
 
 def main():
-    """命令行入口"""
+    """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="从验证日志中提取需要修改的 API 映射（高置信度）"
+        description="Extract API mappings to update from validation logs (high confidence)"
     )
     parser.add_argument(
         "--log",
         "-l",
         required=True,
-        help="验证日志文件路径",
+        help="Validation log file path",
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="输出文件路径（不指定则打印到控制台）",
+        help="Output file path (print to stdout if omitted)",
     )
     parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
-        help="显示详细信息（包括原映射、新映射和理由）",
+        help="Show details (original mapping, new mapping, reason)",
     )
     parser.add_argument(
         "--update-csv",
         "-u",
         action="store_true",
-        help="更新 api_mappings.csv 文件中的对应记录",
+        help="Update corresponding records in api_mappings.csv",
     )
     parser.add_argument(
         "--csv-path",
         "-c",
         default=str(DEFAULT_CSV_PATH),
-        help="api_mappings.csv 文件路径（默认为 component/data/api_mappings.csv）",
+        help="api_mappings.csv path (default: component/data/api_mappings.csv)",
     )
     parser.add_argument(
         "--output-csv",
-        help="更新后的 CSV 输出路径（不指定则覆盖原文件）",
+        help="Updated CSV output path (overwrite if omitted)",
     )
     parser.add_argument(
         "--type",
         "-t",
         choices=["all", "1", "2"],
         default="all",
-        help="筛选类型: all=全部, 1=仅类型1(映射更新), 2=仅类型2(无对应实现)",
+        help="Filter type: all=all, 1=type1(mapping update), 2=type2(无对应实现)",
     )
     parser.add_argument(
         "--verify-doc",
         action="store_true",
-        help="启用文档验证：爬取验证 TensorFlow API 文档是否存在，不存在则标记为'无对应实现'",
+        help="Enable doc validation: if TensorFlow API doc is missing, mark as '无对应实现'",
     )
 
     args = parser.parse_args()
 
     log_path = Path(args.log)
     if not log_path.exists():
-        print(f"[ERROR] 日志文件不存在: {log_path}")
+        print(f"[ERROR] Log file does not exist: {log_path}")
         return
 
-    print(f"[INFO] 正在解析日志文件: {log_path}")
+    print(f"[INFO] Parsing log file: {log_path}")
     records = parse_validation_log(log_path)
-    print(f"[INFO] 共解析到 {len(records)} 条记录")
+    print(f"[INFO] Parsed {len(records)} records")
 
-    # 筛选满足条件的记录
+    # Filter matching records
     type1_records, type2_records = filter_changed_mappings(records)
     
-    # 根据 --type 参数过滤
+    # Filter by --type
     if args.type == "1":
         type2_records = []
     elif args.type == "2":
         type1_records = []
     
-    print(f"[INFO] 类型1（映射更新）记录数: {len(type1_records)}")
-    print(f"[INFO] 类型2（无对应实现）记录数: {len(type2_records)}")
+    print(f"[INFO] Type 1 (mapping update) records: {len(type1_records)}")
+    print(f"[INFO] Type 2 (无对应实现) records: {len(type2_records)}")
 
-    # 构建输出内容
+    # Build output content
     output_text = format_output(type1_records, type2_records, args.verbose)
 
-    # 输出结果
+    # Output results
     if args.output:
         output_path = Path(args.output)
         output_path.write_text(output_text, encoding="utf-8")
-        print(f"[SUCCESS] 结果已保存到: {output_path}")
+        print(f"[SUCCESS] Results saved to: {output_path}")
     else:
         print("\n" + output_text)
 
-    # 如果指定了 --update-csv，则更新 CSV 文件
+    # If --update-csv is specified, update CSV
     if args.update_csv:
         csv_path = Path(args.csv_path)
         if not csv_path.exists():
-            print(f"[ERROR] CSV 文件不存在: {csv_path}")
+            print(f"[ERROR] CSV file does not exist: {csv_path}")
             return
         
-        print(f"\n[INFO] 正在更新 CSV 文件: {csv_path}")
+        print(f"\n[INFO] Updating CSV: {csv_path}")
         output_csv_path = Path(args.output_csv) if args.output_csv else None
         if output_csv_path:
-            print(f"[INFO] 输出到新文件: {output_csv_path}")
+            print(f"[INFO] Writing to new file: {output_csv_path}")
         
         if args.verify_doc:
-            print(f"[INFO] 已启用文档验证，将爬取 TensorFlow API 文档进行验证")
+            print("[INFO] Doc validation enabled; will crawl TensorFlow API docs")
         
         type1_count, type2_count, doc_fallback_count = update_csv_with_changed_mappings(
             csv_path, type1_records, type2_records, output_csv_path, args.verify_doc
         )
         
         total_updated = type1_count + type2_count
-        print(f"\n[SUCCESS] 已更新 {total_updated} 条记录")
-        print(f"  - 类型1（映射更新）: {type1_count} 条")
-        print(f"  - 类型2（无对应实现）: {type2_count} 条")
+        print(f"\n[SUCCESS] Updated {total_updated} records")
+        print(f"  - Type 1 (mapping update): {type1_count}")
+        print(f"  - Type 2 (无对应实现): {type2_count}")
         
         if args.verify_doc and doc_fallback_count > 0:
-            print(f"  - 其中因文档不存在转为'无对应实现': {doc_fallback_count} 条")
+            print(f"  - Converted to '无对应实现' due to missing docs: {doc_fallback_count}")
 
-    # 额外打印纯 API 名称列表（方便复制）
+    # Print plain API name list (easy to copy)
     print("\n" + "=" * 70)
-    print("【PyTorch API 名称列表（纯文本）】")
+    print("[PyTorch API Name List (Plain Text)]")
     print("=" * 70)
     
     if type1_records:
-        print("\n--- 类型1: 映射更新 ---")
+        print("\n--- Type 1: mapping update ---")
         for record in type1_records:
             print(record.get("pytorch_api", ""))
     
     if type2_records:
-        print("\n--- 类型2: 无对应实现 ---")
+        print("\n--- Type 2: 无对应实现 ---")
         for record in type2_records:
             print(record.get("pytorch_api", ""))
 

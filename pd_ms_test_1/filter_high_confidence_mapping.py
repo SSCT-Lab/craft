@@ -1,14 +1,14 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 3.5a: 筛选置信度为 high 的映射记录（PD→MS）
+Step 3.5a: Filter mapping records with high confidence (PD->MS)
 
-功能：
-- 读取 PD→MS 映射 CSV
-- 仅保留 confidence == "high" 的记录
-- 输出新的 CSV
+Function:
+- Read PD->MS mapping CSV
+- Keep only records with confidence == "high"
+- Write a new CSV
 
-用法：
+Usage:
     conda activate tf_env
     python pd_ms_test_1/filter_high_confidence_mapping.py \
         --input pd_ms_test_1/data/pd_ms_mapping.csv \
@@ -44,19 +44,19 @@ def save_csv_rows(path: str, rows: List[Dict[str, str]], fieldnames: List[str]) 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="筛选置信度为 high 的 PD→MS 映射记录")
-    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="输入映射 CSV 路径")
-    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="输出筛选后 CSV 路径")
+    parser = argparse.ArgumentParser(description="Filter PD->MS mappings with high confidence")
+    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="Input mapping CSV path")
+    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="Output filtered CSV path")
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: header is empty")
         return
 
     filtered = [row for row in rows if (row.get("confidence", "").strip().lower() == "high")]
@@ -64,12 +64,13 @@ def main() -> None:
     save_csv_rows(args.output, filtered, fieldnames)
 
     print("=" * 80)
-    print("筛选完成（PD→MS）")
+    print("Filtering completed (PD->MS)")
     print("=" * 80)
-    print(f"原始行数: {len(rows)}")
-    print(f"保留行数: {len(filtered)}")
-    print(f"输出文件: {args.output}")
+    print(f"Original rows: {len(rows)}")
+    print(f"Kept rows: {len(filtered)}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":
     main()
+

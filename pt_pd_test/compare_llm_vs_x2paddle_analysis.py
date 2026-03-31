@@ -30,24 +30,24 @@ def print_summary(name: str, total: int, llm_ok: int, x2p_ok: int):
     x2p_rate = rate(x2p_ok, total)
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"X2Paddle 执行成功: {x2p_ok} ({x2p_rate:.2f}%)")
+    print(f"completed cases: {total}")
+    print(f"LLM success: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"X2Paddle success: {x2p_ok} ({x2p_rate:.2f}%)")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Conclusion: no completed cases, cannot compare")
     else:
         diff = llm_rate - x2p_rate
         if diff > 0:
-            print(f"对比结论：LLM 优于 X2Paddle {diff:.2f} 个百分点")
+            print(f"Conclusion: LLM outperforms X2Paddle by {diff:.2f} percentage points")
         elif diff < 0:
-            print(f"对比结论：X2Paddle 优于 LLM {-diff:.2f} 个百分点")
+            print(f"Conclusion: X2Paddle outperforms LLM by {-diff:.2f} percentage points")
         else:
-            print("对比结论：两者持平")
+            print("Conclusion: both are tied")
 
 
 def main():
-    # 修改为你的四个日志路径
+    # Update these to your log file paths
     files = [
         r"D:\graduate\DFrameworkTest\pt_pd_test\llm_vs_x2paddle_realtime_20260206_200933.jsonl",
         r"D:\graduate\DFrameworkTest\pt_pd_test\llm_vs_x2paddle_realtime_20260206_202914.jsonl",

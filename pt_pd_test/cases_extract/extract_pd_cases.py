@@ -130,9 +130,9 @@ def parse_report(file_path):
     for section in file_sections:
         if not section.strip():
             continue
-        cases = re.split(r'样例 \d+:', section)
+        cases = re.split(r'Sample \d+:', section)
         for case in cases:
-            if 'comparison_error: 数值不匹配' not in case:
+            if 'comparison_error: values do not match' not in case:
                 continue
             try:
                 torch_match = re.search(r'torch_test_case:\s*({.*?})\s*paddle_test_case:', case, re.DOTALL)

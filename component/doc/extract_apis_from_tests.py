@@ -1,9 +1,9 @@
-"""从所有测试文件中提取 TF/PT API，用于批量下载文档
+"""Extract TF/PT APIs from all test files for batch doc downloads.
 
-从以下位置提取 API：
-1. dev/tf_core/*.py - TF core 测试
-2. dev/tf_fuzz/*.py - TF fuzzing 测试
-3. dev/pt_migrated/*.py - PT 迁移测试
+Extract APIs from:
+1. dev/tf_core/*.py - TF core tests
+2. dev/tf_fuzz/*.py - TF fuzzing tests
+3. dev/pt_migrated/*.py - PT migrated tests
 """
 import re
 import json
@@ -19,43 +19,43 @@ if str(ROOT) not in sys.path:
 
 
 def extract_apis_from_file(file_path: Path) -> tuple[Set[str], Set[str]]:
-    """从文件中提取 TF 和 PT API"""
+    """Extract TF and PT APIs from a file."""
     try:
         content = file_path.read_text(encoding='utf-8', errors='ignore')
         
-        # 提取 TF API (tf.xxx)
+        # Extract TF APIs (tf.xxx)
         tf_apis = set(re.findall(r'tf\.\w+(?:\.\w+)*', content))
         
-        # 提取 PT API (torch.xxx)
+        # Extract PT APIs (torch.xxx)
         pt_apis = set(re.findall(r'torch\.\w+(?:\.\w+)*', content))
         
         return tf_apis, pt_apis
     except Exception as e:
-        print(f"[WARN] 读取 {file_path} 失败: {e}")
+        print(f"[WARN] Failed to read {file_path}: {e}")
         return set(), set()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="从测试文件中提取所有 API")
+    parser = argparse.ArgumentParser(description="Extract all APIs from test files")
     parser.add_argument(
         "--output",
         default="data/analysis/test_apis.jsonl",
-        help="输出 JSONL 文件路径"
+        help="Output JSONL file path"
     )
     parser.add_argument(
         "--tf-core-dir",
         default="dev/tf_core",
-        help="TF core 测试目录"
+        help="TF core test directory"
     )
     parser.add_argument(
         "--tf-fuzz-dir",
         default="dev/tf_fuzz",
-        help="TF fuzzing 测试目录"
+        help="TF fuzzing test directory"
     )
     parser.add_argument(
         "--pt-migrated-dir",
         default="dev/pt_migrated",
-        help="PT 迁移测试目录"
+        help="PT migrated test directory"
     )
     args = parser.parse_args()
     
@@ -69,50 +69,50 @@ def main():
     all_tf_apis: Set[str] = set()
     all_pt_apis: Set[str] = set()
     
-    # 从 TF core 测试提取
+    # Extract from TF core tests
     if tf_core_dir.exists():
-        print(f"[INFO] 扫描 {tf_core_dir} ...")
+        print(f"[INFO] Scanning {tf_core_dir} ...")
         for f in tqdm(list(tf_core_dir.glob("*.py")), desc="TF core"):
             tf_apis, pt_apis = extract_apis_from_file(f)
             all_tf_apis.update(tf_apis)
             all_pt_apis.update(pt_apis)
     
-    # 从 TF fuzzing 测试提取
+    # Extract from TF fuzzing tests
     if tf_fuzz_dir.exists():
-        print(f"[INFO] 扫描 {tf_fuzz_dir} ...")
+        print(f"[INFO] Scanning {tf_fuzz_dir} ...")
         for f in tqdm(list(tf_fuzz_dir.glob("*.py")), desc="TF fuzz"):
             tf_apis, pt_apis = extract_apis_from_file(f)
             all_tf_apis.update(tf_apis)
             all_pt_apis.update(pt_apis)
     
-    # 从 PT 迁移测试提取
+    # Extract from PT migrated tests
     if pt_migrated_dir.exists():
-        print(f"[INFO] 扫描 {pt_migrated_dir} ...")
+        print(f"[INFO] Scanning {pt_migrated_dir} ...")
         for f in tqdm(list(pt_migrated_dir.glob("*.py")), desc="PT migrated"):
             tf_apis, pt_apis = extract_apis_from_file(f)
             all_tf_apis.update(tf_apis)
             all_pt_apis.update(pt_apis)
     
-    # 写入输出文件
+    # Write output file
     with output_path.open("w", encoding="utf-8") as fout:
-        # 写入 TF APIs
+        # Write TF APIs
         for api in sorted(all_tf_apis):
             fout.write(json.dumps({
                 "framework": "tensorflow",
                 "api": api
             }, ensure_ascii=False) + "\n")
         
-        # 写入 PT APIs
+        # Write PT APIs
         for api in sorted(all_pt_apis):
             fout.write(json.dumps({
                 "framework": "pytorch",
                 "api": api
             }, ensure_ascii=False) + "\n")
     
-    print(f"\n[DONE] 提取完成:")
+    print("\n[DONE] Extraction complete:")
     print(f"  - TF APIs: {len(all_tf_apis)}")
     print(f"  - PT APIs: {len(all_pt_apis)}")
-    print(f"  - 输出文件: {output_path}")
+    print(f"  - Output file: {output_path}")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,7 @@
 """
 LLM repair/mutation effectiveness validation for PyTorch vs TensorFlow.
 
-实验目标：
-1) 对初始执行失败用例，统计最小修复轮数；修复成功后继续变异并统计可执行性保持情况。
-2) 对初始执行成功用例，执行变异并统计各轮可执行性保持情况。
-
-输出四个日志：
+Experimental goals: 1) For use cases that fail in initial execution, count the minimum number of repair rounds; after successful repair, continue to mutate and count the executability maintenance status. 2) For initial successfully executed use cases, perform mutations and count the executability maintenance status of each round.  Output four logs：
 - repair_detail_realtime.json
 - repair_stats_summary.json
 - mutate_detail_realtime.json
@@ -97,7 +93,7 @@ class LLMEffValidator(LLMEnhancedComparator):
         self._safe_print(f"Result dir: {self.result_dir}")
 
     def _fetch_api_docs(self, torch_api: str, tensorflow_api: str) -> Tuple[str, str]:
-        """静默爬取文档，避免在控制台输出冗余信息。"""
+        """Silently crawl documents to avoid outputting redundant information on the console。"""
         min_doc_length = 300
         torch_doc = ""
         tensorflow_doc = ""

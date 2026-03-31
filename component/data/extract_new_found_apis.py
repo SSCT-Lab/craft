@@ -1,5 +1,5 @@
 # ./component/data/extract_new_found_apis.py
-"""从验证日志中提取新发现的高置信度 API 映射（原来值为“无对应实现”），并可选择更新 CSV 文件"""
+"""Extract newly found high-confidence API mappings and optionally update CSV."""
 
 import argparse
 import csv
@@ -7,29 +7,28 @@ import re
 from pathlib import Path
 from typing import List, Dict
 
-# 添加项目根目录到路径
+# Add project root to path
 ROOT = Path(__file__).resolve().parents[2]
 
-# 默认日志目录
+# Default log directory
 LOG_DIR = ROOT / "component" / "data" / "llm_logs"
 
-# 默认 CSV 文件路径
+# Default CSV path
 DEFAULT_CSV_PATH = ROOT / "component" / "data" / "api_mappings.csv"
 
 
 def parse_validation_log(log_path: Path) -> List[Dict[str, str]]:
-    """
-    解析验证日志文件，提取每条记录的信息
-    
+    """Parse validation log file and extract record info.
+
     Returns:
-        包含每条记录信息的字典列表
+        List of dicts with record info
     """
     records: List[Dict[str, str]] = []
     
     with log_path.open("r", encoding="utf-8") as f:
         content = f.read()
     
-    # 按分隔线分割记录
+    # Split records by separator line
     blocks = re.split(r'-{50,}', content)
     
     for block in blocks:
@@ -39,37 +38,37 @@ def parse_validation_log(log_path: Path) -> List[Dict[str, str]]:
         
         record = {}
         
-        # 提取序号
+        # Extract index
         idx_match = re.search(r'序号:\s*(\d+)', block)
         if idx_match:
             record["index"] = idx_match.group(1)
         
-        # 提取 PyTorch API
+        # Extract PyTorch API
         pt_match = re.search(r'PyTorch API:\s*(.+)', block)
         if pt_match:
             record["pytorch_api"] = pt_match.group(1).strip()
         
-        # 提取原 TensorFlow API
+        # Extract original TensorFlow API
         orig_tf_match = re.search(r'原 TensorFlow API:\s*(.+)', block)
         if orig_tf_match:
             record["original_tf_api"] = orig_tf_match.group(1).strip()
         
-        # 提取验证后 TensorFlow API
+        # Extract validated TensorFlow API
         validated_tf_match = re.search(r'验证后 TensorFlow API:\s*(.+)', block)
         if validated_tf_match:
             record["validated_tf_api"] = validated_tf_match.group(1).strip()
         
-        # 提取置信度
+        # Extract confidence
         confidence_match = re.search(r'置信度:\s*(.+)', block)
         if confidence_match:
             record["confidence"] = confidence_match.group(1).strip()
         
-        # 提取是否修改
+        # Extract change flag
         changed_match = re.search(r'是否修改:\s*(.+)', block)
         if changed_match:
             record["changed"] = changed_match.group(1).strip()
         
-        # 提取理由
+        # Extract reason
         reason_match = re.search(r'理由:\s*(.+)', block)
         if reason_match:
             record["reason"] = reason_match.group(1).strip()
@@ -81,11 +80,10 @@ def parse_validation_log(log_path: Path) -> List[Dict[str, str]]:
 
 
 def filter_new_found_high_confidence(records: List[Dict[str, str]]) -> List[Dict[str, str]]:
-    """
-    筛选出满足条件的记录：
-    1. 原 TensorFlow API 是 "无对应实现"
-    2. 验证后 TensorFlow API 有具体值（不是"无对应实现"）
-    3. 置信度为 high
+    """Filter records that meet:
+    1) original TensorFlow API is "无对应实现"
+    2) validated TensorFlow API has a concrete value (not "无对应实现")
+    3) confidence is high
     """
     filtered = []
     for record in records:
@@ -93,15 +91,15 @@ def filter_new_found_high_confidence(records: List[Dict[str, str]]) -> List[Dict
         validated_tf = record.get("validated_tf_api", "")
         confidence = record.get("confidence", "")
         
-        # 条件1: 原 API 是"无对应实现"
+        # Condition 1: original is "无对应实现"
         if original_tf != "无对应实现":
             continue
-        
-        # 条件2: 验证后有具体 API（不是"无对应实现"）
+
+        # Condition 2: validated has concrete value
         if validated_tf == "无对应实现" or not validated_tf:
             continue
-        
-        # 条件3: 置信度为 high
+
+        # Condition 3: confidence is high
         if confidence.lower() != "high":
             continue
         
@@ -115,21 +113,20 @@ def update_csv_with_new_mappings(
     new_mappings: List[Dict[str, str]],
     output_path: Path = None,
 ) -> int:
-    """
-    根据新发现的映射更新 CSV 文件
-    
+    """Update CSV with newly found mappings.
+
     Args:
-        csv_path: 原 CSV 文件路径
-        new_mappings: 新发现的映射列表
-        output_path: 输出文件路径（不指定则覆盖原文件）
-    
+        csv_path: original CSV path
+        new_mappings: list of new mappings
+        output_path: output path (overwrite original if None)
+
     Returns:
-        更新的记录数
+        Number of updated records
     """
     if output_path is None:
         output_path = csv_path
     
-    # 构建 PyTorch API -> 新 TensorFlow API 的映射字典
+    # Build PyTorch API -> new TensorFlow API mapping
     update_dict = {}
     for record in new_mappings:
         pt_api = record.get("pytorch_api", "")
@@ -137,7 +134,7 @@ def update_csv_with_new_mappings(
         if pt_api and validated_tf:
             update_dict[pt_api] = validated_tf
     
-    # 读取原 CSV
+    # Read original CSV
     rows = []
     with csv_path.open("r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -145,7 +142,7 @@ def update_csv_with_new_mappings(
         for row in reader:
             rows.append(row)
     
-    # 更新记录
+    # Update records
     updated_count = 0
     for row in rows:
         pt_api = row.get("pytorch-api", "")
@@ -155,9 +152,9 @@ def update_csv_with_new_mappings(
             if old_value != new_value:
                 row["tensorflow-api"] = new_value
                 updated_count += 1
-                print(f"  [更新] {pt_api}: {old_value} -> {new_value}")
+                print(f"  [UPDATED] {pt_api}: {old_value} -> {new_value}")
     
-    # 写入更新后的 CSV
+    # Write updated CSV
     with output_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -167,65 +164,65 @@ def update_csv_with_new_mappings(
 
 
 def main():
-    """命令行入口"""
+    """CLI entry."""
     parser = argparse.ArgumentParser(
-        description="从验证日志中提取新发现的高置信度 API 映射"
+        description="Extract newly found high-confidence API mappings from validation logs"
     )
     parser.add_argument(
         "--log",
         "-l",
         required=True,
-        help="验证日志文件路径",
+        help="Validation log path",
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="输出文件路径（不指定则打印到控制台）",
+        help="Output path (prints to stdout if omitted)",
     )
     parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
-        help="显示详细信息（包括映射的 TensorFlow API 和理由）",
+        help="Show details (including TensorFlow API and reason)",
     )
     parser.add_argument(
         "--update-csv",
         "-u",
         action="store_true",
-        help="更新 api_mappings.csv 文件中的对应记录",
+        help="Update corresponding records in api_mappings.csv",
     )
     parser.add_argument(
         "--csv-path",
         "-c",
         default=str(DEFAULT_CSV_PATH),
-        help="api_mappings.csv 文件路径（默认为 component/data/api_mappings.csv）",
+        help="Path to api_mappings.csv (default: component/data/api_mappings.csv)",
     )
     parser.add_argument(
         "--output-csv",
-        help="更新后的 CSV 输出文件路径（不指定则覆盖原文件）",
+        help="Output CSV path (overwrites original if omitted)",
     )
 
     args = parser.parse_args()
 
     log_path = Path(args.log)
     if not log_path.exists():
-        print(f"[ERROR] 日志文件不存在: {log_path}")
+        print(f"[ERROR] Log file not found: {log_path}")
         return
 
-    print(f"[INFO] 正在解析日志文件: {log_path}")
+    print(f"[INFO] Parsing log file: {log_path}")
     records = parse_validation_log(log_path)
-    print(f"[INFO] 共解析到 {len(records)} 条记录")
+    print(f"[INFO] Parsed {len(records)} records")
 
-    # 筛选满足条件的记录
+    # Filter records
     filtered = filter_new_found_high_confidence(records)
-    print(f"[INFO] 满足条件的记录数: {len(filtered)}")
+    print(f"[INFO] Records meeting criteria: {len(filtered)}")
 
-    # 构建输出内容
+    # Build output content
     output_lines = []
     output_lines.append("=" * 70)
-    output_lines.append("新发现的高置信度 API 映射")
-    output_lines.append(f"条件: 原API为'无对应实现' + 验证后有具体API + 置信度为high")
-    output_lines.append(f"符合条件的记录数: {len(filtered)}")
+    output_lines.append("Newly found high-confidence API mappings")
+    output_lines.append("Criteria: original API is '无对应实现' + validated has concrete API + confidence=high")
+    output_lines.append(f"Matching records: {len(filtered)}")
     output_lines.append("=" * 70)
     output_lines.append("")
 
@@ -237,37 +234,37 @@ def main():
         if args.verbose:
             output_lines.append(f"{i}. {pt_api}")
             output_lines.append(f"   -> {validated_tf}")
-            output_lines.append(f"   理由: {reason}")
+            output_lines.append(f"   Reason: {reason}")
             output_lines.append("")
         else:
             output_lines.append(f"{i}. {pt_api} -> {validated_tf}")
 
     output_text = "\n".join(output_lines)
 
-    # 输出结果
+    # Output results
     if args.output:
         output_path = Path(args.output)
         output_path.write_text(output_text, encoding="utf-8")
-        print(f"[SUCCESS] 结果已保存到: {output_path}")
+        print(f"[SUCCESS] Results saved to: {output_path}")
     else:
         print("\n" + output_text)
 
-    # 如果指定了 --update-csv，则更新 CSV 文件
+    # Update CSV if requested
     if args.update_csv:
         csv_path = Path(args.csv_path)
         if not csv_path.exists():
-            print(f"[ERROR] CSV 文件不存在: {csv_path}")
+            print(f"[ERROR] CSV file not found: {csv_path}")
             return
         
         output_csv_path = Path(args.output_csv) if args.output_csv else None
-        print(f"\n[INFO] 正在更新 CSV 文件: {csv_path}")
+        print(f"\n[INFO] Updating CSV file: {csv_path}")
         if output_csv_path:
-            print(f"[INFO] 输出文件路径: {output_csv_path}")
+            print(f"[INFO] Output CSV path: {output_csv_path}")
         updated_count = update_csv_with_new_mappings(csv_path, filtered, output_csv_path)
-        print(f"[SUCCESS] 已更新 {updated_count} 条记录")
-    # 额外打印纯 API 名称列表（方便复制）
+        print(f"[SUCCESS] Updated {updated_count} records")
+    # Also print plain API list for easy copy
     print("\n" + "=" * 70)
-    print("【PyTorch API 名称列表（纯文本）】")
+    print("[PyTorch API Name List (Plain Text)]")
     print("=" * 70)
     for record in filtered:
         print(record.get("pytorch_api", ""))

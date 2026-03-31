@@ -1,5 +1,5 @@
 # ./component/doc_crawler_pytorch.py
-"""PyTorch 文档爬取器"""
+"""PyTorch documentation crawler."""
 import re
 from typing import Dict
 from bs4 import BeautifulSoup
@@ -9,24 +9,24 @@ PT_DOC_BASE = "https://pytorch.org/docs/stable/"
 
 
 class PyTorchDocCrawler(DocCrawler):
-    """PyTorch 文档爬取器"""
+    """PyTorch documentation crawler."""
     
     def __init__(self):
         super().__init__("pytorch")
     
     def build_doc_url(self, api_name: str) -> str:
-        """构建 PyTorch 文档 URL（优先使用 generated 页面）.
+        """Build PyTorch doc URL (prefer generated pages).
 
-        典型示例:
+        Typical examples:
         - torch.nn.Conv2d -> https://pytorch.org/docs/stable/generated/torch.nn.Conv2d.html
         - torch.add        -> https://pytorch.org/docs/stable/generated/torch.add.html
         """
         api_name = api_name.lstrip(".")
-        # 使用官方推荐的 generated 路径
+        # Use official recommended generated path
         return f"{PT_DOC_BASE}generated/{api_name}.html"
     
     def parse_doc_content(self, soup: BeautifulSoup, api_name: str, url: str) -> Dict:
-        """解析 PyTorch 文档内容"""
+        """Parse PyTorch doc content."""
         doc_content = {
             "api_name": api_name,
             "framework": "pytorch",
@@ -39,15 +39,15 @@ class PyTorchDocCrawler(DocCrawler):
             "raw_html": str(soup.find('main') or soup.find('body') or '')
         }
         
-        # 提取主要描述
+        # Extract main description
         main_content = soup.find('main') or soup.find('div', class_='document')
         if main_content:
-            # 提取第一个段落作为描述
+            # Use first paragraph as description
             first_p = main_content.find('p')
             if first_p:
                 doc_content["description"] = first_p.get_text(strip=True)
             
-            # 提取参数说明
+            # Extract parameters
             params_section = main_content.find('dl', class_='field-list') or main_content.find('dl')
             if params_section:
                 params = []
@@ -58,7 +58,7 @@ class PyTorchDocCrawler(DocCrawler):
                     params.append({"name": param_name, "description": param_desc})
                 doc_content["parameters"] = params
             
-            # 提取返回值说明
+            # Extract returns
             returns_section = main_content.find(string=re.compile(r'Returns?', re.I))
             if returns_section:
                 parent = returns_section.find_parent()

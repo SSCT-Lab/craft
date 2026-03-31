@@ -4,7 +4,7 @@ import tensorflow as tf
 import numpy as np
 import os
 
-# Report Error: 比较过程出错: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (2, 576) + inhomogeneous part.
+# Report Error: An error occurred during comparison: setting an array element with a sequence. The requested array has an inhomogeneous shape after 2 dimensions. The detected shape was (2, 576) + inhomogeneous part.
 
 def get_input_data(shape, dtype, sample_values):
     if not shape:

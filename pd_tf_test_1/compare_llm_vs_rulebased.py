@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-LLM方法 vs 规则方法：PaddlePaddle -> TensorFlow 测试用例转换成功率对比
-=======================================================================
+LLM vs Rule-based: PaddlePaddle -> TensorFlow test case conversion success rate comparison
+=======================================================================================
 
-对比两种跨框架测试用例迁移方案：
-1. LLM方法：执行初始用例 -> 调用LLM修复/变异（迭代固定1次） -> 执行LLM生成的新TF用例
-2. 规则方法：仅根据算子映射表 + dtype 映射进行自动转换 -> 执行规则生成的新TF用例
+Compare two cross-framework test case migration approaches:
+1. LLM method: run initial case -> LLM repair/mutation (fixed 1 iteration) -> run LLM-generated TF case
+2. Rule-based method: convert using API mapping + dtype mapping -> run rule-generated TF case
 
-核心比较指标：两种方法“生成的新TF用例”能否正常执行（tensorflow_success）。
+Key metric: whether the generated TF case runs successfully (tensorflow_success).
 
-输出：
-- 实时结果：JSONL（每个case一行）
-- 汇总结果：JSON（全局统计 + 算子级明细）
+Outputs:
+- Realtime results: JSONL (one case per line)
+- Summary results: JSON (global stats + per-operator details)
 """
 
 import argparse
@@ -29,7 +29,7 @@ from datetime import datetime
 from threading import Lock, RLock
 from typing import Any, Dict, List, Optional, Tuple
 
-# 环境变量需在导入 Paddle/TensorFlow 前设置，避免并发执行时线程库冲突。
+# Env vars must be set before importing Paddle/TensorFlow to avoid thread library conflicts.
 os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
 os.environ.setdefault("MKL_THREADING_LAYER", "GNU")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
@@ -62,7 +62,7 @@ DEFAULT_WORKERS = 4
 
 
 def safe_print(msg: str, print_lock: Optional[Lock] = None, end: str = "\n") -> None:
-    """线程安全打印。"""
+    """Thread-safe print."""
     if print_lock:
         with print_lock:
             print(msg, end=end, flush=True)
@@ -72,12 +72,12 @@ def safe_print(msg: str, print_lock: Optional[Lock] = None, end: str = "\n") -> 
 
 class RuleBasedConverter:
     """
-    规则转换器：仅进行 API 名和 dtype 相关转换。
+    Rule-based converter: only handles API name and dtype conversions.
 
-    设计约束：
-    - 不使用LLM。
-    - 不尝试复杂语义修复，仅做自动化名称/类型转换。
-    - API 名映射由外部映射表驱动（通过 convert_api_name 获取目标 API）。
+    Design constraints:
+    - No LLM usage.
+    - No complex semantic fixes; only automated name/type conversion.
+    - API name mapping is driven by the external mapping table.
     """
 
     def __init__(self) -> None:
@@ -278,7 +278,7 @@ class LLMvsRuleBasedComparator:
         max_iterations: int = DEFAULT_MAX_ITERATIONS,
     ) -> Dict[str, Any]:
         if max_iterations != 1:
-            self._safe_print("⚠️ 当前消融实验固定max_iterations=1，已强制使用1")
+            self._safe_print("⚠️ This ablation uses max_iterations=1; forced to 1")
 
         global_stats = {
             "total_operators": len(operator_names),
@@ -295,12 +295,12 @@ class LLMvsRuleBasedComparator:
 
         for index, pd_api in enumerate(operator_names, 1):
             self._safe_print("\n" + "=" * 72)
-            self._safe_print(f"[{index}/{len(operator_names)}] 算子: {pd_api}")
+            self._safe_print(f"[{index}/{len(operator_names)}] Operator: {pd_api}")
             self._safe_print("=" * 72)
 
             _, tf_api, mapping_method = self.llm_method.convert_api_name(pd_api)
             if tf_api is None:
-                self._safe_print(f"  ⏭️ 无TF映射（{mapping_method}），跳过")
+                self._safe_print(f"  ⏭️ No TF mapping ({mapping_method}), skipped")
                 global_stats["skipped_operators_no_tf"] += 1
                 operator_details.append({"operator": pd_api, "status": "skipped_no_tf", "mapping_method": mapping_method})
                 continue
@@ -308,8 +308,8 @@ class LLMvsRuleBasedComparator:
             total_cases = len(self.llm_method.test_cases_data.get(pd_api, {}).get("test_cases", []))
             actual_cases = min(max(1, num_cases), total_cases) if total_cases > 0 else max(1, num_cases)
 
-            self._safe_print(f"  PD: {pd_api} -> TF: {tf_api}（{mapping_method}）")
-            self._safe_print("  📖 预取API文档（供LLM使用）...")
+            self._safe_print(f"  PD: {pd_api} -> TF: {tf_api} ({mapping_method})")
+            self._safe_print("  📖 Prefetching API docs (for LLM)...")
             pd_doc, tf_doc = self.llm_method._fetch_api_docs(pd_api, tf_api)
 
             operator_result = self._test_single_operator(pd_api, tf_api, actual_cases, pd_doc, tf_doc)
@@ -366,13 +366,13 @@ class LLMvsRuleBasedComparator:
         if any(item.get("deprecated_skip", False) for item in case_results):
             op_result["status"] = "skipped_deprecated"
             op_result["case_details"] = case_results
-            self._safe_print("  ⏭️ 检测到算子版本淘汰，跳过该算子")
+            self._safe_print("  ⏭️ Operator deprecated, skipping")
             return op_result
 
         if case_results and all(item.get("llm_skipped", False) for item in case_results):
             op_result["status"] = "skipped_all_llm_skip"
             op_result["case_details"] = case_results
-            self._safe_print("  ⏭️ 该算子所有用例均被LLM跳过，剔除")
+            self._safe_print("  ⏭️ All cases skipped by LLM; excluded")
             return op_result
 
         for item in case_results:
@@ -401,7 +401,7 @@ class LLMvsRuleBasedComparator:
 
         rule_tf_case = self.rule_converter.convert_pd_case_to_tf_case(initial_pd_case, tf_api)
 
-        self._safe_print(f"  [用例{case_number}] 规则方法执行...", end="")
+        self._safe_print(f"  [Case {case_number}] Rule-based execution...", end="")
         try:
             with self.execution_lock:
                 rule_exec = self.llm_method._execute_test_case_sequential(pd_api, tf_api, initial_pd_case, rule_tf_case)
@@ -417,7 +417,7 @@ class LLMvsRuleBasedComparator:
         initial_tf_case = copy.deepcopy(initial_pd_case)
         initial_tf_case["api"] = tf_api
 
-        self._safe_print(f"  [用例{case_number}] LLM初始执行...", end="")
+        self._safe_print(f"  [Case {case_number}] LLM initial execution...", end="")
         try:
             with self.execution_lock:
                 initial_exec = self.llm_method._execute_test_case_sequential(pd_api, tf_api, initial_pd_case, initial_tf_case)
@@ -443,7 +443,7 @@ class LLMvsRuleBasedComparator:
         if (not initial_exec.get("pd_success", False)) and pd_error:
             if re.search(r"deprecated|removed", pd_error, re.IGNORECASE):
                 case_result["deprecated_skip"] = True
-                case_result["llm_detail"] = {"initial_exec": initial_exec, "llm_operation": "skip", "llm_reason": "Paddle算子已被版本淘汰"}
+                case_result["llm_detail"] = {"initial_exec": initial_exec, "llm_operation": "skip", "llm_reason": "Paddle operator deprecated"}
                 self._append_realtime_record(
                     {
                         "timestamp": datetime.now().isoformat(),
@@ -458,7 +458,7 @@ class LLMvsRuleBasedComparator:
                 )
                 return case_result
 
-        self._safe_print(f"  [用例{case_number}] 调用LLM...", end="")
+        self._safe_print(f"  [Case {case_number}] Calling LLM...", end="")
         llm_result = self.llm_method.call_llm_for_repair_or_mutation(initial_exec, initial_pd_case, initial_tf_case, pd_doc, tf_doc)
         operation = llm_result.get("operation", "skip")
         reason = str(llm_result.get("reason", ""))
@@ -488,8 +488,8 @@ class LLMvsRuleBasedComparator:
             llm_pd_case, llm_tf_case = self.llm_method._convert_llm_test_cases(llm_pd_case, llm_tf_case)
         except Exception as error:
             case_result["llm_skipped"] = True
-            case_result["llm_detail"] = {"initial_exec": initial_exec, "llm_operation": "skip", "llm_reason": f"LLM用例转换失败: {error}"}
-            self._safe_print(f"  [用例{case_number}] LLM用例转换失败，跳过: {str(error)[:70]}")
+            case_result["llm_detail"] = {"initial_exec": initial_exec, "llm_operation": "skip", "llm_reason": f"LLM case conversion failed: {error}"}
+            self._safe_print(f"  [Case {case_number}] LLM case conversion failed, skipped: {str(error)[:70]}")
             self._append_realtime_record(
                 {
                     "timestamp": datetime.now().isoformat(),
@@ -506,7 +506,7 @@ class LLMvsRuleBasedComparator:
 
         case_result["llm_generated_total"] = 1
 
-        self._safe_print(f"  [用例{case_number}] 执行LLM生成用例...", end="")
+        self._safe_print(f"  [Case {case_number}] Executing LLM-generated case...", end="")
         try:
             with self.execution_lock:
                 llm_exec = self.llm_method._execute_test_case_sequential(pd_api, tf_api, llm_pd_case, llm_tf_case)
@@ -546,13 +546,13 @@ class LLMvsRuleBasedComparator:
         stats = result["global_stats"]
 
         print("\n" + "=" * 80)
-        print("📊 LLM方法 vs 规则方法（映射表名称+dtype自动转换）")
+        print("📊 LLM vs Rule-based (mapping table + dtype auto-conversion)")
         print("=" * 80)
-        print(f"算子总数: {stats['total_operators']}")
-        print(f"- 无TF映射跳过: {stats['skipped_operators_no_tf']}")
-        print(f"- LLM全跳过算子: {stats['skipped_operators_all_llm_skip']}")
-        print(f"- 版本淘汰跳过算子: {stats['skipped_operators_deprecated']}")
-        print(f"- 实际参与对比: {stats['tested_operators']}")
+        print(f"Total operators: {stats['total_operators']}")
+        print(f"- Skipped (no TF mapping): {stats['skipped_operators_no_tf']}")
+        print(f"- Skipped (all LLM skipped): {stats['skipped_operators_all_llm_skip']}")
+        print(f"- Skipped (deprecated): {stats['skipped_operators_deprecated']}")
+        print(f"- Actually compared: {stats['tested_operators']}")
 
         llm_total = stats["llm_generated_total"]
         llm_success = stats["llm_tensorflow_success"]
@@ -563,28 +563,28 @@ class LLMvsRuleBasedComparator:
         rule_rate = (rule_success / rule_total * 100.0) if rule_total > 0 else 0.0
 
         print("\n" + "-" * 48)
-        print("🤖 LLM方法（生成的新TF用例）")
-        print(f"- 生成用例数: {llm_total}")
-        print(f"- TF执行成功数: {llm_success}")
-        print(f"- TF执行成功率: {llm_rate:.2f}%" if llm_total > 0 else "- TF执行成功率: N/A")
+        print("🤖 LLM method (generated TF cases)")
+        print(f"- Generated cases: {llm_total}")
+        print(f"- TF success count: {llm_success}")
+        print(f"- TF success rate: {llm_rate:.2f}%" if llm_total > 0 else "- TF success rate: N/A")
 
         print("\n" + "-" * 48)
-        print("🧪 规则方法（生成的新TF用例）")
-        print(f"- 生成用例数: {rule_total}")
-        print(f"- TF执行成功数: {rule_success}")
-        print(f"- TF执行成功率: {rule_rate:.2f}%" if rule_total > 0 else "- TF执行成功率: N/A")
+        print("🧪 Rule-based method (generated TF cases)")
+        print(f"- Generated cases: {rule_total}")
+        print(f"- TF success count: {rule_success}")
+        print(f"- TF success rate: {rule_rate:.2f}%" if rule_total > 0 else "- TF success rate: N/A")
 
         print("\n" + "-" * 48)
         if llm_total > 0 and rule_total > 0:
             diff = llm_rate - rule_rate
             if diff > 0:
-                print(f"结论: LLM方法高于规则方法 {diff:.2f} 个百分点")
+                print(f"Conclusion: LLM exceeds rule-based by {diff:.2f} percentage points")
             elif diff < 0:
-                print(f"结论: 规则方法高于LLM方法 {-diff:.2f} 个百分点")
+                print(f"Conclusion: Rule-based exceeds LLM by {-diff:.2f} percentage points")
             else:
-                print("结论: 两种方法持平")
+                print("Conclusion: tie")
         else:
-            print("结论: 统计样本不足，无法比较")
+            print("Conclusion: insufficient samples to compare")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         result_file = os.path.join(self.result_dir, f"llm_vs_rulebased_result_{timestamp}.json")
@@ -599,8 +599,8 @@ class LLMvsRuleBasedComparator:
         self._atomic_dump_json(result_file, result_to_save)
 
         print("=" * 80)
-        print(f"💾 实时JSONL: {self.realtime_file_path}")
-        print(f"💾 汇总JSON: {result_file}")
+        print(f"💾 Realtime JSONL: {self.realtime_file_path}")
+        print(f"💾 Summary JSON: {result_file}")
 
         return result_file
 
@@ -656,24 +656,24 @@ class LLMvsRuleBasedComparator:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="LLM方法 vs 规则方法：Paddle->TensorFlow新用例执行成功率对比")
-    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"每个算子测试用例数（默认{DEFAULT_NUM_CASES}）")
-    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM迭代次数（本脚本固定为1）")
-    parser.add_argument("--start", type=int, default=1, help="起始算子索引（从1开始）")
-    parser.add_argument("--end", type=int, default=None, help="结束算子索引（包含）")
-    parser.add_argument("--operators", "-o", nargs="*", help="指定算子列表")
-    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"并发线程数（默认{DEFAULT_WORKERS}）")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM模型（默认{DEFAULT_MODEL}）")
-    parser.add_argument("--key-path", "-k", default=DEFAULT_KEY_PATH, help=f"API key文件路径（默认{DEFAULT_KEY_PATH}）")
+    parser = argparse.ArgumentParser(description="LLM vs rule-based: Paddle->TensorFlow case execution success rate")
+    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"Test cases per operator (default {DEFAULT_NUM_CASES})")
+    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM iterations (fixed to 1 in this script)")
+    parser.add_argument("--start", type=int, default=1, help="Start operator index (1-based)")
+    parser.add_argument("--end", type=int, default=None, help="End operator index (inclusive)")
+    parser.add_argument("--operators", "-o", nargs="*", help="Explicit operator list")
+    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"Worker threads (default {DEFAULT_WORKERS})")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model (default {DEFAULT_MODEL})")
+    parser.add_argument("--key-path", "-k", default=DEFAULT_KEY_PATH, help=f"API key file path (default {DEFAULT_KEY_PATH})")
     args = parser.parse_args()
 
     print("=" * 80)
-    print("LLM方法 vs 规则方法（映射表名称+dtype自动转换）")
+    print("LLM vs rule-based (mapping table + dtype auto-conversion)")
     print("=" * 80)
-    print(f"📌 每算子用例数: {args.num_cases}")
-    print("📌 LLM迭代次数: 1（固定）")
-    print(f"📌 并发线程数: {args.workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Cases per operator: {args.num_cases}")
+    print("📌 LLM iterations: 1 (fixed)")
+    print(f"📌 Worker threads: {args.workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMvsRuleBasedComparator(key_path=args.key_path, model=args.model, num_workers=args.workers)
@@ -681,7 +681,7 @@ def main() -> None:
 
     try:
         all_operators = sorted(list(comparator.llm_method.test_cases_data.keys()))
-        print(f"\n📋 测试集共有 {len(all_operators)} 个Paddle算子")
+        print(f"\n📋 Test set contains {len(all_operators)} Paddle operators")
 
         if args.operators:
             operator_names = args.operators
@@ -690,13 +690,13 @@ def main() -> None:
             end_idx = args.end if args.end is not None else len(all_operators)
             end_idx = min(end_idx, len(all_operators))
             if start_idx >= end_idx:
-                raise ValueError(f"起始索引 {args.start} 必须小于结束索引 {end_idx}")
+                raise ValueError(f"Start index {args.start} must be less than end index {end_idx}")
             operator_names = all_operators[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} 到第 {end_idx} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} to {end_idx}")
 
-        print(f"📋 实际测试算子数: {len(operator_names)}")
+        print(f"📋 Operators tested: {len(operator_names)}")
         preview = ", ".join(operator_names[:10])
-        print(f"📋 前10个算子: {preview}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"📋 First 10 operators: {preview}{'...' if len(operator_names) > 10 else ''}\n")
 
         result = comparator.run_comparison(operator_names=operator_names, num_cases=args.num_cases, max_iterations=args.max_iterations)
         comparator.print_and_save_results(result)
@@ -705,11 +705,11 @@ def main() -> None:
         hours = int(elapsed // 3600)
         minutes = int((elapsed % 3600) // 60)
         seconds = int(elapsed % 60)
-        print(f"\n⏱️ 总耗时: {hours}h {minutes}m {seconds}s")
+        print(f"\n⏱️ Total time: {hours}h {minutes}m {seconds}s")
 
     finally:
         comparator.close()
-        print("✅ 程序执行完成")
+        print("✅ Program completed")
 
 
 if __name__ == "__main__":

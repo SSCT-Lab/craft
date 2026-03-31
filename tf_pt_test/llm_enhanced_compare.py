@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 4: 基于 LLM 的 TensorFlow 与 PyTorch 算子差分测试框架
+Step 4: LLM-based TensorFlow ↔ PyTorch operator differential testing framework
 
-功能：
-- 从 JSON 文件加载 TF 测试用例和 TF→PT 映射
-- 对每对等价算子，执行 TF 和 PT 并比较结果
-- 使用 LLM 进行测试用例的修复（repair）、变异（mutation）和跳过（skip）
-- 支持并发测试多个用例
-- 保存详细测试结果和批量日志
+Features:
+- Load TF test cases and TF→PT mappings from JSON/CSV
+- Execute TF and PT for each equivalent operator pair and compare results
+- Use LLM to repair/mutate/skip test cases
+- Support concurrent testing
+- Save detailed results and batch logs
 
-用法：
+Usage:
     conda activate tf_env
     python tf_pt_test/llm_enhanced_compare.py \
         [--max-iterations 3] [--num-cases 5] [--workers 6] \
         [--start 1] [--end N] [--operators tf.nn.relu tf.math.abs]
 
-前置条件：
-    1. 已运行 Step 1 extract_tf_apis.py
-    2. 已运行 Step 2 extract_tf_test_cases.py
-    3. 已运行 Step 3 extract_tf_pt_mapping.py
+Prerequisites:
+    1. Run Step 1 extract_tf_apis.py
+    2. Run Step 2 extract_tf_test_cases.py
+    3. Run Step 3 extract_tf_pt_mapping.py
 """
 
 import os
@@ -42,28 +42,28 @@ import tensorflow as tf
 
 from openai import OpenAI
 
-# 添加项目根目录到路径
+# Add project root to path.
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from component.doc.doc_crawler_factory import get_doc_content
 
-# ==================== 常量定义 ====================
+# ==================== Constants ====================
 DEFAULT_MODEL = "qwen-plus"
 DEFAULT_KEY_PATH = "aliyun.key"
 DEFAULT_MAX_ITERATIONS = 3
 DEFAULT_NUM_CASES = 5
 DEFAULT_WORKERS = 6
 
-# 数据文件路径
+# Data file paths.
 DATA_DIR = os.path.join(ROOT_DIR, "tf_pt_test", "data")
 DEFAULT_TEST_CASES_FILE = os.path.join(DATA_DIR, "tf_test_cases.json")
 DEFAULT_MAPPING_FILE = os.path.join(DATA_DIR, "tf_pt_mapping_validated.csv")
 
 
 class LLMEnhancedComparator:
-    """基于 LLM 的 TensorFlow 与 PyTorch 差分测试框架"""
+    """LLM-based TensorFlow ↔ PyTorch differential testing framework."""
 
     def __init__(
         self,
@@ -75,15 +75,15 @@ class LLMEnhancedComparator:
         llm_workers: int = DEFAULT_WORKERS,
     ):
         """
-        初始化比较器
+        Initialize the comparator.
 
         Args:
-            test_cases_file: 测试用例 JSON 文件路径（Step 2 输出）
-            mapping_file: TF→PT 映射 CSV 文件路径（Step 3 输出）
-            key_path: API key 文件路径
-            model: LLM 模型名称
-            print_lock: 打印锁
-            llm_workers: LLM 并发线程数
+            test_cases_file: Test-case JSON file path (Step 2 output)
+            mapping_file: TF→PT mapping CSV file path (Step 3 output)
+            key_path: API key file path
+            model: LLM model name
+            print_lock: Print lock
+            llm_workers: LLM concurrent workers
         """
         self.model = model
         self.print_lock = print_lock or Lock()
@@ -91,40 +91,40 @@ class LLMEnhancedComparator:
         self.execution_lock = RLock()
         self.stats_lock = Lock()
 
-        # 初始化 LLM 客户端
+        # Initialize LLM client.
         api_key = self._load_api_key(key_path)
         self.llm_client = OpenAI(
             api_key=api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
 
-        # 加载测试用例
+        # Load test cases.
         self.test_cases_data = self._load_test_cases(test_cases_file)
-        self._safe_print(f"📋 已加载 {len(self.test_cases_data)} 个 TF API 的测试用例")
+        self._safe_print(f"📋 Loaded test cases for {len(self.test_cases_data)} TF APIs")
 
-        # 加载 TF→PT 映射
+        # Load TF→PT mapping.
         self.api_mapping = self._load_mapping(mapping_file)
         has_impl = sum(1 for v in self.api_mapping.values() if v != "无对应实现")
-        self._safe_print(f"📋 已加载 {len(self.api_mapping)} 个映射（{has_impl} 个有对应实现）")
+        self._safe_print(f"📋 Loaded {len(self.api_mapping)} mappings ({has_impl} with implementations)")
 
-        # 创建结果存储目录
+        # Create result directory.
         self.result_dir = os.path.join(ROOT_DIR, "tf_pt_test", "tf_pt_log_1")
         os.makedirs(self.result_dir, exist_ok=True)
-        self._safe_print(f"📁 结果存储目录: {self.result_dir}")
+        self._safe_print(f"📁 Result directory: {self.result_dir}")
 
-        # 固定随机种子
+        # Fix random seeds.
         self.random_seed = 42
         np.random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
         tf.random.set_seed(self.random_seed)
 
     def _safe_print(self, msg: str, end: str = "\n"):
-        """线程安全的打印"""
+        """Thread-safe print."""
         with self.print_lock:
             print(msg, end=end, flush=True)
 
     def _load_api_key(self, key_path: str = DEFAULT_KEY_PATH) -> str:
-        """加载 API 密钥"""
+        """Load API key."""
         if not os.path.isabs(key_path):
             key_file = os.path.join(ROOT_DIR, key_path)
         else:
@@ -140,22 +140,22 @@ class LLMEnhancedComparator:
         if api_key:
             return api_key
 
-        self._safe_print("❌ 未找到 API 密钥")
+        self._safe_print("❌ API key not found")
         return ""
 
     def _load_test_cases(self, filepath: str) -> Dict[str, Any]:
-        """加载测试用例"""
+        """Load test cases."""
         if not os.path.exists(filepath):
-            self._safe_print(f"⚠️ 测试用例文件不存在: {filepath}")
+            self._safe_print(f"⚠️ Test cases file does not exist: {filepath}")
             return {}
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return data.get("test_cases", {})
 
     def _load_mapping(self, filepath: str) -> Dict[str, str]:
-        """加载 TF→PT 映射表"""
+        """Load TF→PT mapping table."""
         if not os.path.exists(filepath):
-            self._safe_print(f"⚠️ 映射文件不存在: {filepath}")
+            self._safe_print(f"⚠️ Mapping file does not exist: {filepath}")
             return {}
         mapping = {}
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -167,10 +167,10 @@ class LLMEnhancedComparator:
                     mapping[tf_api] = pt_api
         return mapping
 
-    # ==================== API 工具方法 ====================
+    # ==================== API helpers ====================
 
     def is_class_based_api(self, api_name: str) -> bool:
-        """判断 API 是否是基于类的"""
+        """Return True if the API is class-based."""
         parts = api_name.split(".")
         if len(parts) >= 2:
             last_part = parts[-1]
@@ -179,7 +179,7 @@ class LLMEnhancedComparator:
         return False
 
     def get_operator_function(self, api_name: str, framework: str = "tf"):
-        """获取算子函数对象"""
+        """Get the operator function object."""
         try:
             if framework == "tf":
                 module = tf
@@ -189,7 +189,7 @@ class LLMEnhancedComparator:
                 return None
 
             parts = api_name.split(".")
-            # 跳过框架前缀（tf. / torch.）
+            # Skip framework prefix (tf. / torch.).
             start_idx = 1
             obj = module
             for part in parts[start_idx:]:
@@ -199,43 +199,38 @@ class LLMEnhancedComparator:
             return None
 
     def convert_api_name(self, tf_api: str) -> Tuple[Optional[str], Optional[str], str]:
-        """
-        查找 TF API 对应的 PyTorch API
-
-        Returns:
-            (tf_api, pytorch_api, mapping_method)
-        """
+        """Find the corresponding PyTorch API for a TF API."""
         if tf_api in self.api_mapping:
             pt_api = self.api_mapping[tf_api]
             if pt_api and pt_api != "无对应实现":
-                return tf_api, pt_api, "映射表"
+                return tf_api, pt_api, "mapping_table"
             else:
-                return tf_api, None, "无对应实现"
-        return tf_api, None, "映射表中未找到"
+                return tf_api, None, "no_implementation"
+        return tf_api, None, "not_found_in_mapping"
 
-    # ==================== 数据转换 ====================
+    # ==================== Data conversion ====================
 
     def generate_numpy_data(self, data: Any) -> np.ndarray:
         """
-        从描述生成 numpy 数组
+        Generate a numpy array from a description.
 
-        支持格式：
+        Supported formats:
         - {"shape": [2, 3], "dtype": "float32"}
         - {"shape": [2, 3], "dtype": "float32", "range": [-1, 1]}
-        - 标量值
-        - 列表
+        - scalar value
+        - list
         """
         if isinstance(data, dict):
             if "shape" in data:
                 shape = data["shape"]
                 dtype_str = str(data.get("dtype", "float32"))
 
-                # 去除框架前缀
+                # Remove framework prefix.
                 for prefix in ["torch.", "tf.", "np.", "numpy."]:
                     if dtype_str.startswith(prefix):
                         dtype_str = dtype_str[len(prefix):]
 
-                # dtype 名称映射
+                # dtype mapping.
                 dtype_map = {
                     "float32": np.float32, "float64": np.float64,
                     "float16": np.float16, "float": np.float32,
@@ -243,15 +238,15 @@ class LLMEnhancedComparator:
                     "int16": np.int16, "int8": np.int8,
                     "uint8": np.uint8, "bool": np.bool_,
                     "complex64": np.complex64, "complex128": np.complex128,
-                    "bfloat16": np.float32,  # numpy 不支持 bfloat16，用 float32 替代
+                    "bfloat16": np.float32,  # numpy does not support bfloat16; use float32.
                 }
                 np_dtype = dtype_map.get(dtype_str, np.float32)
 
-                # 处理空张量
+                # Handle empty tensors.
                 if any(s == 0 for s in shape):
                     return np.empty(shape, dtype=np_dtype)
 
-                # 获取数据范围
+                # Get data range.
                 data_range = data.get("range", None)
 
                 if np_dtype == np.bool_:
@@ -281,7 +276,7 @@ class LLMEnhancedComparator:
             return np.array(data)
 
     def convert_to_tensor_tf(self, data: Any, numpy_data: np.ndarray = None) -> tf.Tensor:
-        """转换为 TensorFlow 张量"""
+        """Convert to TensorFlow tensor."""
         if numpy_data is not None:
             return tf.constant(numpy_data)
         if isinstance(data, dict):
@@ -295,7 +290,7 @@ class LLMEnhancedComparator:
             return tf.constant(data)
 
     def convert_to_tensor_torch(self, data: Any, numpy_data: np.ndarray = None) -> torch.Tensor:
-        """转换为 PyTorch 张量"""
+        """Convert to PyTorch tensor."""
         if numpy_data is not None:
             return torch.from_numpy(numpy_data.copy())
         if isinstance(data, dict):
@@ -308,21 +303,21 @@ class LLMEnhancedComparator:
         else:
             return torch.tensor(data)
 
-    # ==================== 参数准备 ====================
+    # ==================== Argument preparation ====================
 
     def should_skip_param(self, key: str, api_name: str, framework: str) -> bool:
-        """判断是否应跳过某个参数"""
-        # 通用跳过参数
+        """Return True if a parameter should be skipped."""
+        # Common skipped parameters.
         common_skip = ["description", "api"]
         if key in common_skip:
             return True
 
-        # PyTorch 特有参数（TF→PT 时跳过）
+        # PyTorch-specific parameters (skip for TF→PT).
         torch_skip = ["layout", "requires_grad", "out", "memory_format", "pin_memory"]
         if framework == "torch" and key in torch_skip:
             return True
 
-        # TensorFlow 特有参数（PT→TF 时跳过）
+        # TensorFlow-specific parameters (skip for PT→TF).
         tf_skip = ["name"]
         if framework == "tf" and key in tf_skip:
             return True
@@ -333,11 +328,11 @@ class LLMEnhancedComparator:
         self, test_case: Dict[str, Any], framework: str = "tf"
     ) -> Tuple[List[Any], Dict[str, Any]]:
         """
-        为指定框架准备参数
+        Prepare arguments for a target framework.
 
         Args:
-            test_case: 测试用例（包含张量描述和标量参数）
-            framework: "tf" 或 "torch"
+            test_case: Test case (tensor descriptions and scalar params)
+            framework: "tf" or "torch"
 
         Returns:
             (args, kwargs)
@@ -345,10 +340,10 @@ class LLMEnhancedComparator:
         args = []
         kwargs = {}
 
-        # 位置参数名
+        # Positional parameter names.
         positional_params = ["x", "input", "condition", "y", "other", "a", "b"]
 
-        # 可变长参数处理
+        # Varargs handling.
         varargs_key = None
         for key in test_case.keys():
             if key.startswith("*"):
@@ -369,7 +364,7 @@ class LLMEnhancedComparator:
                         args.append(item)
             return args, kwargs
 
-        # 按顺序处理位置参数
+        # Process positional parameters in order.
         for param_name in positional_params:
             if param_name in test_case:
                 value = test_case[param_name]
@@ -387,7 +382,7 @@ class LLMEnhancedComparator:
                 else:
                     args.append(value)
 
-        # 处理其他参数（关键字参数）
+        # Process other parameters (kwargs).
         for key, value in test_case.items():
             if key in positional_params or key == "api" or self.should_skip_param(key, "", framework):
                 continue
@@ -410,14 +405,14 @@ class LLMEnhancedComparator:
 
         return args, kwargs
 
-    # ==================== 结果比较 ====================
+    # ==================== Result comparison ====================
 
     def compare_tensors(
         self, tf_result, torch_result, tolerance: float = 1e-5
     ) -> Tuple[bool, str]:
-        """比较 TF 和 PT 的计算结果"""
+        """Compare TF and PT results."""
         try:
-            # 转换为 numpy
+            # Convert to numpy.
             if isinstance(tf_result, tf.Tensor):
                 tf_np = tf_result.numpy()
             elif isinstance(tf_result, np.ndarray):
@@ -432,30 +427,30 @@ class LLMEnhancedComparator:
             else:
                 torch_np = np.array(torch_result)
 
-            # 形状一致性检查
+            # Shape check.
             if tf_np.shape != torch_np.shape:
-                return False, f"形状不匹配: TF={tf_np.shape} vs PT={torch_np.shape}"
+                return False, f"Shape mismatch: TF={tf_np.shape} vs PT={torch_np.shape}"
 
-            # 布尔类型精确比较
+            # Exact comparison for boolean tensors.
             if tf_np.dtype == np.bool_ or torch_np.dtype == np.bool_:
                 match = np.array_equal(tf_np, torch_np)
                 if match:
-                    return True, "布尔结果完全一致"
+                    return True, "Boolean results match exactly"
                 else:
                     diff_count = np.sum(tf_np != torch_np)
-                    return False, f"布尔结果不一致，差异元素数: {diff_count}"
+                    return False, f"Boolean results differ, diff count: {diff_count}"
 
-            # 数值比较
+            # Numeric comparison.
             if np.allclose(tf_np, torch_np, atol=tolerance, rtol=tolerance, equal_nan=True):
-                return True, "结果一致（在容差范围内）"
+                return True, "Results match within tolerance"
             else:
                 max_diff = np.max(np.abs(tf_np.astype(np.float64) - torch_np.astype(np.float64)))
-                return False, f"结果不一致，最大差异: {max_diff:.8f}"
+                return False, f"Results inconsistent, max diff: {max_diff:.8f}"
 
         except Exception as e:
-            return False, f"比较异常: {str(e)}"
+            return False, f"Comparison error: {str(e)}"
 
-    # ==================== 测试执行 ====================
+    # ==================== Test execution ====================
 
     def execute_test_case(
         self,
@@ -465,13 +460,13 @@ class LLMEnhancedComparator:
         pytorch_test_case: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """
-        执行单个测试用例
+        Execute a single test case.
 
         Args:
-            tf_api: TensorFlow API 名称
-            pytorch_api: PyTorch API 名称
-            tf_test_case: TF 测试用例
-            pytorch_test_case: PT 测试用例（None 则使用 TF 用例）
+            tf_api: TensorFlow API name
+            pytorch_api: PyTorch API name
+            tf_test_case: TF test case
+            pytorch_test_case: PT test case (uses TF case if None)
         """
         result = {
             "tf_api": tf_api,
@@ -492,7 +487,7 @@ class LLMEnhancedComparator:
         if pytorch_test_case is None:
             pytorch_test_case = tf_test_case
 
-        # 统一生成输入张量，保证 TF/PT 使用同一份 numpy 数据
+        # Materialize shared tensors so TF/PT use the same numpy data.
         tf_test_case, pytorch_test_case = self._materialize_shared_tensors(
             tf_api, pytorch_api, tf_test_case, pytorch_test_case
         )
@@ -500,12 +495,12 @@ class LLMEnhancedComparator:
         is_class_tf = self.is_class_based_api(tf_api)
         is_class_pt = self.is_class_based_api(pytorch_api)
 
-        # ---- 执行 TensorFlow ----
+        # ---- Execute TensorFlow ----
         tf_result = None
         try:
             tf_func = self.get_operator_function(tf_api, "tf")
             if tf_func is None:
-                raise AttributeError(f"无法找到 TF API: {tf_api}")
+                raise AttributeError(f"TF API not found: {tf_api}")
 
             if is_class_tf:
                 init_kwargs = {
@@ -514,7 +509,7 @@ class LLMEnhancedComparator:
                     and not (isinstance(v, dict) and "shape" in v)
                 }
                 layer = tf_func(**init_kwargs)
-                # 获取输入
+                # Get input.
                 input_data = tf_test_case.get("input") or tf_test_case.get("x")
                 if input_data is not None:
                     if isinstance(input_data, dict) and "shape" in input_data:
@@ -540,12 +535,12 @@ class LLMEnhancedComparator:
         except Exception as e:
             result["tf_error"] = f"{type(e).__name__}: {str(e)}"
 
-        # ---- 执行 PyTorch ----
+        # ---- Execute PyTorch ----
         torch_result = None
         try:
             pt_func = self.get_operator_function(pytorch_api, "torch")
             if pt_func is None:
-                raise AttributeError(f"无法找到 PT API: {pytorch_api}")
+                raise AttributeError(f"PT API not found: {pytorch_api}")
 
             if is_class_pt:
                 init_kwargs = {
@@ -579,7 +574,7 @@ class LLMEnhancedComparator:
         except Exception as e:
             result["pytorch_error"] = f"{type(e).__name__}: {str(e)}"
 
-        # ---- 比较结果 ----
+        # ---- Compare results ----
         if result["tf_success"] and result["pytorch_success"]:
             try:
                 match, detail = self.compare_tensors(tf_result, torch_result)
@@ -601,12 +596,12 @@ class LLMEnhancedComparator:
     def _execute_test_case_sequential(
         self, tf_api, pytorch_api, tf_test_case, pytorch_test_case=None
     ) -> Dict[str, Any]:
-        """通过锁保证执行不并发"""
+        """Run with a lock to avoid concurrent execution."""
         with self.execution_lock:
             return self.execute_test_case(tf_api, pytorch_api, tf_test_case, pytorch_test_case)
 
     def _default_input_desc_for_class(self, api_name: str) -> Dict[str, Any]:
-        """为类 API 提供统一的默认输入描述"""
+        """Provide a default input description for class APIs."""
         name = (api_name or "").lower()
         if "3d" in name:
             return {"shape": [2, 3, 4, 4, 4], "dtype": "float32"}
@@ -623,7 +618,7 @@ class LLMEnhancedComparator:
         tf_test_case: Dict[str, Any],
         pytorch_test_case: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """统一生成共享张量，保证两框架输入数值一致"""
+        """Generate shared tensors so both frameworks receive identical inputs."""
         tf_case = copy.deepcopy(tf_test_case)
         pt_case = copy.deepcopy(pytorch_test_case)
 
@@ -671,10 +666,10 @@ class LLMEnhancedComparator:
 
         return apply_shared(tf_case), apply_shared(pt_case)
 
-    # ==================== API 文档爬取 ====================
+    # ==================== API doc fetching ====================
 
     def _fetch_api_docs(self, tf_api: str, pytorch_api: str) -> Tuple[str, str]:
-        """爬取 TF 和 PT 的 API 文档"""
+        """Fetch TF and PT API docs."""
         MIN_DOC_LENGTH = 300
         tf_doc = ""
         pytorch_doc = ""
@@ -683,25 +678,25 @@ class LLMEnhancedComparator:
             raw = get_doc_content(tf_api, "tensorflow")
             if raw and len(raw) >= MIN_DOC_LENGTH:
                 tf_doc = raw[:3000]
-                self._safe_print(f"    📄 TF文档: {len(tf_doc)} 字符")
+                self._safe_print(f"    📄 TF docs: {len(tf_doc)} chars")
             else:
-                self._safe_print(f"    📄 TF文档: 未获取到有效内容")
+                self._safe_print(f"    📄 TF docs: no valid content")
         except Exception as e:
-            self._safe_print(f"    ⚠️ TF文档爬取失败: {str(e)[:50]}")
+            self._safe_print(f"    ⚠️ TF doc fetch failed: {str(e)[:50]}")
 
         try:
             raw = get_doc_content(pytorch_api, "pytorch")
             if raw and len(raw) >= MIN_DOC_LENGTH:
                 pytorch_doc = raw[:3000]
-                self._safe_print(f"    📄 PT文档: {len(pytorch_doc)} 字符")
+                self._safe_print(f"    📄 PT docs: {len(pytorch_doc)} chars")
             else:
-                self._safe_print(f"    📄 PT文档: 未获取到有效内容")
+                self._safe_print(f"    📄 PT docs: no valid content")
         except Exception as e:
-            self._safe_print(f"    ⚠️ PT文档爬取失败: {str(e)[:50]}")
+            self._safe_print(f"    ⚠️ PT doc fetch failed: {str(e)[:50]}")
 
         return tf_doc, pytorch_doc
 
-    # ==================== LLM 交互 ====================
+    # ==================== LLM interaction ====================
 
     def _build_llm_prompt(
         self,
@@ -711,7 +706,7 @@ class LLMEnhancedComparator:
         tf_doc: str = "",
         pytorch_doc: str = "",
     ) -> str:
-        """构建 LLM 的提示词"""
+        """Build the LLM prompt."""
         tf_api = execution_result.get("tf_api", "")
         pytorch_api = execution_result.get("pytorch_api", "")
         status = execution_result.get("status", "")
@@ -722,7 +717,7 @@ class LLMEnhancedComparator:
         pytorch_error = execution_result.get("pytorch_error", "")
         comparison_error = execution_result.get("comparison_error", "")
 
-        # 简化测试用例以减少 token 消耗
+        # Simplify test cases to reduce token usage.
         simplified_tf = {}
         for key, value in tf_test_case.items():
             if isinstance(value, np.ndarray):
@@ -737,7 +732,7 @@ class LLMEnhancedComparator:
             else:
                 simplified_pt[key] = value
 
-        # 构建参数示例字符串
+        # Build parameter example strings.
         tf_param_examples = []
         for key, value in simplified_tf.items():
             if key == "api":
@@ -764,76 +759,76 @@ class LLMEnhancedComparator:
 
         pt_param_str = ",\n".join(pt_param_examples) if pt_param_examples else '    "input": {"shape": [2, 3], "dtype": "float32"}'
 
-        # 文档部分
+                # Doc section.
         doc_section = ""
         if tf_doc or pytorch_doc:
-            doc_section = "\n## 官方API文档参考\n\n"
+                        doc_section = "\n## Official API docs reference\n\n"
             if tf_doc:
-                doc_section += f"### TensorFlow {tf_api} 文档\n```\n{tf_doc}\n```\n\n"
+                                doc_section += f"### TensorFlow {tf_api} docs\n```\n{tf_doc}\n```\n\n"
             if pytorch_doc:
-                doc_section += f"### PyTorch {pytorch_api} 文档\n```\n{pytorch_doc}\n```\n\n"
+                                doc_section += f"### PyTorch {pytorch_api} docs\n```\n{pytorch_doc}\n```\n\n"
 
-        prompt = f"""请分析以下算子测试用例在TensorFlow和PyTorch框架中的执行结果，并根据结果进行测试用例的修复或变异（fuzzing）。
+                prompt = f"""Analyze the operator test case results in TensorFlow and PyTorch, then repair or mutate (fuzz) the test cases based on the results.
 
-## 测试信息
+## Test info
 - **TensorFlow API**: {tf_api}
 - **PyTorch API**: {pytorch_api}
 {doc_section}
-## 执行结果
-- **执行状态**: {status}
-- **TensorFlow执行成功**: {tf_success}
-- **PyTorch执行成功**: {pytorch_success}
-- **结果是否一致**: {results_match}
+## Execution results
+- **Status**: {status}
+- **TensorFlow success**: {tf_success}
+- **PyTorch success**: {pytorch_success}
+- **Results match**: {results_match}
 
-## 错误信息
-- **TensorFlow错误**: {tf_error if tf_error else "无"}
-- **PyTorch错误**: {pytorch_error if pytorch_error else "无"}
-- **比较错误**: {comparison_error if comparison_error else "无"}
+## Error info
+- **TensorFlow error**: {tf_error if tf_error else "none"}
+- **PyTorch error**: {pytorch_error if pytorch_error else "none"}
+- **Comparison error**: {comparison_error if comparison_error else "none"}
 
-## 原始测试用例
+## Original test cases
 
-### TensorFlow测试用例
+### TensorFlow test case
 ```json
 {json.dumps(simplified_tf, indent=2, ensure_ascii=False)}
 ```
 
-### PyTorch测试用例
+### PyTorch test case
 ```json
 {json.dumps(simplified_pt, indent=2, ensure_ascii=False)}
 ```
 
-## 任务要求
-请根据以上信息（包括官方API文档），自主判断两框架的比较结果是**一致**、**不一致**还是**执行出错**，并执行以下操作：
+## Task requirements
+Based on the info above (including official API docs), judge whether the results are **consistent**, **inconsistent**, or **execution error**, then do:
 
-1. **如果一致**：对用例进行**变异（fuzzing）**，例如修改输入张量的形状、修改参数值等（可以考虑一些极端值或边界值）
-2. **如果执行出错**：根据报错原因和官方文档对用例进行**修复**（改变参数名称、数量、类型、取值范围等，不同框架可能不完全一样）或者**跳过**（当你认为这两个跨框架算子的功能不完全等价时）
-3. **如果不一致**：判断是否为可容忍的精度误差（1e-3及以下）：（1）如果是可容忍精度误差则**变异**；（2）结合算子文档分析后，认为这两个跨框架算子的功能不完全等价时选择**跳过**；（3）如果既不是可容忍精度误差，两个算子功能也等价，那就是测试用例构造问题，请根据算子文档对用例进行**修复**。
+1. **If consistent**: **mutate (fuzz)** the case, e.g., change input shapes or parameter values (consider edge/extreme values).
+2. **If execution error**: **repair** the case based on the error and docs (parameter names/count/types/ranges may differ across frameworks), or **skip** if you think the APIs are not equivalent.
+3. **If inconsistent**: decide if the difference is tolerable (<= 1e-3). If tolerable, **mutate**. If APIs are not equivalent, **skip**. If neither, treat it as a test construction issue and **repair**.
 
-## 输出格式要求
-请严格按照以下JSON格式输出，不要包含任何其他文字、注释或markdown标记：
+## Output format
+Output strictly the following JSON with no extra text, comments, or markdown:
 
 {{
-  "operation": "mutation",
-  "reason": "进行该操作的详细原因（不超过150字）",
-  "tensorflow_test_case": {{
-    "api": "{tf_api}",
+    "operation": "mutation",
+    "reason": "Detailed reason (<= 150 words)",
+    "tensorflow_test_case": {{
+        "api": "{tf_api}",
 {tf_param_str}
-  }},
-  "pytorch_test_case": {{
-    "api": "{pytorch_api}",
+    }},
+    "pytorch_test_case": {{
+        "api": "{pytorch_api}",
 {pt_param_str}
-  }}
+    }}
 }}
 
-**重要说明**：
-1. operation的值必须是 "mutation"、"repair" 或 "skip" 之一
-2. 张量参数必须使用 {{"shape": [...], "dtype": "..."}} 格式
-3. 标量参数直接使用数值
-4. 构造两个框架的用例时必须保证输入相同(必要时进行张量形状的转换，如NHWC与NCHW转换)、参数在语义上严格对应
-5. TensorFlow和PyTorch的测试用例可以有参数名差异（如x vs input）、参数值差异或参数数量的差异，只要保证理论上输出相同就行
-6. 如果该算子找不到官方文档或已从当前版本移除，请将 operation 设为 "skip"，不需要尝试修复
-7. 测试用例变异时可探索极端情况：空张量、单元素张量、高维张量、不同数据类型、边界值等
-8. 请仔细阅读官方API文档，确保参数名称、类型、取值范围与文档一致
+**Important**:
+1. operation must be one of "mutation", "repair", or "skip".
+2. Tensor params must use {{"shape": [...], "dtype": "..."}}.
+3. Scalar params use numeric values.
+4. Inputs must be identical across frameworks (convert shapes like NHWC↔NCHW if needed), and params must be semantically aligned.
+5. TF/PT test cases may differ in param names (x vs input), values, or counts, as long as outputs should match in theory.
+6. If docs are missing or the operator is removed, set operation to "skip"; no repair needed.
+7. When mutating, explore edge cases: empty tensors, single-element tensors, high-rank tensors, different dtypes, boundary values, etc.
+8. Read official docs carefully and keep parameter names/types/ranges aligned.
 """
         return prompt
 
@@ -845,7 +840,7 @@ class LLMEnhancedComparator:
         tf_doc: str = "",
         pytorch_doc: str = "",
     ) -> Dict[str, Any]:
-        """调用 LLM 进行测试用例修复或变异"""
+        """Call LLM to repair or mutate test cases."""
         prompt = self._build_llm_prompt(
             execution_result, tf_test_case, pytorch_test_case, tf_doc, pytorch_doc
         )
@@ -855,7 +850,7 @@ class LLMEnhancedComparator:
                 messages=[
                     {
                         "role": "system",
-                        "content": "你是一个深度学习框架测试专家，精通TensorFlow和PyTorch框架的API差异。你的任务是根据测试用例的执行结果，判断是否需要修复或变异测试用例，并返回严格的JSON格式结果。",
+                        "content": "You are a deep learning framework testing expert. Based on execution results, decide whether to repair or mutate the test case and return strict JSON.",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -865,12 +860,12 @@ class LLMEnhancedComparator:
             raw_response = completion.choices[0].message.content.strip()
             time.sleep(1)
 
-            # 解析 JSON
+            # Parse JSON.
             try:
                 llm_result = json.loads(raw_response)
                 return llm_result
             except json.JSONDecodeError:
-                self._safe_print(f"    ⚠️ LLM返回不是有效JSON，尝试提取...")
+                self._safe_print("    ⚠️ LLM did not return valid JSON; attempting extraction...")
                 json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
                 if json_match:
                     llm_result = json.loads(json_match.group())
@@ -878,21 +873,21 @@ class LLMEnhancedComparator:
                 else:
                     return {
                         "operation": "skip",
-                        "reason": "LLM返回格式错误",
+                        "reason": "LLM returned an invalid format",
                         "tensorflow_test_case": tf_test_case,
                         "pytorch_test_case": pytorch_test_case,
                     }
 
         except Exception as e:
-            self._safe_print(f"    ❌ 调用LLM失败: {e}")
+            self._safe_print(f"    ❌ LLM call failed: {e}")
             return {
                 "operation": "skip",
-                "reason": f"LLM调用失败: {e}",
+                "reason": f"LLM call failed: {e}",
                 "tensorflow_test_case": tf_test_case,
                 "pytorch_test_case": pytorch_test_case,
             }
 
-    # ==================== 核心测试循环 ====================
+    # ==================== Core test loop ====================
 
     def llm_enhanced_test_operator(
         self,
@@ -902,52 +897,52 @@ class LLMEnhancedComparator:
         num_workers: int = DEFAULT_WORKERS,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
         """
-        使用 LLM 增强的方式测试单个算子对
+        Test a single operator pair with LLM enhancement.
 
         Args:
-            tf_api: TensorFlow API 名称
-            max_iterations: 每个测试用例的最大迭代次数
-            num_test_cases: 要测试的用例数量
-            num_workers: LLM 并发线程数
+            tf_api: TensorFlow API name
+            max_iterations: Max iterations per test case
+            num_test_cases: Number of cases to test
+            num_workers: LLM concurrent workers
         """
         self._safe_print(f"\n{'=' * 80}")
-        self._safe_print(f"🎯 开始测试算子: {tf_api}")
-        self._safe_print(f"🔄 每个用例最大迭代次数: {max_iterations}")
+        self._safe_print(f"🎯 Start testing operator: {tf_api}")
+        self._safe_print(f"🔄 Max iterations per case: {max_iterations}")
         self._safe_print(f"{'=' * 80}\n")
 
         stats = {"llm_generated_cases": 0, "successful_cases": 0}
 
-        # 获取对应的 PyTorch API
+        # Get corresponding PyTorch API.
         _, pytorch_api, mapping_method = self.convert_api_name(tf_api)
         if pytorch_api is None:
-            self._safe_print(f"❌ {tf_api} 无 PyTorch 对应实现")
+            self._safe_print(f"❌ {tf_api} has no PyTorch implementation")
             return [], stats
 
         self._safe_print(f"✅ TensorFlow API: {tf_api}")
         self._safe_print(f"✅ PyTorch API: {pytorch_api}")
-        self._safe_print(f"✅ 映射方法: {mapping_method}")
+        self._safe_print(f"✅ Mapping method: {mapping_method}")
 
-        # 获取测试用例
+        # Get test cases.
         api_data = self.test_cases_data.get(tf_api, {})
         test_cases = api_data.get("test_cases", [])
 
         if not test_cases:
-            self._safe_print(f"⚠️ 未找到 {tf_api} 的测试用例，使用默认用例")
-            test_cases = [{"description": "默认", "inputs": {"x": {"shape": [2, 3], "dtype": "float32"}}}]
+            self._safe_print(f"⚠️ No test cases found for {tf_api}; using default")
+            test_cases = [{"description": "default", "inputs": {"x": {"shape": [2, 3], "dtype": "float32"}}}]
 
-        # 确定实际测试数量
+        # Determine actual number of cases to test.
         if num_test_cases is None:
             num_test_cases = len(test_cases)
         else:
             num_test_cases = min(num_test_cases, len(test_cases))
 
-        self._safe_print(f"📋 将测试 {num_test_cases} 个用例 (LLM并发={num_workers}, 执行顺序)")
+        self._safe_print(f"📋 Testing {num_test_cases} cases (LLM workers={num_workers}, sequential execution)")
 
-        # 准备初始用例
+        # Prepare initial cases.
         initial_cases = []
         for case_idx in range(num_test_cases):
             tc = test_cases[case_idx]
-            # 从 inputs 字段提取参数，构建扁平的测试用例
+            # Extract params from inputs to build a flat test case.
             if "inputs" in tc:
                 flat_case = dict(tc["inputs"])
             else:
@@ -959,7 +954,7 @@ class LLMEnhancedComparator:
 
         if num_workers <= 1:
             for case_number, initial_test_case in initial_cases:
-                self._safe_print(f"\n📋 用例 {case_number}/{num_test_cases}")
+                self._safe_print(f"\n📋 Case {case_number}/{num_test_cases}")
                 case_results = self._test_single_case_with_iterations(
                     tf_api, pytorch_api, initial_test_case,
                     max_iterations, case_number, stats,
@@ -983,10 +978,10 @@ class LLMEnhancedComparator:
         all_results.sort(key=lambda r: (r.get("case_number", 0), r.get("iteration", 0)))
 
         self._safe_print(f"\n{'=' * 80}")
-        self._safe_print("✅ 所有测试完成")
-        self._safe_print(f"📊 共测试 {num_test_cases} 个用例，总计 {len(all_results)} 次迭代")
-        self._safe_print(f"📊 LLM生成的测试用例数: {stats['llm_generated_cases']}")
-        self._safe_print(f"📊 两个框架都执行成功的用例数: {stats['successful_cases']}")
+        self._safe_print("✅ All tests completed")
+        self._safe_print(f"📊 Tested {num_test_cases} cases, total {len(all_results)} iterations")
+        self._safe_print(f"📊 LLM-generated cases: {stats['llm_generated_cases']}")
+        self._safe_print(f"📊 Cases where both frameworks succeeded: {stats['successful_cases']}")
         self._safe_print(f"{'=' * 80}\n")
 
         return all_results, stats
@@ -1001,13 +996,13 @@ class LLMEnhancedComparator:
         stats: Dict[str, int],
     ) -> List[Dict[str, Any]]:
         """
-        对单个测试用例进行多轮迭代测试
+        Iterate a single test case multiple rounds.
 
-        核心循环：执行 → LLM判断 → 修复/变异/跳过 → 再执行 → ...
+        Core loop: execute → LLM decision → repair/mutate/skip → execute → ...
         """
         case_results = []
 
-        # 构建 TF 和 PT 的初始测试用例
+        # Build initial TF/PT test cases.
         current_tf_test_case = copy.deepcopy(initial_test_case)
         current_tf_test_case["api"] = tf_api
 
@@ -1016,16 +1011,16 @@ class LLMEnhancedComparator:
 
         is_llm_generated = False
 
-        # 预先爬取 API 文档（只爬一次）
-        self._safe_print(f"  📖 预先爬取API文档...")
+        # Pre-fetch API docs (once).
+        self._safe_print("  📖 Pre-fetching API docs...")
         tf_doc, pytorch_doc = self._fetch_api_docs(tf_api, pytorch_api)
 
-        # 迭代测试
+        # Iterative testing.
         for iteration in range(max_iterations):
-            source_type = "LLM" if is_llm_generated else "文件"
-            self._safe_print(f"  🔄 迭代 {iteration + 1}/{max_iterations} ({source_type})", end="")
+            source_type = "LLM" if is_llm_generated else "file"
+            self._safe_print(f"  🔄 Iteration {iteration + 1}/{max_iterations} ({source_type})", end="")
 
-            # 执行测试
+            # Execute test.
             try:
                 execution_result = self._execute_test_case_sequential(
                     tf_api, pytorch_api, current_tf_test_case, current_pt_test_case
@@ -1037,20 +1032,20 @@ class LLMEnhancedComparator:
                 self._safe_print(f" | TF:{tf_status} PT:{pt_status} Match:{match_status}")
 
                 if execution_result["tf_error"] and not execution_result["tf_success"]:
-                    self._safe_print(f"    ❌ TF错误: {str(execution_result['tf_error'])[:100]}...")
+                    self._safe_print(f"    ❌ TF error: {str(execution_result['tf_error'])[:100]}...")
                 if execution_result["pytorch_error"] and not execution_result["pytorch_success"]:
-                    self._safe_print(f"    ❌ PT错误: {str(execution_result['pytorch_error'])[:100]}...")
+                    self._safe_print(f"    ❌ PT error: {str(execution_result['pytorch_error'])[:100]}...")
                 if execution_result["comparison_error"]:
-                    self._safe_print(f"    ⚠️ 比较: {str(execution_result['comparison_error'])[:100]}...")
+                    self._safe_print(f"    ⚠️ Compare: {str(execution_result['comparison_error'])[:100]}...")
 
-                # 统计 LLM 生成的用例
+                # Count LLM-generated cases.
                 if is_llm_generated:
                     if execution_result["tf_success"] and execution_result["pytorch_success"]:
                         with self.stats_lock:
                             stats["successful_cases"] += 1
 
             except Exception as e:
-                self._safe_print(f" | ❌ 严重错误: {str(e)[:80]}...")
+                self._safe_print(f" | ❌ Fatal error: {str(e)[:80]}...")
                 execution_result = {
                     "status": "fatal_error",
                     "tf_success": False, "pytorch_success": False,
@@ -1059,7 +1054,7 @@ class LLMEnhancedComparator:
                     "comparison_error": None,
                 }
 
-            # 保存迭代结果
+            # Save iteration result.
             iteration_result = {
                 "iteration": iteration + 1,
                 "tf_test_case": current_tf_test_case,
@@ -1070,15 +1065,15 @@ class LLMEnhancedComparator:
                 "case_number": case_number,
             }
 
-            # 调用 LLM
+            # Call LLM.
             try:
                 llm_result = self.call_llm_for_repair_or_mutation(
                     execution_result, current_tf_test_case, current_pt_test_case,
                     tf_doc, pytorch_doc,
                 )
             except Exception as e:
-                self._safe_print(f"    ❌ LLM调用失败: {str(e)[:80]}...")
-                llm_result = {"operation": "skip", "reason": f"LLM调用失败: {str(e)}"}
+                self._safe_print(f"    ❌ LLM call failed: {str(e)[:80]}...")
+                llm_result = {"operation": "skip", "reason": f"LLM call failed: {str(e)}"}
                 iteration_result["llm_operation"] = llm_result
                 case_results.append(iteration_result)
                 break
@@ -1093,7 +1088,7 @@ class LLMEnhancedComparator:
             if operation == "skip":
                 break
 
-            # 准备下一轮
+            # Prepare next round.
             if operation in ("mutation", "repair"):
                 next_tf_case = llm_result.get("tensorflow_test_case", current_tf_test_case)
                 next_pt_case = llm_result.get("pytorch_test_case", current_pt_test_case)
@@ -1108,11 +1103,11 @@ class LLMEnhancedComparator:
                 next_tf_case, next_pt_case
             )
 
-        # 如果最后一轮 LLM 生成了新用例但未执行，补充执行
+        # If the last round generated a new case but didn't execute, run it.
         if case_results:
             last_op = case_results[-1].get("llm_operation", {}).get("operation", "skip")
             if last_op in ("mutation", "repair"):
-                self._safe_print(f"  🔄 执行最终LLM用例", end="")
+            self._safe_print("  🔄 Executing final LLM case", end="")
                 try:
                     execution_result = self._execute_test_case_sequential(
                         tf_api, pytorch_api, current_tf_test_case, current_pt_test_case
@@ -1131,12 +1126,12 @@ class LLMEnhancedComparator:
                         "tf_test_case": current_tf_test_case,
                         "pytorch_test_case": current_pt_test_case,
                         "execution_result": execution_result,
-                        "llm_operation": {"operation": "final_execution", "reason": "执行最后一次LLM生成的用例"},
+                        "llm_operation": {"operation": "final_execution", "reason": "execute the last LLM-generated case"},
                         "case_number": case_number,
                         "is_llm_generated": True,
                     })
                 except Exception as e:
-                    self._safe_print(f"  ❌ 最终用例执行失败: {str(e)[:80]}...")
+                    self._safe_print(f"  ❌ Final case execution failed: {str(e)[:80]}...")
                     case_results.append({
                         "iteration": len(case_results) + 1,
                         "tf_test_case": current_tf_test_case,
@@ -1146,12 +1141,12 @@ class LLMEnhancedComparator:
                             "pytorch_success": False, "results_match": False,
                             "error": str(e),
                         },
-                        "llm_operation": {"operation": "final_execution", "reason": "最终用例执行失败"},
+                        "llm_operation": {"operation": "final_execution", "reason": "final case execution failed"},
                         "case_number": case_number,
                         "is_llm_generated": True,
                     })
 
-        self._safe_print(f"  ✅ 用例 {case_number} 完成，共 {len(case_results)} 次迭代")
+        self._safe_print(f"  ✅ Case {case_number} completed, {len(case_results)} iterations")
         return case_results
 
     def _convert_llm_test_cases(
@@ -1160,8 +1155,8 @@ class LLMEnhancedComparator:
         pytorch_test_case: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        将 LLM 返回的测试用例转换为可执行格式
-        确保两个框架共享相同的张量数据
+        Convert LLM test cases into executable format.
+        Ensure both frameworks share the same tensor data.
         """
         shared_tensors = {}
         all_keys = set(tf_test_case.keys()) | set(pytorch_test_case.keys())
@@ -1195,12 +1190,12 @@ class LLMEnhancedComparator:
 
         return converted_tf, converted_pt
 
-    # ==================== 结果保存 ====================
+    # ==================== Result saving ====================
 
     def save_results(
         self, tf_api: str, results: List[Dict[str, Any]], stats: Dict[str, int] = None
     ):
-        """保存测试结果"""
+        """Save test results."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_name = tf_api.replace(".", "_")
         filename = f"llm_enhanced_{safe_name}_{timestamp}.json"
@@ -1209,7 +1204,7 @@ class LLMEnhancedComparator:
         output_results = []
         for result in results:
             out = copy.deepcopy(result)
-            # 简化 numpy 数组
+            # Simplify numpy arrays.
             for case_key in ["tf_test_case", "pytorch_test_case"]:
                 if case_key in out and isinstance(out[case_key], dict):
                     simplified = {}
@@ -1234,10 +1229,10 @@ class LLMEnhancedComparator:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-        self._safe_print(f"💾 结果已保存到: {filepath}")
+        self._safe_print(f"💾 Results saved to: {filepath}")
 
     def get_all_testable_apis(self) -> List[str]:
-        """获取所有可测试的 TF API（有测试用例且有 PT 映射）"""
+        """Get all testable TF APIs (with test cases and PT mapping)."""
         testable = []
         for tf_api in sorted(self.test_cases_data.keys()):
             pt_api = self.api_mapping.get(tf_api, "无对应实现")
@@ -1246,67 +1241,67 @@ class LLMEnhancedComparator:
         return testable
 
     def close(self):
-        """清理资源"""
+        """Clean up resources."""
         pass
 
 
-# ==================== 主函数 ====================
+# ==================== Main function ====================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="基于LLM的TensorFlow与PyTorch算子差分测试框架"
+        description="LLM-based TensorFlow ↔ PyTorch operator differential testing framework"
     )
     parser.add_argument(
         "--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS,
-        help=f"每个测试用例的最大迭代次数（默认{DEFAULT_MAX_ITERATIONS}）"
+        help=f"Max iterations per test case (default {DEFAULT_MAX_ITERATIONS})"
     )
     parser.add_argument(
         "--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES,
-        help=f"每个算子要测试的用例数量（默认{DEFAULT_NUM_CASES}）"
+        help=f"Test cases per operator (default {DEFAULT_NUM_CASES})"
     )
     parser.add_argument(
         "--start", type=int, default=1,
-        help="起始算子索引（从1开始，默认1）"
+        help="Start operator index (1-based, default 1)"
     )
     parser.add_argument(
         "--end", type=int, default=None,
-        help="结束算子索引（包含，默认全部）"
+        help="End operator index (inclusive; default all)"
     )
     parser.add_argument(
         "--operators", "-o", nargs="*",
-        help="指定要测试的算子名称（TF格式，如 tf.nn.relu）"
+        help="Operator names to test (TF format, e.g., tf.nn.relu)"
     )
     parser.add_argument(
         "--workers", "-w", type=int, default=DEFAULT_WORKERS,
-        help=f"并发线程数（默认{DEFAULT_WORKERS}）"
+        help=f"Concurrent workers (default {DEFAULT_WORKERS})"
     )
     parser.add_argument(
         "--model", default=DEFAULT_MODEL,
-        help=f"LLM模型名称（默认 {DEFAULT_MODEL}）"
+        help=f"LLM model name (default {DEFAULT_MODEL})"
     )
     parser.add_argument(
         "--key-path", "-k", default=DEFAULT_KEY_PATH,
-        help=f"API key文件路径（默认 {DEFAULT_KEY_PATH}）"
+        help=f"API key file path (default {DEFAULT_KEY_PATH})"
     )
     parser.add_argument(
         "--test-cases-file", default=DEFAULT_TEST_CASES_FILE,
-        help="测试用例 JSON 文件路径"
+        help="Test cases JSON file path"
     )
     parser.add_argument(
         "--mapping-file", default=DEFAULT_MAPPING_FILE,
-        help="TF→PT 映射 CSV 文件路径"
+        help="TF→PT mapping CSV file path"
     )
 
     args = parser.parse_args()
     num_workers = max(1, args.workers)
 
     print("=" * 80)
-    print("基于LLM的TensorFlow与PyTorch算子差分测试框架")
+    print("LLM-based TensorFlow ↔ PyTorch operator differential testing framework")
     print("=" * 80)
-    print(f"📌 每个算子的迭代次数: {args.max_iterations}")
-    print(f"📌 每个算子的测试用例数: {args.num_cases}")
-    print(f"📌 LLM并发线程数: {num_workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Iterations per operator: {args.max_iterations}")
+    print(f"📌 Test cases per operator: {args.num_cases}")
+    print(f"📌 LLM workers: {num_workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMEnhancedComparator(
@@ -1321,48 +1316,48 @@ def main():
     start_datetime = datetime.now()
 
     try:
-        # 获取所有可测试的 API
+        # Get all testable APIs.
         all_testable = comparator.get_all_testable_apis()
-        print(f"\n🔍 可测试的 TF API 总数: {len(all_testable)}")
+        print(f"\n🔍 Total testable TF APIs: {len(all_testable)}")
 
         if args.operators:
             operator_names = args.operators
-            print(f"📋 指定算子数: {len(operator_names)}")
+            print(f"📋 Specified operators: {len(operator_names)}")
         else:
             start_idx = max(1, args.start) - 1
             end_idx = args.end if args.end is not None else len(all_testable)
             end_idx = min(end_idx, len(all_testable))
             if start_idx >= end_idx:
-                raise ValueError(f"起始索引 {args.start} 必须小于结束索引 {end_idx}")
+                raise ValueError(f"Start index {args.start} must be less than end index {end_idx}")
             operator_names = all_testable[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} 到第 {end_idx} 个算子")
-            print(f"📋 将测试 {len(operator_names)} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} to {end_idx}")
+            print(f"📋 Will test {len(operator_names)} operators")
 
-        print(f"📋 算子列表: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"📋 Operator list: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
 
         all_operators_summary = []
 
-        # 批量日志
+        # Batch log.
         batch_log_file = os.path.join(
             comparator.result_dir,
             f"batch_test_log_{start_datetime.strftime('%Y%m%d_%H%M%S')}.txt"
         )
         log_file = open(batch_log_file, 'w', encoding='utf-8')
         log_file.write("=" * 80 + "\n")
-        log_file.write("TF→PT 差分测试批量日志\n")
+        log_file.write("TF→PT differential test batch log\n")
         log_file.write("=" * 80 + "\n")
-        log_file.write(f"开始时间: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log_file.write(f"测试配置:\n")
-        log_file.write(f"  - 迭代次数: {args.max_iterations}\n")
-        log_file.write(f"  - 用例数: {args.num_cases}\n")
-        log_file.write(f"  - 并发数: {num_workers}\n")
-        log_file.write(f"  - 测试算子数: {len(operator_names)}\n")
+        log_file.write(f"Start time: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write("Test config:\n")
+        log_file.write(f"  - Iterations: {args.max_iterations}\n")
+        log_file.write(f"  - Cases: {args.num_cases}\n")
+        log_file.write(f"  - Workers: {num_workers}\n")
+        log_file.write(f"  - Operators: {len(operator_names)}\n")
         log_file.write("=" * 80 + "\n\n")
         log_file.flush()
 
         for idx, tf_api in enumerate(operator_names, 1):
             print("\n" + "🔷" * 40)
-            print(f"🎯 [{idx}/{len(operator_names)}] 开始测试算子: {tf_api}")
+            print(f"🎯 [{idx}/{len(operator_names)}] Start testing operator: {tf_api}")
             print("🔷" * 40)
 
             try:
@@ -1383,19 +1378,19 @@ def main():
                         "successful_cases": stats.get("successful_cases", 0),
                         "status": "completed",
                     })
-                    print(f"\n✅ {tf_api} 测试完成")
-                    print(f"   - 总迭代次数: {len(results)}")
-                    print(f"   - LLM生成用例数: {stats.get('llm_generated_cases', 0)}")
-                    print(f"   - 成功执行用例数: {stats.get('successful_cases', 0)}")
+                    print(f"\n✅ {tf_api} testing completed")
+                    print(f"   - Total iterations: {len(results)}")
+                    print(f"   - LLM-generated cases: {stats.get('llm_generated_cases', 0)}")
+                    print(f"   - Successful cases: {stats.get('successful_cases', 0)}")
 
                     log_file.write(f"[{idx}/{len(operator_names)}] {tf_api}\n")
-                    log_file.write(f"  状态: ✅ 完成\n")
-                    log_file.write(f"  总迭代次数: {len(results)}\n")
-                    log_file.write(f"  LLM生成用例数: {stats.get('llm_generated_cases', 0)}\n")
-                    log_file.write(f"  成功执行用例数: {stats.get('successful_cases', 0)}\n")
+                    log_file.write("  Status: ✅ completed\n")
+                    log_file.write(f"  Total iterations: {len(results)}\n")
+                    log_file.write(f"  LLM-generated cases: {stats.get('llm_generated_cases', 0)}\n")
+                    log_file.write(f"  Successful cases: {stats.get('successful_cases', 0)}\n")
                     if stats.get("llm_generated_cases", 0) > 0:
                         rate = stats.get("successful_cases", 0) / stats["llm_generated_cases"] * 100
-                        log_file.write(f"  成功率: {rate:.2f}%\n")
+                        log_file.write(f"  Success rate: {rate:.2f}%\n")
                     log_file.write("\n")
                     log_file.flush()
                 else:
@@ -1405,22 +1400,22 @@ def main():
                         "status": "no_results",
                     })
                     log_file.write(f"[{idx}/{len(operator_names)}] {tf_api}\n")
-                    log_file.write(f"  状态: ⚠️ 无结果\n\n")
+                    log_file.write("  Status: ⚠️ no results\n\n")
                     log_file.flush()
 
             except Exception as e:
-                print(f"\n❌ {tf_api} 测试失败: {e}")
+                print(f"\n❌ {tf_api} testing failed: {e}")
                 all_operators_summary.append({
                     "operator": tf_api, "total_iterations": 0,
                     "llm_generated_cases": 0, "successful_cases": 0,
                     "status": "failed", "error": str(e),
                 })
                 log_file.write(f"[{idx}/{len(operator_names)}] {tf_api}\n")
-                log_file.write(f"  状态: ❌ 失败\n  错误: {str(e)}\n\n")
+                log_file.write(f"  Status: ❌ failed\n  Error: {str(e)}\n\n")
                 log_file.flush()
                 continue
 
-        # ==================== 输出总结 ====================
+        # ==================== Summary output ====================
         end_time = time.time()
         end_datetime = datetime.now()
         total_duration = end_time - start_time
@@ -1436,40 +1431,40 @@ def main():
         total_iterations = sum(s["total_iterations"] for s in all_operators_summary)
 
         print("\n" + "=" * 80)
-        print("📊 批量测试总体摘要")
+        print("📊 Batch test summary")
         print("=" * 80)
-        print(f"总算子数: {len(operator_names)}")
-        print(f"✅ 成功完成: {completed_count}")
-        print(f"❌ 测试失败: {failed_count}")
-        print(f"⚠️ 无结果: {no_results_count}")
-        print(f"\n📈 统计数据:")
-        print(f"   - LLM生成的测试用例总数: {total_llm_cases}")
-        print(f"   - 成功执行的用例总数: {total_successful}")
+        print(f"Total operators: {len(operator_names)}")
+        print(f"✅ Completed: {completed_count}")
+        print(f"❌ Failed: {failed_count}")
+        print(f"⚠️ No results: {no_results_count}")
+        print("\n📈 Stats:")
+        print(f"   - LLM-generated cases: {total_llm_cases}")
+        print(f"   - Successful cases: {total_successful}")
         if total_llm_cases > 0:
-            print(f"   - 成功执行占比: {total_successful / total_llm_cases * 100:.2f}%")
-        print(f"   - 总迭代次数: {total_iterations}")
-        print(f"\n⏱️ 运行时间: {hours}小时 {minutes}分钟 {seconds}秒")
+            print(f"   - Success rate: {total_successful / total_llm_cases * 100:.2f}%")
+        print(f"   - Total iterations: {total_iterations}")
+        print(f"\n⏱️ Runtime: {hours}h {minutes}m {seconds}s")
 
-        # 写入日志
-        log_file.write("=" * 80 + "\n总体统计\n" + "=" * 80 + "\n")
-        log_file.write(f"结束时间: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log_file.write(f"总运行时间: {hours}h {minutes}m {seconds}s ({total_duration:.2f}s)\n\n")
-        log_file.write(f"算子结果:\n")
-        log_file.write(f"  - 总算子数: {len(operator_names)}\n")
-        log_file.write(f"  - 成功: {completed_count}\n")
-        log_file.write(f"  - 失败: {failed_count}\n")
-        log_file.write(f"  - 无结果: {no_results_count}\n\n")
-        log_file.write(f"LLM统计:\n")
-        log_file.write(f"  - 生成用例数: {total_llm_cases}\n")
-        log_file.write(f"  - 成功执行数: {total_successful}\n")
+        # Write log.
+        log_file.write("=" * 80 + "\nOverall summary\n" + "=" * 80 + "\n")
+        log_file.write(f"End time: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write(f"Total runtime: {hours}h {minutes}m {seconds}s ({total_duration:.2f}s)\n\n")
+        log_file.write("Operator results:\n")
+        log_file.write(f"  - Total operators: {len(operator_names)}\n")
+        log_file.write(f"  - Completed: {completed_count}\n")
+        log_file.write(f"  - Failed: {failed_count}\n")
+        log_file.write(f"  - No results: {no_results_count}\n\n")
+        log_file.write("LLM stats:\n")
+        log_file.write(f"  - Generated cases: {total_llm_cases}\n")
+        log_file.write(f"  - Successful cases: {total_successful}\n")
         if total_llm_cases > 0:
-            log_file.write(f"  - 成功率: {total_successful / total_llm_cases * 100:.2f}%\n")
-        log_file.write(f"  - 总迭代次数: {total_iterations}\n")
+            log_file.write(f"  - Success rate: {total_successful / total_llm_cases * 100:.2f}%\n")
+        log_file.write(f"  - Total iterations: {total_iterations}\n")
         log_file.close()
 
-        print(f"\n💾 总日志已保存到: {batch_log_file}")
+        print(f"\n💾 Batch log saved to: {batch_log_file}")
 
-        # JSON 摘要
+        # JSON summary
         summary_file = os.path.join(
             comparator.result_dir,
             f"batch_test_summary_{start_datetime.strftime('%Y%m%d_%H%M%S')}.json"
@@ -1501,11 +1496,11 @@ def main():
                 "operators": all_operators_summary,
             }, f, indent=2, ensure_ascii=False)
 
-        print(f"💾 JSON摘要已保存到: {summary_file}")
+        print(f"💾 JSON summary saved to: {summary_file}")
 
     finally:
         comparator.close()
-        print("\n✅ 批量测试程序执行完成")
+        print("\n✅ Batch test completed")
 
 
 if __name__ == "__main__":

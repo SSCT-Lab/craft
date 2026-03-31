@@ -1,15 +1,15 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 3.5b: 验证 PyTorch API 是否真实存在（基于官方文档页面）
+Step 3.5b: validate whether PyTorch APIs really exist (based on official docs)
 
-功能：
-- 读取 PD→PT 映射 CSV
-- 对每个 pytorch-api 拉取官方文档
-- 若文档不存在或内容过短，则将 pytorch-api 改为"无对应实现"
-- 输出新的 CSV
+Function:
+- Read PD->PT mapping CSV
+- Fetch official documentation for each pytorch-api
+- If doc is missing or too short, set pytorch-api to "No corresponding implementation"
+- Write a new CSV
 
-用法：
+Usage:
     conda activate tf_env
     python pd_pt_test/validate_pt_api_docs.py `
         --input pd_pt_test/data/pd_pt_mapping_high.csv `
@@ -58,7 +58,7 @@ def _load_genindex_html() -> str:
 
 
 def has_genindex_exact_match(api_name: str) -> bool:
-    """通过 PyTorch genindex 做精确符号匹配，兜底 generated 页面缺失场景。"""
+    """Use PyTorch genindex for exact symbol match as a fallback when generated pages are missing."""
     normalized = normalize_api_name(api_name)
     if not normalized:
         return False
@@ -81,7 +81,7 @@ def is_doc_valid(
     min_desc_chars: int,
     delay: float,
 ) -> Tuple[bool, str]:
-    """检查 PyTorch API 文档是否可信"""
+    """Check whether the PyTorch API doc is trustworthy."""
     normalized = normalize_api_name(api_name)
     if not normalized:
         return False, "empty_api"
@@ -144,22 +144,22 @@ def build_reason(original_reason: str, new_reason: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="验证 PyTorch API 文档并修正映射")
-    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="输入 PD→PT 映射 CSV 路径")
-    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="输出修正后的 CSV 路径")
-    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"每次请求延迟秒数（默认 {DEFAULT_DELAY}）")
-    parser.add_argument("--min-html-chars", type=int, default=DEFAULT_MIN_HTML_CHARS, help=f"文档最小字符数（默认 {DEFAULT_MIN_HTML_CHARS}）")
-    parser.add_argument("--min-desc-chars", type=int, default=DEFAULT_MIN_DESC_CHARS, help=f"描述最小字符数（默认 {DEFAULT_MIN_DESC_CHARS}）")
+    parser = argparse.ArgumentParser(description="Validate PyTorch API docs and fix mappings")
+    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="Input PD->PT mapping CSV path")
+    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="Output fixed CSV path")
+    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay seconds per request (default {DEFAULT_DELAY})")
+    parser.add_argument("--min-html-chars", type=int, default=DEFAULT_MIN_HTML_CHARS, help=f"Minimum doc HTML chars (default {DEFAULT_MIN_HTML_CHARS})")
+    parser.add_argument("--min-desc-chars", type=int, default=DEFAULT_MIN_DESC_CHARS, help=f"Minimum description chars (default {DEFAULT_MIN_DESC_CHARS})")
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: header is empty")
         return
 
     crawler = PyTorchDocCrawler()
@@ -170,7 +170,7 @@ def main() -> None:
 
     for idx, row in enumerate(rows, start=1):
         pt_api = normalize_api_name(row.get("pytorch-api", ""))
-        if not pt_api or pt_api == "无对应实现":
+        if not pt_api or pt_api == "No corresponding implementation":
             continue
 
         ok, reason = is_doc_valid(
@@ -184,20 +184,21 @@ def main() -> None:
             continue
 
         invalid += 1
-        row["pytorch-api"] = "无对应实现"
+        row["pytorch-api"] = "No corresponding implementation"
         row["reason"] = build_reason(row.get("reason", ""), f"pytorch_doc_invalid:{reason}")
         print(f"  ❌ [{idx}/{total}] {pt_api} ({reason})")
 
     save_csv_rows(args.output, rows, fieldnames)
 
     print("=" * 80)
-    print("验证完成")
+    print("validatecompleted")
     print("=" * 80)
-    print(f"总行数: {total}")
-    print(f"检查条目数: {checked}")
-    print(f"无效条目数: {invalid}")
-    print(f"输出文件: {args.output}")
+    print(f"Total rows: {total}")
+    print(f"Checked entries: {checked}")
+    print(f"Invalid entries: {invalid}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":
     main()
+

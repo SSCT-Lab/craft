@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-从 inconsistent_success_samples JSON 中提取 comparison_error 为
-"结果不一致，最大差异: xxx" 且 xxx < threshold 的完整样例。
+Extract full samples from inconsistent_success_samples JSON where comparison_error is
+"Results inconsistent, max diff: xxx" and xxx < threshold.
 
-默认输入:
-    pd_tf_test_1/analysis/inconsistent_success_samples_*.json（自动取最新）
-默认输出:
+Default input:
+    pd_tf_test_1/analysis/inconsistent_success_samples_*.json (auto-pick latest)
+Default output:
     pd_tf_test_1/analysis/inconsistent_success_samples_lt1_*.json
 """
 
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
-ERROR_PATTERN = re.compile(r"^结果不一致，最大差异:\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)$")
+ERROR_PATTERN = re.compile(r"^Results inconsistent, max diff:\s*([-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)$")
 
 
 def extract_max_diff(error_text: Any) -> Optional[float]:
@@ -49,7 +49,7 @@ def build_default_output_path(input_path: Path) -> Path:
 def find_latest_inconsistent_file(analysis_dir: Path) -> Path:
     candidates = sorted(analysis_dir.glob("inconsistent_success_samples_*.json"))
     if not candidates:
-        raise FileNotFoundError(f"未找到文件: {analysis_dir / 'inconsistent_success_samples_*.json'}")
+        raise FileNotFoundError(f"File not found: {analysis_dir / 'inconsistent_success_samples_*.json'}")
     return candidates[-1]
 
 
@@ -59,7 +59,7 @@ def filter_samples(input_path: Path, output_path: Path, threshold: float = 1.0) 
 
     samples = raw_data.get("samples", [])
     if not isinstance(samples, list):
-        raise ValueError("输入 JSON 的 samples 字段不是列表")
+        raise ValueError("Input JSON 'samples' field is not a list")
 
     selected_samples: List[Dict[str, Any]] = []
 
@@ -81,7 +81,7 @@ def filter_samples(input_path: Path, output_path: Path, threshold: float = 1.0) 
 
     output_data = {
         "source_file": str(input_path),
-        "filter_rule": "comparison_error 匹配 '结果不一致，最大差异: xxx' 且 xxx < threshold",
+        "filter_rule": "comparison_error matches 'Results inconsistent, max diff: xxx' and xxx < threshold",
         "threshold": threshold,
         "total_samples": len(samples),
         "matched_samples": len(selected_samples),
@@ -100,10 +100,10 @@ def parse_args() -> argparse.Namespace:
     default_input = find_latest_inconsistent_file(analysis_dir)
     default_output = build_default_output_path(default_input)
 
-    parser = argparse.ArgumentParser(description="提取 comparison_error 最大差异 < threshold 的完整样例")
-    parser.add_argument("--input", type=Path, default=default_input, help=f"输入 JSON（默认: {default_input}）")
-    parser.add_argument("--output", type=Path, default=default_output, help=f"输出 JSON（默认: {default_output}）")
-    parser.add_argument("--threshold", type=float, default=1.0, help="最大差异阈值（默认: 1.0）")
+    parser = argparse.ArgumentParser(description="Extract samples where comparison_error max diff < threshold")
+    parser.add_argument("--input", type=Path, default=default_input, help=f"Input JSON (default: {default_input})")
+    parser.add_argument("--output", type=Path, default=default_output, help=f"Output JSON (default: {default_output})")
+    parser.add_argument("--threshold", type=float, default=1.0, help="Max diff threshold (default: 1.0)")
     return parser.parse_args()
 
 
@@ -113,18 +113,18 @@ def main() -> None:
     output_path = args.output.resolve()
 
     if not input_path.exists():
-        raise FileNotFoundError(f"输入文件不存在: {input_path}")
+        raise FileNotFoundError(f"Input file does not exist: {input_path}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result = filter_samples(input_path=input_path, output_path=output_path, threshold=args.threshold)
 
     print("=" * 80)
-    print("筛选完成")
+    print("Filtering complete")
     print("=" * 80)
-    print(f"输入文件: {input_path}")
-    print(f"输出文件: {output_path}")
-    print(f"总样例数: {result['total_samples']}")
-    print(f"命中样例数: {result['matched_samples']}")
+    print(f"Input file: {input_path}")
+    print(f"Output file: {output_path}")
+    print(f"Total samples: {result['total_samples']}")
+    print(f"Matched samples: {result['matched_samples']}")
     print("=" * 80)
 
 

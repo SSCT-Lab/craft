@@ -1,22 +1,20 @@
 """
-测试 LLM 响应解析修复功能
-
-这个脚本测试新实现的解析修复功能，包括:
-1. Python float() 语法替换
-2. JSON 验证
-3. 截断修复
+Test LLM response parsing fix  This script tests the newly implemented parsing repair functionality, including:
+1. Python float() syntax substitution
+2. JSON verify
+3. Truncation fix
 """
 
 import json
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root directory to path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# 导入修复函数
+# Import repair function
 from pt_tf_test.fuzzing.llm_fuzzing_diff_test_concurrent import (
     fix_python_float_syntax,
     validate_parsed_json,
@@ -26,9 +24,9 @@ from pt_tf_test.fuzzing.llm_fuzzing_diff_test_concurrent import (
 
 
 def test_fix_python_float_syntax():
-    """测试 Python float() 语法替换"""
+    """Testing Python float() syntax replacement"""
     print("\n" + "="*70)
-    print("测试 1: Python float() 语法替换")
+    print("test 1: Python float() syntax substitution")
     print("="*70)
     
     test_cases = [
@@ -55,28 +53,28 @@ def test_fix_python_float_syntax():
     for i, test in enumerate(test_cases, 1):
         result = fix_python_float_syntax(test["input"])
         
-        # 检查期望包含的内容
+        # Check what is expected
         all_present = all(exp in result for exp in test["expected_contains"])
-        # 检查不应包含的内容
+        # Check what should not be included
         none_present = all(bad not in result for bad in test["should_not_contain"])
         
         if all_present and none_present:
-            print(f"  ✓ 测试用例 {i} 通过")
+            print(f"  ✓ test case {i} pass")
             passed += 1
         else:
-            print(f"  ✗ 测试用例 {i} 失败")
-            print(f"    输入: {test['input'][:80]}...")
-            print(f"    输出: {result[:80]}...")
+            print(f"  ✗ test case {i} fail")
+            print(f"    enter: {test['input'][:80]}...")
+            print(f"    output: {result[:80]}...")
             failed += 1
     
-    print(f"\n结果: {passed} 通过, {failed} 失败")
+    print(f"\nresult: {passed} pass, {failed} fail")
     return failed == 0
 
 
 def test_validate_parsed_json():
-    """测试 JSON 验证"""
+    """Test JSON validation"""
     print("\n" + "="*70)
-    print("测试 2: JSON 验证")
+    print("test 2: JSON verify")
     print("="*70)
     
     test_cases = [
@@ -86,14 +84,14 @@ def test_validate_parsed_json():
                 "tensorflow_test_case": {"api": "tf.abs"}
             },
             "expected": True,
-            "description": "完整的有效 JSON"
+            "description": "Complete and valid JSON"
         },
         {
             "input": {
                 "torch_test_case": {"api": "torch.abs"}
             },
             "expected": False,
-            "description": "缺少 tensorflow_test_case"
+            "description": "Lack tensorflow_test_case"
         },
         {
             "input": {
@@ -101,17 +99,17 @@ def test_validate_parsed_json():
                 "tensorflow_test_case": {"api": "tf.abs"}
             },
             "expected": False,
-            "description": "torch_test_case 不是字典"
+            "description": "torch_test_case not a dictionary"
         },
         {
             "input": "not a dict",
             "expected": False,
-            "description": "根本不是字典"
+            "description": "Not a dictionary at all"
         },
         {
             "input": {},
             "expected": False,
-            "description": "空字典"
+            "description": "empty dictionary"
         }
     ]
     
@@ -122,26 +120,26 @@ def test_validate_parsed_json():
         result = validate_parsed_json(test["input"])
         
         if result == test["expected"]:
-            print(f"  ✓ 测试用例 {i} 通过: {test['description']}")
+            print(f"  ✓ test case {i} pass: {test['description']}")
             passed += 1
         else:
-            print(f"  ✗ 测试用例 {i} 失败: {test['description']}")
-            print(f"    期望: {test['expected']}, 实际: {result}")
+            print(f"  ✗ test case {i} fail: {test['description']}")
+            print(f"    expect: {test['expected']}, actual: {result}")
             failed += 1
     
-    print(f"\n结果: {passed} 通过, {failed} 失败")
+    print(f"\nresult: {passed} pass, {failed} fail")
     return failed == 0
 
 
 def test_parse_llm_response():
-    """测试完整的 LLM 响应解析"""
+    """Test full LLM response parsing"""
     print("\n" + "="*70)
-    print("测试 3: 完整 LLM 响应解析")
+    print("test 3: Full LLM response parsing")
     print("="*70)
     
     test_cases = [
         {
-            "name": "包含 Python float() 语法的响应",
+            "name": "Response containing Python float() syntax",
             "input": '''```json
 {
   "mutation_strategy": "test",
@@ -166,7 +164,7 @@ def test_parse_llm_response():
             "should_parse": True
         },
         {
-            "name": "截断的 JSON (缺少闭合括号)",
+            "name": "Truncated JSON (missing closing bracket)",
             "input": '''```json
 {
   "mutation_strategy": "test",
@@ -180,7 +178,7 @@ def test_parse_llm_response():
             "should_parse": True
         },
         {
-            "name": "完全有效的 JSON",
+            "name": "completely valid JSON",
             "input": '''```json
 {
   "mutation_strategy": "test",
@@ -197,7 +195,7 @@ def test_parse_llm_response():
             "should_parse": True
         },
         {
-            "name": "无效的 JSON (缺少必要字段)",
+            "name": "Invalid JSON (missing required fields)",
             "input": '''```json
 {
   "mutation_strategy": "test",
@@ -219,30 +217,30 @@ def test_parse_llm_response():
         parsed_successfully = result is not None
         
         if parsed_successfully == test["should_parse"]:
-            print(f"  ✓ 测试用例 {i} 通过: {test['name']}")
+            print(f"  ✓ test case {i} pass: {test['name']}")
             if result:
-                print(f"    解析结果包含字段: {list(result.keys())}")
+                print(f"    The parsed result contains fields: {list(result.keys())}")
             passed += 1
         else:
-            print(f"  ✗ 测试用例 {i} 失败: {test['name']}")
-            print(f"    期望解析: {test['should_parse']}, 实际: {parsed_successfully}")
+            print(f"  ✗ test case {i} fail: {test['name']}")
+            print(f"    expect parsing: {test['should_parse']}, actual: {parsed_successfully}")
             failed += 1
     
-    print(f"\n结果: {passed} 通过, {failed} 失败")
+    print(f"\nresult: {passed} pass, {failed} fail")
     return failed == 0
 
 
 def test_real_failure_case():
-    """测试真实的失败案例"""
+    """Test real failure cases"""
     print("\n" + "="*70)
-    print("测试 4: 真实失败案例")
+    print("test 4: Real failure cases")
     print("="*70)
     
-    # 从 torch_abs_fuzzing_result_20260131_215615.json 中提取的真实失败响应
+    # from torch_abs_fuzzing_result_20260131_215615.json The real failure response extracted from
     real_failure = '''```json
 {
-  "mutation_strategy": "极端数值变异：在保持数学等价前提下，将 sample_values 替换为涵盖浮点边界与特殊值的集合，包括正负零、极小正数(1e-38)、极大正数(1e38)、正负无穷、NaN",
-  "mutation_reason": "abs 函数在数学上对所有实数和扩展实数（±0, ±inf, NaN）有明确定义：abs(±0)=0, abs(±inf)=inf, abs(NaN)=NaN。但不同框架在底层实现中可能对 subnormal 数、符号零传播、NaN 值类型（quiet vs signaling）、或 inf/NaN 的 IEEE 754 位级处理存在差异。PyTorch 和 TensorFlow 均基于 LLVM/LLVM-like 或 XLA 后端，但数值库（如 MKL、Eigen、CUDNN）对特殊值的处理路径可能不一致；尤其当输入含 -0.0 时，某些后端可能错误保留符号（违反 IEEE 754 abs 定义），或对 subnormal 输入触发非标准舍入。此变异能暴露底层数值库或编译器优化引入的合规性 bug。",
+  "mutation_strategy": "Extreme numerical variation: While maintaining mathematical equivalence, replace sample_values ​​with a set covering floating point boundaries and special values, including positive and negative zero, extremely small positive numbers (1e-38), extremely large positive numbers (1e38), and positive and negative infinity、NaN",
+  "mutation_reason": "abs Function mathematically for all real and extended real numbers（±0, ±inf, NaN）clearly defined：abs(±0)=0, abs(±inf)=inf, abs(NaN)=NaN。But different frameworks may have problems with subnormal numbers, signed zero propagation, NaN value types (quiet vs signaling), or inf/NaN There are differences in bit-level processing of IEEE 754. Both PyTorch and TensorFlow are based on LLVM/LLVM-like or -0.0 Some backends may incorrectly preserve signs (violating IEEE 754 abs definitions), or trigger non-standard rounding on subnormal input. This mutation can expose compliance introduced by the underlying numerical library or compiler optimizations bug。",
   "torch_test_case": {
     "api": "torch.abs",
     "input": {
@@ -262,58 +260,58 @@ def test_real_failure_case():
 }
 ```'''
     
-    print("  测试真实失败案例...")
+    print("  Test real failure cases...")
     result = parse_llm_response(real_failure)
     
     if result is not None:
-        print("  ✓ 成功解析真实失败案例")
-        print(f"    解析结果包含字段: {list(result.keys())}")
+        print("  ✓ Successful analysis of real failure cases")
+        print(f"    The parsed result contains fields: {list(result.keys())}")
         
-        # 检查 sample_values 是否正确转换
+        # Check if sample_values ​​are converted correctly
         torch_values = result.get("torch_test_case", {}).get("input", {}).get("sample_values", [])
         print(f"    torch sample_values: {torch_values[:5]}...")
         
-        # 检查是否还有 float() 语法
+        # Check if there is also float() syntax
         json_str = json.dumps(result)
         if "float(" in json_str:
-            print("  ⚠️ 警告: 解析结果中仍包含 float() 语法")
+            print("  ⚠️ warn: The parsing result still contains float() syntax")
             return False
         else:
-            print("  ✓ 已成功移除所有 float() 语法")
+            print("  ✓ Successfully removed all float() syntax")
             return True
     else:
-        print("  ✗ 解析真实失败案例失败")
+        print("  ✗ Failed to parse real failure cases")
         return False
 
 
 def main():
-    """运行所有测试"""
+    """Run all tests"""
     print("\n" + "="*70)
-    print("LLM 响应解析修复功能测试")
+    print("LLM Response parsing fix function test")
     print("="*70)
     
     results = []
     
-    results.append(("Python float() 语法替换", test_fix_python_float_syntax()))
-    results.append(("JSON 验证", test_validate_parsed_json()))
-    results.append(("完整 LLM 响应解析", test_parse_llm_response()))
-    results.append(("真实失败案例", test_real_failure_case()))
+    results.append(("Python float() syntax substitution", test_fix_python_float_syntax()))
+    results.append(("JSON verify", test_validate_parsed_json()))
+    results.append(("Full LLM response parsing", test_parse_llm_response()))
+    results.append(("Real failure cases", test_real_failure_case()))
     
     print("\n" + "="*70)
-    print("测试总结")
+    print("Test summary")
     print("="*70)
     
     for name, passed in results:
-        status = "✓ 通过" if passed else "✗ 失败"
+        status = "✓ pass" if passed else "✗ fail"
         print(f"  {status}: {name}")
     
     all_passed = all(passed for _, passed in results)
     
     if all_passed:
-        print("\n🎉 所有测试通过！修复功能正常工作。")
+        print("\n🎉 All tests passed! Repair function works fine。")
         return 0
     else:
-        print("\n⚠️ 部分测试失败，需要进一步调试。")
+        print("\n⚠️ Some tests failed and require further debugging。")
         return 1
 
 

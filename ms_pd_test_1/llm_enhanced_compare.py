@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 4: 基于 LLM 的 MindSpore 与 PaddlePaddle 算子差分测试框架
+Step 4: LLM-based differential testing framework for MindSpore vs PaddlePaddle operators
 
-功能：
-- 从 JSON 文件加载 MS 测试用例和 MS→PD 映射
-- 对每对等价算子，分别在 MindSpore 和 PaddlePaddle 中执行并比较结果
-- 使用 LLM 进行测试用例的修复（repair）、变异（mutation）和跳过（skip）
-- LLM 调用支持并发，算子执行顺序串行，保证输入值一致
-- 保存详细测试结果和批量日志
+Functionality:
+- Load MS test cases and MS->PD mapping from JSON files
+- For each equivalent operator pair, run in MindSpore and PaddlePaddle and compare results
+- Use the LLM to repair, mutate, or skip test cases
+- LLM calls can be concurrent; operator execution is serial to keep inputs consistent
+- Save detailed test results and batch logs
 
-用法：
+Usage:
     conda activate tf_env
     python ms_pd_test_1/llm_enhanced_compare.py \
         [--max-iterations 3] [--num-cases 3] [--workers 6] \
         [--start 1] [--end N] [--operators mindspore.ops.Abs mindspore.ops.Add]
 
-前置条件：
-    1. 已运行 Step 1 extract_ms_apis.py
-    2. 已运行 Step 2 extract_ms_test_cases.py
-    3. 已运行 Step 3 extract_ms_pd_mapping.py
+Prerequisites:
+    1. Run Step 1 extract_ms_apis.py
+    2. Run Step 2 extract_ms_test_cases.py
+    3. Run Step 3 extract_ms_pd_mapping.py
 """
 
 import os
@@ -42,14 +42,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import paddle
 from openai import OpenAI
 
-# 添加项目根目录到路径
+# Add project root to sys.path
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from component.doc.doc_crawler_factory import get_doc_content
 
-# ==================== 常量定义 ====================
+# ==================== Constants ====================
 DEFAULT_MODEL = "qwen-plus"
 DEFAULT_KEY_PATH = "aliyun.key"
 DEFAULT_MAX_ITERATIONS = 3
@@ -61,13 +61,13 @@ DEFAULT_TEST_CASES_FILE = os.path.join(DATA_DIR, "ms_test_cases.json")
 DEFAULT_MAPPING_FILE = os.path.join(DATA_DIR, "ms_pd_mapping_validated.csv")
 
 
-# ==================== MindSpore 延迟加载 ====================
+# ==================== MindSpore lazy load ====================
 _mindspore = None
 _ms_context_set = False
 
 
 def get_mindspore():
-    """延迟加载 MindSpore，并设置上下文"""
+    """Lazy-load MindSpore and set context."""
     global _mindspore, _ms_context_set
     if _mindspore is None:
         import mindspore
@@ -85,7 +85,7 @@ def get_mindspore():
 
 
 class LLMEnhancedComparator:
-    """基于 LLM 的 MindSpore 与 PaddlePaddle 差分测试框架"""
+    """LLM-based differential testing framework for MindSpore vs PaddlePaddle."""
 
     def __init__(
         self,
@@ -109,21 +109,21 @@ class LLMEnhancedComparator:
         )
 
         self.test_cases_data = self._load_test_cases(test_cases_file)
-        self._safe_print(f"📋 已加载 {len(self.test_cases_data)} 个 MS API 的测试用例")
+        self._safe_print(f"📋 Loaded {len(self.test_cases_data)} MS API test cases")
 
         self.api_mapping = self._load_mapping(mapping_file)
-        has_impl = sum(1 for v in self.api_mapping.values() if v != "无对应实现")
-        self._safe_print(f"📋 已加载 {len(self.api_mapping)} 个映射（{has_impl} 个有对应实现）")
+        has_impl = sum(1 for v in self.api_mapping.values() if v != "no_matching_impl")
+        self._safe_print(f"📋 Loaded {len(self.api_mapping)} mappings ({has_impl} with matching impl)")
 
         self.result_dir = os.path.join(ROOT_DIR, "ms_pd_test_1", "ms_pd_log_1")
         os.makedirs(self.result_dir, exist_ok=True)
-        self._safe_print(f"📁 结果存储目录: {self.result_dir}")
+        self._safe_print(f"📁 Result directory: {self.result_dir}")
 
         self.random_seed = 42
         np.random.seed(self.random_seed)
         paddle.seed(self.random_seed)
 
-    # ==================== 辅助方法 ====================
+    # ==================== Helper methods ====================
 
     def _safe_print(self, msg: str, end: str = "\n"):
         with self.print_lock:
@@ -142,12 +142,12 @@ class LLMEnhancedComparator:
         api_key = os.getenv("DASHSCOPE_API_KEY")
         if api_key:
             return api_key
-        self._safe_print("❌ 未找到 API 密钥")
+        self._safe_print("❌ API key not found")
         return ""
 
     def _load_test_cases(self, filepath: str) -> Dict[str, Any]:
         if not os.path.exists(filepath):
-            self._safe_print(f"⚠️ 测试用例文件不存在: {filepath}")
+            self._safe_print(f"⚠️ Test case file not found: {filepath}")
             return {}
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -155,7 +155,7 @@ class LLMEnhancedComparator:
 
     def _load_mapping(self, filepath: str) -> Dict[str, str]:
         if not os.path.exists(filepath):
-            self._safe_print(f"⚠️ 映射文件不存在: {filepath}")
+            self._safe_print(f"⚠️ Mapping file not found: {filepath}")
             return {}
         mapping = {}
         with open(filepath, 'r', encoding='utf-8') as f:
@@ -167,10 +167,10 @@ class LLMEnhancedComparator:
                     mapping[ms_api] = pt_api
         return mapping
 
-    # ==================== API 工具方法 ====================
+    # ==================== API helpers ====================
 
     def is_class_based_api(self, api_name: str) -> bool:
-        """判断 API 是否是基于类的（首字母大写）"""
+        """Return True if the API is class-based (capitalized)."""
         parts = api_name.split(".")
         if len(parts) >= 2:
             last_part = parts[-1]
@@ -179,7 +179,7 @@ class LLMEnhancedComparator:
         return False
 
     def get_ms_function(self, api_name: str):
-        """获取 MindSpore 算子函数/类对象"""
+        """Get MindSpore operator function/class object."""
         ms = get_mindspore()
         try:
             parts = api_name.split(".")
@@ -189,7 +189,7 @@ class LLMEnhancedComparator:
                 obj = getattr(obj, part)
             return obj
         except AttributeError:
-            # 尝试在 ops.operations 中查找
+            # Try lookup in ops.operations
             try:
                 obj = ms.ops.operations
                 op_name = parts[-1]
@@ -199,7 +199,7 @@ class LLMEnhancedComparator:
             return None
 
     def get_pt_function(self, api_name: str):
-        """获取 PaddlePaddle 算子函数/类对象"""
+        """Get PaddlePaddle operator function/class object."""
         try:
             parts = api_name.split(".")
             # parts[0] = "paddle"
@@ -211,19 +211,19 @@ class LLMEnhancedComparator:
             return None
 
     def convert_api_name(self, ms_api: str) -> Tuple[Optional[str], Optional[str], str]:
-        """查找 MS API 对应的 Paddle API"""
+        """Find Paddle API corresponding to an MS API."""
         if ms_api in self.api_mapping:
             pt_api = self.api_mapping[ms_api]
-            if pt_api and pt_api != "无对应实现":
-                return ms_api, pt_api, "映射表"
+            if pt_api and pt_api != "no_matching_impl":
+                return ms_api, pt_api, "mapping_table"
             else:
-                return ms_api, None, "无对应实现"
-        return ms_api, None, "映射表中未找到"
+                return ms_api, None, "no_matching_impl"
+        return ms_api, None, "mapping_not_found"
 
-    # ==================== 数据转换 ====================
+    # ==================== Data conversion ====================
 
     def generate_numpy_data(self, data: Any) -> np.ndarray:
-        """从描述生成 numpy 数组"""
+        """Generate numpy arrays from descriptors."""
         if isinstance(data, dict):
             if "shape" in data:
                 raw_shape = data["shape"]
@@ -282,7 +282,7 @@ class LLMEnhancedComparator:
             return np.array(data)
 
     def convert_to_ms_tensor(self, data: Any, numpy_data: np.ndarray = None):
-        """转换为 MindSpore 张量"""
+        """Convert to a MindSpore tensor."""
         ms = get_mindspore()
         if numpy_data is not None:
             return ms.Tensor(numpy_data)
@@ -296,7 +296,7 @@ class LLMEnhancedComparator:
         return ms.Tensor(data)
 
     def convert_to_pt_tensor(self, data: Any, numpy_data: np.ndarray = None):
-        """转换为 Paddle 张量"""
+        """Convert to a Paddle tensor."""
         if numpy_data is not None:
             return paddle.to_tensor(numpy_data.copy())
         if isinstance(data, dict):
@@ -308,10 +308,10 @@ class LLMEnhancedComparator:
             return paddle.to_tensor(data)
         return paddle.to_tensor(data)
 
-    # ==================== 参数准备 ====================
+    # ==================== Argument preparation ====================
 
     def should_skip_param(self, key: str, api_name: str, framework: str) -> bool:
-        """判断是否应跳过某个参数"""
+        """Decide whether a parameter should be skipped."""
         common_skip = {"description", "api", "init_params", "is_class_api"}
         if key in common_skip:
             return True
@@ -330,11 +330,11 @@ class LLMEnhancedComparator:
         self, test_case: Dict[str, Any], framework: str = "ms"
     ) -> Tuple[List[Any], Dict[str, Any]]:
         """
-        为指定框架准备参数
+        Prepare arguments for a given framework.
 
         Args:
-            test_case: 测试用例（包含共享的 numpy 数据）
-            framework: "ms" 或 "paddle"
+            test_case: test case (includes shared numpy data)
+            framework: "ms" or "paddle"
 
         Returns:
             (args, kwargs)
@@ -393,7 +393,7 @@ class LLMEnhancedComparator:
             "start", "end", "step", "stop",
         ]
 
-        # 可变长参数处理
+        # Varargs handling
         varargs_key = None
         for key in test_case.keys():
             if key.startswith("*"):
@@ -414,7 +414,7 @@ class LLMEnhancedComparator:
                         args.append(item)
             return args, kwargs
 
-        # 按顺序处理位置参数
+        # Process positional params in order
         for param_name in positional_params:
             if param_name in test_case:
                 value = test_case[param_name]
@@ -423,7 +423,7 @@ class LLMEnhancedComparator:
                 else:
                     args.append(convert_value(value))
 
-        # 处理关键字参数
+        # Process keyword params
         for key, value in test_case.items():
             if (
                 key in positional_params
@@ -441,14 +441,14 @@ class LLMEnhancedComparator:
 
         return args, kwargs
 
-    # ==================== 结果比较 ====================
+    # ==================== Result comparison ====================
 
     def compare_tensors(
         self, ms_result, torch_result, tolerance: float = 1e-5
     ) -> Tuple[bool, str]:
-        """比较 MindSpore 和 Paddle 的计算结果"""
+        """Compare MindSpore and Paddle results."""
         try:
-            # 转换为 numpy
+            # Convert to numpy
             if hasattr(ms_result, 'asnumpy'):
                 ms_np = ms_result.asnumpy()
             elif isinstance(ms_result, np.ndarray):
@@ -463,32 +463,32 @@ class LLMEnhancedComparator:
             else:
                 torch_np = np.array(torch_result)
 
-            # 形状一致性检查
+            # Shape consistency check
             if ms_np.shape != torch_np.shape:
-                return False, f"形状不匹配: MS={ms_np.shape} vs PD={torch_np.shape}"
+                return False, f"Shape mismatch: MS={ms_np.shape} vs PD={torch_np.shape}"
 
-            # 布尔类型精确比较
+            # Exact comparison for boolean types
             if ms_np.dtype == np.bool_ or torch_np.dtype == np.bool_:
                 match = np.array_equal(ms_np, torch_np)
                 if match:
-                    return True, "布尔结果完全一致"
+                    return True, "Boolean results match"
                 else:
                     diff_count = np.sum(ms_np != torch_np)
-                    return False, f"布尔结果不一致，差异元素数: {diff_count}"
+                    return False, f"Boolean results differ, diff elements: {diff_count}"
 
-            # 数值比较
+            # Numeric comparison
             if np.allclose(ms_np, torch_np, atol=tolerance, rtol=tolerance, equal_nan=True):
-                return True, "结果一致（在容差范围内）"
+                return True, "Results match (within tolerance)"
             else:
                 max_diff = np.max(
                     np.abs(ms_np.astype(np.float64) - torch_np.astype(np.float64))
                 )
-                return False, f"结果不一致，最大差异: {max_diff:.8f}"
+                return False, f"Results inconsistent, max diff: {max_diff:.8f}"
 
         except Exception as e:
-            return False, f"比较异常: {str(e)}"
+            return False, f"Comparison error: {str(e)}"
 
-    # ==================== 测试执行 ====================
+    # ==================== Test execution ====================
 
     def execute_test_case(
         self,
@@ -497,7 +497,7 @@ class LLMEnhancedComparator:
         ms_test_case: Dict[str, Any],
         pytorch_test_case: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
-        """执行单个测试用例"""
+        """Execute a single test case."""
         def pick_first(case: Dict[str, Any], *keys: str):
             for key in keys:
                 if isinstance(case, dict) and key in case and case[key] is not None:
@@ -530,7 +530,7 @@ class LLMEnhancedComparator:
             "status": "unknown",
         }
 
-        # 统一生成共享张量
+        # Generate shared tensors uniformly
         ms_test_case, pytorch_test_case = self._materialize_shared_tensors(
             effective_ms_api, effective_pt_api, ms_test_case, pytorch_test_case
         )
@@ -538,12 +538,12 @@ class LLMEnhancedComparator:
         is_class_ms = self.is_class_based_api(effective_ms_api)
         is_class_pt = self.is_class_based_api(effective_pt_api)
 
-        # ---- 执行 MindSpore ----
+        # ---- Execute MindSpore ----
         ms_result = None
         try:
             ms_func = self.get_ms_function(effective_ms_api)
             if ms_func is None:
-                raise AttributeError(f"无法找到 MS API: {effective_ms_api}")
+                raise AttributeError(f"MS API not found: {effective_ms_api}")
 
             if is_class_ms:
                 init_kwargs = {
@@ -556,7 +556,7 @@ class LLMEnhancedComparator:
                     init_kwargs.update(ms_test_case["init_params"])
                 op_instance = ms_func(**init_kwargs)
 
-                # 获取输入
+                # Get input
                 input_data = pick_first(ms_test_case, "input", "x")
                 if input_data is not None:
                     if isinstance(input_data, dict) and "shape" in input_data:
@@ -570,9 +570,9 @@ class LLMEnhancedComparator:
                 else:
                     ms_result = op_instance(self.convert_to_ms_tensor(np.random.randn(2, 3).astype(np.float32)))
             else:
-                # 函数式 API / Tensor 方法
+                # Functional API / Tensor method
                 if "Tensor" in effective_ms_api:
-                    # Tensor 方法：tensor.method(args)
+                    # Tensor method: tensor.method(args)
                     method_name = effective_ms_api.split(".")[-1]
                     input_data = pick_first(ms_test_case, "x", "input")
                     if isinstance(input_data, np.ndarray):
@@ -583,7 +583,7 @@ class LLMEnhancedComparator:
                         ms_tensor = self.convert_to_ms_tensor(np_data)
 
                     method = getattr(ms_tensor, method_name)
-                    # 获取除了 x/input 之外的参数
+                    # Collect parameters other than x/input
                     other_args = []
                     other_kwargs = {}
                     for key, value in ms_test_case.items():
@@ -612,12 +612,12 @@ class LLMEnhancedComparator:
         except Exception as e:
             result["ms_error"] = f"{type(e).__name__}: {str(e)}"
 
-        # ---- 执行 Paddle ----
+        # ---- Execute Paddle ----
         torch_result = None
         try:
             pt_func = self.get_pt_function(effective_pt_api)
             if pt_func is None:
-                raise AttributeError(f"无法找到 PD API: {effective_pt_api}")
+                raise AttributeError(f"PD API not found: {effective_pt_api}")
 
             if is_class_pt:
                 init_kwargs = {
@@ -683,7 +683,7 @@ class LLMEnhancedComparator:
         except Exception as e:
             result["paddle_error"] = f"{type(e).__name__}: {str(e)}"
 
-        # ---- 比较结果 ----
+        # ---- Compare results ----
         if result["ms_success"] and result["paddle_success"]:
             try:
                 match, detail = self.compare_tensors(ms_result, torch_result)
@@ -705,7 +705,7 @@ class LLMEnhancedComparator:
     def _execute_test_case_sequential(
         self, ms_api, pytorch_api, ms_test_case, pytorch_test_case=None
     ) -> Dict[str, Any]:
-        """通过锁保证执行不并发"""
+        """Ensure serial execution via a lock."""
         with self.execution_lock:
             return self.execute_test_case(ms_api, pytorch_api, ms_test_case, pytorch_test_case)
 
@@ -716,7 +716,7 @@ class LLMEnhancedComparator:
         ms_test_case: Dict[str, Any],
         pytorch_test_case: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """统一生成共享张量，保证两框架输入数值一致"""
+        """Generate shared tensors to keep inputs consistent across frameworks."""
         ms_case = copy.deepcopy(ms_test_case)
         pt_case = copy.deepcopy(pytorch_test_case)
 
@@ -818,7 +818,7 @@ class LLMEnhancedComparator:
             return {"shape": [2, 3, 10], "dtype": "float32"}
         return {"shape": [2, 3], "dtype": "float32"}
 
-    # ==================== API 文档爬取 ====================
+    # ==================== API doc crawling ====================
 
     def _fetch_api_docs(self, ms_api: str, pytorch_api: str) -> Tuple[str, str]:
         MIN_DOC_LENGTH = 300
@@ -829,25 +829,25 @@ class LLMEnhancedComparator:
             raw = get_doc_content(ms_api, "mindspore")
             if raw and len(raw) >= MIN_DOC_LENGTH:
                 ms_doc = raw[:3000]
-                self._safe_print(f"    📄 MS文档: {len(ms_doc)} 字符")
+                self._safe_print(f"    📄 MS doc: {len(ms_doc)} chars")
             else:
-                self._safe_print(f"    📄 MS文档: 未获取到有效内容")
+                self._safe_print("    📄 MS doc: no valid content")
         except Exception as e:
-            self._safe_print(f"    ⚠️ MS文档爬取失败: {str(e)[:50]}")
+            self._safe_print(f"    ⚠️ MS doc crawl failed: {str(e)[:50]}")
 
         try:
             raw = get_doc_content(pytorch_api, "paddle")
             if raw and len(raw) >= MIN_DOC_LENGTH:
                 pytorch_doc = raw[:3000]
-                self._safe_print(f"    📄 PD文档: {len(pytorch_doc)} 字符")
+                self._safe_print(f"    📄 PD doc: {len(pytorch_doc)} chars")
             else:
-                self._safe_print(f"    📄 PD文档: 未获取到有效内容")
+                self._safe_print("    📄 PD doc: no valid content")
         except Exception as e:
-            self._safe_print(f"    ⚠️ PD文档爬取失败: {str(e)[:50]}")
+            self._safe_print(f"    ⚠️ PD doc crawl failed: {str(e)[:50]}")
 
         return ms_doc, pytorch_doc
 
-    # ==================== LLM 交互 ====================
+    # ==================== LLM interaction ====================
 
     def _build_llm_prompt(
         self,
@@ -867,7 +867,7 @@ class LLMEnhancedComparator:
         pytorch_error = execution_result.get("paddle_error", execution_result.get("pytorch_error", ""))
         comparison_error = execution_result.get("comparison_error", "")
 
-        # 简化测试用例
+        # Simplify test cases
         def simplify_case(case):
             simplified = {}
             for key, value in case.items():
@@ -880,16 +880,16 @@ class LLMEnhancedComparator:
         simplified_ms = simplify_case(ms_test_case)
         simplified_pt = simplify_case(pytorch_test_case)
 
-        # 文档部分
+        # Doc section
         doc_section = ""
         if ms_doc or pytorch_doc:
-            doc_section = "\n## 官方API文档参考\n\n"
+            doc_section = "\n## Official API docs reference\n\n"
             if ms_doc:
-                doc_section += f"### MindSpore {ms_api} 文档\n```\n{ms_doc}\n```\n\n"
+                doc_section += f"### MindSpore {ms_api} docs\n```\n{ms_doc}\n```\n\n"
             if pytorch_doc:
-                doc_section += f"### PaddlePaddle {pytorch_api} 文档\n```\n{pytorch_doc}\n```\n\n"
+                doc_section += f"### PaddlePaddle {pytorch_api} docs\n```\n{pytorch_doc}\n```\n\n"
 
-        # 参数示例
+        # Parameter examples
         def build_param_str(simplified):
             examples = []
             for key, value in simplified.items():
@@ -901,74 +901,74 @@ class LLMEnhancedComparator:
         ms_param_str = build_param_str(simplified_ms)
         pt_param_str = build_param_str(simplified_pt)
 
-        prompt = f"""请分析以下算子测试用例在MindSpore和PaddlePaddle框架中的执行结果，并根据结果进行测试用例的修复或变异（fuzzing）。
+        prompt = f"""Please analyze the execution results of the following operator test case in MindSpore and PaddlePaddle, and repair or mutate (fuzz) the test case based on the results.
 
-## 测试信息
+## Test info
 - **MindSpore API**: {ms_api}
 - **PaddlePaddle API**: {pytorch_api}
 {doc_section}
-## 执行结果
-- **执行状态**: {status}
-- **MindSpore执行成功**: {ms_success}
-- **PaddlePaddle执行成功**: {pytorch_success}
-- **结果是否一致**: {results_match}
+## Execution results
+- **Status**: {status}
+- **MindSpore success**: {ms_success}
+- **PaddlePaddle success**: {pytorch_success}
+- **Results match**: {results_match}
 
-## 错误信息
-- **MindSpore错误**: {ms_error if ms_error else "无"}
-- **PaddlePaddle错误**: {pytorch_error if pytorch_error else "无"}
-- **比较错误**: {comparison_error if comparison_error else "无"}
+## Error info
+- **MindSpore error**: {ms_error if ms_error else "none"}
+- **PaddlePaddle error**: {pytorch_error if pytorch_error else "none"}
+- **Comparison error**: {comparison_error if comparison_error else "none"}
 
-## 原始测试用例
+## Original test cases
 
-### MindSpore测试用例
+### MindSpore test case
 ```json
 {json.dumps(simplified_ms, indent=2, ensure_ascii=False)}
 ```
 
-### PaddlePaddle测试用例
+### PaddlePaddle test case
 ```json
 {json.dumps(simplified_pt, indent=2, ensure_ascii=False)}
 ```
 
-## 任务要求
-请根据以上信息（包括官方API文档），自主判断两框架的比较结果是**一致**、**不一致**还是**执行出错**，并执行以下操作：
+## Task requirements
+Based on the info above (including official docs), decide whether results are **consistent**, **inconsistent**, or **execution error**, and do the following:
 
-1. **如果一致**：对用例进行**变异（fuzzing）**，例如修改输入张量形状、参数值，优先探索极端值和边界值
-2. **如果执行出错**：结合报错和文档进行**修复**（调整参数名/类型/取值范围等）或**跳过**（文档缺失、算子已移除、或两算子语义不等价）
-3. **如果不一致**：先判断是否为可容忍精度误差（1e-3及以下）；可容忍则**变异**，语义不等价则**跳过**，否则按用例构造问题进行**修复**
+1. **If consistent**: **mutate (fuzz)** the case, e.g., change input shapes or parameter values, prioritizing extreme/boundary values.
+2. **If execution error**: **repair** (adjust parameter names/types/ranges) or **skip** (missing docs, operator removed, or APIs are not equivalent).
+3. **If inconsistent**: determine whether the difference is within tolerance (<= 1e-3); if tolerable, **mutate**; if semantics differ, **skip**; otherwise **repair**.
 
-## MindSpore API 调用说明
-- MindSpore Primitive 算子（如 mindspore.ops.Abs）需要先实例化再调用：`op = ops.Abs(); result = op(input)`
-- MindSpore 函数式 API（如 mindspore.ops.abs）直接调用：`result = ops.abs(input)`
-- MindSpore NN 层（如 mindspore.nn.Conv2d）在 Paddle 中一般对应 `paddle.nn.Conv2D`：`layer = nn.Conv2D(...); result = layer(input)`
-- 注意 MindSpore 和 PaddlePaddle 的参数名和语义可能不同，需要适配
+## MindSpore API usage notes
+- MindSpore Primitive ops (e.g., mindspore.ops.Abs) must be instantiated: `op = ops.Abs(); result = op(input)`
+- MindSpore functional APIs (e.g., mindspore.ops.abs) are called directly: `result = ops.abs(input)`
+- MindSpore NN layers (e.g., mindspore.nn.Conv2d) usually map to `paddle.nn.Conv2D` in Paddle: `layer = nn.Conv2D(...); result = layer(input)`
+- MindSpore and PaddlePaddle parameter names/semantics may differ; adapt as needed.
 
-## 输出格式要求
-请严格按照以下JSON格式输出，不要包含任何其他文字：
+## Output format
+Return strictly in this JSON format with no extra text:
 
 {{
-  "operation": "mutation",
-  "reason": "进行该操作的详细原因（不超过150字）",
-  "mindspore_test_case": {{
-    "api": "{ms_api}",
+    "operation": "mutation",
+    "reason": "detailed reason for this operation (<= 150 words)",
+    "mindspore_test_case": {{
+        "api": "{ms_api}",
 {ms_param_str}
-  }},
-    "paddle_test_case": {{
-    "api": "{pytorch_api}",
+    }},
+        "paddle_test_case": {{
+        "api": "{pytorch_api}",
 {pt_param_str}
-  }}
+    }}
 }}
 
-**重要说明**：
-1. operation 的值必须是 "mutation"、"repair" 或 "skip" 之一
-2. 张量参数必须使用 {{"shape": [...], "dtype": "..."}} 格式
-3. 标量参数直接使用数值
-4. 构造两个框架的用例时必须保证输入相同、参数在语义上严格对应
-5. MindSpore 和 PaddlePaddle 的测试用例允许参数名/参数值/参数数量差异，只要理论输出一致
-6. 如果该算子找不到官方文档或文档显示它已从当前版本移除，请将 operation 设为 "skip"，不需要尝试修复
-7. 测试用例变异时可优先探索极端情况：空张量、单元素张量、高维张量、不同数据类型、边界值等
-8. 请仔细阅读官方API文档，确保参数名称、类型、取值范围与文档一致
-9. 注意两个框架的默认数据布局语义，必要时显式设置避免格式歧义
+**Important**:
+1. operation must be one of "mutation", "repair", or "skip".
+2. Tensor params must use {{"shape": [...], "dtype": "..."}}.
+3. Scalar params should be plain numeric values.
+4. When constructing cases, inputs must be identical and parameters must be semantically aligned.
+5. MindSpore and PaddlePaddle cases may differ in parameter names/values/count as long as outputs are theoretically equivalent.
+6. If the operator lacks docs or has been removed, set operation to "skip" and do not attempt repair.
+7. For mutation, prioritize extremes: empty tensors, single-element tensors, high-dimensional tensors, dtype variations, boundary values.
+8. Read official API docs carefully; ensure names, types, and ranges match the docs.
+9. Mind default layout semantics in both frameworks; set explicitly to avoid ambiguity.
 """
         return prompt
 
@@ -980,7 +980,7 @@ class LLMEnhancedComparator:
         ms_doc: str = "",
         pytorch_doc: str = "",
     ) -> Dict[str, Any]:
-        """调用 LLM 进行测试用例修复或变异"""
+        """Call the LLM to repair or mutate test cases."""
         prompt = self._build_llm_prompt(
             execution_result, ms_test_case, pytorch_test_case, ms_doc, pytorch_doc
         )
@@ -991,9 +991,9 @@ class LLMEnhancedComparator:
                     {
                         "role": "system",
                         "content": (
-                            "你是一个深度学习框架测试专家，精通MindSpore和PaddlePaddle框架的API差异。"
-                            "你的任务是根据测试用例的执行结果，判断是否需要修复或变异测试用例，"
-                            "并返回严格的JSON格式结果。"
+                            "You are a deep learning framework test expert familiar with MindSpore and PaddlePaddle API differences. "
+                            "Your task is to decide whether to repair or mutate the test case based on execution results, "
+                            "and return strictly formatted JSON."
                         ),
                     },
                     {"role": "user", "content": prompt},
@@ -1007,27 +1007,27 @@ class LLMEnhancedComparator:
             try:
                 return json.loads(raw_response)
             except json.JSONDecodeError:
-                self._safe_print(f"    ⚠️ LLM返回不是有效JSON，尝试提取...")
+                self._safe_print("    ⚠️ LLM response is not valid JSON; attempting extraction...")
                 json_match = re.search(r'\{.*\}', raw_response, re.DOTALL)
                 if json_match:
                     return json.loads(json_match.group())
                 return {
                     "operation": "skip",
-                    "reason": "LLM返回格式错误",
+                    "reason": "llm_response_format_error",
                     "mindspore_test_case": ms_test_case,
                     "paddle_test_case": pytorch_test_case,
                 }
 
         except Exception as e:
-            self._safe_print(f"    ❌ 调用LLM失败: {e}")
+            self._safe_print(f"    ❌ LLM call failed: {e}")
             return {
                 "operation": "skip",
-                "reason": f"LLM调用失败: {e}",
+                "reason": f"llm_call_failed: {e}",
                 "mindspore_test_case": ms_test_case,
                 "paddle_test_case": pytorch_test_case,
             }
 
-    # ==================== 核心测试循环 ====================
+    # ==================== Core test loop ====================
 
     def llm_enhanced_test_operator(
         self,
@@ -1036,30 +1036,30 @@ class LLMEnhancedComparator:
         num_test_cases: int = None,
         num_workers: int = DEFAULT_WORKERS,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
-        """使用 LLM 增强的方式测试单个算子对"""
+        """Test a single operator pair with LLM enhancement."""
         self._safe_print(f"\n{'=' * 80}")
-        self._safe_print(f"🎯 开始测试算子: {ms_api}")
-        self._safe_print(f"🔄 每个用例最大迭代次数: {max_iterations}")
+        self._safe_print(f"🎯 Start testing operator: {ms_api}")
+        self._safe_print(f"🔄 Max iterations per case: {max_iterations}")
         self._safe_print(f"{'=' * 80}\n")
 
         stats = {"llm_generated_cases": 0, "successful_cases": 0}
 
         _, pytorch_api, mapping_method = self.convert_api_name(ms_api)
         if pytorch_api is None:
-            self._safe_print(f"❌ {ms_api} 无 Paddle 对应实现")
+            self._safe_print(f"❌ {ms_api} has no matching Paddle impl")
             return [], stats
 
         self._safe_print(f"✅ MindSpore API: {ms_api}")
         self._safe_print(f"✅ Paddle API: {pytorch_api}")
-        self._safe_print(f"✅ 映射方法: {mapping_method}")
+        self._safe_print(f"✅ Mapping method: {mapping_method}")
 
         api_data = self.test_cases_data.get(ms_api, {})
         test_cases = api_data.get("test_cases", [])
 
         if not test_cases:
-            self._safe_print(f"⚠️ 未找到 {ms_api} 的测试用例，使用默认用例")
+            self._safe_print(f"⚠️ No test cases found for {ms_api}; using default")
             test_cases = [
-                {"description": "默认", "inputs": {"x": {"shape": [2, 3], "dtype": "float32"}}}
+                {"description": "default", "inputs": {"x": {"shape": [2, 3], "dtype": "float32"}}}
             ]
 
         if num_test_cases is None:
@@ -1067,9 +1067,9 @@ class LLMEnhancedComparator:
         else:
             num_test_cases = min(num_test_cases, len(test_cases))
 
-        self._safe_print(f"📋 将测试 {num_test_cases} 个用例 (LLM并发={num_workers}, 执行顺序)")
+        self._safe_print(f"📋 Testing {num_test_cases} cases (LLM workers={num_workers}, serial execution)")
 
-        # 准备初始用例
+        # Prepare initial cases
         initial_cases = []
         for case_idx in range(num_test_cases):
             tc = test_cases[case_idx]
@@ -1078,7 +1078,7 @@ class LLMEnhancedComparator:
             else:
                 flat_case = {k: v for k, v in tc.items() if k != "description"}
             flat_case["api"] = ms_api
-            # 保留 init_params
+            # Preserve init_params
             if "init_params" in api_data:
                 flat_case["init_params"] = api_data["init_params"]
             elif "init_params" in tc:
@@ -1087,11 +1087,11 @@ class LLMEnhancedComparator:
 
         all_results = []
 
-        # 用例级别的多轮迭代测试
-        # 使用 ThreadPoolExecutor 并发 LLM 调用，执行顺序串行
+        # Per-case multi-iteration testing
+        # Use ThreadPoolExecutor for LLM calls; execution is serial
         if num_workers <= 1:
             for case_number, initial_test_case in initial_cases:
-                self._safe_print(f"\n📋 用例 {case_number}/{num_test_cases}")
+                self._safe_print(f"\n📋 Case {case_number}/{num_test_cases}")
                 case_results = self._test_single_case_with_iterations(
                     ms_api, pytorch_api, initial_test_case,
                     max_iterations, case_number, stats,
@@ -1115,12 +1115,12 @@ class LLMEnhancedComparator:
         all_results.sort(key=lambda r: (r.get("case_number", 0), r.get("iteration", 0)))
 
         self._safe_print(f"\n{'=' * 80}")
-        self._safe_print("✅ 所有测试完成")
+        self._safe_print("✅ All tests completed")
         self._safe_print(
-            f"📊 共测试 {num_test_cases} 个用例，总计 {len(all_results)} 次迭代"
+            f"📊 Tested {num_test_cases} cases, total {len(all_results)} iterations"
         )
-        self._safe_print(f"📊 LLM生成的测试用例数: {stats['llm_generated_cases']}")
-        self._safe_print(f"📊 两个框架都执行成功的用例数: {stats['successful_cases']}")
+        self._safe_print(f"📊 LLM-generated cases: {stats['llm_generated_cases']}")
+        self._safe_print(f"📊 Cases succeeded in both frameworks: {stats['successful_cases']}")
         self._safe_print(f"{'=' * 80}\n")
 
         return all_results, stats
@@ -1134,7 +1134,7 @@ class LLMEnhancedComparator:
         case_number: int,
         stats: Dict[str, int],
     ) -> List[Dict[str, Any]]:
-        """对单个测试用例进行多轮迭代测试"""
+        """Run multi-iteration testing for a single case."""
         case_results = []
 
         current_ms_test_case = copy.deepcopy(initial_test_case)
@@ -1145,13 +1145,13 @@ class LLMEnhancedComparator:
 
         is_llm_generated = False
 
-        self._safe_print(f"  📖 预先爬取API文档...")
+        self._safe_print("  📖 Pre-fetching API docs...")
         ms_doc, pytorch_doc = self._fetch_api_docs(ms_api, pytorch_api)
 
         for iteration in range(max_iterations):
-            source_type = "LLM" if is_llm_generated else "文件"
+            source_type = "LLM" if is_llm_generated else "file"
             self._safe_print(
-                f"  🔄 迭代 {iteration + 1}/{max_iterations} ({source_type})", end=""
+                f"  🔄 Iteration {iteration + 1}/{max_iterations} ({source_type})", end=""
             )
 
             current_ms_api = current_ms_test_case.get("api", ms_api) or ms_api
@@ -1169,15 +1169,15 @@ class LLMEnhancedComparator:
 
                 if execution_result["ms_error"] and not execution_result["ms_success"]:
                     self._safe_print(
-                        f"    ❌ MS错误: {str(execution_result['ms_error'])[:100]}..."
+                        f"    ❌ MS error: {str(execution_result['ms_error'])[:100]}..."
                     )
                 if execution_result["paddle_error"] and not execution_result["paddle_success"]:
                     self._safe_print(
-                        f"    ❌ PD错误: {str(execution_result['paddle_error'])[:100]}..."
+                        f"    ❌ PD error: {str(execution_result['paddle_error'])[:100]}..."
                     )
                 if execution_result["comparison_error"]:
                     self._safe_print(
-                        f"    ⚠️ 比较: {str(execution_result['comparison_error'])[:100]}..."
+                        f"    ⚠️ Comparison: {str(execution_result['comparison_error'])[:100]}..."
                     )
 
                 if is_llm_generated:
@@ -1186,7 +1186,7 @@ class LLMEnhancedComparator:
                             stats["successful_cases"] += 1
 
             except Exception as e:
-                self._safe_print(f" | ❌ 严重错误: {str(e)[:80]}...")
+                self._safe_print(f" | ❌ Fatal error: {str(e)[:80]}...")
                 execution_result = {
                     "status": "fatal_error",
                     "ms_success": False, "paddle_success": False,
@@ -1205,15 +1205,15 @@ class LLMEnhancedComparator:
                 "case_number": case_number,
             }
 
-            # 调用 LLM
+            # Call LLM
             try:
                 llm_result = self.call_llm_for_repair_or_mutation(
                     execution_result, current_ms_test_case, current_pt_test_case,
                     ms_doc, pytorch_doc,
                 )
             except Exception as e:
-                self._safe_print(f"    ❌ LLM调用失败: {str(e)[:80]}...")
-                llm_result = {"operation": "skip", "reason": f"LLM调用失败: {str(e)}"}
+                self._safe_print(f"    ❌ LLM call failed: {str(e)[:80]}...")
+                llm_result = {"operation": "skip", "reason": f"llm_call_failed: {str(e)}"}
                 iteration_result["llm_operation"] = llm_result
                 case_results.append(iteration_result)
                 break
@@ -1242,11 +1242,11 @@ class LLMEnhancedComparator:
                 next_ms_case, next_pt_case
             )
 
-        # 最后一轮 LLM 生成了新用例但未执行的补充执行
+        # Final execution if LLM generated a new case but it wasn't run
         if case_results:
             last_op = case_results[-1].get("llm_operation", {}).get("operation", "skip")
             if last_op in ("mutation", "repair"):
-                self._safe_print(f"  🔄 执行最终LLM用例", end="")
+            self._safe_print("  🔄 Executing final LLM case", end="")
                 try:
                     execution_result = self._execute_test_case_sequential(
                         current_ms_test_case.get("api", ms_api) or ms_api,
@@ -1270,15 +1270,15 @@ class LLMEnhancedComparator:
                         "execution_result": execution_result,
                         "llm_operation": {
                             "operation": "final_execution",
-                            "reason": "执行最后一次LLM生成的用例",
+                            "reason": "execute_last_llm_case",
                         },
                         "case_number": case_number,
                         "is_llm_generated": True,
                     })
                 except Exception as e:
-                    self._safe_print(f"  ❌ 最终用例执行失败: {str(e)[:80]}...")
+                    self._safe_print(f"  ❌ Final case execution failed: {str(e)[:80]}...")
 
-        self._safe_print(f"  ✅ 用例 {case_number} 完成，共 {len(case_results)} 次迭代")
+        self._safe_print(f"  ✅ Case {case_number} done, {len(case_results)} iterations")
         return case_results
 
     def _convert_llm_test_cases(
@@ -1286,12 +1286,12 @@ class LLMEnhancedComparator:
         ms_test_case: Dict[str, Any],
         paddle_test_case: Dict[str, Any],
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        """将 LLM 返回的测试用例转换为可执行格式，确保共享张量"""
+        """Convert LLM test cases to executable format with shared tensors."""
         ms_api = ms_test_case.get("api", "") if isinstance(ms_test_case, dict) else ""
         pt_api = paddle_test_case.get("api", "") if isinstance(paddle_test_case, dict) else ""
         return self._materialize_shared_tensors(ms_api, pt_api, ms_test_case, paddle_test_case)
 
-    # ==================== 结果保存 ====================
+    # ==================== Result saving ====================
 
     def save_results(
         self, ms_api: str, results: List[Dict[str, Any]], stats: Dict[str, int] = None
@@ -1328,13 +1328,13 @@ class LLMEnhancedComparator:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-        self._safe_print(f"💾 结果已保存到: {filepath}")
+        self._safe_print(f"💾 Results saved to: {filepath}")
 
     def get_all_testable_apis(self) -> List[str]:
         testable = []
         for ms_api in sorted(self.test_cases_data.keys()):
-            pt_api = self.api_mapping.get(ms_api, "无对应实现")
-            if pt_api and pt_api != "无对应实现":
+            pt_api = self.api_mapping.get(ms_api, "no_matching_impl")
+            if pt_api and pt_api != "no_matching_impl":
                 testable.append(ms_api)
         return testable
 
@@ -1342,63 +1342,63 @@ class LLMEnhancedComparator:
         pass
 
 
-# ==================== 主函数 ====================
+# ==================== Main ====================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="基于LLM的MindSpore与PaddlePaddle算子差分测试框架"
+        description="LLM-based MindSpore vs PaddlePaddle operator differential testing framework"
     )
     parser.add_argument(
         "--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS,
-        help=f"每个测试用例的最大迭代次数（默认{DEFAULT_MAX_ITERATIONS}）",
+        help=f"Max iterations per test case (default {DEFAULT_MAX_ITERATIONS})",
     )
     parser.add_argument(
         "--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES,
-        help=f"每个算子要测试的用例数量（默认{DEFAULT_NUM_CASES}）",
+        help=f"Test cases per operator (default {DEFAULT_NUM_CASES})",
     )
     parser.add_argument(
         "--start", type=int, default=1,
-        help="起始算子索引（从1开始，默认1）",
+        help="Start operator index (1-based, default 1)",
     )
     parser.add_argument(
         "--end", type=int, default=None,
-        help="结束算子索引（包含，默认全部）",
+        help="End operator index (inclusive, default all)",
     )
     parser.add_argument(
         "--operators", "-o", nargs="*",
-        help="指定要测试的算子名称（如 mindspore.ops.Abs）",
+        help="Operator names to test (e.g., mindspore.ops.Abs)",
     )
     parser.add_argument(
         "--workers", "-w", type=int, default=DEFAULT_WORKERS,
-        help=f"并发线程数（默认{DEFAULT_WORKERS}）",
+        help=f"Worker count (default {DEFAULT_WORKERS})",
     )
     parser.add_argument(
         "--model", default=DEFAULT_MODEL,
-        help=f"LLM模型名称（默认 {DEFAULT_MODEL}）",
+        help=f"LLM model name (default {DEFAULT_MODEL})",
     )
     parser.add_argument(
         "--key-path", "-k", default=DEFAULT_KEY_PATH,
-        help=f"API key文件路径（默认 {DEFAULT_KEY_PATH}）",
+        help=f"API key file path (default {DEFAULT_KEY_PATH})",
     )
     parser.add_argument(
         "--test-cases-file", default=DEFAULT_TEST_CASES_FILE,
-        help="测试用例 JSON 文件路径",
+        help="Test case JSON file path",
     )
     parser.add_argument(
         "--mapping-file", default=DEFAULT_MAPPING_FILE,
-        help="MS→PD 映射 CSV 文件路径",
+        help="MS->PD mapping CSV file path",
     )
 
     args = parser.parse_args()
     num_workers = max(1, args.workers)
 
     print("=" * 80)
-    print("基于LLM的MindSpore与PaddlePaddle算子差分测试框架")
+    print("LLM-based MindSpore vs PaddlePaddle operator differential testing framework")
     print("=" * 80)
-    print(f"📌 每个算子的迭代次数: {args.max_iterations}")
-    print(f"📌 每个算子的测试用例数: {args.num_cases}")
-    print(f"📌 LLM并发线程数: {num_workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Iterations per operator: {args.max_iterations}")
+    print(f"📌 Cases per operator: {args.num_cases}")
+    print(f"📌 LLM worker count: {num_workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMEnhancedComparator(
@@ -1414,23 +1414,23 @@ def main():
 
     try:
         all_testable = comparator.get_all_testable_apis()
-        print(f"\n🔍 可测试的 MS API 总数: {len(all_testable)}")
+        print(f"\n🔍 Total testable MS APIs: {len(all_testable)}")
 
         if args.operators:
             operator_names = args.operators
-            print(f"📋 指定算子数: {len(operator_names)}")
+            print(f"📋 Specified operators: {len(operator_names)}")
         else:
             start_idx = max(1, args.start) - 1
             end_idx = args.end if args.end is not None else len(all_testable)
             end_idx = min(end_idx, len(all_testable))
             if start_idx >= end_idx:
-                raise ValueError(f"起始索引 {args.start} 必须小于结束索引 {end_idx}")
+                raise ValueError(f"Start index {args.start} must be less than end index {end_idx}")
             operator_names = all_testable[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} 到第 {end_idx} 个算子")
-            print(f"📋 将测试 {len(operator_names)} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} to {end_idx}")
+            print(f"📋 Operators to test: {len(operator_names)}")
 
         print(
-            f"📋 算子列表: "
+            f"📋 Operator list: "
             f"{', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n"
         )
 
@@ -1442,20 +1442,20 @@ def main():
         )
         log_file = open(batch_log_file, 'w', encoding='utf-8')
         log_file.write("=" * 80 + "\n")
-        log_file.write("MS→PD 差分测试批量日志\n")
+        log_file.write("MS->PD differential testing batch log\n")
         log_file.write("=" * 80 + "\n")
-        log_file.write(f"开始时间: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log_file.write(f"测试配置:\n")
-        log_file.write(f"  - 迭代次数: {args.max_iterations}\n")
-        log_file.write(f"  - 用例数: {args.num_cases}\n")
-        log_file.write(f"  - 并发数: {num_workers}\n")
-        log_file.write(f"  - 测试算子数: {len(operator_names)}\n")
+        log_file.write(f"Start time: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write("Test config:\n")
+        log_file.write(f"  - Iterations: {args.max_iterations}\n")
+        log_file.write(f"  - Cases: {args.num_cases}\n")
+        log_file.write(f"  - Workers: {num_workers}\n")
+        log_file.write(f"  - Operators: {len(operator_names)}\n")
         log_file.write("=" * 80 + "\n\n")
         log_file.flush()
 
         for idx, ms_api in enumerate(operator_names, 1):
             print("\n" + "🔷" * 40)
-            print(f"🎯 [{idx}/{len(operator_names)}] 开始测试算子: {ms_api}")
+            print(f"🎯 [{idx}/{len(operator_names)}] Start testing operator: {ms_api}")
             print("🔷" * 40)
 
             try:
@@ -1477,19 +1477,19 @@ def main():
                         "status": "completed",
                     })
 
-                    print(f"\n✅ {ms_api} 测试完成")
-                    print(f"   - 总迭代次数: {len(results)}")
-                    print(f"   - LLM生成用例数: {stats.get('llm_generated_cases', 0)}")
-                    print(f"   - 成功执行用例数: {stats.get('successful_cases', 0)}")
+                    print(f"\n✅ {ms_api} testing complete")
+                    print(f"   - Total iterations: {len(results)}")
+                    print(f"   - LLM-generated cases: {stats.get('llm_generated_cases', 0)}")
+                    print(f"   - Successful cases: {stats.get('successful_cases', 0)}")
 
                     log_file.write(f"[{idx}/{len(operator_names)}] {ms_api}\n")
-                    log_file.write(f"  状态: ✅ 完成\n")
-                    log_file.write(f"  总迭代次数: {len(results)}\n")
-                    log_file.write(f"  LLM生成用例数: {stats.get('llm_generated_cases', 0)}\n")
-                    log_file.write(f"  成功执行用例数: {stats.get('successful_cases', 0)}\n\n")
+                    log_file.write("  Status: ✅ completed\n")
+                    log_file.write(f"  Total iterations: {len(results)}\n")
+                    log_file.write(f"  LLM-generated cases: {stats.get('llm_generated_cases', 0)}\n")
+                    log_file.write(f"  Successful cases: {stats.get('successful_cases', 0)}\n\n")
                     if stats.get("llm_generated_cases", 0) > 0:
                         rate = stats.get("successful_cases", 0) / stats["llm_generated_cases"] * 100
-                        log_file.write(f"  成功率: {rate:.2f}%\n")
+                        log_file.write(f"  Success rate: {rate:.2f}%\n")
                     log_file.write("\n")
                     log_file.flush()
                 else:
@@ -1499,22 +1499,22 @@ def main():
                         "status": "no_results",
                     })
                     log_file.write(f"[{idx}/{len(operator_names)}] {ms_api}\n")
-                    log_file.write(f"  状态: ⚠️ 无结果\n\n")
+                    log_file.write("  Status: ⚠️ no results\n\n")
                     log_file.flush()
 
             except Exception as e:
-                print(f"\n❌ {ms_api} 测试失败: {e}")
+                print(f"\n❌ {ms_api} testing failed: {e}")
                 all_operators_summary.append({
                     "operator": ms_api, "total_iterations": 0,
                     "llm_generated_cases": 0, "successful_cases": 0,
                     "status": "failed", "error": str(e),
                 })
                 log_file.write(f"[{idx}/{len(operator_names)}] {ms_api}\n")
-                log_file.write(f"  状态: ❌ 失败\n  错误: {str(e)}\n\n")
+                log_file.write(f"  Status: ❌ failed\n  Error: {str(e)}\n\n")
                 log_file.flush()
                 continue
 
-        # ==================== 输出总结 ====================
+        # ==================== Summary output ====================
         end_time = time.time()
         end_datetime = datetime.now()
         total_duration = end_time - start_time
@@ -1530,39 +1530,39 @@ def main():
         total_iterations = sum(s["total_iterations"] for s in all_operators_summary)
 
         print("\n" + "=" * 80)
-        print("📊 批量测试总体摘要")
+        print("📊 Batch test summary")
         print("=" * 80)
-        print(f"总算子数: {len(operator_names)}")
-        print(f"✅ 成功完成: {completed_count}")
-        print(f"❌ 测试失败: {failed_count}")
-        print(f"⚠️ 无结果: {no_results_count}")
-        print(f"\n📈 统计数据:")
-        print(f"   - LLM生成的测试用例总数: {total_llm_cases}")
-        print(f"   - 成功执行的用例总数: {total_successful}")
+        print(f"Total operators: {len(operator_names)}")
+        print(f"✅ Completed: {completed_count}")
+        print(f"❌ Failed: {failed_count}")
+        print(f"⚠️ No results: {no_results_count}")
+        print("\n📈 Stats:")
+        print(f"   - Total LLM-generated cases: {total_llm_cases}")
+        print(f"   - Total successful cases: {total_successful}")
         if total_llm_cases > 0:
-            print(f"   - 成功执行占比: {total_successful / total_llm_cases * 100:.2f}%")
-        print(f"   - 总迭代次数: {total_iterations}")
-        print(f"\n⏱️ 运行时间: {hours}小时 {minutes}分钟 {seconds}秒")
+            print(f"   - Success rate: {total_successful / total_llm_cases * 100:.2f}%")
+        print(f"   - Total iterations: {total_iterations}")
+        print(f"\n⏱️ Runtime: {hours}h {minutes}m {seconds}s")
 
-        log_file.write("=" * 80 + "\n总体统计\n" + "=" * 80 + "\n")
-        log_file.write(f"结束时间: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
-        log_file.write(f"总运行时间: {hours}h {minutes}m {seconds}s ({total_duration:.2f}s)\n\n")
-        log_file.write(f"算子结果:\n")
-        log_file.write(f"  - 总算子数: {len(operator_names)}\n")
-        log_file.write(f"  - 成功: {completed_count}\n")
-        log_file.write(f"  - 失败: {failed_count}\n")
-        log_file.write(f"  - 无结果: {no_results_count}\n\n")
-        log_file.write(f"LLM统计:\n")
-        log_file.write(f"  - 生成用例数: {total_llm_cases}\n")
-        log_file.write(f"  - 成功执行数: {total_successful}\n")
+        log_file.write("=" * 80 + "\nOverall summary\n" + "=" * 80 + "\n")
+        log_file.write(f"End time: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        log_file.write(f"Total runtime: {hours}h {minutes}m {seconds}s ({total_duration:.2f}s)\n\n")
+        log_file.write("Operator results:\n")
+        log_file.write(f"  - Total operators: {len(operator_names)}\n")
+        log_file.write(f"  - Completed: {completed_count}\n")
+        log_file.write(f"  - Failed: {failed_count}\n")
+        log_file.write(f"  - No results: {no_results_count}\n\n")
+        log_file.write("LLM stats:\n")
+        log_file.write(f"  - Generated cases: {total_llm_cases}\n")
+        log_file.write(f"  - Successful cases: {total_successful}\n")
         if total_llm_cases > 0:
-            log_file.write(f"  - 成功率: {total_successful / total_llm_cases * 100:.2f}%\n")
-        log_file.write(f"  - 总迭代次数: {total_iterations}\n")
+            log_file.write(f"  - Success rate: {total_successful / total_llm_cases * 100:.2f}%\n")
+        log_file.write(f"  - Total iterations: {total_iterations}\n")
         log_file.close()
 
-        print(f"\n💾 总日志已保存到: {batch_log_file}")
+        print(f"\n💾 Full log saved to: {batch_log_file}")
 
-        # JSON 摘要
+        # JSON summary
         summary_file = os.path.join(
             comparator.result_dir,
             f"batch_test_summary_{start_datetime.strftime('%Y%m%d_%H%M%S')}.json",
@@ -1597,11 +1597,11 @@ def main():
                 "operators": all_operators_summary,
             }, f, indent=2, ensure_ascii=False)
 
-        print(f"💾 JSON摘要已保存到: {summary_file}")
+        print(f"💾 JSON summary saved to: {summary_file}")
 
     finally:
         comparator.close()
-        print("\n✅ 批量测试程序执行完成")
+        print("\n✅ Batch test finished")
 
 
 if __name__ == "__main__":

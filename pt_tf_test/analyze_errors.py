@@ -1,11 +1,9 @@
 """  
-PyTorch-TensorFlow 测试错误分析工具
-
-功能说明:
-    1. 扫描指定目录下的所有测试结果 JSON 文件
-    2. 统计三类错误：torch_error、tensorflow_error、comparison_error
-    3. 按文件汇总错误数量和对应的迭代次数
-    4. 生成详细的错误分析报告
+PyTorch-TensorFlow Test error analysis tools  Function description:
+    1. Scan all test result JSON files in the specified directory
+    2. Statistics type three error：torch_error、tensorflow_error、comparison_error
+    3. Summarize the number of errors and corresponding number of iterations by file
+    4. Generate detailed error analysis reports
 """
 
 import json
@@ -13,240 +11,219 @@ from pathlib import Path
 
 def analyze_json_files(log_dir):
     """
-    分析指定目录下的所有 JSON 测试结果文件，提取错误统计信息
-    
-    参数:
-        log_dir (str): 日志文件所在目录的路径
-    
-    返回:
-        tuple: 包含以下四个元素的元组
-            - total_torch_errors (int): torch_error 非 null 值的总数
-            - total_tensorflow_errors (int): tensorflow_error 非 null 值的总数
-            - total_comparison_errors (int): comparison_error 非 null 值的总数
-            - files_with_errors (list): 包含错误的文件详细信息列表
-    
-    异常处理:
-        - 遇到文件解析错误时会打印错误信息但不中断整体分析
+    Analyze all JSON test result files in the specified directory and extract error statistics          parameters:
+        log_dir (str): The path to the directory where the log file is located          Return:
+        tuple: A tuple containing the following four elements
+            - total_torch_errors (int): torch_error The total number of non-null values
+            - total_tensorflow_errors (int): tensorflow_error The total number of non-null values
+            - total_comparison_errors (int): comparison_error The total number of non-null values
+            - files_with_errors (list): List of file details containing errors          Exception handling:
+        - When a file parsing error is encountered, an error message will be printed but the overall analysis will not be interrupted.
     """
     """
-    分析指定目录下的所有 JSON 测试结果文件，提取错误统计信息
-    
-    参数:
-        log_dir (str): 日志文件所在目录的路径
-    
-    返回:
-        tuple: 包含以下五个元素的元组
-            - total_torch_errors (int): 仅 PyTorch 报错的样例总数
-            - total_tensorflow_errors (int): 仅 TensorFlow 报错的样例总数
-            - total_both_errors (int): 两个框架都报错的样例总数
-            - total_comparison_errors (int): comparison_error 非 null 值的总数
-            - files_with_errors (list): 包含错误的文件详细信息列表
-    
-    异常处理:
-        - 遇到文件解析错误时会打印错误信息但不中断整体分析
+    Analyze all JSON test result files in the specified directory and extract error statistics          parameters:
+        log_dir (str): The path to the directory where the log file is located          Return:
+        tuple: A tuple containing the following five elements
+            - total_torch_errors (int): Total number of examples reporting errors in PyTorch only
+            - total_tensorflow_errors (int): Total number of examples with TensorFlow errors only
+            - total_both_errors (int): The total number of examples in which both frameworks reported errors
+            - total_comparison_errors (int): comparison_error The total number of non-null values
+            - files_with_errors (list): List of file details containing errors          Exception handling:
+        - When a file parsing error is encountered, an error message will be printed but the overall analysis will not be interrupted.
     """
-    # 初始化全局错误计数器
-    total_torch_errors = 0           # 仅 PyTorch 执行错误总数
-    total_tensorflow_errors = 0      # 仅 TensorFlow 执行错误总数
-    total_both_errors = 0            # 两个框架都报错的总数
-    total_comparison_errors = 0      # 结果比较错误总数
-    files_with_errors = []           # 存储包含错误的文件详细信息
+    # Initialize global error counter
+    total_torch_errors = 0           # Total number of PyTorch execution errors only
+    total_tensorflow_errors = 0      # Total number of TensorFlow execution errors only
+    total_both_errors = 0            # The total number of errors reported by both frameworks
+    total_comparison_errors = 0      # Total number of errors compared to results
+    files_with_errors = []           # Store file details with errors
     
-    # 获取日志目录路径并查找所有匹配的 JSON 文件
+    # Get the log directory path and find all matching JSON files
     log_path = Path(log_dir)
-    json_files = sorted(log_path.glob("llm_enhanced_torch*.json"))  # 按文件名排序
-    print(f"找到 {len(json_files)} 个JSON文件")
+    json_files = sorted(log_path.glob("llm_enhanced_torch*.json"))  # Sort by file name
+    print(f"turn up {len(json_files)} JSON files")
     
-    # 遍历所有 JSON 文件进行分析
+    # Iterate through all JSON files for analysis
     for json_file in json_files:
         try:
-            # 读取 JSON 文件内容
+            # Read JSON file content
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
-            # 初始化当前文件的错误计数器
-            file_torch_errors = 0            # 仅 PyTorch 错误数
-            file_tensorflow_errors = 0       # 仅 TensorFlow 错误数
-            file_both_errors = 0             # 两个框架都错误数
-            file_comparison_errors = 0       # 比较错误数
+            # Initialize the error counter for the current file
+            file_torch_errors = 0            # PyTorch error count only
+            file_tensorflow_errors = 0       # TensorFlow error count only
+            file_both_errors = 0             # Both frames have wrong numbers
+            file_comparison_errors = 0       # Number of comparison errors
             
-            # 记录每种错误类型对应的迭代次数（用于追踪具体是哪个测试用例出错）
+            # Record the number of iterations corresponding to each error type (used to track which test case has an error）
             error_iterations = {
-                "torch_error": [],           # 仅 PyTorch 错误的迭代
-                "tensorflow_error": [],      # 仅 TensorFlow 错误的迭代
-                "both_error": [],            # 两个框架都错误的迭代
-                "comparison_error": []       # 比较错误的迭代
+                "torch_error": [],           # PyTorch error iteration only
+                "tensorflow_error": [],      # TensorFlow error only iteration
+                "both_error": [],            # Wrong iteration in both frameworks
+                "comparison_error": []       # Compare the wrong iterations
             }
             
-            # 检查 JSON 数据中是否包含 results 字段（测试结果数组）
+            # Check whether the results field is included in the JSON data (test results array）
             if "results" in data:
-                # 遍历每个测试结果
+                # Iterate through each test result
                 for result in data["results"]:
-                    # 检查是否包含执行结果字段
+                    # Check whether the execution result field is included
                     if "execution_result" in result:
                         exec_result = result["execution_result"]
-                        iteration = result.get("iteration", "N/A")  # 获取迭代次数，默认值为 "N/A"
+                        iteration = result.get("iteration", "N/A")  # Get the number of iterations, the default value is "N/A"
                         
-                        # 检查执行错误类型
+                        # Check execution error type
                         has_torch_error = exec_result.get("torch_error") is not None
                         has_tensorflow_error = exec_result.get("tensorflow_error") is not None
                         
-                        # 区分三种情况：仅 PyTorch 错误、仅 TensorFlow 错误、两者都错误
+                        # Distinguish between three cases: PyTorch only error, TensorFlow only error, both
                         if has_torch_error and has_tensorflow_error:
-                            # 两个框架都报错
+                            # Both frameworks reported errors
                             file_both_errors += 1
                             total_both_errors += 1
                             error_iterations["both_error"].append(iteration)
                         elif has_torch_error:
-                            # 仅 PyTorch 报错
+                            # Only PyTorch reports an error
                             file_torch_errors += 1
                             total_torch_errors += 1
                             error_iterations["torch_error"].append(iteration)
                         elif has_tensorflow_error:
-                            # 仅 TensorFlow 报错
+                            # Only TensorFlow reports an error
                             file_tensorflow_errors += 1
                             total_tensorflow_errors += 1
                             error_iterations["tensorflow_error"].append(iteration)
                         
-                        # 检查结果比较错误（输出不一致）
+                        # Check result comparison error (output inconsistent）
                         if exec_result.get("comparison_error") is not None:
                             file_comparison_errors += 1
                             total_comparison_errors += 1
                             error_iterations["comparison_error"].append(iteration)
             
-            # 如果当前文件包含任何类型的错误，记录详细信息
+            # If the current file contains errors of any kind, log details
             if file_torch_errors > 0 or file_tensorflow_errors > 0 or file_both_errors > 0 or file_comparison_errors > 0:
                 files_with_errors.append(
                     {
-                        "filename": json_file.name,                          # 文件名
-                        "torch_errors": file_torch_errors,                   # 仅 PyTorch 错误数
-                        "tensorflow_errors": file_tensorflow_errors,         # 仅 TensorFlow 错误数
-                        "both_errors": file_both_errors,                     # 两个框架都错误数
-                        "comparison_errors": file_comparison_errors,         # 比较错误数
-                        "torch_error_iterations": error_iterations["torch_error"],           # 仅 PyTorch 错误的迭代次数列表
-                        "tensorflow_error_iterations": error_iterations["tensorflow_error"],  # 仅 TensorFlow 错误的迭代次数列表
-                        "both_error_iterations": error_iterations["both_error"],             # 两个框架都错误的迭代次数列表
-                        "comparison_error_iterations": error_iterations["comparison_error"],  # 比较错误的迭代次数列表
+                        "filename": json_file.name,                          # file name
+                        "torch_errors": file_torch_errors,                   # PyTorch error count only
+                        "tensorflow_errors": file_tensorflow_errors,         # TensorFlow error count only
+                        "both_errors": file_both_errors,                     # Both frames have wrong numbers
+                        "comparison_errors": file_comparison_errors,         # Number of comparison errors
+                        "torch_error_iterations": error_iterations["torch_error"],           # PyTorch only wrong iteration count list
+                        "tensorflow_error_iterations": error_iterations["tensorflow_error"],  # TensorFlow only error list of iterations
+                        "both_error_iterations": error_iterations["both_error"],             # Wrong list of iterations for both frameworks
+                        "comparison_error_iterations": error_iterations["comparison_error"],  # List of iterations comparing errors
                     }
                 )
         except Exception as e:
-            # 异常处理：打印错误但不中断整体分析流程
-            print(f"处理文件 {json_file.name} 时出错: {e}")
+            # Exception handling: print errors without interrupting the overall analysis process
+            print(f"Process files {json_file.name} error: {e}")
     
-    # 返回统计结果
+    # Return statistical results
     return total_torch_errors, total_tensorflow_errors, total_both_errors, total_comparison_errors, files_with_errors
 
 def generate_report(output_file, total_torch, total_tensorflow, total_both, total_comparison, files_with_errors):
     """
-    生成格式化的错误分析报告并写入文本文件
-    
-    参数:
-        output_file (str): 输出报告文件的路径
-        total_torch (int): 仅 PyTorch 错误总数
-        total_tensorflow (int): 仅 TensorFlow 错误总数
-        total_both (int): 两个框架都报错的总数
-        total_comparison (int): comparison_error 总数
-        files_with_errors (list): 包含错误的文件详细信息列表
-    
-    输出格式:
-        - 总体错误统计（四类错误的总数）
-        - 详细错误文件信息（每个文件的错误数量和对应迭代次数）
+    Generate a formatted error analysis report and write it to a text file          parameters:
+        output_file (str): Path to output report file
+        total_torch (int): Total number of PyTorch errors only
+        total_tensorflow (int): Total number of TensorFlow errors only
+        total_both (int): The total number of errors reported by both frameworks
+        total_comparison (int): comparison_error total
+        files_with_errors (list): List of file details containing errors          Output format:
+        - Overall error statistics (total number of four types of errors)         - Detailed error file information (number of errors per file and corresponding number of iterations）
     """
-    # 打开输出文件，以 UTF-8 编码写入
+    # Open the output file for writing in UTF-8 encoding
     with open(output_file, "w", encoding="utf-8") as f:
-        # 写入报告头部
+        # Write report header
         f.write("=" * 80 + "\n")
-        f.write("PyTorch-TensorFlow 测试错误分析报告\n")
+        f.write("PyTorch-TensorFlow Test error analysis report\n")
         f.write("=" * 80 + "\n\n")
         
-        # 写入总体错误统计信息
-        f.write("【总体错误统计】\n")
-        f.write(f"仅 PyTorch 报错的样例数: {total_torch}\n")
-        f.write(f"仅 TensorFlow 报错的样例数: {total_tensorflow}\n")
-        f.write(f"两个框架都报错的样例数: {total_both}\n")
-        f.write(f"comparison_error 非null值总数: {total_comparison}\n")
-        f.write(f"包含错误的文件总数: {len(files_with_errors)}\n")
+        # Write overall error statistics
+        f.write("【Overall error statistics】\n")
+        f.write(f"Number of examples of errors reported by PyTorch only: {total_torch}\n")
+        f.write(f"Only the number of examples of TensorFlow error reports: {total_tensorflow}\n")
+        f.write(f"Number of examples where both frameworks reported errors: {total_both}\n")
+        f.write(f"comparison_error Total number of non-null values: {total_comparison}\n")
+        f.write(f"Total number of files with errors: {len(files_with_errors)}\n")
         f.write("\n" + "=" * 80 + "\n\n")
         
-        # 写入详细错误文件信息
+        # Write detailed error file information
         if files_with_errors:
-            f.write("【详细错误文件信息】\n\n")
-            # 遍历所有包含错误的文件
+            f.write("【Detailed error file information】\n\n")
+            # Iterate through all files containing errors
             for idx, file_info in enumerate(files_with_errors, 1):
-                f.write(f"{idx}. 文件名: {file_info['filename']}\n")
+                f.write(f"{idx}. file name: {file_info['filename']}\n")
                 f.write("-" * 80 + "\n")
                 
-                # 如果存在仅 PyTorch 错误，写入详细信息
+                # If there is a PyTorch-only error, write details
                 if file_info["torch_errors"] > 0:
-                    f.write(f"   仅 PyTorch 报错的样例数: {file_info['torch_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['torch_error_iterations']))}\n")
+                    f.write(f"   Number of examples of errors reported by PyTorch only: {file_info['torch_errors']}\n")
+                    f.write(f"   Iteration value for the application case: {', '.join(map(str, file_info['torch_error_iterations']))}\n")
                 
-                # 如果存在仅 TensorFlow 错误，写入详细信息
+                # If there is a TensorFlow-only error, write details
                 if file_info["tensorflow_errors"] > 0:
-                    f.write(f"   仅 TensorFlow 报错的样例数: {file_info['tensorflow_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['tensorflow_error_iterations']))}\n")
+                    f.write(f"   Only the number of examples of TensorFlow error reports: {file_info['tensorflow_errors']}\n")
+                    f.write(f"   Iteration value for the application case: {', '.join(map(str, file_info['tensorflow_error_iterations']))}\n")
                 
-                # 如果存在两个框架都错误，写入详细信息
+                # If there are errors in both frames, write details
                 if file_info["both_errors"] > 0:
-                    f.write(f"   两个框架都报错的样例数: {file_info['both_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['both_error_iterations']))}\n")
+                    f.write(f"   Number of examples where both frameworks reported errors: {file_info['both_errors']}\n")
+                    f.write(f"   Iteration value for the application case: {', '.join(map(str, file_info['both_error_iterations']))}\n")
                 
-                # 如果存在比较错误，写入详细信息
+                # If there is a comparison error, write details
                 if file_info["comparison_errors"] > 0:
-                    f.write(f"   comparison_error 非null值个数: {file_info['comparison_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['comparison_error_iterations']))}\n")
+                    f.write(f"   comparison_error Number of non-null values: {file_info['comparison_errors']}\n")
+                    f.write(f"   Iteration value for the application case: {', '.join(map(str, file_info['comparison_error_iterations']))}\n")
                 
                 f.write("\n")
         else:
-            # 没有发现任何错误
-            f.write("【详细错误文件信息】\n\n")
-            f.write("未发现任何包含错误的文件。\n\n")
+            # No errors found
+            f.write("【Detailed error file information】\n\n")
+            f.write("No files found with errors。\n\n")
         
-        # 写入报告尾部
+        # Write to the end of the report
         f.write("=" * 80 + "\n")
-        f.write("报告生成完成\n")
+        f.write("Report generation completed\n")
         f.write("=" * 80 + "\n")
 
 def main():
     """
-    主程序入口：执行错误分析并生成报告
-    
-    执行流程:
-        1. 指定日志目录和输出文件路径
-        2. 调用 analyze_json_files() 分析所有 JSON 文件
-        3. 在控制台打印统计摘要
-        4. 调用 generate_report() 生成详细报告文件
+    Main program entry: perform error analysis and generate reports          Execution process:
+        1. Specify log directory and output file path
+        2. Call analyze_json_files() to analyze all JSON files
+        3. Print statistics summary to the console
+        4. Call generate_report() to generate a detailed report file
     """
     """
-    主程序入口：执行错误分析并生成报告
-    
-    执行流程:
-        1. 指定日志目录和输出文件路径
-        2. 调用 analyze_json_files() 分析所有 JSON 文件
-        3. 在控制台打印统计摘要
-        4. 调用 generate_report() 生成详细报告文件
+    Main program entry: perform error analysis and generate reports          Execution process:
+        1. Specify log directory and output file path
+        2. Call analyze_json_files() to analyze all JSON files
+        3. Print statistics summary to the console
+        4. Call generate_report() to generate a detailed report file
     """
-    # 配置输入输出路径
-    # log_dir = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log"          # JSON 日志文件目录
+    # Configure input and output paths
+    # log_dir = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log"          # JSON Log file directory
     log_dir = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log_1" 
-    output_file = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log_1\error_analysis_report_new.txt"  # 输出报告文件
+    output_file = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log_1\error_analysis_report_new.txt"  # Output report file
     
-    # 开始分析
-    print("开始分析JSON文件...")
+    # Start analysis
+    print("Start parsing the JSON file...")
     total_torch, total_tensorflow, total_both, total_comparison, files_with_errors = analyze_json_files(log_dir)
     
-    # 在控制台打印统计摘要
-    print("\n分析完成！")
-    print("总错误统计:")
-    print(f"  - 仅 PyTorch 报错: {total_torch}")
-    print(f"  - 仅 TensorFlow 报错: {total_tensorflow}")
-    print(f"  - 两个框架都报错: {total_both}")
+    # Print statistics summary to the console
+    print("\nAnalysis completed！")
+    print("Total error statistics:")
+    print(f"  - Only PyTorch reports an error: {total_torch}")
+    print(f"  - Only TensorFlow reports an error: {total_tensorflow}")
+    print(f"  - Both frameworks reported errors: {total_both}")
     print(f"  - comparison_error: {total_comparison}")
-    print(f"  - 包含错误的文件数: {len(files_with_errors)}")
+    print(f"  - Number of files containing errors: {len(files_with_errors)}")
     
-    # 生成详细报告文件
+    # Generate detailed report files
     generate_report(output_file, total_torch, total_tensorflow, total_both, total_comparison, files_with_errors)
-    print(f"\n报告已生成: {output_file}")
+    print(f"\nReport generated: {output_file}")
 
 if __name__ == "__main__":
     main()

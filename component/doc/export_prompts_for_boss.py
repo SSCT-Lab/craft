@@ -1,11 +1,11 @@
-"""导出指定测试的完整评估提示词到一个 txt 文件，给老板试读用。
+"""Export full evaluation prompts for selected tests to a txt file (for review).
 
-说明：
-- 不调用 LLM，只复用当前的提示词结构（build_analysis_prompt）。
-- TF/PT 代码、文档、输出都来自本地文件：
-  - 代码：从迁移后的测试文件中用正则提取 TF / PT 测试函数。
-  - 文档：从 migrated_tests/用所选项目新建的文件夹/api_docs.json 中读取。
-  - 输出：直接嵌入 data/logs/*.log 的真实内容（当前主要是 PT 侧日志）。
+Notes:
+- Does not call the LLM; reuses the current prompt structure (build_analysis_prompt).
+- TF/PT code, docs, and outputs are from local files:
+    - Code: extract TF/PT test functions from migrated tests using regex.
+    - Docs: read from migrated_tests/用所选项目新建的文件夹/api_docs.json.
+    - Output: embed real data/logs/*.log content (currently mostly PT logs).
 """
 
 from __future__ import annotations
@@ -31,10 +31,10 @@ TARGET_TEST_FILES = [
 
 
 def load_api_docs() -> tuple[dict, dict]:
-    """加载 per-file API 列表和 API 对应文档内容。"""
+    """Load per-file API lists and corresponding doc content."""
     api_json = ROOT / "migrated_tests/用所选项目新建的文件夹/api_docs.json"
     if not api_json.exists():
-        raise FileNotFoundError(f"找不到 api_docs.json: {api_json}")
+        raise FileNotFoundError(f"api_docs.json not found: {api_json}")
     data = json.loads(api_json.read_text(encoding="utf-8"))
     file_apis = data.get("files") or {}
     api_docs = data.get("docs") or {}
@@ -42,10 +42,10 @@ def load_api_docs() -> tuple[dict, dict]:
 
 
 def extract_tf_pt_code(test_file: Path) -> tuple[str, str]:
-    """从迁移后的测试文件中粗略提取 TF / PT 测试函数代码片段。"""
+    """Roughly extract TF/PT test function code from migrated tests."""
     content = test_file.read_text(encoding="utf-8", errors="ignore")
 
-    # 与 analyze_test_error 中保持一致的正则
+    # Keep regex consistent with analyze_test_error
     tf_match = re.search(
         r"def\s+(test\w+)\(\):.*?(?=def\s+test.*?_pt|# ===== PyTorch|if __name__)",
         content,
@@ -66,7 +66,7 @@ def extract_tf_pt_code(test_file: Path) -> tuple[str, str]:
 def load_docs_for_file(
     file_name: str, file_apis: dict, api_docs: dict
 ) -> tuple[list[str], list[str]]:
-    """根据 api_docs.json 为指定文件收集 TF / PT 文档文本。"""
+    """Collect TF/PT doc text for a given file from api_docs.json."""
     apis = file_apis.get(file_name, []) or []
     tf_docs: list[str] = []
     pt_docs: list[str] = []
@@ -87,7 +87,7 @@ def load_docs_for_file(
 
 
 def load_log_output(stem: str) -> str:
-    """读取对应的日志文件内容（主要是 PT 侧执行日志）。"""
+    """Read corresponding log content (mainly PT execution logs)."""
     log_path = ROOT / "data" / "logs" / f"{stem}.log"
     if not log_path.exists():
         return ""
@@ -95,19 +95,22 @@ def load_log_output(stem: str) -> str:
 
 
 def build_prompt_for_test(test_path: str, file_apis: dict, api_docs: dict) -> str:
-    """构造单个测试文件的完整提示词字符串。"""
+    """Build the full prompt text for a single test file."""
     p = ROOT / test_path
     name = p.name
 
     tf_code, pt_code = extract_tf_pt_code(p)
     tf_docs, pt_docs = load_docs_for_file(name, file_apis, api_docs)
 
-    # 当前执行环境主要是跑 PyTorch 侧，因此 TF 输出留空占位，PT 输出用真实日志
+    # Current environment runs PyTorch side; keep TF output empty, PT output from logs
     tf_output = "=== STDOUT ===\n\n=== STDERR ===\n"
     pt_output = load_log_output(p.stem)
 
-    # 为了让提示词看起来更自然，这里用一句话说明去哪里看日志
-    error_message = f"该 case 的 PyTorch 执行日志见 data/logs/{p.stem}.log，请结合下面提供的完整 stderr/stdout 进行分析。"
+    # Add a note to point to logs for context
+    error_message = (
+        f"PyTorch execution log for this case is in data/logs/{p.stem}.log. "
+        "Please analyze using the full stderr/stdout below."
+    )
 
     prompt = build_analysis_prompt(
         error_message=error_message,
@@ -134,7 +137,7 @@ def main() -> None:
         pieces.append(build_prompt_for_test(test, file_apis, api_docs))
 
     out_path.write_text("".join(pieces), encoding="utf-8")
-    print(f"[DONE] 已生成提示词到: {out_path}")
+    print(f"[DONE] Prompts generated at: {out_path}")
 
 
 if __name__ == "__main__":

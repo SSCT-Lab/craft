@@ -8,14 +8,14 @@ def parse_report(report_path):
     has_field = False
     with open(report_path, "r", encoding="utf-8") as f:
         for line in f:
-            m = re.search(r"文件名:\s+([^\s]+\.json)", line)
+            m = re.search(r"file name:\s+([^\s]+\.json)", line)
             if m:
                 if current_file and has_field:
                     files.append(current_file)
                 current_file = m.group(1).strip()
                 has_field = False
                 continue
-            if "仅 PyTorch 报错的样例数" in line:
+            if "Number of examples of errors reported by PyTorch only" in line:
                 has_field = True
         if current_file and has_field:
             files.append(current_file)
@@ -23,8 +23,7 @@ def parse_report(report_path):
 
 def collect_samples(json_path):
     """
-    从 JSON 测试结果文件中收集所有仅 PyTorch 报错的样例
-    （torch_error 非 null 且 tensorflow_error 为 null）
+    Collect all PyTorch-only error samples from the JSON test result file     (torch_error is not null and tensorflow_error is null）
     """
     results = []
     with open(json_path, "r", encoding="utf-8") as f:
@@ -33,7 +32,7 @@ def collect_samples(json_path):
         exec_res = item.get("execution_result") or {}
         torch_err = exec_res.get("torch_error")
         tensorflow_err = exec_res.get("tensorflow_error")
-        # 只提取仅 PyTorch 报错的样例（TensorFlow 正常）
+        # Extract only the examples where PyTorch reports errors (TensorFlow is normal）
         if torch_err is not None and tensorflow_err is None:
             val = torch_err
             entry = {
@@ -53,10 +52,10 @@ def collect_samples(json_path):
 def format_section(filename, samples):
     lines = []
     lines.append("=" * 80)
-    lines.append(f"文件: {filename}")
+    lines.append(f"document: {filename}")
     lines.append("-" * 80)
     for idx, s in enumerate(samples, 1):
-        lines.append(f"样例 {idx}:")
+        lines.append(f"Sample {idx}:")
         lines.append(f"torch_error: {s.get('torch_error')}")
         if "torch_test_case" in s or "tensorflow_test_case" in s:
             if s.get("torch_test_case") is not None:
@@ -75,13 +74,13 @@ def format_section(filename, samples):
     return "\n".join(lines)
 
 def main():
-    # 配置路径
+    # Configuration path
     base_dir = Path(r"d:\graduate\DFrameworkTest\pt_tf_test")
-    report_path = base_dir / "pt_tf_log_1" / "error_analysis_report_new.txt"  # 输入：错误分析报告
-    log_dir = base_dir / "pt_tf_log_1"                                        # JSON 日志文件目录
-    output_dir = base_dir / "analysis"                                        # 输出目录
-    output_dir.mkdir(parents=True, exist_ok=True)                             # 确保输出目录存在
-    output_path = output_dir / "new_torch_error_samples_report.txt"           # 输出文件路径
+    report_path = base_dir / "pt_tf_log_1" / "error_analysis_report_new.txt"  # Input: error analysis report
+    log_dir = base_dir / "pt_tf_log_1"                                        # JSON Log file directory
+    output_dir = base_dir / "analysis"                                        # Output directory
+    output_dir.mkdir(parents=True, exist_ok=True)                             # Make sure the output directory exists
+    output_path = output_dir / "new_torch_error_samples_report.txt"           # Output file path
     target_files = parse_report(report_path)
     sections = []
     for fname in target_files:
@@ -91,12 +90,12 @@ def main():
         samples = collect_samples(jpath)
         if samples:
             sections.append(format_section(fname, samples))
-    content = "\n".join(sections) if sections else "无仅 PyTorch 报错的样例"
+    content = "\n".join(sections) if sections else "No examples of errors reported only by PyTorch"
     with open(output_path, "w", encoding="utf-8") as wf:
         wf.write(content)
-    print(f"✅ 报告已生成: {output_path}")
-    print(f"📊 共处理 {len(target_files)} 个包含仅 PyTorch 错误的文件")
-    print(f"📝 共生成 {len(sections)} 个文件的样例报告")
+    print(f"✅ Report generated: {output_path}")
+    print(f"📊 Processed in total {len(target_files)} files containing only PyTorch errors")
+    print(f"📝 symbiosis {len(sections)} Sample report for files")
 
 if __name__ == "__main__":
     main()

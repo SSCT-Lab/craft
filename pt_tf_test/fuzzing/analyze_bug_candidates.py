@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-分析 pt_tf_test/fuzzing/result 目录下的 fuzzing 结果文件
-统计 bug 候选的数量和错误类型分布
-
-分析内容：
-1. is_bug_candidate: true 的总数
-2. 同时有 torch_error 和 tensorflow_error 的数量
-3. 只有 torch_error 的数量
-4. 只有 tensorflow_error 的数量
-5. 只有 comparison_error 的数量（两框架都成功但结果不一致）
-
-注意：
-- 同一个算子可能有多个结果文件（时间戳不同），以最后一个文件为准
+analyze pt_tf_test/fuzzing/result fuzzing result files in the directory Count the number of bug candidates and error type distribution  Analyze content：
+1. is_bug_candidate: true total number
+2. The number of simultaneous torch_error and tensorflow_error
+3. Only the number of torch_error
+4. Only the number of tensorflow_error
+5. Only the number of comparison_error (both frameworks succeed but the results are inconsistent)  Note: - The same operator may have multiple result files (with different timestamps), the last file shall prevail.
 """
 
 import os
@@ -24,8 +18,7 @@ from datetime import datetime
 
 def parse_timestamp_from_filename(filename: str) -> datetime:
     """
-    从文件名中提取时间戳
-    文件名格式: torch_xxx_fuzzing_result_YYYYMMDD_HHMMSS.json
+    Extract timestamp from filename     file name format: torch_xxx_fuzzing_result_YYYYMMDD_HHMMSS.json
     """
     match = re.search(r'_(\d{8}_\d{6})\.json$', filename)
     if match:
@@ -36,8 +29,7 @@ def parse_timestamp_from_filename(filename: str) -> datetime:
 
 def get_operator_name_from_filename(filename: str) -> str:
     """
-    从文件名中提取算子名称
-    文件名格式: torch_xxx_fuzzing_result_YYYYMMDD_HHMMSS.json
+    Extract operator name from file name     file name format: torch_xxx_fuzzing_result_YYYYMMDD_HHMMSS.json
     """
     match = re.match(r'(.+)_fuzzing_result_\d{8}_\d{6}\.json$', filename)
     if match:
@@ -46,9 +38,9 @@ def get_operator_name_from_filename(filename: str) -> str:
 
 
 def analyze_fuzzing_results(result_dir: str):
-    """分析 fuzzing 结果"""
+    """Analyze fuzzing results"""
     
-    # 收集所有结果文件，按算子名称分组
+    # Collect all result files and group them by operator name
     operator_files = defaultdict(list)
     
     for filename in os.listdir(result_dir):
@@ -58,26 +50,26 @@ def analyze_fuzzing_results(result_dir: str):
             filepath = os.path.join(result_dir, filename)
             operator_files[operator_name].append((timestamp, filepath, filename))
     
-    # 对每个算子，选择最新的文件
+    # For each operator, select the latest file
     latest_files = {}
     for operator_name, files in operator_files.items():
-        # 按时间戳排序，取最新的
+        # Sort by timestamp, take the latest
         files.sort(key=lambda x: x[0], reverse=True)
         latest_files[operator_name] = files[0]  # (timestamp, filepath, filename)
     
-    print(f"📁 结果目录: {result_dir}")
-    print(f"📊 共发现 {len(operator_files)} 个算子的结果文件")
-    print(f"   （其中有 {sum(1 for f in operator_files.values() if len(f) > 1)} 个算子有多个结果文件，已选取最新的）")
+    print(f"📁 Results directory: {result_dir}")
+    print(f"📊 Found in total {len(operator_files)} operator result file")
+    print(f"   （Among them are {sum(1 for f in operator_files.values() if len(f) > 1)} operator has multiple result files, the latest one has been selected）")
     print("=" * 80)
     
-    # 统计计数器
+    # Statistics counter
     total_bug_candidates = 0
-    both_errors = 0          # 同时有 torch_error 和 tensorflow_error
-    only_torch_error = 0     # 只有 torch_error
-    only_tensorflow_error = 0 # 只有 tensorflow_error
-    only_comparison_error = 0 # 只有 comparison_error
+    both_errors = 0          # There are both torch_error and tensorflow_error
+    only_torch_error = 0     # only torch_error
+    only_tensorflow_error = 0 # only tensorflow_error
+    only_comparison_error = 0 # only comparison_error
     
-    # 详细记录
+    # Detailed records
     bug_details = {
         'both_errors': [],
         'only_torch_error': [],
@@ -85,13 +77,13 @@ def analyze_fuzzing_results(result_dir: str):
         'only_comparison_error': []
     }
     
-    # 遍历每个算子的最新文件
+    # Traverse the latest files of each operator
     for operator_name, (timestamp, filepath, filename) in sorted(latest_files.items()):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            # 遍历所有测试结果
+            # Iterate through all test results
             for result_item in data.get('results', []):
                 for fuzzing_result in result_item.get('fuzzing_results', []):
                     if fuzzing_result.get('is_bug_candidate', False):
@@ -102,7 +94,7 @@ def analyze_fuzzing_results(result_dir: str):
                         tensorflow_error = exec_result.get('tensorflow_error')
                         comparison_error = exec_result.get('comparison_error')
                         
-                        # 判断错误类型
+                        # Determine error type
                         has_torch_error = torch_error is not None and torch_error != ""
                         has_tensorflow_error = tensorflow_error is not None and tensorflow_error != ""
                         has_comparison_error = comparison_error is not None and comparison_error != ""
@@ -131,54 +123,54 @@ def analyze_fuzzing_results(result_dir: str):
                             bug_details['only_comparison_error'].append(bug_info)
         
         except Exception as e:
-            print(f"⚠️ 解析文件 {filename} 失败: {e}")
+            print(f"⚠️ parse file {filename} fail: {e}")
     
-    # 输出统计结果
+    # Output statistical results
     print("\n" + "=" * 80)
-    print("📈 Bug 候选统计结果 (PyTorch vs TensorFlow)")
+    print("📈 Bug Candidate statistical results (PyTorch vs TensorFlow)")
     print("=" * 80)
-    print(f"🔴 Bug 候选总数 (is_bug_candidate=true): {total_bug_candidates}")
-    print(f"   ├── 同时有 torch_error 和 tensorflow_error: {both_errors}")
-    print(f"   ├── 只有 torch_error:                       {only_torch_error}")
-    print(f"   ├── 只有 tensorflow_error:                  {only_tensorflow_error}")
-    print(f"   └── 只有 comparison_error (结果不一致):     {only_comparison_error}")
+    print(f"🔴 Bug Total number of candidates (is_bug_candidate=true): {total_bug_candidates}")
+    print(f"   ├── There are both torch_error and tensorflow_error: {both_errors}")
+    print(f"   ├── only torch_error:                       {only_torch_error}")
+    print(f"   ├── only tensorflow_error:                  {only_tensorflow_error}")
+    print(f"   └── Only comparison_error (results are inconsistent):     {only_comparison_error}")
     print("=" * 80)
     
-    # 输出详细信息
+    # Output details
     if bug_details['both_errors']:
-        print(f"\n📋 同时有两种框架错误的 Bug 候选 ({len(bug_details['both_errors'])} 个):")
+        print(f"\n📋 There are two bug candidates for framework errors at the same time ({len(bug_details['both_errors'])} indivual):")
         for i, bug in enumerate(bug_details['both_errors'][:10], 1):
             print(f"  {i}. {bug['operator']} (round {bug['round']})")
-            print(f"     PyTorch错误: {bug['torch_error']}")
-            print(f"     TensorFlow错误: {bug['tensorflow_error']}")
+            print(f"     PyTorchmistake: {bug['torch_error']}")
+            print(f"     TensorFlowmistake: {bug['tensorflow_error']}")
         if len(bug_details['both_errors']) > 10:
-            print(f"  ... 还有 {len(bug_details['both_errors']) - 10} 个")
+            print(f"  ... besides {len(bug_details['both_errors']) - 10} indivual")
     
     if bug_details['only_torch_error']:
-        print(f"\n📋 只有 PyTorch 错误的 Bug 候选 ({len(bug_details['only_torch_error'])} 个):")
+        print(f"\n📋 Only bug candidates for PyTorch errors ({len(bug_details['only_torch_error'])} indivual):")
         for i, bug in enumerate(bug_details['only_torch_error'][:10], 1):
             print(f"  {i}. {bug['operator']} (round {bug['round']})")
-            print(f"     错误: {bug['torch_error']}")
+            print(f"     mistake: {bug['torch_error']}")
         if len(bug_details['only_torch_error']) > 10:
-            print(f"  ... 还有 {len(bug_details['only_torch_error']) - 10} 个")
+            print(f"  ... besides {len(bug_details['only_torch_error']) - 10} indivual")
     
     if bug_details['only_tensorflow_error']:
-        print(f"\n📋 只有 TensorFlow 错误的 Bug 候选 ({len(bug_details['only_tensorflow_error'])} 个):")
+        print(f"\n📋 Only bug candidates for TensorFlow errors ({len(bug_details['only_tensorflow_error'])} indivual):")
         for i, bug in enumerate(bug_details['only_tensorflow_error'][:10], 1):
             print(f"  {i}. {bug['operator']} (round {bug['round']})")
-            print(f"     错误: {bug['tensorflow_error']}")
+            print(f"     mistake: {bug['tensorflow_error']}")
         if len(bug_details['only_tensorflow_error']) > 10:
-            print(f"  ... 还有 {len(bug_details['only_tensorflow_error']) - 10} 个")
+            print(f"  ... besides {len(bug_details['only_tensorflow_error']) - 10} indivual")
     
     if bug_details['only_comparison_error']:
-        print(f"\n📋 只有结果不一致的 Bug 候选 ({len(bug_details['only_comparison_error'])} 个):")
+        print(f"\n📋 Only bug candidates with inconsistent results ({len(bug_details['only_comparison_error'])} indivual):")
         for i, bug in enumerate(bug_details['only_comparison_error'][:10], 1):
             print(f"  {i}. {bug['operator']} (round {bug['round']})")
-            print(f"     差异: {bug['comparison_error']}")
+            print(f"     difference: {bug['comparison_error']}")
         if len(bug_details['only_comparison_error']) > 10:
-            print(f"  ... 还有 {len(bug_details['only_comparison_error']) - 10} 个")
+            print(f"  ... besides {len(bug_details['only_comparison_error']) - 10} indivual")
     
-    # 保存详细报告
+    # Save detailed report
     report_path = os.path.join(os.path.dirname(result_dir), 'bug_candidates_report.json')
     report_data = {
         'summary': {
@@ -195,17 +187,17 @@ def analyze_fuzzing_results(result_dir: str):
     with open(report_path, 'w', encoding='utf-8') as f:
         json.dump(report_data, f, indent=2, ensure_ascii=False)
     
-    print(f"\n💾 详细报告已保存到: {report_path}")
+    print(f"\n💾 Detailed report saved to: {report_path}")
     
     return report_data
 
 
 if __name__ == '__main__':
-    # 获取当前脚本所在目录
+    # Get the directory where the current script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     result_dir = os.path.join(script_dir, 'result')
     
     if os.path.exists(result_dir):
         analyze_fuzzing_results(result_dir)
     else:
-        print(f"❌ 结果目录不存在: {result_dir}")
+        print(f"❌ The result directory does not exist: {result_dir}")

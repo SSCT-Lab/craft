@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-验证 PyTorch API 是否真实存在（基于官方文档页面）
+Validate whether PyTorch APIs exist (based on official docs pages)
 
-用法：
+Usage:
     conda activate tf_env
     python ms_pt_test/validate_pt_api_docs.py `
         --input ms_pt_test/data/ms_pt_mapping_high.csv `
@@ -16,7 +16,7 @@ import os
 import sys
 import io
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -59,7 +59,7 @@ def _load_genindex_html() -> str:
 
 
 def has_genindex_exact_match(api_name: str) -> bool:
-    """通过 PyTorch genindex 做精确符号匹配，兜底 generated 页面缺失场景。"""
+    """Exact symbol match via PyTorch genindex as fallback when generated pages are missing."""
     normalized = normalize_api_name(api_name)
     if not normalized:
         return False
@@ -82,7 +82,7 @@ def is_doc_valid(
     min_desc_chars: int,
     delay: float,
 ) -> Tuple[bool, str]:
-    """检查 PyTorch API 文档是否可信"""
+    """Check whether PyTorch API docs are trustworthy."""
     normalized = normalize_api_name(api_name)
     if not normalized:
         return False, "empty_api"
@@ -145,22 +145,22 @@ def build_reason(original_reason: str, new_reason: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="验证 PyTorch API 文档并修正映射")
-    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="输入映射 CSV 路径")
-    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="输出修正后 CSV 路径")
-    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"请求延迟 (默认{DEFAULT_DELAY})")
+    parser = argparse.ArgumentParser(description="Validate PyTorch API docs and fix mappings")
+    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="Input mapping CSV path")
+    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="Output corrected CSV path")
+    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Request delay (default {DEFAULT_DELAY})")
     parser.add_argument("--min-html-chars", type=int, default=DEFAULT_MIN_HTML_CHARS)
     parser.add_argument("--min-desc-chars", type=int, default=DEFAULT_MIN_DESC_CHARS)
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: header is empty")
         return
 
     crawler = PyTorchDocCrawler()
@@ -170,7 +170,7 @@ def main() -> None:
 
     for idx, row in enumerate(rows, start=1):
         pt_api = normalize_api_name(row.get("pytorch-api", ""))
-        if not pt_api or pt_api == "无对应实现":
+        if not pt_api or pt_api == "no_matching_impl":
             continue
 
         ok, reason = is_doc_valid(
@@ -183,19 +183,19 @@ def main() -> None:
             continue
 
         invalid += 1
-        row["pytorch-api"] = "无对应实现"
+        row["pytorch-api"] = "no_matching_impl"
         row["reason"] = build_reason(row.get("reason", ""), f"pytorch_doc_invalid:{reason}")
         print(f"  ❌ [{idx}/{total}] {pt_api} ({reason})")
 
     save_csv_rows(args.output, rows, fieldnames)
 
     print("=" * 80)
-    print("验证完成")
+    print("Validation complete")
     print("=" * 80)
-    print(f"总行数: {total}")
-    print(f"检查条目数: {checked}")
-    print(f"无效条目数: {invalid}")
-    print(f"输出文件: {args.output}")
+    print(f"Total rows: {total}")
+    print(f"Checked entries: {checked}")
+    print(f"Invalid entries: {invalid}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":

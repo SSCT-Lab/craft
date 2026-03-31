@@ -1,12 +1,10 @@
 """  
-PyTorch-TensorFlow 基于 LLM 的 Fuzzing 差分测试工具
-
-功能说明:
-    1. 读取按算子分类的成功测试用例
-    2. 爬取 PyTorch 和 TensorFlow 官方文档
-    3. 使用 LLM 变异测试用例（复杂输入、极端值、边界值）
-    4. 执行差分测试，检测框架不一致或潜在 bug
-    5. 每个用例进行 3 轮 fuzzing
+PyTorch-TensorFlow Fuzzing differential testing tool based on LLM  Function description:
+    1. Read successful test cases classified by operator
+    2. Crawl PyTorch and TensorFlow official documents
+    3. Use LLM mutation test cases (complex inputs, extreme values, boundary values）
+    4. Perform differential testing to detect framework inconsistencies or potential bug
+    5. 3 rounds per use case fuzzing
 """
 
 import json
@@ -19,7 +17,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# 添加项目根目录到路径
+# Add project root directory to path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -27,14 +25,14 @@ if str(ROOT) not in sys.path:
 from component.doc.doc_crawler_factory import get_doc_content
 from component.migration.migrate_generate_tests import get_qwen_client
 
-# ==================== 常量定义 ====================
+# ==================== constant definition ====================
 DEFAULT_MODEL = "qwen-plus"
 DEFAULT_KEY_PATH = "aliyun.key"
-FUZZING_ROUNDS = 3  # 每个用例的 fuzzing 轮数
+FUZZING_ROUNDS = 3  # Number of fuzzing rounds per use case
 
-# 成功用例目录
+# Successful use case catalog
 SUCCESS_CASES_DIR = Path(__file__).parent / "success_cases"
-# Fuzzing 结果目录
+# Fuzzing Results directory
 RESULT_DIR = Path(__file__).parent / "result"
 
 
@@ -47,15 +45,13 @@ def build_fuzzing_prompt(
     round_num: int
 ) -> str:
     """
-    构建 LLM fuzzing 提示词
-    
-    参数:
-        torch_api: PyTorch API 名称
-        tf_api: TensorFlow API 名称
-        original_case: 原始测试用例
-        torch_doc: PyTorch 文档内容
-        tf_doc: TensorFlow 文档内容
-        round_num: 当前 fuzzing 轮次
+    Building LLM fuzzing prompt words          parameters:
+        torch_api: PyTorch API name
+        tf_api: TensorFlow API name
+        original_case: Original test case
+        torch_doc: PyTorch Document content
+        tf_doc: TensorFlow Document content
+        round_num: Current fuzzing round
     """
     torch_case = original_case.get("torch_test_case", {})
     tf_case = original_case.get("tensorflow_test_case", {})
@@ -63,97 +59,70 @@ def build_fuzzing_prompt(
     torch_case_json = json.dumps(torch_case, ensure_ascii=False, indent=2)
     tf_case_json = json.dumps(tf_case, ensure_ascii=False, indent=2)
     
-    # 不同轮次的变异策略
+    # Mutation strategies for different rounds
     mutation_strategies = {
-        1: "极端数值变异：使用复杂的浮点数、极大值(1e38)、极小值(1e-38)、无穷大(inf)、负无穷(-inf)、NaN、零(0)、负零(-0.0)等特殊数值",
-        2: "边界形状变异：使用空张量(shape含0)、标量(shape=[])、超高维张量(5维以上)、不规则形状、单元素张量等边界情况",
-        3: "复杂类型变异：测试不同数据类型(float16/float32/float64/int32/int64/bool/complex64/complex128)、混合精度场景"
+        1: "Extreme numerical variation: using complex floating point numbers, maximum value (1e38), minimum value (1e-38), infinity (inf), negative infinity (-inf), NaN, zero (0), negative zero(-0.0)and other special values",
+        2: "Boundary shape mutation: use empty tensor (shape contains 0), scalar(shape=[])、Boundary situations such as ultra-high-dimensional tensors (more than 5 dimensions), irregular shapes, single-element tensors, etc.",
+        3: "Complex type mutation: testing different data types(float16/float32/float64/int32/int64/bool/complex64/complex128)、mixed precision scene"
     }
     
     current_strategy = mutation_strategies.get(round_num, mutation_strategies[1])
     
-    prompt = f"""你是一个专业的深度学习框架测试专家，现在需要对 PyTorch 和 TensorFlow 的等价算子进行差分测试。
-
-【测试目标】
-我们要寻找的是**框架实现中的潜在 bug**，即：在数学上完全等价的操作，两框架却产生不同的输出。
-- ✓ 要找的：相同数学计算下的框架实现差异（真正的 bug）
-- ✗ 不要找的：因为测试用例本身不等价导致的差异（假阳性）
-    
-【当前测试的算子对】
+    prompt = f"""You are a professional deep learning framework testing expert, and now you need to perform differential testing on the equivalent operators of PyTorch and TensorFlow.  【Test goal】 What we are looking for is**potential in framework implementation bug**，That is: mathematically equivalent operations, but the two frameworks produce different outputs。
+- ✓ What to look for: Framework implementation differences (real bug）
+- ✗ What not to look for: Differences (false positives) caused by inequivalence of the test cases themselves      [Currently tested operator pair】
 - PyTorch API: {torch_api}
 - TensorFlow API: {tf_api}
 
-【原始成功测试用例】
-PyTorch 测试用例:
+【Original successful test case] PyTorch test cases:
 ```json
 {torch_case_json}
 ```
 
-TensorFlow 测试用例:
+TensorFlow test case:
 ```json
 {tf_case_json}
 ```
 
-【PyTorch 官方文档】
-{torch_doc if torch_doc else "文档获取失败"}
+【PyTorch Official documentation】
+{torch_doc if torch_doc else "Document retrieval failed"}
 
-【TensorFlow 官方文档】
-{tf_doc if tf_doc else "文档获取失败"}
+【TensorFlow Official documentation】
+{tf_doc if tf_doc else "Document retrieval failed"}
 
-【本轮变异策略 - 第{round_num}轮】
+【Mutation strategy for this round - Chapter{round_num}wheel】
 {current_strategy}
 
-【核心变异要求：数学等价性（最重要！）】
-**变异后的两个测试用例必须在数学上完全等价，理论输出必须相同。**
+【Core mutation requirements: Mathematical equivalence (most important！）】
+**The two test cases after mutation must be completely equivalent mathematically, and the theoretical output must be the same。**
 
-你可以自由地：
-- 修改输入数据（shape、dtype、数值）
-- 添加或修改参数
-- 使用任何合法的参数组合
+You are free to: - Modify input data (shape, dtype, value) - Add or modify parameters - Use any legal parameter combination  But you must make sure: - If PyTorch uses a parameter (such as `alpha=2.0`），TensorFlow must be treated equivalently - e.g.：`torch.add(x, y, alpha=2.0)` Equivalent to `tf.add(x, tf.multiply(y, 2.0))`
+- If equivalent logic cannot be implemented on the TensorFlow side, then**Do not use this parameter**
 
-但你必须确保：
-- 如果 PyTorch 使用了某个参数（如 `alpha=2.0`），TensorFlow 侧必须做等价处理
-- 例如：`torch.add(x, y, alpha=2.0)` 等价于 `tf.add(x, tf.multiply(y, 2.0))`
-- 如果无法在 TensorFlow 侧实现等价逻辑，则**不要使用该参数**
+【Specific variation requirements】
+1. **Inputs must be exactly the same**：The shape, dtype, and value of the input tensors of the two frameworks must be completely consistent (format conversion can be performed if necessary, such as NCHW toNHWC）
+2. **Parameter semantic equivalence**：If the API has additional parameters, the parameter values ​​on both sides must be semantically equivalent
+3. **Explore edge cases**：Focus on testing extreme values, boundary shapes, special dtypes, and other boundary scenarios that may cause inconsistent behavior between the two frameworks
+4. **Keep it enforceable**：The mutated use case must be legal and can be executed correctly by the framework  【Important Tips】 - Confirm the parameter mapping relationship between the two APIs according to the documentation - Pay attention to data type compatibility (for example, some dtypes may only be supported by one framework) - Consider numerical stability issues (such as division by zero, log(0), sqrt(-1), etc.) - Pay attention to the operator's requirements for dimensions when mutating shape  [Principles of parameter processing] - You can freely add, modify, and delete parameters as long as they are mathematically equivalent - If a parameter is supported by only one framework, either do not use it or manually implement equivalent logic in another framework. - Parameter names are correctly mapped according to the framework documentation (e.g. kernel_size <-> pool_size）
 
-【具体变异要求】
-1. **输入必须完全相同**：两个框架的输入张量的 shape、dtype、数值必须完全一致（必要时可以进行格式转换，如NCHW转为NHWC）
-2. **参数语义等价**：如果 API 有额外参数，两边的参数值必须在语义上等价
-3. **探索边界情况**：重点测试极端值、边界形状、特殊 dtype 等可能导致两框架行为不一致的边界场景
-4. **保持可执行性**：变异后的用例必须是合法的，能够被框架正确执行
-
-【重要提示】
-- 根据文档确认两个 API 的参数映射关系
-- 注意数据类型的兼容性（如某些 dtype 可能只有一个框架支持）
-- 考虑数值稳定性问题（如除零、log(0)、sqrt(-1)等）
-- shape 变异时注意算子对维度的要求
-
-【参数处理原则】
-- 可以自由添加、修改、删除参数，只要保证数学等价
-- 如果某参数只有一个框架支持，要么不用，要么在另一框架手动实现等价逻辑
-- 参数名按框架文档正确映射（如 kernel_size <-> pool_size）
-
-【错误示例 - 不要这样做！】
-❌ PyTorch 用 `alpha=2.0`，TensorFlow 却没有对应处理：
+【Bad example - don't do this！】
+❌ PyTorch use `alpha=2.0`，TensorFlow but no corresponding treatment：
    torch.add(x, y, alpha=2.0)  →  x + 2*y
    tf.add(x, y)                →  x + y
-   这两个在数学上不等价，会产生假阳性！
-
-【正确示例】
-✓ 方案1：两边都不用 alpha（推荐，更简单）
+   These two are not mathematically equivalent and will produce false positives!  [Correct example】
+✓ Option 1: Don’t use alpha on both sides (recommended, simpler）
    torch.add(x, y)  →  x + y
    tf.add(x, y)     →  x + y
 
-✓ 方案2：TensorFlow 侧手动实现等价逻辑
+✓ Option 2: Manually implement equivalent logic on TensorFlow side
    torch.add(x, y, alpha=2.0)       →  x + 2*y
    tf.add(x, tf.multiply(y, 2.0))   →  x + 2*y
 
-【输出格式要求】
-请严格按照以下 JSON 格式输出变异后的测试用例，不要输出任何其他内容：
+【Output format requirements] Please strictly follow the following JSON format to output the mutated test cases, and do not output any other content.：
 ```json
 {{
-  "mutation_strategy": "简要描述本次变异策略",
-  "mutation_reason": "详细解释为什么这样变异可能发现问题",
+  "mutation_strategy": "Briefly describe this mutation strategy",
+  "mutation_reason": "Explain in detail why this mutation may lead to problems",
   "torch_test_case": {{
     "api": "{torch_api}",
     "input": {{
@@ -161,10 +130,10 @@ TensorFlow 测试用例:
       "dtype": "...",
       "sample_values": [...]
     }},
-    // 如果需要额外输入（如 torch.add 的 other），添加对应字段
-    // 如："other": {{ "shape": [...], "dtype": "...", "sample_values": [...] }} 或标量值
-    // 如果需要额外参数（如 AvgPool1d 的 kernel_size, stride），也添加对应字段
-    // 如："kernel_size": 3, "stride": 2, "padding": 0 等
+    // If additional input is required (e.g. torch.add of other), add corresponding fields
+    // like："other": {{ "shape": [...], "dtype": "...", "sample_values": [...] }} or scalar value
+    // If additional parameters are required (such as AvgPool1d's kernel_size, stride），Also add corresponding fields
+    // like："kernel_size": 3, "stride": 2, "padding": 0 wait
   }},
   "tensorflow_test_case": {{
     "api": "{tf_api}",
@@ -173,33 +142,33 @@ TensorFlow 测试用例:
       "dtype": "...",
       "sample_values": [...]
     }},
-    // TensorFlow 对应的参数，注意参数名可能不同（但必须与 PyTorch 侧数学等价）
-    // 如 pool_size 对应 kernel_size，strides 对应 stride
+    // TensorFlow Corresponding parameters, note that the parameter names may be different (but must be mathematically equivalent to the PyTorch side）
+    // For example, pool_size corresponds to kernel_size, and strides corresponds to stride
   }}
 }}
 ```
 
-【重要】关于多输入和参数的处理：
-1. sample_values 应该包含足够的数值来填充整个张量，如果张量很大，可以只提供前几个值作为种子
-2. **如果算子有多个输入**（如 torch.add 的 input 和 other），必须都包含在输出中
-3. **参数名映射**：PyTorch 和 TensorFlow 的参数名、参数值类型和数量都可能不同，需要根据文档正确映射：
+【Important】About the processing of multiple inputs and parameters：
+1. sample_values Should contain enough values ​​to fill the entire tensor, if the tensor is large you can provide only the first few values ​​as a seed
+2. **If the operator has multiple inputs**（like torch.add of input and other), must both be included in the output
+3. **Parameter name mapping**：PyTorch The parameter names, parameter value types and quantities of TensorFlow may be different and need to be mapped correctly according to the documentation.：
    - torch.nn.AvgPool1d(kernel_size, stride) <-> tf.keras.layers.AveragePooling1D(pool_size, strides)
    - torch.add(input, other) <-> tf.add(x, y)
-4. dtype 必须是两个框架都支持的类型
+4. dtype Must be a type supported by both frameworks
 """
     return prompt
 
 
 def parse_llm_response(response: str) -> Optional[Dict[str, Any]]:
     """
-    解析 LLM 返回的 JSON 响应，支持处理截断和格式错误
+    Parse the JSON response returned by LLM, supporting handling of truncation and format errors
     """
     try:
-        # 尝试提取 JSON 块
+        # Try to extract JSON chunks
         if "```json" in response:
             start = response.find("```json") + 7
             end = response.find("```", start)
-            # 如果没有找到结束符（被截断），取剩余所有内容
+            # If the terminator is not found (truncated), take all remaining content
             if end == -1:
                 json_str = response[start:].strip()
             else:
@@ -212,53 +181,51 @@ def parse_llm_response(response: str) -> Optional[Dict[str, Any]]:
             else:
                 json_str = response[start:end].strip()
         else:
-            # 尝试直接解析
+            # Try to parse directly
             json_str = response.strip()
         
-        # 预处理：替换 Python float() 语法为 JSON 字符串
+        # Preprocessing: Replace Python float() syntax with JSON string
         json_str = fix_python_float_syntax(json_str)
         
-        # 尝试直接解析
+        # Try to parse directly
         try:
             parsed = json.loads(json_str)
-            # 验证必要字段
+            # Validate required fields
             if validate_parsed_json(parsed):
                 return parsed
         except json.JSONDecodeError:
             pass
         
-        # 尝试修复截断的 JSON
+        # Try to fix the truncated JSON
         repaired_json = try_repair_json(json_str)
         if repaired_json and validate_parsed_json(repaired_json):
             return repaired_json
         
         return None
     except Exception as e:
-        print(f"[WARN] 解析 LLM 响应失败: {e}")
+        print(f"[WARN] Failed to parse LLM response: {e}")
         return None
 
 
 def fix_python_float_syntax(json_str: str) -> str:
     """
-    将 Python float() 语法替换为 JSON 兼容的字符串格式
-    
-    例如:
+    Replace Python float() syntax with JSON-compatible string format          For example:
         float('inf') -> "inf"
         float('-inf') -> "-inf"
         float('nan') -> "nan"
     """
     import re
     
-    # 替换 float('inf')
+    # replace float('inf')
     json_str = re.sub(r"float\s*\(\s*['\"]inf['\"]\s*\)", '"inf"', json_str, flags=re.IGNORECASE)
     
-    # 替换 float('-inf')
+    # replace float('-inf')
     json_str = re.sub(r"float\s*\(\s*['\"]-inf['\"]\s*\)", '"-inf"', json_str, flags=re.IGNORECASE)
     
-    # 替换 float('nan')
+    # replace float('nan')
     json_str = re.sub(r"float\s*\(\s*['\"]nan['\"]\s*\)", '"nan"', json_str, flags=re.IGNORECASE)
     
-    # 替换 float('+inf')
+    # replace float('+inf')
     json_str = re.sub(r"float\s*\(\s*['\"]\+inf['\"]\s*\)", '"inf"', json_str, flags=re.IGNORECASE)
     
     return json_str
@@ -266,15 +233,13 @@ def fix_python_float_syntax(json_str: str) -> str:
 
 def validate_parsed_json(parsed: Dict[str, Any]) -> bool:
     """
-    验证解析后的 JSON 是否包含必要字段
-    
-    返回:
-        True 如果包含必要字段，False 否则
+    Verify that the parsed JSON contains necessary fields          Return:
+        True False if required fields are included otherwise
     """
     if not isinstance(parsed, dict):
         return False
     
-    # 检查必要字段
+    # Check required fields
     required_fields = ["torch_test_case", "tensorflow_test_case"]
     for field in required_fields:
         if field not in parsed:
@@ -287,36 +252,36 @@ def validate_parsed_json(parsed: Dict[str, Any]) -> bool:
 
 def try_repair_json(json_str: str) -> Optional[Dict[str, Any]]:
     """
-    尝试修复不完整的 JSON 字符串
+    Try to fix incomplete JSON string
     """
     import re
     
-    # 方法1：检查并补全缺失的括号
-    # 统计括号数量
+    # Method 1: Check and complete missing brackets
+    # Count the number of brackets
     open_braces = json_str.count('{')
     close_braces = json_str.count('}')
     open_brackets = json_str.count('[')
     close_brackets = json_str.count(']')
     
-    # 尝试补全缺失的括号
+    # Try to complete missing brackets
     repaired = json_str
     
-    # 移除末尾可能的不完整字符串（未闭合的引号内容）
-    # 查找最后一个完整的键值对
+    # Remove possible incomplete strings at the end (unclosed quote content）
+    # Find the last complete key-value pair
     patterns_to_try = [
-        # 情况1：截断在字符串值中间 "key": "value...
+        # Case 1: Truncated in the middle of string value "key": "value...
         (r',?\s*"[^"]*"\s*:\s*"[^"]*$', ''),
-        # 情况2：截断在键名后 "key":
+        # Case 2: Truncated after key name "key":
         (r',?\s*"[^"]*"\s*:\s*$', ''),
-        # 情况3：截断在逗号后
+        # Case 3: Truncated after comma
         (r',\s*$', ''),
-        # 情况4：截断在数组中间
+        # Case 4: Truncated in the middle of the array
         (r',?\s*\d+\.?\d*\s*$', ''),
     ]
     
     for pattern, replacement in patterns_to_try:
         test_str = re.sub(pattern, replacement, repaired)
-        # 补全括号
+        # Completion brackets
         test_open_braces = test_str.count('{')
         test_close_braces = test_str.count('}')
         test_open_brackets = test_str.count('[')
@@ -327,32 +292,32 @@ def try_repair_json(json_str: str) -> Optional[Dict[str, Any]]:
         
         try:
             result = json.loads(test_str)
-            # 验证必要字段存在
+            # Verify required fields exist
             if "torch_test_case" in result or "mutation_strategy" in result:
-                print(f"[INFO] JSON 修复成功")
+                print(f"[INFO] JSON Repair successful")
                 return result
         except json.JSONDecodeError:
             continue
     
-    # 方法2：简单地补全括号
+    # Method 2: Simply complete the brackets
     repaired += ']' * (open_brackets - close_brackets)
     repaired += '}' * (open_braces - close_braces)
     
     try:
         result = json.loads(repaired)
         if "torch_test_case" in result or "mutation_strategy" in result:
-            print(f"[INFO] JSON 简单修复成功")
+            print(f"[INFO] JSON Simple repair successful")
             return result
     except json.JSONDecodeError:
         pass
     
-    # 方法3：尝试提取已有的完整部分
-    # 找到最后一个完整的 } 或 ] 前的内容
+    # Method 3: Try to extract the existing complete part
+    # Find the last complete } or content before ]
     for i in range(len(json_str) - 1, -1, -1):
         if json_str[i] in '}]':
             try:
                 test_str = json_str[:i+1]
-                # 补全括号
+                # Completion brackets
                 test_open_braces = test_str.count('{')
                 test_close_braces = test_str.count('}')
                 test_open_brackets = test_str.count('[')
@@ -363,18 +328,18 @@ def try_repair_json(json_str: str) -> Optional[Dict[str, Any]]:
                 
                 result = json.loads(test_str)
                 if "torch_test_case" in result or "mutation_strategy" in result:
-                    print(f"[INFO] JSON 部分提取成功")
+                    print(f"[INFO] JSON Partial extraction successful")
                     return result
             except json.JSONDecodeError:
                 continue
     
-    print(f"[WARN] JSON 修复失败")
+    print(f"[WARN] JSON Repair failed")
     return None
 
 
 def parse_special_value(val: Any) -> float:
     """
-    解析特殊值（如 "inf", "-inf", "nan" 字符串）
+    Parse special values ​​(such as "inf", "-inf", "nan" string）
     """
     if isinstance(val, (int, float)):
         return float(val)
@@ -396,35 +361,33 @@ def parse_special_value(val: Any) -> float:
 
 def create_tensor_from_spec(spec: Dict[str, Any], framework: str) -> Any:
     """
-    根据规格创建张量
-    
-    参数:
-        spec: 包含 shape, dtype, sample_values 的字典
-        framework: 'torch' 或 'tensorflow'
+    Create a tensor based on specifications          parameters:
+        spec: Include shape, dtype, sample_values dictionary
+        framework: 'torch' or 'tensorflow'
     """
     shape = spec.get("shape", [])
     dtype_str = spec.get("dtype", "float32")
     sample_values = spec.get("sample_values", [])
     
-    # 预处理 sample_values，转换特殊值
+    # Preprocess sample_values, convert special values
     processed_values = [parse_special_value(v) for v in sample_values]
     
-    # 计算张量大小
+    # Calculate tensor size
     size = 1
     for dim in shape:
         size *= dim
     
-    # 生成数据
+    # Generate data
     if size == 0:
         data = np.array([]).reshape(shape)
     elif processed_values:
         if len(processed_values) >= size:
             data = np.array(processed_values[:size]).reshape(shape)
         else:
-            # 使用 processed_values 作为种子扩展
-            np.random.seed(42)  # 固定种子保证一致性
+            # Use processed_values ​​as seed extension
+            np.random.seed(42)  # Fixed seeds ensure consistency
             if processed_values:
-                # 过滤掉 NaN 和 Inf 用于计算统计量
+                # Filter out NaN and Inf for calculating statistics
                 finite_values = [v for v in processed_values if np.isfinite(v)]
                 if finite_values:
                     mean = np.mean(finite_values)
@@ -432,10 +395,10 @@ def create_tensor_from_spec(spec: Dict[str, Any], framework: str) -> Any:
                 else:
                     mean, std = 0.0, 1.0
                 
-                # 生成基础数据
+                # Generate basic data
                 base_data = np.random.normal(mean, std, size)
                 
-                # 将 sample_values 中的值按顺序填入
+                # Fill in the values ​​in sample_values ​​in order
                 for i, v in enumerate(processed_values):
                     if i < size:
                         base_data.flat[i] = v
@@ -447,7 +410,7 @@ def create_tensor_from_spec(spec: Dict[str, Any], framework: str) -> Any:
         np.random.seed(42)
         data = np.random.randn(*shape)
     
-    # 转换数据类型
+    # Convert data type
     dtype_map = {
         "float16": np.float16,
         "float32": np.float32,
@@ -461,7 +424,7 @@ def create_tensor_from_spec(spec: Dict[str, Any], framework: str) -> Any:
     
     np_dtype = dtype_map.get(dtype_str, np.float32)
     
-    # 处理特殊值
+    # Handle special values
     if np_dtype in [np.float16, np.float32, np.float64]:
         data = data.astype(np_dtype)
     elif np_dtype == np.bool_:
@@ -476,7 +439,7 @@ def create_tensor_from_spec(spec: Dict[str, Any], framework: str) -> Any:
 
 def create_torch_tensor(spec: Any, torch_dtype_map: Dict) -> Any:
     """
-    根据规格创建 PyTorch 张量，支持张量和标量
+    Create PyTorch tensors according to specifications, supporting tensors and scalars
     """
     import torch
     
@@ -491,14 +454,14 @@ def create_torch_tensor(spec: Any, torch_dtype_map: Dict) -> Any:
 
 def execute_torch_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
     """
-    执行 PyTorch 测试用例，支持多输入和额外参数
+    Execute PyTorch test cases, supporting multiple inputs and extra parameters
     """
     try:
         import torch
         
         api_name = test_case.get("api", "")
         
-        # PyTorch dtype 映射
+        # PyTorch dtype mapping
         torch_dtype_map = {
             "float16": torch.float16,
             "float32": torch.float32,
@@ -510,7 +473,7 @@ def execute_torch_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
             "complex128": torch.complex128,
         }
         
-        # 保留的非张量参数名（这些是算子的配置参数，不是输入张量）
+        # Reserved non-tensor parameter names (these are configuration parameters of the operator, not the input tensor）
         non_tensor_params = {
             "kernel_size", "stride", "padding", "dilation", "groups",
             "ceil_mode", "count_include_pad", "divisor_override",
@@ -519,16 +482,16 @@ def execute_torch_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
             "num_features", "normalized_shape", "weight", "bias"
         }
         
-        # 分离输入张量和参数
+        # Separate input tensors and parameters
         args = []
         kwargs = {}
         
-        # 处理主输入
+        # Handle main input
         if "input" in test_case:
             input_tensor = create_torch_tensor(test_case["input"], torch_dtype_map)
             args.append(input_tensor)
         
-        # 处理其他可能的输入张量（如 other, x, y 等）
+        # Handle other possible input tensors (such as other, x, y wait）
         tensor_input_names = ["other", "x", "y", "tensor", "input1", "input2", "mat1", "mat2"]
         for name in tensor_input_names:
             if name in test_case:
@@ -538,30 +501,30 @@ def execute_torch_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     args.append(tensor)
         
-        # 处理非张量参数
+        # Handling non-tensor parameters
         for key, value in test_case.items():
             if key not in ["api", "input", "x", "y", "other", "tensor", "input1", "input2", "mat1", "mat2"]:
                 if key in non_tensor_params or not isinstance(value, dict):
                     kwargs[key] = value
         
-        # 获取 API 函数
+        # Get API function
         api_parts = api_name.split(".")
         func = torch
-        for part in api_parts[1:]:  # 跳过 'torch'
+        for part in api_parts[1:]:  # jump over 'torch'
             func = getattr(func, part)
         
-        # 判断是否是类（如 nn.AvgPool1d）还是函数（如 torch.abs）
+        # Determine whether it is a class (such as nn.AvgPool1d）Or a function (such as torch.abs）
         if isinstance(func, type):
-            # 类：先实例化再调用
-            # 从 kwargs 中提取初始化参数
+            # Class: instantiate first and then call
+            # Extract initialization parameters from kwargs
             init_params = {k: v for k, v in kwargs.items() if k in non_tensor_params}
             instance = func(**init_params)
             result = instance(args[0] if args else kwargs.get("input"))
         else:
-            # 函数：直接调用
+            # Function: call directly
             result = func(*args, **kwargs)
         
-        # 转换结果
+        # Conversion result
         if isinstance(result, torch.Tensor):
             result_np = result.detach().cpu().numpy()
             return {
@@ -592,7 +555,7 @@ def execute_torch_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
 
 def create_tf_tensor(spec: Any, tf_dtype_map: Dict) -> Any:
     """
-    根据规格创建 TensorFlow 张量，支持张量和标量
+    Create TensorFlow tensors according to specifications, supporting tensors and scalars
     """
     import tensorflow as tf
     
@@ -607,14 +570,14 @@ def create_tf_tensor(spec: Any, tf_dtype_map: Dict) -> Any:
 
 def execute_tensorflow_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
     """
-    执行 TensorFlow 测试用例，支持多输入和额外参数
+    Execute TensorFlow test cases, supporting multiple inputs and additional parameters
     """
     try:
         import tensorflow as tf
         
         api_name = test_case.get("api", "")
         
-        # TensorFlow dtype 映射
+        # TensorFlow dtype mapping
         tf_dtype_map = {
             "float16": tf.float16,
             "float32": tf.float32,
@@ -626,7 +589,7 @@ def execute_tensorflow_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
             "complex128": tf.complex128,
         }
         
-        # TensorFlow 的非张量参数名
+        # TensorFlow The non-tensor parameter name of
         non_tensor_params = {
             "pool_size", "strides", "padding", "data_format",
             "axis", "keepdims", "name", "dtype",
@@ -634,44 +597,44 @@ def execute_tensorflow_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
             "filters", "kernel_size", "activation", "use_bias"
         }
         
-        # 分离输入张量和参数
+        # Separate input tensors and parameters
         args = []
         kwargs = {}
         
-        # 处理主输入
+        # Handle main input
         if "input" in test_case:
             input_tensor = create_tf_tensor(test_case["input"], tf_dtype_map)
             args.append(input_tensor)
         
-        # 处理其他可能的输入张量
+        # Handle other possible input tensors
         tensor_input_names = ["other", "x", "y", "tensor", "input1", "input2"]
         for name in tensor_input_names:
             if name in test_case:
                 tensor = create_tf_tensor(test_case[name], tf_dtype_map)
                 args.append(tensor)
         
-        # 处理非张量参数
+        # Handling non-tensor parameters
         for key, value in test_case.items():
             if key not in ["api", "input", "x", "y", "other", "tensor", "input1", "input2"]:
                 if key in non_tensor_params or not isinstance(value, dict):
                     kwargs[key] = value
         
-        # 获取 API 函数/类
+        # Get API function/kind
         api_parts = api_name.split(".")
         func = tf
-        for part in api_parts[1:]:  # 跳过 'tf'
+        for part in api_parts[1:]:  # jump over 'tf'
             func = getattr(func, part)
         
-        # 判断是否是 Keras 层（如 tf.keras.layers.AveragePooling1D）
+        # Determine whether it is a Keras layer (such as tf.keras.layers.AveragePooling1D）
         is_keras_layer = "keras" in api_name and "layers" in api_name
         
         if is_keras_layer:
-            # Keras 层：先实例化再调用
+            # Keras Layer: instantiate first and then call
             init_params = {k: v for k, v in kwargs.items() if k in non_tensor_params}
             layer = func(**init_params)
             result = layer(args[0] if args else kwargs.get("input"))
         else:
-            # 普通函数：直接调用
+            # Ordinary function: call directly
             if args and not kwargs:
                 result = func(*args)
             elif args:
@@ -679,7 +642,7 @@ def execute_tensorflow_test(test_case: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 result = func(**kwargs)
         
-        # 转换结果
+        # Conversion result
         if isinstance(result, tf.Tensor):
             result_np = result.numpy()
             return {
@@ -715,7 +678,7 @@ def compare_results(
     atol: float = 1e-8
 ) -> Dict[str, Any]:
     """
-    比较两个框架的执行结果
+    Compare the execution results of the two frameworks
     """
     comparison = {
         "torch_success": torch_result["success"],
@@ -730,13 +693,13 @@ def compare_results(
         "tensorflow_dtype": tf_result["dtype"],
     }
     
-    # 如果有一方失败
+    # If one party fails
     if not torch_result["success"] or not tf_result["success"]:
         if torch_result["success"] != tf_result["success"]:
-            comparison["comparison_error"] = "执行状态不一致：一方成功一方失败"
+            comparison["comparison_error"] = "Inconsistent execution status: one succeeds and the other fails"
         return comparison
     
-    # 比较结果
+    # Compare results
     try:
         torch_res = torch_result["result"]
         tf_res = tf_result["result"]
@@ -746,34 +709,34 @@ def compare_results(
             return comparison
         
         if isinstance(torch_res, np.ndarray) and isinstance(tf_res, np.ndarray):
-            # 形状检查
+            # Shape check
             if torch_res.shape != tf_res.shape:
-                comparison["comparison_error"] = f"形状不一致: torch={torch_res.shape}, tf={tf_res.shape}"
+                comparison["comparison_error"] = f"inconsistent shape: torch={torch_res.shape}, tf={tf_res.shape}"
                 return comparison
             
-            # 处理特殊值
+            # Handle special values
             torch_nan = np.isnan(torch_res) if np.issubdtype(torch_res.dtype, np.floating) else np.zeros_like(torch_res, dtype=bool)
             tf_nan = np.isnan(tf_res) if np.issubdtype(tf_res.dtype, np.floating) else np.zeros_like(tf_res, dtype=bool)
             
             torch_inf = np.isinf(torch_res) if np.issubdtype(torch_res.dtype, np.floating) else np.zeros_like(torch_res, dtype=bool)
             tf_inf = np.isinf(tf_res) if np.issubdtype(tf_res.dtype, np.floating) else np.zeros_like(tf_res, dtype=bool)
             
-            # NaN 位置必须一致
+            # NaN The positions must be consistent
             if not np.array_equal(torch_nan, tf_nan):
-                comparison["comparison_error"] = "NaN 位置不一致"
+                comparison["comparison_error"] = "NaN Inconsistent location"
                 return comparison
             
-            # Inf 位置和符号必须一致
+            # Inf Position and symbol must match
             if not np.array_equal(torch_inf, tf_inf):
-                comparison["comparison_error"] = "Inf 位置不一致"
+                comparison["comparison_error"] = "Inf Inconsistent location"
                 return comparison
             
             if np.any(torch_inf):
                 if not np.array_equal(np.sign(torch_res[torch_inf]), np.sign(tf_res[tf_inf])):
-                    comparison["comparison_error"] = "Inf 符号不一致"
+                    comparison["comparison_error"] = "Inf Symbols are inconsistent"
                     return comparison
             
-            # 对于非特殊值进行数值比较
+            # Numerical comparisons for non-special values
             mask = ~(torch_nan | torch_inf)
             if np.any(mask):
                 if torch_res.size > 0:
@@ -781,20 +744,20 @@ def compare_results(
                         comparison["results_match"] = True
                     else:
                         max_diff = np.max(np.abs(torch_res[mask] - tf_res[mask]))
-                        comparison["comparison_error"] = f"数值不一致，最大差异: {max_diff}"
+                        comparison["comparison_error"] = f"Values ​​are inconsistent, maximum difference: {max_diff}"
                 else:
                     comparison["results_match"] = True
             else:
                 comparison["results_match"] = True
         else:
-            # 非张量结果
+            # non-tensor results
             if torch_res == tf_res:
                 comparison["results_match"] = True
             else:
-                comparison["comparison_error"] = f"结果不一致: torch={torch_res}, tf={tf_res}"
+                comparison["comparison_error"] = f"inconsistent results: torch={torch_res}, tf={tf_res}"
                 
     except Exception as e:
-        comparison["comparison_error"] = f"比较过程出错: {str(e)}"
+        comparison["comparison_error"] = f"An error occurred during comparison: {str(e)}"
     
     return comparison
 
@@ -807,7 +770,7 @@ def run_fuzzing_for_case(
     model: str = DEFAULT_MODEL
 ) -> List[Dict[str, Any]]:
     """
-    对单个测试用例进行多轮 fuzzing
+    Perform multiple rounds on a single test case fuzzing
     """
     torch_case = original_case.get("torch_test_case", {})
     tf_case = original_case.get("tensorflow_test_case", {})
@@ -817,15 +780,15 @@ def run_fuzzing_for_case(
     fuzzing_results = []
     
     for round_num in range(1, FUZZING_ROUNDS + 1):
-        print(f"    [Round {round_num}/{FUZZING_ROUNDS}] 生成变异用例...")
+        print(f"    [Round {round_num}/{FUZZING_ROUNDS}] Generate variant use cases...")
         
-        # 构建提示词
+        # Build prompt words
         prompt = build_fuzzing_prompt(
             torch_api, tf_api, original_case, torch_doc, tf_doc, round_num
         )
         
         try:
-            # 调用 LLM（带重试机制）
+            # Call LLM (with retry mechanism）
             max_retries = 2
             mutated_case = None
             llm_response = ""
@@ -835,52 +798,52 @@ def run_fuzzing_for_case(
                     response = client.chat.completions.create(
                         model=model,
                         messages=[{"role": "user", "content": prompt}],
-                        temperature=0.7 + retry * 0.1,  # 重试时稍微增加随机性
-                        max_tokens=4096,  # 增加 token 限制避免截断
+                        temperature=0.7 + retry * 0.1,  # Add slightly more randomness when retrying
+                        max_tokens=4096,  # Increase token limit to avoid truncation
                     )
                     llm_response = response.choices[0].message.content.strip()
                     
-                    # 解析响应
+                    # Parse response
                     mutated_case = parse_llm_response(llm_response)
                     
                     if mutated_case is not None:
-                        # 验证必要字段
+                        # Validate required fields
                         if "torch_test_case" in mutated_case and "tensorflow_test_case" in mutated_case:
                             break
                         else:
-                            print(f"[WARN] Round {round_num} 响应缺少必要字段，重试 ({retry + 1}/{max_retries})")
+                            print(f"[WARN] Round {round_num} Response is missing required fields, try again ({retry + 1}/{max_retries})")
                             mutated_case = None
                     else:
                         if retry < max_retries - 1:
-                            print(f"[WARN] Round {round_num} 解析失败，重试 ({retry + 1}/{max_retries})")
+                            print(f"[WARN] Round {round_num} Parsing failed, try again ({retry + 1}/{max_retries})")
                 except Exception as e:
-                    print(f"[WARN] Round {round_num} LLM 调用异常: {e}，重试 ({retry + 1}/{max_retries})")
+                    print(f"[WARN] Round {round_num} LLM Call exception: {e}，Try again ({retry + 1}/{max_retries})")
                     if retry < max_retries - 1:
                         import time
-                        time.sleep(1)  # 等待 1 秒后重试
+                        time.sleep(1)  # Wait 1 second and try again
             
             if mutated_case is None:
                 fuzzing_results.append({
                     "round": round_num,
                     "success": False,
-                    "error": "LLM 响应解析失败",
-                    "llm_response": llm_response[:1000]  # 保留更多响应用于调试
+                    "error": "LLM Response parsing failed",
+                    "llm_response": llm_response[:1000]  # Keep more responses for debugging
                 })
                 continue
             
-            print(f"    [Round {round_num}] 执行差分测试...")
+            print(f"    [Round {round_num}] Perform differential testing...")
             
-            # 执行测试
+            # Execute tests
             torch_test = mutated_case.get("torch_test_case", {})
             tf_test = mutated_case.get("tensorflow_test_case", {})
             
             torch_result = execute_torch_test(torch_test)
             tf_result = execute_tensorflow_test(tf_test)
             
-            # 比较结果
+            # Compare results
             comparison = compare_results(torch_result, tf_result)
             
-            # 记录结果
+            # Record results
             fuzzing_result = {
                 "round": round_num,
                 "success": True,
@@ -896,11 +859,11 @@ def run_fuzzing_for_case(
             }
             fuzzing_results.append(fuzzing_result)
             
-            # 打印结果摘要
+            # Print result summary
             if fuzzing_result["is_bug_candidate"]:
-                print(f"    [Round {round_num}] ⚠️ 发现潜在问题: {comparison.get('comparison_error') or '执行状态不一致'}")
+                print(f"    [Round {round_num}] ⚠️ Discover potential problems: {comparison.get('comparison_error') or 'Inconsistent execution status'}")
             else:
-                print(f"    [Round {round_num}] ✓ 结果一致")
+                print(f"    [Round {round_num}] ✓ The results are consistent")
                 
         except Exception as e:
             fuzzing_results.append({
@@ -909,7 +872,7 @@ def run_fuzzing_for_case(
                 "error": f"{type(e).__name__}: {str(e)}",
                 "traceback": traceback.format_exc()
             })
-            print(f"    [Round {round_num}] ✗ 错误: {e}")
+            print(f"    [Round {round_num}] ✗ mistake: {e}")
     
     return fuzzing_results
 
@@ -921,7 +884,7 @@ def process_operator(
     max_cases: Optional[int] = None
 ) -> Dict[str, Any]:
     """
-    处理单个算子的所有成功用例
+    Handle all successful use cases of a single operator
     """
     with open(operator_file, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -932,27 +895,27 @@ def process_operator(
     if max_cases:
         success_cases = success_cases[:max_cases]
     
-    print(f"\n处理算子: {operator_name} ({len(success_cases)} 个用例)")
+    print(f"\nprocessing operator: {operator_name} ({len(success_cases)} use cases)")
     
-    # 获取 API 名称
+    # Get API name
     if success_cases:
         torch_api = success_cases[0].get("torch_test_case", {}).get("api", "")
         tf_api = success_cases[0].get("tensorflow_test_case", {}).get("api", "")
     else:
-        return {"operator": operator_name, "results": [], "error": "无成功用例"}
+        return {"operator": operator_name, "results": [], "error": "No successful use case"}
     
-    # 爬取文档
-    print(f"  获取 {torch_api} 文档...")
+    # Crawl documents
+    print(f"  get {torch_api} document...")
     torch_doc = get_doc_content(torch_api, "pytorch")
-    print(f"  获取 {tf_api} 文档...")
+    print(f"  get {tf_api} document...")
     tf_doc = get_doc_content(tf_api, "tensorflow")
     
-    # 对每个用例进行 fuzzing
+    # for each use case fuzzing
     all_results = []
     bug_candidates = 0
     
     for idx, case in enumerate(success_cases, 1):
-        print(f"\n  用例 {idx}/{len(success_cases)} (iteration={case.get('iteration')}, case={case.get('case_number')})")
+        print(f"\n  use case {idx}/{len(success_cases)} (iteration={case.get('iteration')}, case={case.get('case_number')})")
         
         fuzzing_results = run_fuzzing_for_case(
             client, case, torch_doc, tf_doc, model
@@ -971,7 +934,7 @@ def process_operator(
         }
         all_results.append(case_result)
         
-        # 统计潜在 bug
+        # statistical potential bug
         for fr in fuzzing_results:
             if fr.get("is_bug_candidate"):
                 bug_candidates += 1
@@ -990,73 +953,73 @@ def process_operator(
 
 def save_operator_result(result: Dict[str, Any], output_dir: Path) -> None:
     """
-    保存算子的 fuzzing 结果，文件名包含时间戳
+    Save the fuzzing results of the operator, the file name contains the timestamp
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     
     operator_name = result.get("operator", "unknown")
-    # 添加时间戳后缀 YYYYMMDD_HHMMSS
+    # Add timestamp suffix YYYYMMDD_HHMMSS
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = output_dir / f"{operator_name}_fuzzing_result_{timestamp}.json"
     
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2, default=str)
     
-    print(f"  结果已保存: {output_file}")
+    print(f"  Results saved: {output_file}")
 
 
 def main():
     """
-    主程序入口
+    Main program entrance
     """
     parser = argparse.ArgumentParser(
-        description="PyTorch-TensorFlow 基于 LLM 的 Fuzzing 差分测试"
+        description="PyTorch-TensorFlow Fuzzing differential testing based on LLM"
     )
     parser.add_argument(
         "--operators", "-o",
         nargs="*",
-        help="指定要测试的算子名称（不指定则测试所有）"
+        help="Specify the name of the operator to be tested (if not specified, all will be tested)）"
     )
     parser.add_argument(
         "--max-cases", "-m",
         type=int,
         default=None,
-        help="每个算子最多测试的用例数（默认全部）"
+        help="The maximum number of test cases for each operator (default all）"
     )
     parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
-        help=f"LLM 模型名称（默认 {DEFAULT_MODEL}）"
+        help=f"LLM model name (default {DEFAULT_MODEL}）"
     )
     parser.add_argument(
         "--key-path", "-k",
         default=DEFAULT_KEY_PATH,
-        help=f"API key 文件路径（默认 {DEFAULT_KEY_PATH}）"
+        help=f"API key File path (default {DEFAULT_KEY_PATH}）"
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=None,
-        help="最多处理的算子数量（用于测试）"
+        help="Maximum number of operators processed (for testing）"
     )
     
     args = parser.parse_args()
     
     print("=" * 70)
-    print("PyTorch-TensorFlow 基于 LLM 的 Fuzzing 差分测试")
+    print("PyTorch-TensorFlow Fuzzing differential testing based on LLM")
     print("=" * 70)
-    print(f"模型: {args.model}")
-    print(f"每用例 Fuzzing 轮数: {FUZZING_ROUNDS}")
+    print(f"Model: {args.model}")
+    print(f"Number of fuzzing rounds per use case: {FUZZING_ROUNDS}")
     
-    # 初始化 LLM 客户端
+    # Initialize LLM client
     try:
         client = get_qwen_client(args.key_path)
-        print("LLM 客户端初始化成功")
+        print("LLM Client initialization successful")
     except Exception as e:
-        print(f"[ERROR] 无法初始化 LLM 客户端: {e}")
+        print(f"[ERROR] Unable to initialize LLM client: {e}")
         return
     
-    # 获取要处理的算子文件
+    # Get the operator file to be processed
     if args.operators:
         operator_files = []
         for op in args.operators:
@@ -1064,45 +1027,45 @@ def main():
             if op_file.exists():
                 operator_files.append(op_file)
             else:
-                print(f"[WARN] 找不到算子文件: {op_file}")
+                print(f"[WARN] Operator file not found: {op_file}")
     else:
         operator_files = sorted(SUCCESS_CASES_DIR.glob("*_success_cases.json"))
     
     if args.limit:
         operator_files = operator_files[:args.limit]
     
-    print(f"待处理算子数: {len(operator_files)}")
+    print(f"Number of operators to be processed: {len(operator_files)}")
     print("=" * 70)
     
-    # 统计
+    # statistics
     total_operators = len(operator_files)
     total_bug_candidates = 0
     
-    # 处理每个算子
+    # Process each operator
     for idx, op_file in enumerate(operator_files, 1):
-        print(f"\n[{idx}/{total_operators}] 处理: {op_file.stem}")
+        print(f"\n[{idx}/{total_operators}] deal with: {op_file.stem}")
         
         try:
             result = process_operator(
                 op_file, client, args.model, args.max_cases
             )
             
-            # 保存结果
+            # Save results
             save_operator_result(result, RESULT_DIR)
             
             total_bug_candidates += result.get("bug_candidates", 0)
             
         except Exception as e:
-            print(f"[ERROR] 处理 {op_file.stem} 时出错: {e}")
+            print(f"[ERROR] deal with {op_file.stem} error: {e}")
             traceback.print_exc()
     
-    # 打印总结
+    # Print summary
     print("\n" + "=" * 70)
-    print("Fuzzing 测试完成！")
+    print("Fuzzing Test completed！")
     print("=" * 70)
-    print(f"处理算子数: {total_operators}")
-    print(f"发现潜在问题数: {total_bug_candidates}")
-    print(f"结果保存目录: {RESULT_DIR}")
+    print(f"Number of processing operators: {total_operators}")
+    print(f"Number of potential problems found: {total_bug_candidates}")
+    print(f"Result saving directory: {RESULT_DIR}")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ def read_jsonl(path: Path) -> List[Dict]:
     records: List[Dict] = []
 
     if not path.exists():
-        print(f"[WARN] 文件不存在，已跳过: {path}")
+        print(f"[WARN] File does not exist and has been skipped: {path}")
         return records
 
     with path.open("r", encoding="utf-8") as file_obj:
@@ -20,7 +20,7 @@ def read_jsonl(path: Path) -> List[Dict]:
                 records.append(json.loads(stripped_line))
             except json.JSONDecodeError as error:
                 print(
-                    f"[WARN] JSON 解析失败，已跳过 {path.name}:{line_number}，原因: {error}"
+                    f"[WARN] JSON Parsing failed, skipped {path.name}:{line_number}，reason: {error}"
                 )
 
     return records
@@ -81,25 +81,25 @@ def print_summary(
     both_fail = total - both_ok - llm_only_ok - rule_only_ok
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"Rule-based 执行成功: {rule_ok} ({rule_rate:.2f}%)")
-    print(f"双成功: {both_ok}")
-    print(f"仅 LLM 成功: {llm_only_ok}")
-    print(f"仅 Rule-based 成功: {rule_only_ok}")
-    print(f"双失败: {both_fail}")
+    print(f"completed Number of use cases: {total}")
+    print(f"LLM Executed successfully: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"Rule-based Executed successfully: {rule_ok} ({rule_rate:.2f}%)")
+    print(f"double success: {both_ok}")
+    print(f"Only LLM successful: {llm_only_ok}")
+    print(f"Only Rule-based succeeds: {rule_only_ok}")
+    print(f"double fail: {both_fail}")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Comparison conclusion: no completed use case, cannot be compared")
         return
 
     diff = llm_rate - rule_rate
     if diff > 0:
-        print(f"对比结论：LLM 优于 Rule-based {diff:.2f} 个百分点")
+        print(f"Comparison conclusion: LLM is better than Rule-based {diff:.2f} percentage points")
     elif diff < 0:
-        print(f"对比结论：Rule-based 优于 LLM {-diff:.2f} 个百分点")
+        print(f"Comparison conclusion: Rule-based is better than LLM {-diff:.2f} percentage points")
     else:
-        print("对比结论：两者持平")
+        print("Comparison conclusion: Both are equal")
 
 
 def main() -> None:

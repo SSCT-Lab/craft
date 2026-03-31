@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-LLM方法 vs 规则方法：PyTorch -> PaddlePaddle 测试用例转换成功率对比
-=====================================================================
+LLM method vs rule-based method: PyTorch -> PaddlePaddle test case conversion success rate
+===============================================================================
 
-对比两种跨框架测试用例迁移方案：
-1. LLM方法：执行初始用例 -> 调用LLM修复/变异（迭代固定1次） -> 执行LLM生成的新PD用例
-2. 规则方法：仅自动转换算子名与数据类型（dtype） -> 执行规则生成的新PD用例
+Compare two cross-framework test-case migration strategies:
+1. LLM method: run initial case -> call LLM to repair/mutate (fixed 1 iteration) -> run new PD case
+2. Rule-based: only convert operator name and dtype -> run new PD case
 
-核心比较指标：两种方法“生成的新PD用例”能否正常执行（paddle_success）。
+Core metric: whether the newly generated PD case runs successfully (paddle_success).
 
-输出：
-- 实时结果：JSONL（每个case一行）
-- 汇总结果：JSON（全局统计 + 算子级明细）
+Outputs:
+- Realtime results: JSONL (one case per line)
+- Summary results: JSON (global stats + per-operator details)
 """
 
 import argparse
@@ -206,7 +206,7 @@ class LLMvsRuleBasedComparator:
         max_iterations: int = DEFAULT_MAX_ITERATIONS,
     ) -> Dict[str, Any]:
         if max_iterations != 1:
-            self._safe_print("当前消融实验固定max_iterations=1，已强制使用1")
+            self._safe_print("This ablation keeps max_iterations=1 and forces it to 1")
         max_iterations = 1
 
         global_stats = {
@@ -225,12 +225,12 @@ class LLMvsRuleBasedComparator:
 
         for index, operator_name in enumerate(operator_names, 1):
             self._safe_print("\n" + "=" * 72)
-            self._safe_print(f"[{index}/{len(operator_names)}] 算子: {operator_name}")
+            self._safe_print(f"[{index}/{len(operator_names)}] Operator: {operator_name}")
             self._safe_print("=" * 72)
 
             torch_api, pd_api, mapping_method = self.llm_method.convert_api_name(operator_name)
             if pd_api is None:
-                self._safe_print(f"  无PD映射（{mapping_method}），跳过")
+                self._safe_print(f"  No PD mapping ({mapping_method}), skipping")
                 global_stats["skipped_operators_no_pd"] += 1
                 operator_details.append(
                     {
@@ -245,14 +245,14 @@ class LLMvsRuleBasedComparator:
 
             document = self.llm_method.collection.find_one({"api": operator_name})
             if document is None:
-                self._safe_print("  数据库中未找到该算子，跳过")
+                self._safe_print("  Operator not found in database, skipping")
                 operator_details.append({"operator": operator_name, "status": "not_found"})
                 continue
 
             total_cases = self.llm_method.get_num_test_cases_from_document(document)
             actual_cases = min(max(1, num_cases), total_cases)
 
-            self._safe_print("  预取API文档（供LLM使用）...")
+            self._safe_print("  Prefetching API docs (for LLM)...")
             torch_doc, pd_doc = self.llm_method._fetch_api_docs(torch_api, pd_api)
 
             operator_result = self._test_single_operator(
@@ -338,13 +338,13 @@ class LLMvsRuleBasedComparator:
         if any(item.get("deprecated_skip", False) for item in case_results):
             op_result["status"] = "skipped_deprecated"
             op_result["case_details"] = case_results
-            self._safe_print("  检测到算子版本淘汰，跳过该算子")
+            self._safe_print("  Detected deprecated operator, skipping")
             return op_result
 
         if case_results and all(item.get("llm_skipped", False) for item in case_results):
             op_result["status"] = "skipped_all_llm_skip"
             op_result["case_details"] = case_results
-            self._safe_print("  该算子所有用例均被LLM跳过，剔除")
+            self._safe_print("  All cases skipped by LLM for this operator, excluded")
             return op_result
 
         for item in case_results:
@@ -381,7 +381,7 @@ class LLMvsRuleBasedComparator:
 
         rule_pd_case = self.rule_converter.convert_torch_case_to_pd_case(initial_torch_case, pd_api)
 
-        self._safe_print(f"  [用例{case_number}] 规则方法执行...", end="")
+        self._safe_print(f"  [Case {case_number}] Rule-based execution...", end="")
         try:
             with self.execution_lock:
                 rule_exec = self.llm_method.execute_test_case(
@@ -410,7 +410,7 @@ class LLMvsRuleBasedComparator:
         initial_pd_case = copy.deepcopy(initial_torch_case)
         initial_pd_case["api"] = pd_api
 
-        self._safe_print(f"  [用例{case_number}] LLM初始执行...", end="")
+        self._safe_print(f"  [Case {case_number}] LLM initial execution...", end="")
         try:
             with self.execution_lock:
                 initial_exec = self.llm_method.execute_test_case(
@@ -444,7 +444,7 @@ class LLMvsRuleBasedComparator:
                 case_result["llm_detail"] = {
                     "initial_exec": initial_exec,
                     "llm_operation": "skip",
-                    "llm_reason": "PyTorch算子已被版本淘汰",
+                    "llm_reason": "PyTorch operator is deprecated",
                 }
                 self._append_realtime_record(
                     {
@@ -460,7 +460,7 @@ class LLMvsRuleBasedComparator:
                 )
                 return case_result
 
-        self._safe_print(f"  [用例{case_number}] 调用LLM...", end="")
+        self._safe_print(f"  [Case {case_number}] Calling LLM...", end="")
         llm_result = self.llm_method.call_llm_for_repair_or_mutation(
             initial_exec,
             initial_torch_case,
@@ -503,9 +503,9 @@ class LLMvsRuleBasedComparator:
             case_result["llm_detail"] = {
                 "initial_exec": initial_exec,
                 "llm_operation": "skip",
-                "llm_reason": f"LLM用例转换失败: {error}",
+                "llm_reason": f"LLM case conversion failed: {error}",
             }
-            self._safe_print(f"  [用例{case_number}] LLM用例转换失败，跳过: {str(error)[:70]}")
+            self._safe_print(f"  [Case {case_number}] LLM case conversion failed, skipping: {str(error)[:70]}")
             self._append_realtime_record(
                 {
                     "timestamp": datetime.now().isoformat(),
@@ -522,7 +522,7 @@ class LLMvsRuleBasedComparator:
 
         case_result["llm_generated_total"] = 1
 
-        self._safe_print(f"  [用例{case_number}] 执行LLM生成用例...", end="")
+        self._safe_print(f"  [Case {case_number}] Executing LLM-generated case...", end="")
         try:
             with self.execution_lock:
                 llm_exec = self.llm_method.execute_test_case(
@@ -577,13 +577,13 @@ class LLMvsRuleBasedComparator:
         stats = result["global_stats"]
 
         print("\n" + "=" * 80)
-        print("LLM方法 vs 规则方法（仅名称+dtype自动转换）")
+        print("LLM method vs rule-based method (name + dtype auto-conversion only)")
         print("=" * 80)
-        print(f"算子总数: {stats['total_operators']}")
-        print(f"- 无PD映射跳过: {stats['skipped_operators_no_pd']}")
-        print(f"- LLM全跳过算子: {stats['skipped_operators_all_llm_skip']}")
-        print(f"- 版本淘汰跳过算子: {stats['skipped_operators_deprecated']}")
-        print(f"- 实际参与对比: {stats['tested_operators']}")
+        print(f"Total operators: {stats['total_operators']}")
+        print(f"- Skipped (no PD mapping): {stats['skipped_operators_no_pd']}")
+        print(f"- Skipped (all LLM skipped): {stats['skipped_operators_all_llm_skip']}")
+        print(f"- Skipped (deprecated): {stats['skipped_operators_deprecated']}")
+        print(f"- Actually compared: {stats['tested_operators']}")
 
         llm_total = stats["llm_generated_total"]
         llm_success = stats["llm_pd_success"]
@@ -594,28 +594,28 @@ class LLMvsRuleBasedComparator:
         rule_rate = (rule_success / rule_total * 100.0) if rule_total > 0 else 0.0
 
         print("\n" + "-" * 48)
-        print("LLM方法（生成的新PD用例）")
-        print(f"- 生成用例数: {llm_total}")
-        print(f"- PD执行成功数: {llm_success}")
-        print(f"- PD执行成功率: {llm_rate:.2f}%" if llm_total > 0 else "- PD执行成功率: N/A")
+        print("LLM method (new PD cases generated)")
+        print(f"- Generated cases: {llm_total}")
+        print(f"- PD successful runs: {llm_success}")
+        print(f"- PD success rate: {llm_rate:.2f}%" if llm_total > 0 else "- PD success rate: N/A")
 
         print("\n" + "-" * 48)
-        print("规则方法（生成的新PD用例）")
-        print(f"- 生成用例数: {rule_total}")
-        print(f"- PD执行成功数: {rule_success}")
-        print(f"- PD执行成功率: {rule_rate:.2f}%" if rule_total > 0 else "- PD执行成功率: N/A")
+        print("Rule-based method (new PD cases generated)")
+        print(f"- Generated cases: {rule_total}")
+        print(f"- PD successful runs: {rule_success}")
+        print(f"- PD success rate: {rule_rate:.2f}%" if rule_total > 0 else "- PD success rate: N/A")
 
         print("\n" + "-" * 48)
         if llm_total > 0 and rule_total > 0:
             diff = llm_rate - rule_rate
             if diff > 0:
-                print(f"结论: LLM方法高于规则方法 {diff:.2f} 个百分点")
+                print(f"Conclusion: LLM method is higher than rule-based by {diff:.2f} percentage points")
             elif diff < 0:
-                print(f"结论: 规则方法高于LLM方法 {-diff:.2f} 个百分点")
+                print(f"Conclusion: Rule-based method is higher than LLM by {-diff:.2f} percentage points")
             else:
-                print("结论: 两种方法持平")
+                print("Conclusion: Both methods are tied")
         else:
-            print("结论: 统计样本不足，无法比较")
+            print("Conclusion: Insufficient samples to compare")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         result_file = os.path.join(self.result_dir, f"llm_vs_rulebased_result_{timestamp}.json")
@@ -630,8 +630,8 @@ class LLMvsRuleBasedComparator:
         self._atomic_dump_json(result_file, result_to_save)
 
         print("=" * 80)
-        print(f"实时JSONL: {self.realtime_file_path}")
-        print(f"汇总JSON: {result_file}")
+        print(f"Realtime JSONL: {self.realtime_file_path}")
+        print(f"Summary JSON: {result_file}")
 
         return result_file
 
@@ -699,21 +699,21 @@ class LLMvsRuleBasedComparator:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="LLM方法 vs 规则方法：PyTorch->Paddle新用例执行成功率对比")
-    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"每个算子测试用例数（默认{DEFAULT_NUM_CASES}）")
-    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM迭代次数（本脚本固定为1）")
-    parser.add_argument("--start", type=int, default=1, help="起始算子索引（从1开始）")
-    parser.add_argument("--end", type=int, default=None, help="结束算子索引（包含）")
-    parser.add_argument("--operators", "-o", nargs="*", help="指定算子列表")
-    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"并发线程数（默认{DEFAULT_WORKERS}）")
+    parser = argparse.ArgumentParser(description="LLM vs rule-based: PyTorch->Paddle new-case execution success rate")
+    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"Number of cases per operator (default {DEFAULT_NUM_CASES})")
+    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM iterations (fixed to 1 in this script)")
+    parser.add_argument("--start", type=int, default=1, help="Start operator index (1-based)")
+    parser.add_argument("--end", type=int, default=None, help="End operator index (inclusive)")
+    parser.add_argument("--operators", "-o", nargs="*", help="Specify operator list")
+    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"Worker threads (default {DEFAULT_WORKERS})")
     args = parser.parse_args()
 
     print("=" * 80)
-    print("LLM方法 vs 规则方法（仅名称+dtype自动转换）")
+    print("LLM method vs rule-based method (name + dtype auto-conversion only)")
     print("=" * 80)
-    print(f"每算子用例数: {args.num_cases}")
-    print("LLM迭代次数: 1（固定）")
-    print(f"并发线程数: {args.workers}")
+    print(f"Cases per operator: {args.num_cases}")
+    print("LLM iterations: 1 (fixed)")
+    print(f"Worker threads: {args.workers}")
     print("=" * 80)
 
     comparator = LLMvsRuleBasedComparator(num_workers=args.workers)
@@ -724,13 +724,13 @@ def main() -> None:
         try:
             all_docs = list(comparator.llm_method.collection.find({}, {"api": 1}))
         except Exception as error:
-            print(f"无法连接MongoDB或读取算子列表: {error}")
-            print("请确认MongoDB服务已启动（默认 mongodb://localhost:27017/），或检查网络/权限配置。")
+            print(f"Unable to connect to MongoDB or read operator list: {error}")
+            print("Please ensure MongoDB is running (default mongodb://localhost:27017/) or check network/permissions.")
             return
 
         all_operators = [doc["api"] for doc in all_docs if "api" in doc]
 
-        print(f"\n数据库中共有 {len(all_operators)} 个算子")
+        print(f"\nTotal operators in database: {len(all_operators)}")
 
         if args.operators:
             operator_names = args.operators
@@ -739,13 +739,13 @@ def main() -> None:
             end_idx = args.end if args.end is not None else len(all_operators)
             end_idx = min(end_idx, len(all_operators))
             if start_idx >= end_idx:
-                raise ValueError(f"起始索引 {args.start} 必须小于结束索引 {end_idx}")
+                raise ValueError(f"Start index {args.start} must be less than end index {end_idx}")
             operator_names = all_operators[start_idx:end_idx]
-            print(f"测试范围: 第 {start_idx + 1} 到第 {end_idx} 个算子")
+            print(f"Test range: operator {start_idx + 1} to {end_idx}")
 
-        print(f"实际测试算子数: {len(operator_names)}")
+        print(f"Operators actually tested: {len(operator_names)}")
         preview = ", ".join(operator_names[:10])
-        print(f"前10个算子: {preview}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"Top 10 operators: {preview}{'...' if len(operator_names) > 10 else ''}\n")
 
         result = comparator.run_comparison(
             operator_names=operator_names,
@@ -759,11 +759,11 @@ def main() -> None:
         hours = int(elapsed // 3600)
         minutes = int((elapsed % 3600) // 60)
         seconds = int(elapsed % 60)
-        print(f"\n总耗时: {hours}h {minutes}m {seconds}s")
+        print(f"\nTotal elapsed: {hours}h {minutes}m {seconds}s")
 
     finally:
         comparator.close()
-        print("程序执行完成")
+        print("Program completed")
 
 
 if __name__ == "__main__":

@@ -226,7 +226,7 @@ def parse_report(file_path):
             continue
             
         # Split by cases
-        cases = re.split(r'样例 \d+:', section)
+        cases = re.split(r'Sample \d+:', section)
         
         for case in cases:
             if not case.strip(): continue
@@ -238,7 +238,7 @@ def parse_report(file_path):
             error_msg = error_match.group(1).strip()
             
             # Filter: exclude Shape Mismatch and Value Mismatch
-            if "形状不匹配" in error_msg or "数值不匹配" in error_msg:
+            if "Shape mismatch" in error_msg or "Values ​​do not match" in error_msg:
                 continue
 
             # Extract JSONs

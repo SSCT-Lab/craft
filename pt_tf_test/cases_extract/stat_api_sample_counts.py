@@ -6,13 +6,13 @@ def parse_counts(text):
     current_api = None
     for line in text.splitlines():
         line = line.strip()
-        m = re.match(r'^文件:\s*llm_enhanced_(.+?)_(\d{8})_(\d{6})\.json$', line)
+        m = re.match(r'^document:\s*llm_enhanced_(.+?)_(\d{8})_(\d{6})\.json$', line)
         if m:
             current_api = m.group(1)
             if current_api not in api_counts:
                 api_counts[current_api] = 0
             continue
-        if current_api and re.match(r'^样例\s+\d+:', line):
+        if current_api and re.match(r'^Sample\s+\d+:', line):
             api_counts[current_api] += 1
     return api_counts
 
@@ -25,8 +25,8 @@ def main():
     with open(path, 'r', encoding='utf-8') as f:
         text = f.read()
     counts = parse_counts(text)
-    print(f'API总数: {len(counts)}')
-    print('API\t样例总数')
+    print(f'APItotal: {len(counts)}')
+    print('API\tTotal number of samples')
     for api, cnt in sorted(counts.items(), key=lambda x: x[1], reverse=True):
         print(f'{api}\t{cnt}')
 

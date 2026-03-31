@@ -212,10 +212,10 @@ def parse_report(file_path):
             continue
             
         # Split by cases
-        cases = re.split(r'样例 \d+:', section)
+        cases = re.split(r'Sample \d+:', section)
         
         for case in cases:
-            if 'comparison_error: 形状不匹配' not in case:
+            if 'comparison_error: Shape mismatch' not in case:
                 continue
                 
             # Extract JSONs

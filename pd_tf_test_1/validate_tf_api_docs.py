@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 3.5b: 验证 TensorFlow API 是否真实存在（基于官方文档页面）
+Step 3.5b: Validate whether TensorFlow APIs exist (via official docs pages).
 
-功能：
-- 读取 PD→TF 映射 CSV
-- 对每个 tensorflow-api 拉取官方文档
-- 若文档不存在或内容过短，则将 tensorflow-api 改为"无对应实现"
-- 输出新的 CSV
+Functions:
+- Read the PD→TF mapping CSV.
+- Fetch official docs for each tensorflow-api.
+- If docs are missing or too short, set tensorflow-api to "no_equivalent_impl".
+- Write a new CSV.
 
-TensorFlow 文档特点：
-- 文档地址格式: https://www.tensorflow.org/api_docs/python/tf/xxx/yyy
-- TF 的 API 采用斜线分隔路径（而非点号），如 tf.keras.layers.Conv2D → tf/keras/layers/Conv2D
-- TF 有官方 API 搜索页面可用于兜底验证
+TensorFlow doc characteristics:
+- Doc URL format: https://www.tensorflow.org/api_docs/python/tf/xxx/yyy
+- TF API paths use slashes (not dots), e.g., tf.keras.layers.Conv2D → tf/keras/layers/Conv2D
+- TF has an official API search page for fallback validation
 
-用法：
+Usage:
     conda activate tf_env
     python pd_tf_test_1/validate_tf_api_docs.py \
         --input pd_tf_test_1/data/pd_tf_mapping_high.csv \
@@ -43,7 +43,7 @@ DEFAULT_OUTPUT = str(ROOT / "pd_tf_test_1" / "data" / "pd_tf_mapping_validated.c
 DEFAULT_DELAY = 0.5
 DEFAULT_MIN_HTML_CHARS = 1500
 DEFAULT_MIN_DESC_CHARS = 20
-# TF 使用直接的文档 URL 进行验证，同时可用 _api/xxx 端点做兜底
+# Validate with direct TF doc URLs; _api/xxx endpoint can serve as a fallback.
 TF_API_BASE = "https://www.tensorflow.org/api_docs/python/"
 REQUEST_TIMEOUT = 15
 
@@ -54,11 +54,11 @@ def normalize_api_name(api_name: str) -> str:
 
 def _build_tf_doc_url(api_name: str) -> str:
     """
-    构建 TF API 的官方文档 URL。
-    例如：tf.keras.layers.Conv2D → https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv2D
+    Build the official TF API doc URL.
+    Example: tf.keras.layers.Conv2D → https://www.tensorflow.org/api_docs/python/tf/keras/layers/Conv2D
     """
     normalized = normalize_api_name(api_name)
-    # TF 文档路径用斜线分隔
+    # TF doc paths use slashes
     path = normalized.replace(".", "/")
     return f"{TF_API_BASE}{path}"
 
@@ -66,13 +66,13 @@ def _build_tf_doc_url(api_name: str) -> str:
 @lru_cache(maxsize=16)
 def _check_tf_url_exists(url: str) -> Tuple[bool, str]:
     """
-    直接通过 HTTP HEAD/GET 请求检查 TF 文档 URL 是否存在。
-    TF 文档服务器对不存在的 API 返回 404 或重定向到搜索页面。
+    Check whether a TF doc URL exists via HTTP GET.
+    The TF docs server returns 404 or redirects to a search page for missing APIs.
     """
     try:
         response = requests.get(url, timeout=REQUEST_TIMEOUT, allow_redirects=True)
         if response.status_code == 200:
-            # 检查是否被重定向到搜索页面或 404 页面
+            # Check whether redirected to search or 404 page
             if "Page not found" in response.text or "404" in response.text[:500]:
                 return False, "redirected_to_404"
             return True, "ok_direct"
@@ -83,8 +83,8 @@ def _check_tf_url_exists(url: str) -> Tuple[bool, str]:
 
 def has_tf_direct_url_match(api_name: str) -> bool:
     """
-    通过直接请求 TF 文档 URL 验证 API 是否存在。
-    这是 TF 框架特有的兜底方式（TF 文档 URL 结构清晰且稳定）。
+    Validate API existence by requesting the TF doc URL.
+    This is a TF-specific fallback (doc URL structure is clear and stable).
     """
     normalized = normalize_api_name(api_name)
     if not normalized:
@@ -102,7 +102,7 @@ def is_doc_valid(
     min_desc_chars: int,
     delay: float,
 ) -> Tuple[bool, str]:
-    """检查 TensorFlow API 文档是否可信"""
+    """Check whether TensorFlow API docs are valid."""
     normalized = normalize_api_name(api_name)
     if not normalized:
         return False, "empty_api"
@@ -110,7 +110,7 @@ def is_doc_valid(
     time.sleep(delay)
     doc = crawler.crawl(normalized)
     if not doc:
-        # 爬取失败，尝试直接 URL 访问兜底
+        # Crawl failed; try direct URL as fallback
         if has_tf_direct_url_match(normalized):
             return True, "ok_direct_url_fallback"
         return False, "doc_not_found"
@@ -124,7 +124,7 @@ def is_doc_valid(
             return True, "ok_direct_url_fallback"
         return False, "doc_too_short"
 
-    # 检查页面是否真的包含该 API 的相关内容
+    # Check whether the page truly contains the API content
     last_part = normalized.split(".")[-1]
     api_match = (
         normalized in title
@@ -167,22 +167,22 @@ def build_reason(original_reason: str, new_reason: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="验证 TensorFlow API 文档并修正映射")
-    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="输入 PD→TF 映射 CSV 路径")
-    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="输出修正后的 CSV 路径")
-    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"每次请求延迟秒数（默认 {DEFAULT_DELAY}）")
-    parser.add_argument("--min-html-chars", type=int, default=DEFAULT_MIN_HTML_CHARS, help=f"文档最小字符数（默认 {DEFAULT_MIN_HTML_CHARS}）")
-    parser.add_argument("--min-desc-chars", type=int, default=DEFAULT_MIN_DESC_CHARS, help=f"描述最小字符数（默认 {DEFAULT_MIN_DESC_CHARS}）")
+    parser = argparse.ArgumentParser(description="Validate TensorFlow API docs and fix mappings")
+    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="Input PD→TF mapping CSV path")
+    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="Output corrected CSV path")
+    parser.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay seconds per request (default {DEFAULT_DELAY})")
+    parser.add_argument("--min-html-chars", type=int, default=DEFAULT_MIN_HTML_CHARS, help=f"Minimum doc HTML chars (default {DEFAULT_MIN_HTML_CHARS})")
+    parser.add_argument("--min-desc-chars", type=int, default=DEFAULT_MIN_DESC_CHARS, help=f"Minimum description chars (default {DEFAULT_MIN_DESC_CHARS})")
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: empty header")
         return
 
     crawler = TensorFlowDocCrawler()
@@ -193,7 +193,7 @@ def main() -> None:
 
     for idx, row in enumerate(rows, start=1):
         tf_api = normalize_api_name(row.get("tensorflow-api", ""))
-        if not tf_api or tf_api == "无对应实现":
+        if not tf_api or tf_api == "no_equivalent_impl":
             continue
 
         ok, reason = is_doc_valid(
@@ -207,19 +207,19 @@ def main() -> None:
             continue
 
         invalid += 1
-        row["tensorflow-api"] = "无对应实现"
+        row["tensorflow-api"] = "no_equivalent_impl"
         row["reason"] = build_reason(row.get("reason", ""), f"tensorflow_doc_invalid:{reason}")
         print(f"  ❌ [{idx}/{total}] {tf_api} ({reason})")
 
     save_csv_rows(args.output, rows, fieldnames)
 
     print("=" * 80)
-    print("验证完成（PD→TF）")
+    print("Validation complete (PD→TF)")
     print("=" * 80)
-    print(f"总行数: {total}")
-    print(f"检查条目数: {checked}")
-    print(f"无效条目数: {invalid}")
-    print(f"输出文件: {args.output}")
+    print(f"Total rows: {total}")
+    print(f"Checked items: {checked}")
+    print(f"Invalid items: {invalid}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":

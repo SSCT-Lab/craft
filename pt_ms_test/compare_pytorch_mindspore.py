@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-PyTorch与MindSpore算子比较测试框架
-比较前N个算子在两个框架中的执行结果是否一致
+PyTorch vs MindSpore operator comparison test framework.
+Compare whether the first N operators have consistent execution results.
 """
 
 import pymongo
@@ -21,40 +21,40 @@ from collections import defaultdict
 class PyTorchMindSporeComparator:
     def __init__(self, mongo_uri: str = "mongodb://localhost:27017/", db_name: str = "freefuzz-torch"):
         """
-        初始化PyTorch和MindSpore比较器
-        
+        Initialize the PyTorch and MindSpore comparator.
+
         Args:
-            mongo_uri: MongoDB连接URI
-            db_name: 数据库名称
+            mongo_uri: MongoDB connection URI
+            db_name: Database name
         """
         self.client = pymongo.MongoClient(mongo_uri)
         self.db = self.client[db_name]
         self.collection = self.db["argVS"]
         
-        # 加载API映射表
+        # Load API mapping table
         self.api_mapping = self.load_api_mapping()
         
-        # 创建结果存储目录
+        # Create result output directory
         self.result_dir = os.path.abspath("pt_ms_log")
         os.makedirs(self.result_dir, exist_ok=True)
-        print(f"📁 结果存储目录: {self.result_dir}")
+        print(f"📁 Result output directory: {self.result_dir}")
         
-        # 结果统计
+        # Result stats
         self.comparison_results = []
         
-        # 已废弃的PyTorch算子列表
+        # Deprecated PyTorch operators
         self.deprecated_torch_apis = {
-            "torch.symeig": "已在PyTorch 1.9版本中移除，请使用torch.linalg.eigh替代"
+            "torch.symeig": "Removed in PyTorch 1.9; use torch.linalg.eigh instead"
         }
         
-        # 固定随机种子以确保可重复性
+        # Fix random seeds for reproducibility
         self.random_seed = 42
         np.random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
         mindspore.set_seed(self.random_seed)
         
     def load_api_mapping(self) -> Dict[str, Dict[str, str]]:
-        """加载PyTorch到MindSpore的API映射表"""
+        """Load PyTorch-to-MindSpore API mapping table."""
         mapping_file = "api_mapping/pt_ms_mapping.csv"
         try:
             df = pd.read_csv(mapping_file)
@@ -63,19 +63,19 @@ class PyTorchMindSporeComparator:
             for _, row in df.iterrows():
                 pt_api = str(row["PyTorch APIs"]).strip()
                 ms_api = str(row["MindSpore APIs"]).strip()
-                note = str(row.get("说明", "")).strip()
+                note = str(row.get("note", "")).strip()
                 mapping[pt_api] = {"ms_api": ms_api, "note": note}
             
-            print(f"✅ 成功加载API映射表，共 {len(mapping)} 条映射")
+            print(f"✅ Loaded API mapping table with {len(mapping)} entries")
             return mapping
         except Exception as e:
-            print(f"❌ 加载API映射表失败: {e}")
+            print(f"❌ Failed to load API mapping table: {e}")
             return {}
     
     def is_class_based_api(self, api_name: str) -> bool:
         """
-        判断API是否是基于类的（通过检查是否包含大写字母）
-        例如: torch.nn.Dropout2d, torch.nn.AvgPool2d
+        Determine whether API is class-based (contains uppercase letters).
+        Example: torch.nn.Dropout2d, torch.nn.AvgPool2d
         """
         parts = api_name.split(".")
         if len(parts) >= 2:
@@ -85,9 +85,9 @@ class PyTorchMindSporeComparator:
     
     def convert_class_to_functional(self, torch_api: str) -> Tuple[Optional[str], Optional[str]]:
         """
-        将类形式的API转换为函数形式
-        例如: torch.nn.Dropout2d -> torch.nn.functional.dropout2d
-        返回 (torch_functional_api, mindspore_functional_api)
+        Convert class-based API to functional form.
+        Example: torch.nn.Dropout2d -> torch.nn.functional.dropout2d
+        Returns (torch_functional_api, mindspore_functional_api)
         """
         if not self.is_class_based_api(torch_api):
             return None, None
@@ -105,43 +105,43 @@ class PyTorchMindSporeComparator:
     
     def convert_api_name(self, torch_api: str) -> Tuple[Optional[str], str]:
         """
-        将PyTorch API转换为MindSpore API
-        返回 (转换后的API名称, 使用的方法)
+        Convert PyTorch API to MindSpore API.
+        Returns (converted_api_name, method_used)
         """
-        # 检查是否是类形式的API，如果是则转换为函数形式
+        # If class-based API, try to convert to functional form
         if self.is_class_based_api(torch_api):
             torch_func, ms_func = self.convert_class_to_functional(torch_api)
             if torch_func and ms_func:
                 torch_func_obj = self.get_operator_function(torch_func, "torch")
                 ms_func_obj = self.get_operator_function(ms_func, "mindspore")
                 if torch_func_obj and ms_func_obj:
-                    return ms_func, "类转函数"
+                    return ms_func, "Class-to-functional"
         
-        # 优先查映射表
+        # Prefer mapping table
         if torch_api in self.api_mapping:
             note = self.api_mapping[torch_api]["note"]
             ms_api = self.api_mapping[torch_api]["ms_api"]
             
-            if "无对应实现" in note or "无" in note:
-                return None, "无对应实现"
-            elif "一致" in note:
-                return ms_api, "映射表(功能一致)"
+            if "No implementation" in note or "None" in note:
+                return None, "No implementation"
+            elif "consistent" in note:
+                return ms_api, "Mapping table (consistent)"
             else:
-                return ms_api, "映射表(有差异)"
+                return ms_api, "Mapping table (differs)"
         
-        # 默认转换规则
+        # Default conversion rule
         api = torch_api.replace("torch", "mindspore.ops", 1)
-        return api, "名称转换"
+        return api, "Name conversion"
     
     def convert_dtype(self, torch_dtype_str: str) -> str:
-        """将torch的dtype转换为mindspore的dtype"""
+        """Convert torch dtype to mindspore dtype."""
         if isinstance(torch_dtype_str, str):
             if torch_dtype_str.startswith("torch."):
                 return torch_dtype_str.replace("torch.", "mindspore.")
         return torch_dtype_str
     
     def convert_key(self, key: str, ms_api: str = "") -> str:
-        """转换参数名"""
+        """Convert parameter name."""
         key_mapping = {
             "input": "x",
             "other": "y",
@@ -149,7 +149,7 @@ class PyTorchMindSporeComparator:
         return key_mapping.get(key, key)
     
     def should_skip_param(self, key: str, ms_api: str) -> bool:
-        """判断是否应该跳过某个参数（MindSpore不支持或版本不兼容）"""
+        """Decide whether to skip a parameter (unsupported or incompatible)."""
         common_skip_params = ["layout", "requires_grad", "out", "memory_format"]
         
         skip_params = {
@@ -165,7 +165,7 @@ class PyTorchMindSporeComparator:
         return False
     
     def generate_numpy_data(self, data: Any) -> np.ndarray:
-        """生成numpy数组作为共享数据源，确保PyTorch和MindSpore使用相同的输入"""
+        """Generate numpy data to share inputs between PyTorch and MindSpore."""
         if isinstance(data, dict):
             dtype_map = {
                 "torch.float64": np.float64,
@@ -202,7 +202,7 @@ class PyTorchMindSporeComparator:
             return np.array(data)
     
     def convert_to_tensor_torch(self, data: Any, numpy_data: np.ndarray = None) -> torch.Tensor:
-        """转换数据为PyTorch张量"""
+        """Convert data to PyTorch tensor."""
         if numpy_data is not None:
             return torch.from_numpy(numpy_data.copy())
         
@@ -217,7 +217,7 @@ class PyTorchMindSporeComparator:
             return torch.tensor(data)
     
     def convert_to_tensor_mindspore(self, data: Any, numpy_data: np.ndarray = None) -> mindspore.Tensor:
-        """转换数据为MindSpore张量"""
+        """Convert data to MindSpore tensor."""
         if numpy_data is not None:
             return mindspore.Tensor(numpy_data.copy())
         
@@ -233,13 +233,13 @@ class PyTorchMindSporeComparator:
     
     def prepare_shared_numpy_data(self, document: Dict[str, Any], case_index: int) -> Dict[str, Any]:
         """
-        准备共享的numpy数据，确保PyTorch和MindSpore使用相同的输入
-        返回一个字典，键为参数名，值为numpy数组
+        Prepare shared numpy data to ensure PyTorch and MindSpore use the same inputs.
+        Returns a dict mapping parameter names to numpy arrays.
         """
         shared_data = {}
         api_name = document.get("api", "")
         
-        # 对于类形式的API，如果没有input参数，生成默认输入
+        # For class-based APIs, create default input if missing
         if self.is_class_based_api(api_name) and "input" not in document:
             if "2d" in api_name.lower() or "2D" in api_name:
                 default_shape = {"shape": [2, 3, 4, 4], "dtype": "torch.float32"}
@@ -252,13 +252,13 @@ class PyTorchMindSporeComparator:
             
             shared_data["input"] = self.generate_numpy_data(default_shape)
         
-        # 处理*size参数
+        # Handle *size parameter
         if "*size" in document:
             size_data = document["*size"]
             if isinstance(size_data, list) and len(size_data) > case_index:
                 shared_data["*size"] = size_data[case_index]
         
-        # 处理*tensors参数
+        # Handle *tensors parameter
         if "*tensors" in document:
             tensors_data = document["*tensors"]
             if isinstance(tensors_data, list) and len(tensors_data) > case_index:
@@ -268,14 +268,14 @@ class PyTorchMindSporeComparator:
                 else:
                     shared_data["*tensors"] = [self.generate_numpy_data(tensor_list)]
         
-        # 处理其他张量参数
+        # Handle other tensor parameters
         for param_name in ["condition", "x", "y", "input"]:
             if param_name in document:
                 param_data = document[param_name]
                 if isinstance(param_data, list) and len(param_data) > case_index:
                     shared_data[param_name] = self.generate_numpy_data(param_data[case_index])
         
-        # 处理其他参数
+        # Handle other parameters
         exclude_keys = ["_id", "api", "condition", "x", "y", "input", "*size", "*tensors", "tensors", "out", "eigenvectors", "upper"]
         for key, value in document.items():
             if key not in exclude_keys:
@@ -290,14 +290,14 @@ class PyTorchMindSporeComparator:
         return shared_data
     
     def prepare_arguments_torch(self, document: Dict[str, Any], case_index: int, shared_data: Dict[str, Any] = None) -> Tuple[List[Any], Dict[str, Any]]:
-        """为PyTorch准备参数"""
+        """Prepare arguments for PyTorch."""
         args = []
         kwargs = {}
         
         if shared_data is None:
             shared_data = self.prepare_shared_numpy_data(document, case_index)
         
-        # 处理*size参数
+        # Handle *size parameter
         if "*size" in shared_data:
             size_value = shared_data["*size"]
             if isinstance(size_value, list):
@@ -307,19 +307,19 @@ class PyTorchMindSporeComparator:
             else:
                 args.append(size_value)
         
-        # 处理*tensors参数
+        # Handle *tensors parameter
         if "*tensors" in shared_data:
             for numpy_tensor in shared_data["*tensors"]:
                 args.append(self.convert_to_tensor_torch(None, numpy_tensor))
         
-        # 处理其他张量参数
+        # Handle other tensor parameters
         for param_name in ["condition", "x", "y", "input"]:
             if param_name in shared_data:
                 numpy_data = shared_data[param_name]
                 tensor = self.convert_to_tensor_torch(None, numpy_data)
                 args.append(tensor)
         
-        # 处理其他参数
+        # Handle other parameters
         for key, value in shared_data.items():
             if key not in ["*size", "*tensors", "condition", "x", "y", "input"]:
                 if isinstance(value, np.ndarray):
@@ -327,20 +327,20 @@ class PyTorchMindSporeComparator:
                 else:
                     kwargs[key] = value
         
-        # 转换dtype和device参数
+        # Convert dtype and device parameters
         kwargs = self.convert_dtype_device_params_torch(kwargs)
         
         return args, kwargs
     
     def prepare_arguments_mindspore(self, document: Dict[str, Any], case_index: int, ms_api: str, shared_data: Dict[str, Any] = None) -> Tuple[List[Any], Dict[str, Any]]:
-        """为MindSpore准备参数"""
+        """Prepare arguments for MindSpore."""
         args = []
         kwargs = {}
         
         if shared_data is None:
             shared_data = self.prepare_shared_numpy_data(document, case_index)
         
-        # 处理*size参数
+        # Handle *size parameter
         if "*size" in shared_data:
             size_value = shared_data["*size"]
             if isinstance(size_value, list):
@@ -350,19 +350,19 @@ class PyTorchMindSporeComparator:
             else:
                 args.append(size_value)
         
-        # 处理*tensors参数
+        # Handle *tensors parameter
         if "*tensors" in shared_data:
             for numpy_tensor in shared_data["*tensors"]:
                 args.append(self.convert_to_tensor_mindspore(None, numpy_tensor))
         
-        # 处理其他张量参数
+        # Handle other tensor parameters
         for param_name in ["condition", "x", "y", "input"]:
             if param_name in shared_data:
                 numpy_data = shared_data[param_name]
                 tensor = self.convert_to_tensor_mindspore(None, numpy_data)
                 args.append(tensor)
         
-        # 处理其他参数
+        # Handle other parameters
         for key, value in shared_data.items():
             if key not in ["*size", "*tensors", "condition", "x", "y", "input"]:
                 if self.should_skip_param(key, ms_api):
@@ -374,13 +374,13 @@ class PyTorchMindSporeComparator:
                 else:
                     kwargs[new_key] = value
         
-        # 转换dtype参数
+        # Convert dtype parameters
         kwargs = self.convert_dtype_device_params_mindspore(kwargs)
         
         return args, kwargs
     
     def convert_dtype_device_params_torch(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """转换PyTorch的dtype和device参数"""
+        """Convert PyTorch dtype and device parameters."""
         if "dtype" in kwargs:
             dtype_value = kwargs["dtype"]
             if isinstance(dtype_value, str):
@@ -414,7 +414,7 @@ class PyTorchMindSporeComparator:
         return kwargs
     
     def convert_dtype_device_params_mindspore(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """转换MindSpore的dtype参数"""
+        """Convert MindSpore dtype parameters."""
         if "dtype" in kwargs:
             dtype_value = kwargs["dtype"]
             if isinstance(dtype_value, str):
@@ -442,14 +442,14 @@ class PyTorchMindSporeComparator:
                 }
                 kwargs["dtype"] = int_dtype_map.get(dtype_value, mindspore.float32)
         
-        # MindSpore不使用device参数，移除它
+        # MindSpore does not use device parameter; remove it
         if "device" in kwargs:
             del kwargs["device"]
         
         return kwargs
     
     def get_operator_function(self, api_name: str, framework: str = "torch"):
-        """获取算子函数"""
+        """Get operator function."""
         try:
             parts = api_name.split(".")
             if len(parts) >= 2:
@@ -478,9 +478,9 @@ class PyTorchMindSporeComparator:
             return None
     
     def compare_tensors(self, torch_result, ms_result, tolerance: float = 1e-5) -> Tuple[bool, str]:
-        """比较两个张量是否相等"""
+        """Compare whether two tensors are equal."""
         try:
-            # 转换为numpy进行比较
+            # Convert to numpy for comparison
             if hasattr(torch_result, 'detach'):
                 torch_np = torch_result.detach().cpu().numpy()
             else:
@@ -491,41 +491,41 @@ class PyTorchMindSporeComparator:
             else:
                 ms_np = np.array(ms_result)
             
-            # 检查形状
+            # Check shapes
             if torch_np.shape != ms_np.shape:
-                return False, f"形状不匹配: PyTorch {torch_np.shape} vs MindSpore {ms_np.shape}"
+                return False, f"Shape mismatch: PyTorch {torch_np.shape} vs MindSpore {ms_np.shape}"
             
-            # 检查dtype是否为布尔类型或其他非数值类型
+            # Check boolean or other non-numeric dtypes
             if torch_np.dtype == np.bool_ or ms_np.dtype == np.bool_:
                 if np.array_equal(torch_np, ms_np):
-                    return True, "布尔值匹配"
+                    return True, "Boolean values match"
                 else:
                     diff_count = np.sum(torch_np != ms_np)
-                    return False, f"布尔值不匹配，差异数量: {diff_count}"
+                    return False, f"Boolean mismatch, diff count: {diff_count}"
             
-            # 检查是否为对象类型或其他非数值类型
+            # Check object or other non-numeric dtypes
             if not np.issubdtype(torch_np.dtype, np.number) or not np.issubdtype(ms_np.dtype, np.number):
                 if np.array_equal(torch_np, ms_np):
-                    return True, "值匹配"
+                    return True, "Values match"
                 else:
-                    return False, f"值不匹配 (dtype: torch={torch_np.dtype}, ms={ms_np.dtype})"
+                    return False, f"Value mismatch (dtype: torch={torch_np.dtype}, ms={ms_np.dtype})"
             
-            # 检查数值（仅对数值类型）
+            # Check numeric values (numeric dtypes only)
             if np.allclose(torch_np, ms_np, atol=tolerance, rtol=tolerance, equal_nan=True):
-                return True, "数值匹配"
+                return True, "Numeric values match"
             else:
                 max_diff = np.max(np.abs(torch_np - ms_np))
-                return False, f"数值不匹配，最大差异: {max_diff}"
+                return False, f"Numeric mismatch, max diff: {max_diff}"
         
         except Exception as e:
-            return False, f"比较过程出错: {str(e)}"
+            return False, f"Comparison failed: {str(e)}"
     
     def test_single_case(self, document: Dict[str, Any], case_index: int) -> Dict[str, Any]:
-        """测试单个用例"""
+        """Test a single case."""
         torch_api = document.get("api", "unknown")
         test_id = str(document.get("_id", "unknown"))
         
-        # 检查是否是类形式的API，如果是则转换为函数形式
+        # If class-based API, try converting to functional form
         original_torch_api = torch_api
         if self.is_class_based_api(torch_api):
             torch_func, _ = self.convert_class_to_functional(torch_api)
@@ -533,7 +533,7 @@ class PyTorchMindSporeComparator:
                 torch_func_obj = self.get_operator_function(torch_func, "torch")
                 if torch_func_obj:
                     torch_api = torch_func
-                    print(f"    🔄 类转函数: {original_torch_api} -> {torch_api}")
+                    print(f"    🔄 Class to functional: {original_torch_api} -> {torch_api}")
         
         result = {
             "test_id": test_id,
@@ -555,14 +555,14 @@ class PyTorchMindSporeComparator:
             "mindspore_dtype": None
         }
         
-        # 检查是否为已废弃的算子
+        # Check deprecated operators
         if torch_api in self.deprecated_torch_apis:
             result["status"] = "deprecated"
             result["torch_error"] = self.deprecated_torch_apis[torch_api]
-            result["mindspore_error"] = "对应PyTorch算子已废弃，跳过测试"
+            result["mindspore_error"] = "Corresponding PyTorch operator is deprecated; test skipped"
             return result
         
-        # 获取对应的MindSpore API
+        # Get corresponding MindSpore API
         ms_api, mapping_method = self.convert_api_name(torch_api)
         result["mindspore_api"] = ms_api
         result["mapping_method"] = mapping_method
@@ -571,15 +571,15 @@ class PyTorchMindSporeComparator:
             result["status"] = "no_mindspore_equivalent"
             return result
         
-        # 生成共享的numpy数据
+        # Generate shared numpy data
         shared_data = self.prepare_shared_numpy_data(document, case_index)
         
-        # 测试PyTorch
+        # Test PyTorch
         torch_result = None
         try:
             torch_func = self.get_operator_function(torch_api, "torch")
             if torch_func is None:
-                result["torch_error"] = f"PyTorch算子 {torch_api} 未找到"
+                result["torch_error"] = f"PyTorch operator {torch_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_torch(document, case_index, shared_data)
                 with torch.no_grad():
@@ -593,17 +593,17 @@ class PyTorchMindSporeComparator:
             
             if "deprecated" in error_msg.lower() or "removed" in error_msg.lower():
                 if torch_api not in self.deprecated_torch_apis:
-                    self.deprecated_torch_apis[torch_api] = f"运行时发现已废弃: {error_msg[:100]}..."
+                    self.deprecated_torch_apis[torch_api] = f"Deprecated at runtime: {error_msg[:100]}..."
                 result["status"] = "deprecated"
-                result["mindspore_error"] = "对应PyTorch算子已废弃，跳过测试"
+                result["mindspore_error"] = "Corresponding PyTorch operator is deprecated; test skipped"
                 return result
         
-        # 测试MindSpore
+        # Test MindSpore
         ms_result = None
         try:
             ms_func = self.get_operator_function(ms_api, "mindspore")
             if ms_func is None:
-                result["mindspore_error"] = f"MindSpore算子 {ms_api} 未找到"
+                result["mindspore_error"] = f"MindSpore operator {ms_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_mindspore(document, case_index, ms_api, shared_data)
                 ms_result = ms_func(*args, **kwargs)
@@ -613,7 +613,7 @@ class PyTorchMindSporeComparator:
         except Exception as e:
             result["mindspore_error"] = str(e)
         
-        # 比较结果
+        # Compare results
         if result["torch_success"] and result["mindspore_success"]:
             try:
                 is_match, comparison_msg = self.compare_tensors(torch_result, ms_result)
@@ -633,7 +633,7 @@ class PyTorchMindSporeComparator:
         return result
     
     def get_num_test_cases(self, document: Dict[str, Any]) -> int:
-        """获取文档中的测试用例数量"""
+        """Get number of test cases from document."""
         max_len = 0
         for key, value in document.items():
             if key not in ["_id", "api"] and isinstance(value, list):
@@ -641,21 +641,21 @@ class PyTorchMindSporeComparator:
         return max_len if max_len > 0 else 1
     
     def compare_first_n_operators(self, n: int = 20) -> List[Dict[str, Any]]:
-        """比较前N个算子"""
-        print(f"🚀 开始PyTorch与MindSpore算子比较测试 (前{n}个算子)...")
-        print(f"📊 连接MongoDB: {self.client.address}")
+        """Compare the first N operators."""
+        print(f"🚀 Starting PyTorch vs MindSpore operator comparison (first {n} operators)...")
+        print(f"📊 MongoDB connection: {self.client.address}")
         
         documents = list(self.collection.find().limit(n))
         
-        print(f"📋 找到 {len(documents)} 个算子:")
+        print(f"📋 Found {len(documents)} operators:")
         total_cases = 0
         for i, doc in enumerate(documents):
             api_name = doc.get("api", "unknown")
             num_cases = self.get_num_test_cases(doc)
             total_cases += num_cases
-            print(f"  {i+1}. {api_name} ({num_cases} 个测试用例)")
+            print(f"  {i+1}. {api_name} ({num_cases} test cases)")
         
-        print(f"\n🎯 总计需要执行: {total_cases} 个测试用例")
+        print(f"\n🎯 Total test cases to run: {total_cases}")
         
         results = []
         current_case = 1
@@ -664,28 +664,28 @@ class PyTorchMindSporeComparator:
             api_name = doc.get("api", "unknown")
             num_cases = self.get_num_test_cases(doc)
             
-            print(f"\n🔧 测试算子 {doc_idx+1}/{len(documents)}: {api_name} ({num_cases} 个用例)")
+            print(f"\n🔧 Testing operator {doc_idx+1}/{len(documents)}: {api_name} ({num_cases} cases)")
             
             for case_idx in range(num_cases):
-                print(f"  用例 {current_case}/{total_cases} (算子用例: {case_idx+1}/{num_cases}): {api_name}")
+                print(f"  Case {current_case}/{total_cases} (operator case: {case_idx+1}/{num_cases}): {api_name}")
                 
                 result = self.test_single_case(doc, case_idx)
                 result["operator"] = api_name
                 result["total_cases_for_operator"] = num_cases
                 results.append(result)
                 
-                # 显示结果
+                # Display result
                 if result["status"] == "compared":
                     if result["results_match"]:
-                        print(f"    ✅ 结果一致")
+                        print(f"    ✅ Results match")
                     else:
-                        print(f"    ❌ 结果不一致: {result['comparison_error']}")
+                        print(f"    ❌ Results mismatch: {result['comparison_error']}")
                 elif result["status"] == "deprecated":
-                    print(f"    ⏭️ 已废弃算子，跳过测试")
+                    print(f"    ⏭️ Deprecated operator, skipped")
                 elif result["status"] == "no_mindspore_equivalent":
-                    print(f"    ⚠️ MindSpore无对应实现")
+                    print(f"    ⚠️ No MindSpore equivalent")
                 else:
-                    print(f"    ❌ 测试失败: {result['status']}")
+                    print(f"    ❌ Test failed: {result['status']}")
                 
                 current_case += 1
         
@@ -693,7 +693,7 @@ class PyTorchMindSporeComparator:
         return results
     
     def print_summary(self, results: List[Dict[str, Any]]):
-        """打印测试结果摘要"""
+        """Print test result summary."""
         total = len(results)
         compared = len([r for r in results if r["status"] == "compared"])
         matched = len([r for r in results if r["results_match"]])
@@ -702,29 +702,29 @@ class PyTorchMindSporeComparator:
         torch_failed = len([r for r in results if r["status"] in ["torch_failed", "both_failed"]])
         ms_failed = len([r for r in results if r["status"] in ["mindspore_failed", "both_failed"]])
         
-        print(f"\n📊 测试结果摘要:")
+        print(f"\n📊 Test result summary:")
         print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(f"📈 总测试用例: {total}")
-        print(f"🔍 成功比较: {compared}")
-        print(f"✅ 结果一致: {matched}")
-        print(f"❌ 结果不一致: {compared - matched}")
-        print(f"⏭️ 已废弃算子: {deprecated}")
-        print(f"⚠️ MindSpore无对应实现: {no_ms}")
-        print(f"🔴 PyTorch执行失败: {torch_failed}")
-        print(f"🟠 MindSpore执行失败: {ms_failed}")
+        print(f"📈 Total test cases: {total}")
+        print(f"🔍 Compared successfully: {compared}")
+        print(f"✅ Results matched: {matched}")
+        print(f"❌ Results mismatched: {compared - matched}")
+        print(f"⏭️ Deprecated operators: {deprecated}")
+        print(f"⚠️ No MindSpore equivalent: {no_ms}")
+        print(f"🔴 PyTorch execution failed: {torch_failed}")
+        print(f"🟠 MindSpore execution failed: {ms_failed}")
         
         if compared > 0:
             match_rate = matched / compared * 100
-            print(f"📊 一致性比率: {match_rate:.1f}%")
+            print(f"📊 Match rate: {match_rate:.1f}%")
         
         if deprecated > 0:
             deprecated_apis = set([r["torch_api"] for r in results if r["status"] == "deprecated"])
-            print(f"\n⏭️ 已废弃的算子 ({len(deprecated_apis)} 个):")
+            print(f"\n⏭️ Deprecated operators ({len(deprecated_apis)}):")
             for api in sorted(deprecated_apis):
                 print(f"  - {api}")
     
     def save_results(self, results: List[Dict[str, Any]], filename: str = None):
-        """保存测试结果"""
+        """Save test results."""
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"pt_ms_comparison_{timestamp}.json"
@@ -759,7 +759,7 @@ class PyTorchMindSporeComparator:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
         
-        print(f"💾 结果已保存到: {filepath}")
+        print(f"💾 Results saved to: {filepath}")
         
         mismatched_cases = [r for r in results if r["status"] == "compared" and not r["results_match"]]
         if mismatched_cases:
@@ -769,14 +769,14 @@ class PyTorchMindSporeComparator:
             with open(mismatch_filepath, 'w', encoding='utf-8') as f:
                 json.dump(mismatched_cases, f, indent=2, ensure_ascii=False)
             
-            print(f"⚠️ 不一致用例已保存到: {mismatch_filepath}")
+            print(f"⚠️ Mismatched cases saved to: {mismatch_filepath}")
     
     def close(self):
-        """关闭MongoDB连接"""
+        """Close MongoDB connection."""
         self.client.close()
 
 def main():
-    """主函数"""
+    """Main entry point."""
     comparator = PyTorchMindSporeComparator()
     
     try:

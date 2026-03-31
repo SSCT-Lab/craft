@@ -1,13 +1,13 @@
 # ./component/data/fix_empty_doc_apis.py
 """
-修复 TensorFlow 文档为空的 API 映射
+Fix API mappings where TensorFlow docs are empty.
 
-功能：
-1. 读取文档爬取失败的 API 列表
-2. 在 api_mappings_validated.csv 中查找对应记录
-3. 尝试爬取 validated 文件中的 tensorflow-api 的文档
-4. 如果文档存在或值为"无对应实现"，则用 validated 的值更新 api_mappings.csv
-5. 生成新的 csv 结果文件
+Steps:
+1. Read the list of APIs with failed doc fetches
+2. Look up matching records in api_mappings_validated.csv
+3. Try to fetch docs for the tensorflow-api in the validated file
+4. If docs exist or value is "无对应实现", update api_mappings.csv with the validated value
+5. Generate a new CSV result file
 """
 
 import csv
@@ -16,13 +16,13 @@ import os
 import sys
 from typing import Dict, List, Tuple, Optional
 
-# 添加项目根目录到路径
+# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from component.doc.doc_crawler_factory import get_doc_content
 
 
-# 文档爬取失败的 API 列表（PyTorch API -> 当前的 TensorFlow API）
+# APIs whose doc fetch failed (PyTorch API -> current TensorFlow API)
 EMPTY_DOC_APIS = [
     ("torch.addmm", "tf.linalg.LinearOperator.matmul"),
     ("torch.copysign", "tf.math.copysign"),
@@ -68,8 +68,8 @@ EMPTY_DOC_APIS = [
 
 def load_validated_csv(csv_path: str) -> Dict[str, Tuple[str, str, str]]:
     """
-    加载 validated CSV 文件
-    
+    Load the validated CSV file.
+
     Returns:
         Dict[pytorch_api, (tensorflow_api, confidence, changed)]
     """
@@ -87,8 +87,8 @@ def load_validated_csv(csv_path: str) -> Dict[str, Tuple[str, str, str]]:
 
 def load_original_csv(csv_path: str) -> List[Dict[str, str]]:
     """
-    加载原始 CSV 文件
-    
+    Load the original CSV file.
+
     Returns:
         List of rows as dicts
     """
@@ -102,20 +102,20 @@ def load_original_csv(csv_path: str) -> List[Dict[str, str]]:
 
 def check_tf_doc_exists(tf_api: str) -> Tuple[bool, str]:
     """
-    检查 TensorFlow API 文档是否存在
-    
+    Check whether a TensorFlow API doc exists.
+
     Args:
-        tf_api: TensorFlow API 名称
-        
+        tf_api: TensorFlow API name
+
     Returns:
-        (文档是否存在, 文档内容或错误信息)
+        (doc_exists, doc content or error info)
     """
-    # 如果是"无对应实现"，直接返回 True
+    # If it's "无对应实现", return True directly
     if tf_api == "无对应实现":
         return True, "无对应实现"
     
-    # 处理带参数的 API 名称，如 tf.keras.layers.Activation('gelu')
-    # 提取基础 API 名称
+    # Handle API names with parameters, e.g. tf.keras.layers.Activation('gelu')
+    # Extract base API name
     base_api = tf_api.split('(')[0].strip()
     
     try:
@@ -123,9 +123,9 @@ def check_tf_doc_exists(tf_api: str) -> Tuple[bool, str]:
         if doc_content and len(doc_content.strip()) > 50:
             return True, doc_content[:200] + "..."
         else:
-            return False, f"文档为空或文档太短: {len(doc_content) if doc_content else 0} 字符"
+            return False, f"Doc is empty or too short: {len(doc_content) if doc_content else 0} chars"
     except Exception as e:
-        return False, f"爬取失败: {str(e)}"
+        return False, f"Fetch failed: {str(e)}"
 
 
 def fix_empty_doc_apis(
@@ -135,90 +135,92 @@ def fix_empty_doc_apis(
     dry_run: bool = False
 ) -> Tuple[int, int, List[Tuple[str, str, str, str, str]]]:
     """
-    修复文档为空的 API 映射
-    
+    Fix API mappings with empty docs.
+
     Args:
-        original_csv: 原始 CSV 文件路径
-        validated_csv: 验证后的 CSV 文件路径
-        output_csv: 输出 CSV 文件路径
-        dry_run: 是否只打印不写入
-        
+        original_csv: Original CSV path
+        validated_csv: Validated CSV path
+        output_csv: Output CSV path
+        dry_run: Whether to print only and skip writing
+
     Returns:
-        (更新数量, 跳过数量, 更新详情列表)
+        (updated_count, skipped_count, update_details)
     """
-    # 加载文件
+    # Load files
     validated_data = load_validated_csv(validated_csv)
     original_data = load_original_csv(original_csv)
     
-    # 创建 pytorch-api 到行索引的映射
+    # Map pytorch-api to row index
     pt_to_index = {row['pytorch-api']: i for i, row in enumerate(original_data)}
     
-    # 统计
+    # Counters
     updated_count = 0
     skipped_count = 0
     update_details = []  # (pt_api, old_tf_api, new_tf_api, status, reason)
     
     print("=" * 80)
-    print("开始检查文档为空的 API 映射")
+    print("Start checking API mappings with empty docs")
     print("=" * 80)
     
     for pt_api, current_tf_api in EMPTY_DOC_APIS:
-        print(f"\n检查: {pt_api}")
-        print(f"  当前映射: {current_tf_api}")
+        print(f"\nChecking: {pt_api}")
+        print(f"  Current mapping: {current_tf_api}")
         
-        # 在 validated 文件中查找
+        # Look up in validated file
         if pt_api not in validated_data:
-            print(f"  ❌ 在 validated 文件中未找到")
+            print("  ❌ Not found in validated file")
             skipped_count += 1
-            update_details.append((pt_api, current_tf_api, "", "跳过", "validated 文件中不存在"))
+            update_details.append((pt_api, current_tf_api, "", "skipped", "missing in validated file"))
             continue
         
         validated_tf_api, confidence, changed = validated_data[pt_api]
-        print(f"  Validated 映射: {validated_tf_api} (confidence={confidence}, changed={changed})")
+        print(f"  Validated mapping: {validated_tf_api} (confidence={confidence}, changed={changed})")
         
-        # 如果 validated 的值和当前值相同，跳过
+        # If validated value is the same as current, skip
         if validated_tf_api == current_tf_api:
-            print(f"  ⏭️ 值相同，跳过")
+            print("  ⏭️ Same value, skip")
             skipped_count += 1
-            update_details.append((pt_api, current_tf_api, validated_tf_api, "跳过", "值相同"))
+            update_details.append((pt_api, current_tf_api, validated_tf_api, "skipped", "same value"))
             continue
         
-        # 尝试爬取 validated 中的 TensorFlow API 文档
+        # Try to fetch TensorFlow docs for the validated API
         doc_exists, doc_info = check_tf_doc_exists(validated_tf_api)
         
         if doc_exists:
-            print(f"  ✅ Validated 值的文档存在")
-            print(f"     文档预览: {doc_info[:100]}...")
+            print("  ✅ Docs exist for validated value")
+            print(f"     Doc preview: {doc_info[:100]}...")
             
-            # 在原始数据中查找并更新
+            # Find and update in original data
             if pt_api in pt_to_index:
                 idx = pt_to_index[pt_api]
                 old_value = original_data[idx]['tensorflow-api']
                 original_data[idx]['tensorflow-api'] = validated_tf_api
                 updated_count += 1
-                update_details.append((pt_api, old_value, validated_tf_api, "更新", "文档存在"))
-                print(f"  📝 更新: {old_value} -> {validated_tf_api}")
+                update_details.append((pt_api, old_value, validated_tf_api, "updated", "docs exist"))
+                print(f"  📝 Update: {old_value} -> {validated_tf_api}")
             else:
                 skipped_count += 1
-                update_details.append((pt_api, current_tf_api, validated_tf_api, "跳过", "原始文件中不存在"))
-                print(f"  ❌ 在原始文件中未找到")
+                update_details.append((pt_api, current_tf_api, validated_tf_api, "skipped", "missing in original file"))
+                print("  ❌ Not found in original file")
         else:
-            # 原始文档不存在，validated 文档也不存在，标记为"无对应实现"
-            print(f"  ❌ Validated 值的文档也不存在: {doc_info}")
-            print(f"  ⚠️ 原始和 validated 文档均不存在，标记为无对应实现")
+            # Neither original nor validated docs exist; mark as "无对应实现"
+            print(f"  ❌ Docs also missing for validated value: {doc_info}")
+            print("  ⚠️ Docs missing for both original and validated; mark as 无对应实现")
             
             if pt_api in pt_to_index:
                 idx = pt_to_index[pt_api]
                 old_value = original_data[idx]['tensorflow-api']
                 original_data[idx]['tensorflow-api'] = "无对应实现"
                 updated_count += 1
-                update_details.append((pt_api, old_value, "无对应实现", "更新", f"文档均不存在，标记为无对应实现"))
-                print(f"  📝 更新: {old_value} -> 无对应实现")
+                update_details.append(
+                    (pt_api, old_value, "无对应实现", "updated", "docs missing for both; marked as 无对应实现")
+                )
+                print(f"  📝 Update: {old_value} -> 无对应实现")
             else:
                 skipped_count += 1
-                update_details.append((pt_api, current_tf_api, "无对应实现", "跳过", "原始文件中不存在"))
+                update_details.append((pt_api, current_tf_api, "无对应实现", "skipped", "missing in original file"))
     
-    # 写入结果
+    # Write results
     if not dry_run:
         with open(output_csv, 'w', encoding='utf-8', newline='') as f:
             fieldnames = ['pytorch-api', 'tensorflow-api']
@@ -229,65 +231,65 @@ def fix_empty_doc_apis(
                     'pytorch-api': row['pytorch-api'],
                     'tensorflow-api': row['tensorflow-api']
                 })
-        print(f"\n✅ 已写入结果文件: {output_csv}")
+        print(f"\n✅ Wrote result file: {output_csv}")
     else:
-        print(f"\n[DRY RUN] 未写入文件")
+        print("\n[DRY RUN] File not written")
     
     return updated_count, skipped_count, update_details
 
 
 def print_summary(updated: int, skipped: int, details: List[Tuple[str, str, str, str, str]]):
-    """打印摘要"""
+    """Print summary."""
     print("\n" + "=" * 80)
-    print("处理摘要")
+    print("Summary")
     print("=" * 80)
-    print(f"总计处理: {len(EMPTY_DOC_APIS)} 个 API")
-    print(f"已更新: {updated} 个")
-    print(f"已跳过: {skipped} 个")
+    print(f"Total processed: {len(EMPTY_DOC_APIS)} APIs")
+    print(f"Updated: {updated}")
+    print(f"Skipped: {skipped}")
     
     if updated > 0:
-        print("\n【已更新的映射】")
+        print("\n[Updated mappings]")
         for pt_api, old_tf, new_tf, status, reason in details:
-            if status == "更新":
+            if status == "updated":
                 print(f"  {pt_api}:")
-                print(f"    旧值: {old_tf}")
-                print(f"    新值: {new_tf}")
+                print(f"    Old value: {old_tf}")
+                print(f"    New value: {new_tf}")
     
-    skipped_details = [(d[0], d[4]) for d in details if d[3] == "跳过"]
+    skipped_details = [(d[0], d[4]) for d in details if d[3] == "skipped"]
     if skipped_details:
-        print("\n【跳过的映射】")
+        print("\n[Skipped mappings]")
         for pt_api, reason in skipped_details:
             print(f"  {pt_api}: {reason}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='修复 TensorFlow 文档为空的 API 映射'
+        description='Fix API mappings where TensorFlow docs are empty'
     )
     parser.add_argument(
         '--original-csv',
         default='component/data/api_mappings.csv',
-        help='原始 CSV 文件路径 (默认: component/data/api_mappings.csv)'
+        help='Original CSV path (default: component/data/api_mappings.csv)'
     )
     parser.add_argument(
         '--validated-csv',
         default='component/data/api_mappings_validated.csv',
-        help='验证后的 CSV 文件路径 (默认: component/data/api_mappings_validated.csv)'
+        help='Validated CSV path (default: component/data/api_mappings_validated.csv)'
     )
     parser.add_argument(
         '--output-csv',
         default='component/data/api_mappings_fixed.csv',
-        help='输出 CSV 文件路径 (默认: component/data/api_mappings_fixed.csv)'
+        help='Output CSV path (default: component/data/api_mappings_fixed.csv)'
     )
     parser.add_argument(
         '--dry-run',
         action='store_true',
-        help='只打印不实际写入文件'
+        help='Print only; do not write file'
     )
     
     args = parser.parse_args()
     
-    # 转换为绝对路径
+    # Convert to absolute paths
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(script_dir))
     
@@ -295,20 +297,20 @@ def main():
     validated_csv = os.path.join(project_root, args.validated_csv) if not os.path.isabs(args.validated_csv) else args.validated_csv
     output_csv = os.path.join(project_root, args.output_csv) if not os.path.isabs(args.output_csv) else args.output_csv
     
-    # 检查文件是否存在
+    # Check files exist
     if not os.path.exists(original_csv):
-        print(f"错误: 原始 CSV 文件不存在: {original_csv}")
+        print(f"Error: Original CSV not found: {original_csv}")
         sys.exit(1)
     if not os.path.exists(validated_csv):
-        print(f"错误: 验证后的 CSV 文件不存在: {validated_csv}")
+        print(f"Error: Validated CSV not found: {validated_csv}")
         sys.exit(1)
     
-    print(f"原始 CSV: {original_csv}")
-    print(f"验证后 CSV: {validated_csv}")
-    print(f"输出 CSV: {output_csv}")
+    print(f"Original CSV: {original_csv}")
+    print(f"Validated CSV: {validated_csv}")
+    print(f"Output CSV: {output_csv}")
     print(f"Dry Run: {args.dry_run}")
     
-    # 执行修复
+    # Execute fix
     updated, skipped, details = fix_empty_doc_apis(
         original_csv,
         validated_csv,
@@ -316,7 +318,7 @@ def main():
         args.dry_run
     )
     
-    # 打印摘要
+    # Print summary
     print_summary(updated, skipped, details)
 
 

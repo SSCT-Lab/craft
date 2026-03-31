@@ -3,7 +3,7 @@
 API: mindspore.ops.BitwiseAnd
 """
 
-# 未复现成功
+# Repro did not succeed
 import traceback
 
 import numpy as np

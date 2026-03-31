@@ -1,27 +1,27 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 5+: Paddle ↔ MindSpore 差分测试结果分析 + 样例提取脚本
+Step 5+: Paddle <-> MindSpore differential testing result analysis + sample extraction
 
-功能：
-- 读取 pd_ms_log_1/ 目录中的 JSON 测试结果文件
-- 统计各算子的一致性/不一致性/错误分布
-- 生成统计报告（TXT + CSV）
-- 生成 5 类样例 JSON（完整保留 iteration 信息）：
-  1) 执行成功且比较一致
-  2) 执行成功但比较不一致
-  3) 仅 pd_error
-  4) 仅 ms_error
-  5) both_error
+Function:
+- Read JSON result files from pd_ms_log_1/
+- Count per-operator consistent/inconsistent/error distribution
+- Generate summary reports (TXT + CSV)
+- Generate 5 categories of sample JSON (preserve full iteration info):
+    1) Execute successful and results consistent
+    2) Execute successful but results inconsistent
+    3) pd_error only
+    4) ms_error only
+    5) both_error
 
-说明：
-- 本脚本不生成 analysis_report_*.json 汇总文件。
+Note:
+- This script does not generate analysis_report_*.json summary files.
 
-用法：
-    conda activate tf_env
-    python pd_ms_test_1/analyze_results_with_samples.py \
-        [--result-dir pd_ms_test_1/pd_ms_log_1] \
-        [--output-dir pd_ms_test_1/analysis]
+Usage:
+        conda activate tf_env
+        python pd_ms_test_1/analyze_results_with_samples.py \
+                [--result-dir pd_ms_test_1/pd_ms_log_1] \
+                [--output-dir pd_ms_test_1/analysis]
 """
 
 import argparse
@@ -34,7 +34,7 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, List, Set, Tuple
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
@@ -45,10 +45,10 @@ if ROOT_DIR not in sys.path:
 
 
 def load_all_results(result_dir: str) -> List[Dict[str, Any]]:
-    """加载结果目录下的所有 JSON 结果文件。"""
+    """Load all JSON result files in the result directory."""
     results: List[Dict[str, Any]] = []
     if not os.path.exists(result_dir):
-        print(f"❌ 结果目录不存在: {result_dir}")
+        print(f"❌ Result directory does not exist: {result_dir}")
         return results
 
     for filename in sorted(os.listdir(result_dir)):
@@ -63,20 +63,20 @@ def load_all_results(result_dir: str) -> List[Dict[str, Any]]:
                 data["_source_file"] = filename
                 results.append(data)
             else:
-                print(f"⚠️ 跳过非对象JSON: {filename}")
+                print(f"⚠️ Skipped non-object JSON: {filename}")
         except Exception as error:  # pylint: disable=broad-except
-            print(f"⚠️ 加载 {filename} 失败: {error}")
+            print(f"⚠️ Load {filename} failed: {error}")
 
     return results
 
 
 def _get_target_api(data: Dict[str, Any]) -> str:
-    """兼容历史字段命名。"""
+    """Compatibility for legacy field names."""
     return str(data.get("ms_api", ""))
 
 
 def _normalize_status(execution_result: Dict[str, Any]) -> str:
-    """将状态规范到本脚本使用的内部标识。"""
+    """Normalize status to internal labels used by this script."""
     status = str(execution_result.get("status", ""))
     if status == "paddle_error":
         return "pd_error"
@@ -86,7 +86,7 @@ def _normalize_status(execution_result: Dict[str, Any]) -> str:
 
 
 def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
-    """分析单个算子的测试结果。"""
+    """Analyze the test results of a single operator."""
     pd_api = str(data.get("pd_api", "unknown"))
     target_api = _get_target_api(data)
     iterations = data.get("results", [])
@@ -156,7 +156,7 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _classify_iteration(execution_result: Dict[str, Any]) -> str:
-    """将 iteration 分类为五类之一，或返回空字符串表示不纳入样例。"""
+    """Classify an iteration into one of five categories, or return empty to skip."""
     status = _normalize_status(execution_result)
     pd_success = execution_result.get("pd_success")
     target_success = execution_result.get("ms_success")
@@ -173,7 +173,7 @@ def _classify_iteration(execution_result: Dict[str, Any]) -> str:
     if status == "both_error":
         return "both_error"
 
-    # 兼容 status 不稳定或缺失的历史数据
+    # Compatibility for legacy data with unstable/missing status
     if pd_success is True and target_success is True and results_match is False:
         return "inconsistent_success"
     if pd_success is False and target_success is True:
@@ -187,7 +187,7 @@ def _classify_iteration(execution_result: Dict[str, Any]) -> str:
 
 
 def extract_samples(all_results: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Dict[str, Any]]], Dict[str, Set[str]]]:
-    """提取五类样例，完整保留每条 iteration 信息。"""
+    """Extract five categories of samples, preserving full iteration info."""
     categorized_samples: Dict[str, List[Dict[str, Any]]] = {
         "consistent_success": [],
         "inconsistent_success": [],
@@ -228,7 +228,7 @@ def extract_samples(all_results: List[Dict[str, Any]]) -> Tuple[Dict[str, List[D
 
 
 def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str, timestamp: str) -> Tuple[str, str]:
-    """生成 TXT / CSV 统计报告。"""
+    """Generate TXT/CSV summary reports."""
     os.makedirs(output_dir, exist_ok=True)
 
     total_operators = len(all_analyses)
@@ -247,71 +247,71 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str, timest
     txt_file = os.path.join(output_dir, f"analysis_report_{timestamp}.txt")
     with open(txt_file, "w", encoding="utf-8") as file_handle:
         file_handle.write("=" * 80 + "\n")
-        file_handle.write("Paddle ↔ MindSpore 差分测试结果分析报告\n")
-        file_handle.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        file_handle.write("Paddle ↔ MindSpore differential testing analysis report\n")
+        file_handle.write(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         file_handle.write("=" * 80 + "\n\n")
 
         file_handle.write("=" * 50 + "\n")
-        file_handle.write("📊 总体统计\n")
+        file_handle.write("📊 Overall statistics\n")
         file_handle.write("=" * 50 + "\n")
-        file_handle.write(f"测试算子总数: {total_operators}\n")
+        file_handle.write(f"Total operators tested: {total_operators}\n")
         file_handle.write(
-            f"  ✅ 一致 (consistent): {len(consistent_ops)} "
+            f"  ✅ consistent (consistent): {len(consistent_ops)} "
             f"({len(consistent_ops) / max(total_operators, 1) * 100:.1f}%)\n"
         )
         file_handle.write(
-            f"  ❌ 不一致 (inconsistent): {len(inconsistent_ops)} "
+            f"  ❌ inconsistent: {len(inconsistent_ops)} "
             f"({len(inconsistent_ops) / max(total_operators, 1) * 100:.1f}%)\n"
         )
         file_handle.write(
-            f"  ⚠️ 错误 (error): {len(error_ops)} "
+            f"  ⚠️ error (error): {len(error_ops)} "
             f"({len(error_ops) / max(total_operators, 1) * 100:.1f}%)\n"
         )
-        file_handle.write(f"  ❓ 未知 (unknown): {len(unknown_ops)}\n\n")
+        file_handle.write(f"  ❓ unknown: {len(unknown_ops)}\n\n")
 
         file_handle.write("=" * 50 + "\n")
-        file_handle.write("📦 五类样例计数（按迭代条目）\n")
+        file_handle.write("📦 Five sample category counts (by iteration)\n")
         file_handle.write("=" * 50 + "\n")
-        file_handle.write(f"总迭代次数: {total_iterations}\n")
-        file_handle.write(f"  一致次数: {total_consistent}\n")
-        file_handle.write(f"  不一致次数: {total_inconsistent}\n")
-        file_handle.write(f"  PD错误次数: {total_pd_errors}\n")
-        file_handle.write(f"  MS错误次数: {total_target_errors}\n")
-        file_handle.write(f"  双错误次数: {total_both_errors}\n\n")
+        file_handle.write(f"Total iterations: {total_iterations}\n")
+        file_handle.write(f"  consistent count: {total_consistent}\n")
+        file_handle.write(f"  inconsistent count: {total_inconsistent}\n")
+        file_handle.write(f"  PD error count: {total_pd_errors}\n")
+        file_handle.write(f"  MS error count: {total_target_errors}\n")
+        file_handle.write(f"  both error count: {total_both_errors}\n\n")
 
         file_handle.write("=" * 50 + "\n")
-        file_handle.write(f"✅ 一致算子 ({len(consistent_ops)} 个)\n")
+        file_handle.write(f"✅ consistentoperator ({len(consistent_ops)} items)\n")
         file_handle.write("=" * 50 + "\n")
         for item in sorted(consistent_ops, key=lambda element: element["pd_api"]):
             file_handle.write(
                 f"  {item['pd_api']} → {item['target_api']} "
-                f"({item['consistent_count']}/{item['total_iterations']} 次一致)\n"
+                f"({item['consistent_count']}/{item['total_iterations']} consistent)\n"
             )
 
         file_handle.write("\n" + "=" * 50 + "\n")
-        file_handle.write(f"❌ 不一致算子 ({len(inconsistent_ops)} 个)\n")
+        file_handle.write(f"❌ inconsistent operators ({len(inconsistent_ops)} items)\n")
         file_handle.write("=" * 50 + "\n")
         for item in sorted(inconsistent_ops, key=lambda element: element["pd_api"]):
             file_handle.write(f"  {item['pd_api']} → {item['target_api']}\n")
             file_handle.write(
-                f"    一致: {item['consistent_count']}, 不一致: {item['inconsistent_count']}\n"
+                f"    consistent: {item['consistent_count']}, inconsistent: {item['inconsistent_count']}\n"
             )
             for error_text in item["errors"][:3]:
                 file_handle.write(f"    ! {error_text}\n")
 
         file_handle.write("\n" + "=" * 50 + "\n")
-        file_handle.write(f"⚠️ 错误算子 ({len(error_ops)} 个)\n")
+        file_handle.write(f"⚠️ erroroperator ({len(error_ops)} items)\n")
         file_handle.write("=" * 50 + "\n")
         for item in sorted(error_ops, key=lambda element: element["pd_api"]):
             file_handle.write(f"  {item['pd_api']} → {item['target_api']}\n")
             file_handle.write(
-                f"    PD错误: {item['pd_error_count']}, MS错误: {item['target_error_count']}, "
-                f"双错误: {item['both_error_count']}\n"
+                f"    PD error: {item['pd_error_count']}, MS error: {item['target_error_count']}, "
+                f"both error: {item['both_error_count']}\n"
             )
             for error_text in item["errors"][:3]:
                 file_handle.write(f"    ! {error_text}\n")
 
-    print(f"📄 TXT报告已保存: {txt_file}")
+    print(f"📄 TXT report saved: {txt_file}")
 
     csv_file = os.path.join(output_dir, f"analysis_report_{timestamp}.csv")
     with open(csv_file, "w", encoding="utf-8-sig", newline="") as file_handle:
@@ -343,7 +343,7 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str, timest
                 "; ".join(item["errors"][:3]) if item["errors"] else "",
             ])
 
-    print(f"📄 CSV报告已保存: {csv_file}")
+    print(f"📄 CSV report saved: {csv_file}")
     return txt_file, csv_file
 
 
@@ -353,7 +353,7 @@ def generate_sample_files(
     sample_dir: str,
     timestamp: str,
 ) -> List[str]:
-    """输出五类样例文件，每类一个 JSON。"""
+    """Write five sample files, one JSON per category."""
     os.makedirs(sample_dir, exist_ok=True)
 
     category_meta = {
@@ -380,48 +380,48 @@ def generate_sample_files(
             json.dump(payload, file_handle, ensure_ascii=False, indent=2)
 
         output_files.append(file_path)
-        print(f"📦 样例文件已保存: {file_path}")
+        print(f"📦 Sample file saved: {file_path}")
 
     return output_files
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Paddle ↔ MindSpore 差分测试结果分析 + 样例提取")
+    parser = argparse.ArgumentParser(description="Paddle ↔ MindSpore differential testing analysis + sample extraction")
     parser.add_argument(
         "--result-dir",
         "-r",
         default=os.path.join(ROOT_DIR, "pd_ms_test_1", "pd_ms_log_1"),
-        help="测试结果目录路径",
+        help="Test result directory path",
     )
     parser.add_argument(
         "--output-dir",
         "-o",
         default=os.path.join(ROOT_DIR, "pd_ms_test_1", "analysis"),
-        help="统计报告输出目录（TXT/CSV）",
+        help="Summary report output directory (TXT/CSV)",
     )
     parser.add_argument(
         "--sample-dir",
         "-s",
         default=os.path.join(ROOT_DIR, "pd_ms_test_1", "analysis"),
-        help="样例JSON输出目录",
+        help="Sample JSON output directory",
     )
 
     args = parser.parse_args()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     print("=" * 80)
-    print("Paddle ↔ MindSpore 差分测试结果分析 + 样例提取")
+    print("Paddle ↔ MindSpore differential testing analysis + sample extraction")
     print("=" * 80)
-    print(f"📁 结果目录: {args.result_dir}")
-    print(f"📁 报告目录: {args.output_dir}")
-    print(f"📁 样例目录: {args.sample_dir}")
+    print(f"📁 Results directory: {args.result_dir}")
+    print(f"📁 Report directory: {args.output_dir}")
+    print(f"📁 Sample directory: {args.sample_dir}")
 
     all_results = load_all_results(args.result_dir)
     if not all_results:
-        print("⚠️ 未找到任何测试结果文件")
+        print("⚠️ No test result files found")
         return
 
-    print(f"\n📋 加载了 {len(all_results)} 个算子的测试结果")
+    print(f"\n📋 Loaded test results for {len(all_results)} operators")
 
     all_analyses: List[Dict[str, Any]] = []
     for data in all_results:
@@ -437,13 +437,14 @@ def main() -> None:
     error = sum(1 for item in all_analyses if item["final_status"] == "error")
 
     print("\n" + "=" * 50)
-    print("📊 快速统计")
+    print("📊 Quick stats")
     print("=" * 50)
-    print(f"✅ 一致: {consistent}/{len(all_analyses)}")
-    print(f"❌ 不一致: {inconsistent}/{len(all_analyses)}")
-    print(f"⚠️ 错误: {error}/{len(all_analyses)}")
+    print(f"✅ consistent: {consistent}/{len(all_analyses)}")
+    print(f"❌ inconsistent: {inconsistent}/{len(all_analyses)}")
+    print(f"⚠️ error: {error}/{len(all_analyses)}")
     print("=" * 50)
 
 
 if __name__ == "__main__":
     main()
+

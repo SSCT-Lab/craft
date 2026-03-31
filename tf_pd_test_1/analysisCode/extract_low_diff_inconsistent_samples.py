@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-从 inconsistent_success_samples JSON 中提取 comparison_error 为
-"结果不一致，最大差异: xxx" 且 xxx < 1 的完整样例。
+Extract full samples from inconsistent_success_samples JSON where comparison_error is
+"结果不一致，最大差异: xxx" and xxx < 1.
 
-默认输入:
-    tf_pd_test_1/analysis/inconsistent_success_samples_*.json（自动取最新）
-默认输出:
+Default input:
+    tf_pd_test_1/analysis/inconsistent_success_samples_*.json (latest)
+Default output:
     tf_pd_test_1/analysis/inconsistent_success_samples_lt1_*.json
 
-用法:
+Usage:
     conda activate tf_env
     python tf_pd_test_1/analysisCode/extract_low_diff_inconsistent_samples.py
     python tf_pd_test_1/analysisCode/extract_low_diff_inconsistent_samples.py \
@@ -30,7 +30,7 @@ ERROR_PATTERN = re.compile(r"^结果不一致，最大差异:\s*([-+]?\d*\.?\d+(
 
 
 def extract_max_diff(error_text: Any) -> Optional[float]:
-    """从 comparison_error 中解析最大差异数值，解析失败返回 None。"""
+    """Parse max diff value from comparison_error; return None on failure."""
     if not isinstance(error_text, str):
         return None
 
@@ -45,7 +45,7 @@ def extract_max_diff(error_text: Any) -> Optional[float]:
 
 
 def build_default_output_path(input_path: Path) -> Path:
-    """根据输入文件名自动构造输出文件名。"""
+    """Build output filename based on input name."""
     stem = input_path.stem
     if stem.startswith("inconsistent_success_samples_"):
         suffix = stem.replace("inconsistent_success_samples_", "", 1)
@@ -56,21 +56,21 @@ def build_default_output_path(input_path: Path) -> Path:
 
 
 def find_latest_inconsistent_file(analysis_dir: Path) -> Path:
-    """自动选择 analysis 目录下最新的 inconsistent_success_samples 文件。"""
+    """Auto-select the latest inconsistent_success_samples file in analysis."""
     candidates = sorted(analysis_dir.glob("inconsistent_success_samples_*.json"))
     if not candidates:
-        raise FileNotFoundError(f"未找到文件: {analysis_dir / 'inconsistent_success_samples_*.json'}")
+        raise FileNotFoundError(f"No file found: {analysis_dir / 'inconsistent_success_samples_*.json'}")
     return candidates[-1]
 
 
 def filter_samples(input_path: Path, output_path: Path, threshold: float = 1.0) -> Dict[str, Any]:
-    """筛选满足 comparison_error 最大差异 < threshold 的完整样例并写入输出文件。"""
+    """Filter full samples where max comparison_error diff < threshold and write output."""
     with input_path.open("r", encoding="utf-8") as file:
         raw_data = json.load(file)
 
     samples = raw_data.get("samples", [])
     if not isinstance(samples, list):
-        raise ValueError("输入 JSON 的 samples 字段不是列表")
+        raise ValueError("Input JSON 'samples' is not a list")
 
     selected_samples: List[Dict[str, Any]] = []
 
@@ -92,7 +92,7 @@ def filter_samples(input_path: Path, output_path: Path, threshold: float = 1.0) 
 
     output_data = {
         "source_file": str(input_path),
-        "filter_rule": "comparison_error 匹配 '结果不一致，最大差异: xxx' 且 xxx < threshold",
+        "filter_rule": "comparison_error matches '结果不一致，最大差异: xxx' and xxx < threshold",
         "threshold": threshold,
         "total_samples": len(samples),
         "matched_samples": len(selected_samples),
@@ -112,25 +112,25 @@ def parse_args() -> argparse.Namespace:
     default_output = build_default_output_path(default_input)
 
     parser = argparse.ArgumentParser(
-        description="提取 comparison_error 最大差异 < threshold 的完整样例"
+        description="Extract full samples where max comparison_error diff < threshold"
     )
     parser.add_argument(
         "--input",
         type=Path,
         default=default_input,
-        help=f"输入 JSON 文件路径（默认: {default_input}）",
+        help=f"Input JSON file path (default: {default_input})",
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=default_output,
-        help=f"输出 JSON 文件路径（默认: {default_output}）",
+        help=f"Output JSON file path (default: {default_output})",
     )
     parser.add_argument(
         "--threshold",
         type=float,
         default=1.0,
-        help="最大差异阈值（默认: 1.0）",
+        help="Max diff threshold (default: 1.0)",
     )
     return parser.parse_args()
 
@@ -141,19 +141,19 @@ def main() -> None:
     output_path = args.output.resolve()
 
     if not input_path.exists():
-        raise FileNotFoundError(f"输入文件不存在: {input_path}")
+        raise FileNotFoundError(f"Input file not found: {input_path}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     result = filter_samples(input_path=input_path, output_path=output_path, threshold=args.threshold)
 
     print("=" * 80)
-    print("筛选完成")
+    print("Filtering complete")
     print("=" * 80)
-    print(f"输入文件: {input_path}")
-    print(f"输出文件: {output_path}")
-    print(f"总样例数: {result['total_samples']}")
-    print(f"命中样例数: {result['matched_samples']}")
+    print(f"Input file: {input_path}")
+    print(f"Output file: {output_path}")
+    print(f"Total samples: {result['total_samples']}")
+    print(f"Matched samples: {result['matched_samples']}")
     print("=" * 80)
 
 

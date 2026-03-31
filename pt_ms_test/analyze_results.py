@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 5: 差分测试结果分析脚本（PyTorch -> MindSpore）
+Step 5: Differential test result analysis script (PyTorch -> MindSpore)
 
-功能：
-- 读取 pt_ms_test/pt_ms_log_1 目录中的 JSON 测试结果文件
-- 若同一算子存在多个 JSON 文件，仅保留时间戳最新的文件
-- 统计各算子的一致性/不一致性/错误分布
-- 生成可视化统计报告（TXT + CSV + JSON）
+Functions:
+- Read JSON test result files in pt_ms_test/pt_ms_log_1
+- If multiple JSON files exist for the same operator, keep only the latest timestamp
+- Summarize consistency/inconsistency/error distribution by operator
+- Generate visualization reports (TXT + CSV + JSON)
 
-用法：
+Usage:
     conda activate tf_env
     python pt_ms_test/analyze_results.py [--result-dir pt_ms_test/pt_ms_log_1]
 """
@@ -18,7 +18,7 @@ import os
 import sys
 import io
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
@@ -37,7 +37,7 @@ if ROOT_DIR not in sys.path:
 
 
 def parse_datetime_from_filename(filename: str) -> Optional[datetime]:
-    """从文件名中解析时间戳: *_YYYYmmdd_HHMMSS.json"""
+    """Parse timestamp from filename: *_YYYYmmdd_HHMMSS.json"""
     match = re.search(r"_(\d{8}_\d{6})\.json$", filename)
     if not match:
         return None
@@ -48,7 +48,7 @@ def parse_datetime_from_filename(filename: str) -> Optional[datetime]:
 
 
 def parse_record_timestamp(data: Dict[str, Any], filename: str) -> datetime:
-    """优先用 JSON 内 timestamp，其次回退到文件名时间戳，最后给最小值。"""
+    """Prefer JSON timestamp, then filename timestamp, otherwise use min value."""
     timestamp_text = data.get("timestamp")
     if isinstance(timestamp_text, str):
         try:
@@ -64,12 +64,12 @@ def parse_record_timestamp(data: Dict[str, Any], filename: str) -> datetime:
 
 
 def normalize_operator_name(data: Dict[str, Any], filename: str) -> str:
-    """提取算子名，优先使用 JSON 内 operator。"""
+    """Extract operator name, preferring JSON operator field."""
     operator = data.get("operator")
     if isinstance(operator, str) and operator.strip():
         return operator.strip()
 
-    # 兜底：从文件名中提取 llm_enhanced_ 与时间戳之间部分
+    # Fallback: extract the part between llm_enhanced_ and the timestamp
     base = os.path.basename(filename)
     match = re.match(r"^llm_enhanced_(.+)_\d{8}_\d{6}\.json$", base)
     if match:
@@ -79,12 +79,12 @@ def normalize_operator_name(data: Dict[str, Any], filename: str) -> str:
 
 
 def load_latest_results_by_operator(result_dir: str) -> Tuple[List[Dict[str, Any]], int]:
-    """加载结果目录下所有 JSON，并为每个算子保留时间戳最新的一份。"""
+    """Load all JSON results and keep the latest timestamp per operator."""
     latest_by_operator: Dict[str, Dict[str, Any]] = {}
     total_json_files = 0
 
     if not os.path.exists(result_dir):
-        print(f"❌ 结果目录不存在: {result_dir}")
+        print(f"❌ Result directory does not exist: {result_dir}")
         return [], total_json_files
 
     for filename in sorted(os.listdir(result_dir)):
@@ -98,7 +98,7 @@ def load_latest_results_by_operator(result_dir: str) -> Tuple[List[Dict[str, Any
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
-            print(f"⚠️ 加载 {filename} 失败: {e}")
+            print(f"⚠️ Failed to load {filename}: {e}")
             continue
 
         operator_name = normalize_operator_name(data, filename)
@@ -113,7 +113,7 @@ def load_latest_results_by_operator(result_dir: str) -> Tuple[List[Dict[str, Any
             }
             continue
 
-        # 新时间更晚则替换；时间相同时按文件名字典序兜底，保证确定性
+        # Replace when time is newer; if equal, use filename order for determinism
         if record_dt > prev["dt"] or (record_dt == prev["dt"] and filename > prev["filename"]):
             latest_by_operator[operator_name] = {
                 "data": data,
@@ -126,7 +126,7 @@ def load_latest_results_by_operator(result_dir: str) -> Tuple[List[Dict[str, Any
 
 
 def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
-    """分析单个算子的测试结果。"""
+    """Analyze test results for a single operator."""
     operator = data.get("operator", "unknown")
     iterations = data.get("results", [])
 
@@ -157,7 +157,7 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
             if results_match is True:
                 analysis["consistent_count"] += 1
             elif results_match is False:
-                # compared 但结果不一致，归入不一致
+                # Compared but inconsistent; count as inconsistent
                 analysis["inconsistent_count"] += 1
                 comparison_error = exec_result.get("comparison_error")
                 if comparison_error:
@@ -186,7 +186,7 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
             if mindspore_error:
                 analysis["errors"].append(f"[MS] {str(mindspore_error)[:160]}")
         else:
-            # 兼容未知状态：根据成功标志与结果一致性补判
+            # Handle unknown status based on success flags and match status
             torch_success = exec_result.get("torch_success")
             mindspore_success = exec_result.get("mindspore_success")
             if torch_success and mindspore_success:
@@ -205,7 +205,7 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 analysis["comparison_error_count"] += 1
 
-    # 判定最终状态
+    # Determine final status
     if analysis["consistent_count"] > 0 and analysis["inconsistent_count"] == 0:
         analysis["final_status"] = "consistent"
     elif analysis["inconsistent_count"] > 0:
@@ -221,14 +221,14 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         analysis["final_status"] = "unknown"
 
-    # 去重并截断错误信息
+    # Deduplicate and truncate error messages
     analysis["errors"] = list(dict.fromkeys(analysis["errors"]))[:5]
 
     return analysis
 
 
 def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
-    """生成统计报告。"""
+    """Generate statistical reports."""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -245,72 +245,72 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
     total_ms_errors = sum(a["mindspore_error_count"] for a in all_analyses)
     total_both_errors = sum(a["both_error_count"] for a in all_analyses)
 
-    # 1) TXT 报告
+    # 1) TXT report
     txt_file = os.path.join(output_dir, f"analysis_report_{timestamp}.txt")
     with open(txt_file, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
-        f.write("PyTorch ↔ MindSpore 差分测试结果分析报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("PyTorch ↔ MindSpore Differential Test Result Analysis Report\n")
+        f.write(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
 
         f.write("=" * 50 + "\n")
-        f.write("📊 总体统计\n")
+        f.write("📊 Overall Summary\n")
         f.write("=" * 50 + "\n")
-        f.write(f"测试算子总数: {total_operators}\n")
+        f.write(f"Total operators tested: {total_operators}\n")
         f.write(
-            f"  ✅ 一致 (consistent): {len(consistent_ops)} "
+            f"  ✅ Consistent: {len(consistent_ops)} "
             f"({len(consistent_ops)/max(total_operators,1)*100:.1f}%)\n"
         )
         f.write(
-            f"  ❌ 不一致 (inconsistent): {len(inconsistent_ops)} "
+            f"  ❌ Inconsistent: {len(inconsistent_ops)} "
             f"({len(inconsistent_ops)/max(total_operators,1)*100:.1f}%)\n"
         )
         f.write(
-            f"  ⚠️ 错误 (error): {len(error_ops)} "
+            f"  ⚠️ Error: {len(error_ops)} "
             f"({len(error_ops)/max(total_operators,1)*100:.1f}%)\n"
         )
-        f.write(f"  ❓ 未知 (unknown): {len(unknown_ops)}\n\n")
+        f.write(f"  ❓ Unknown: {len(unknown_ops)}\n\n")
 
-        f.write(f"总迭代次数: {total_iterations}\n")
-        f.write(f"  一致次数: {total_consistent}\n")
-        f.write(f"  不一致次数: {total_inconsistent}\n")
-        f.write(f"  PT错误次数: {total_torch_errors}\n")
-        f.write(f"  MS错误次数: {total_ms_errors}\n")
-        f.write(f"  双边错误次数: {total_both_errors}\n\n")
+        f.write(f"Total iterations: {total_iterations}\n")
+        f.write(f"  Consistent iterations: {total_consistent}\n")
+        f.write(f"  Inconsistent iterations: {total_inconsistent}\n")
+        f.write(f"  PT error iterations: {total_torch_errors}\n")
+        f.write(f"  MS error iterations: {total_ms_errors}\n")
+        f.write(f"  Both-side error iterations: {total_both_errors}\n\n")
 
         f.write("=" * 50 + "\n")
-        f.write(f"✅ 一致算子 ({len(consistent_ops)} 个)\n")
+        f.write(f"✅ Consistent operators ({len(consistent_ops)})\n")
         f.write("=" * 50 + "\n")
         for a in sorted(consistent_ops, key=lambda x: x["torch_api"]):
             f.write(
                 f"  {a['torch_api']} → {a['mindspore_api']} "
-                f"({a['consistent_count']}/{a['total_iterations']} 次一致)\n"
+                f"({a['consistent_count']}/{a['total_iterations']} consistent)\n"
             )
 
         f.write("\n" + "=" * 50 + "\n")
-        f.write(f"❌ 不一致算子 ({len(inconsistent_ops)} 个)\n")
+        f.write(f"❌ Inconsistent operators ({len(inconsistent_ops)})\n")
         f.write("=" * 50 + "\n")
         for a in sorted(inconsistent_ops, key=lambda x: x["torch_api"]):
             f.write(f"  {a['torch_api']} → {a['mindspore_api']}\n")
-            f.write(f"    一致: {a['consistent_count']}, 不一致: {a['inconsistent_count']}\n")
+            f.write(f"    Consistent: {a['consistent_count']}, Inconsistent: {a['inconsistent_count']}\n")
             for err in a["errors"][:3]:
                 f.write(f"    ! {err}\n")
 
         f.write("\n" + "=" * 50 + "\n")
-        f.write(f"⚠️ 错误算子 ({len(error_ops)} 个)\n")
+        f.write(f"⚠️ Error operators ({len(error_ops)})\n")
         f.write("=" * 50 + "\n")
         for a in sorted(error_ops, key=lambda x: x["torch_api"]):
             f.write(f"  {a['torch_api']} → {a['mindspore_api']}\n")
             f.write(
-                f"    PT错误: {a['torch_error_count']}, MS错误: {a['mindspore_error_count']}, "
-                f"双错误: {a['both_error_count']}, 比较错误: {a['comparison_error_count']}\n"
+                f"    PT errors: {a['torch_error_count']}, MS errors: {a['mindspore_error_count']}, "
+                f"Both errors: {a['both_error_count']}, Comparison errors: {a['comparison_error_count']}\n"
             )
             for err in a["errors"][:3]:
                 f.write(f"    ! {err}\n")
 
-    print(f"📄 TXT报告已保存: {txt_file}")
+    print(f"📄 TXT report saved: {txt_file}")
 
-    # 2) CSV 报告
+    # 2) CSV report
     csv_file = os.path.join(output_dir, f"analysis_report_{timestamp}.csv")
     with open(csv_file, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
@@ -341,9 +341,9 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
                 a["comparison_error_count"],
                 "; ".join(a["errors"][:3]) if a["errors"] else "",
             ])
-    print(f"📄 CSV报告已保存: {csv_file}")
+    print(f"📄 CSV report saved: {csv_file}")
 
-    # 3) JSON 报告
+    # 3) JSON report
     json_file = os.path.join(output_dir, f"analysis_report_{timestamp}.json")
     with open(json_file, "w", encoding="utf-8") as f:
         json.dump(
@@ -368,38 +368,38 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
             indent=2,
             ensure_ascii=False,
         )
-    print(f"📄 JSON报告已保存: {json_file}")
+    print(f"📄 JSON report saved: {json_file}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PyTorch ↔ MindSpore 差分测试结果分析")
+    parser = argparse.ArgumentParser(description="PyTorch ↔ MindSpore differential test result analysis")
     parser.add_argument(
         "--result-dir",
         "-r",
         default=os.path.join(ROOT_DIR, "pt_ms_test", "pt_ms_log_1"),
-        help="测试结果目录路径",
+        help="Test result directory path",
     )
     parser.add_argument(
         "--output-dir",
         "-o",
         default=os.path.join(ROOT_DIR, "pt_ms_test", "analysis"),
-        help="分析报告输出目录",
+        help="Report output directory",
     )
     args = parser.parse_args()
 
     print("=" * 80)
-    print("PyTorch ↔ MindSpore 差分测试结果分析")
+    print("PyTorch ↔ MindSpore Differential Test Result Analysis")
     print("=" * 80)
-    print(f"📁 结果目录: {args.result_dir}")
-    print(f"📁 输出目录: {args.output_dir}")
+    print(f"📁 Result directory: {args.result_dir}")
+    print(f"📁 Output directory: {args.output_dir}")
 
     all_results, total_json_files = load_latest_results_by_operator(args.result_dir)
     if not all_results:
-        print("⚠️ 未找到任何可用测试结果文件")
+        print("⚠️ No available test result files found")
         return
 
-    print(f"\n📋 扫描到 JSON 文件数: {total_json_files}")
-    print(f"📌 去重后算子数（每个算子仅最新时间戳）: {len(all_results)}")
+    print(f"\n📋 JSON files scanned: {total_json_files}")
+    print(f"📌 Operators after deduplication (latest timestamp only): {len(all_results)}")
 
     all_analyses = []
     for data in all_results:
@@ -414,12 +414,12 @@ def main():
     unknown = sum(1 for a in all_analyses if a["final_status"] == "unknown")
 
     print("\n" + "=" * 50)
-    print("📊 快速统计")
+    print("📊 Quick summary")
     print("=" * 50)
-    print(f"✅ 一致: {consistent}/{len(all_analyses)}")
-    print(f"❌ 不一致: {inconsistent}/{len(all_analyses)}")
-    print(f"⚠️ 错误: {error}/{len(all_analyses)}")
-    print(f"❓ 未知: {unknown}/{len(all_analyses)}")
+    print(f"✅ Consistent: {consistent}/{len(all_analyses)}")
+    print(f"❌ Inconsistent: {inconsistent}/{len(all_analyses)}")
+    print(f"⚠️ Error: {error}/{len(all_analyses)}")
+    print(f"❓ Unknown: {unknown}/{len(all_analyses)}")
     print("=" * 50)
 
 

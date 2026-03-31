@@ -1,11 +1,9 @@
 """  
-PyTorch-TensorFlow 成功测试用例提取工具（按算子分类版本）
-
-功能说明:
-    1. 扫描指定目录下的所有测试结果 JSON 文件
-    2. 提取所有没有任何错误的测试用例
-    3. 按算子名称分类，每个算子生成一个独立的 JSON 文件
-    4. 每个样例包含完整的 torch_test_case、tensorflow_test_case 和 execution_result
+PyTorch-TensorFlow Successful test case extraction tool (version classified by operator)  Function description:
+    1. Scan all test result JSON files in the specified directory
+    2. Extract all test cases without any errors
+    3. Classified by operator name, each operator generates an independent JSON file
+    4. Each example contains the complete torch_test_case, tensorflow_test_case and execution_result
 """
 
 import json
@@ -17,26 +15,22 @@ from typing import Dict, List, Any, Optional
 
 def extract_operator_name(filename: str) -> str:
     """
-    从文件名中提取算子名称
+    Extract operator name from file name          Example: llm_enhanced_torch_abs_20260123_191052.json -> torch_abs
     
-    示例: llm_enhanced_torch_abs_20260123_191052.json -> torch_abs
-    
-    参数:
-        filename (str): JSON 文件名
-    
-    返回:
-        str: 算子名称
+    parameter:
+        filename (str): JSON file name          Return:
+        str: Operator name
     """
-    # 匹配 llm_enhanced_ 后面到 _日期 前面的部分
-    # 日期格式为 8位数字（YYYYMMDD）
+    # Matches the part after llm_enhanced_ to the part before _date
+    # Date format is 8 digits（YYYYMMDD）
     pattern = r'llm_enhanced_(.+?)_(\d{8})_'
     match = re.search(pattern, filename)
     if match:
         return match.group(1)
     
-    # 备用方案：去掉前缀和后缀
+    # Alternative solution: remove prefixes and suffixes
     name = filename.replace('llm_enhanced_', '').replace('.json', '')
-    # 尝试去掉日期时间后缀
+    # Try removing the date and time suffix
     parts = name.rsplit('_', 2)
     if len(parts) >= 2 and parts[-2].isdigit() and parts[-1].isdigit():
         return '_'.join(parts[:-2])
@@ -45,63 +39,59 @@ def extract_operator_name(filename: str) -> str:
 
 def analyze_and_extract_success_cases(log_dir: str) -> Dict[str, List[Dict[str, Any]]]:
     """
-    分析指定目录下的所有 JSON 测试结果文件，按算子提取成功用例
-    
-    参数:
-        log_dir (str): 日志文件所在目录的路径
-    
-    返回:
-        Dict[str, List[Dict]]: 算子名称 -> 成功用例列表的映射
+    Analyze all JSON test result files in the specified directory and extract successful use cases according to operators          parameters:
+        log_dir (str): The path to the directory where the log file is located          Return:
+        Dict[str, List[Dict]]: Operator name -> Mapping of successful use case lists
     """
-    # 按算子分类的成功用例字典
+    # Dictionary of successful use cases by operator
     operator_success_cases: Dict[str, List[Dict[str, Any]]] = {}
     
-    # 统计信息
+    # Statistics
     total_files = 0
     total_cases = 0
     total_success = 0
     
-    # 获取日志目录路径并查找所有匹配的 JSON 文件
+    # Get the log directory path and find all matching JSON files
     log_path = Path(log_dir)
     json_files = sorted(log_path.glob("llm_enhanced_torch*.json"))
-    print(f"找到 {len(json_files)} 个 JSON 文件")
+    print(f"turn up {len(json_files)} JSON files")
     
-    # 遍历所有 JSON 文件进行分析
+    # Iterate through all JSON files for analysis
     for json_file in json_files:
         total_files += 1
         try:
-            # 读取 JSON 文件内容
+            # Read JSON file content
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
-            # 提取算子名称
+            # Extract operator name
             operator_name = extract_operator_name(json_file.name)
             
-            # 如果该算子还没有记录，初始化列表
+            # If the operator has not been recorded yet, initialize the list
             if operator_name not in operator_success_cases:
                 operator_success_cases[operator_name] = []
             
-            # 检查 JSON 数据中是否包含 results 字段
+            # Check if JSON data contains results field
             if "results" not in data:
                 continue
                 
-            # 遍历每个测试结果
+            # Iterate through each test result
             for result in data["results"]:
                 total_cases += 1
                 
-                # 检查是否包含执行结果字段
+                # Check whether the execution result field is included
                 if "execution_result" not in result:
                     continue
                     
                 exec_result = result["execution_result"]
                 
-                # 检查是否完全成功（三种错误都为 null 且结果匹配）
+                # Check for complete success (all three errors are null and the result matches）
                 torch_error = exec_result.get("torch_error")
                 tensorflow_error = exec_result.get("tensorflow_error")
                 comparison_error = exec_result.get("comparison_error")
                 results_match = exec_result.get("results_match", False)
                 
-                # 完全成功的条件：无任何错误且结果匹配
+                # Conditions for complete success: no errors and matching results
                 if (torch_error is None and 
                     tensorflow_error is None and 
                     comparison_error is None and
@@ -109,7 +99,7 @@ def analyze_and_extract_success_cases(log_dir: str) -> Dict[str, List[Dict[str, 
                     
                     total_success += 1
                     
-                    # 构建完整的成功用例信息
+                    # Build complete information about successful use cases
                     success_case = {
                         "source_file": json_file.name,
                         "operator": data.get("operator", operator_name),
@@ -121,22 +111,22 @@ def analyze_and_extract_success_cases(log_dir: str) -> Dict[str, List[Dict[str, 
                         "execution_result": exec_result
                     }
                     
-                    # 如果有 llm_operation 信息，也保留
+                    # If there is llm_operation information, it is also retained
                     if "llm_operation" in result:
                         success_case["llm_operation"] = result["llm_operation"]
                     
                     operator_success_cases[operator_name].append(success_case)
                     
         except Exception as e:
-            print(f"处理文件 {json_file.name} 时出错: {e}")
+            print(f"Process files {json_file.name} error: {e}")
     
-    # 打印统计信息
-    print(f"\n统计信息:")
-    print(f"  - 处理文件数: {total_files}")
-    print(f"  - 总用例数: {total_cases}")
-    print(f"  - 成功用例数: {total_success}")
-    print(f"  - 成功率: {total_success / total_cases * 100:.2f}%" if total_cases > 0 else "  - 成功率: N/A")
-    print(f"  - 涉及算子数: {len(operator_success_cases)}")
+    # Print statistics
+    print(f"\nStatistics:")
+    print(f"  - Number of files processed: {total_files}")
+    print(f"  - Total number of use cases: {total_cases}")
+    print(f"  - Number of successful use cases: {total_success}")
+    print(f"  - success rate: {total_success / total_cases * 100:.2f}%" if total_cases > 0 else "  - success rate: N/A")
+    print(f"  - Number of operators involved: {len(operator_success_cases)}")
     
     return operator_success_cases
 
@@ -146,11 +136,9 @@ def save_operator_json_files(
     output_dir: str
 ) -> None:
     """
-    将按算子分类的成功用例保存为独立的 JSON 文件
-    
-    参数:
-        operator_cases (Dict): 算子名称 -> 成功用例列表的映射
-        output_dir (str): 输出目录路径
+    Save successful use cases classified by operator as separate JSON files          parameters:
+        operator_cases (Dict): Operator name -> Mapping of successful use case lists
+        output_dir (str): output directory path
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -160,10 +148,10 @@ def save_operator_json_files(
         if not cases:
             continue
             
-        # 构建输出文件路径
+        # Build output file path
         output_file = output_path / f"{operator_name}_success_cases.json"
         
-        # 构建输出数据结构
+        # Build output data structure
         output_data = {
             "operator": operator_name,
             "export_time": datetime.now().isoformat(),
@@ -171,13 +159,13 @@ def save_operator_json_files(
             "success_cases": cases
         }
         
-        # 写入 JSON 文件
+        # Write to JSON file
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(output_data, f, ensure_ascii=False, indent=2)
         
         saved_count += 1
     
-    print(f"\n已保存 {saved_count} 个算子的成功用例文件到: {output_dir}")
+    print(f"\nsaved {saved_count} Successful use case files of operators arrive: {output_dir}")
 
 
 def generate_summary_report(
@@ -185,16 +173,14 @@ def generate_summary_report(
     output_file: str
 ) -> None:
     """
-    生成汇总报告
-    
-    参数:
-        operator_cases (Dict): 算子名称 -> 成功用例列表的映射
-        output_file (str): 输出报告文件路径
+    Generate summary report          parameters:
+        operator_cases (Dict): Operator name -> Mapping of successful use case lists
+        output_file (str): Output report file path
     """
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # 按成功用例数量排序
+    # Sort by number of successful use cases
     sorted_operators = sorted(
         operator_cases.items(), 
         key=lambda x: len(x[1]), 
@@ -205,31 +191,31 @@ def generate_summary_report(
     
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
-        f.write("PyTorch-TensorFlow 成功测试用例汇总报告（按算子分类）\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("PyTorch-TensorFlow Summary report of successful test cases (classified by operator）\n")
+        f.write(f"Generation time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
         
-        f.write("【总体统计】\n")
+        f.write("【Overall statistics】\n")
         f.write("-" * 40 + "\n")
-        f.write(f"涉及算子数: {len(operator_cases)}\n")
-        f.write(f"成功用例总数: {total_cases}\n")
+        f.write(f"Number of operators involved: {len(operator_cases)}\n")
+        f.write(f"Total number of successful use cases: {total_cases}\n")
         f.write("\n" + "=" * 80 + "\n\n")
         
-        f.write("【各算子成功用例统计】\n")
+        f.write("【Statistics of successful use cases of each operator】\n")
         f.write("-" * 40 + "\n\n")
         
         for idx, (operator_name, cases) in enumerate(sorted_operators, 1):
             if not cases:
                 continue
             
-            # 统计 LLM 生成的用例数量
+            # Count the number of use cases generated by LLM
             llm_generated = sum(1 for c in cases if c.get("is_llm_generated", False))
             original = len(cases) - llm_generated
             
             f.write(f"{idx}. {operator_name}\n")
-            f.write(f"   成功用例数: {len(cases)} (原始: {original}, LLM生成: {llm_generated})\n")
+            f.write(f"   Number of successful use cases: {len(cases)} (original: {original}, LLMgenerate: {llm_generated})\n")
             
-            # 统计不同的 shape 和 dtype
+            # Count different shapes and dtype
             shapes = set()
             dtypes = set()
             for case in cases:
@@ -243,42 +229,42 @@ def generate_summary_report(
                         dtypes.add(dtype)
             
             if shapes:
-                f.write(f"   测试 shapes: {', '.join(list(shapes)[:5])}" + 
+                f.write(f"   test shapes: {', '.join(list(shapes)[:5])}" + 
                        (" ..." if len(shapes) > 5 else "") + "\n")
             if dtypes:
-                f.write(f"   测试 dtypes: {', '.join(dtypes)}\n")
+                f.write(f"   test dtypes: {', '.join(dtypes)}\n")
             f.write("\n")
         
         f.write("=" * 80 + "\n")
-        f.write("报告生成完成\n")
+        f.write("Report generation completed\n")
         f.write("=" * 80 + "\n")
 
 
 def main():
     """
-    主程序入口
+    Main program entrance
     """
-    # 配置路径
+    # Configuration path
     log_dir = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log_1"
     output_dir = r"d:\graduate\DFrameworkTest\pt_tf_test\fuzzing\success_cases"
     report_file = r"d:\graduate\DFrameworkTest\pt_tf_test\fuzzing\success_cases_summary.txt"
     
     print("=" * 60)
-    print("开始提取成功测试用例并按算子分类...")
+    print("Start extracting successful test cases and classify them by operators...")
     print("=" * 60)
     
-    # 分析并提取成功用例
+    # Analyze and extract successful use cases
     operator_cases = analyze_and_extract_success_cases(log_dir)
     
-    # 保存各算子的 JSON 文件
+    # Save the JSON file of each operator
     save_operator_json_files(operator_cases, output_dir)
     
-    # 生成汇总报告
+    # Generate summary report
     generate_summary_report(operator_cases, report_file)
-    print(f"汇总报告已生成: {report_file}")
+    print(f"Summary report generated: {report_file}")
     
     print("\n" + "=" * 60)
-    print("提取完成！")
+    print("Extraction completed！")
     print("=" * 60)
 
 

@@ -8,7 +8,7 @@ def analyze_json_files(log_dir):
     files_with_errors = []
     log_path = Path(log_dir)
     json_files = sorted(log_path.glob("llm_enhanced_torch*.json"))
-    print(f"找到 {len(json_files)} 个JSON文件")
+    print(f"Found {len(json_files)} JSON files")
     for json_file in json_files:
         try:
             with open(json_file, "r", encoding="utf-8") as f:
@@ -47,55 +47,55 @@ def analyze_json_files(log_dir):
                     }
                 )
         except Exception as e:
-            print(f"处理文件 {json_file.name} 时出错: {e}")
+            print(f"Error processing file {json_file.name}: {e}")
     return total_torch_errors, total_mindspore_errors, total_comparison_errors, files_with_errors
 
 def generate_report(output_file, total_torch, total_mindspore, total_comparison, files_with_errors):
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
-        f.write("PyTorch-MindSpore 测试错误分析报告\n")
+        f.write("PyTorch-MindSpore Test Error Analysis Report\n")
         f.write("=" * 80 + "\n\n")
-        f.write("【总体错误统计】\n")
-        f.write(f"torch_error 非null值总数: {total_torch}\n")
-        f.write(f"mindspore_error 非null值总数: {total_mindspore}\n")
-        f.write(f"comparison_error 非null值总数: {total_comparison}\n")
-        f.write(f"包含错误的文件总数: {len(files_with_errors)}\n")
+        f.write("[Overall Error Statistics]\n")
+        f.write(f"torch_error non-null total: {total_torch}\n")
+        f.write(f"mindspore_error non-null total: {total_mindspore}\n")
+        f.write(f"comparison_error non-null total: {total_comparison}\n")
+        f.write(f"Total files with errors: {len(files_with_errors)}\n")
         f.write("\n" + "=" * 80 + "\n\n")
         if files_with_errors:
-            f.write("【详细错误文件信息】\n\n")
+            f.write("[Detailed Error File Information]\n\n")
             for idx, file_info in enumerate(files_with_errors, 1):
-                f.write(f"{idx}. 文件名: {file_info['filename']}\n")
+                f.write(f"{idx}. File name: {file_info['filename']}\n")
                 f.write("-" * 80 + "\n")
                 if file_info["torch_errors"] > 0:
-                    f.write(f"   torch_error 非null值个数: {file_info['torch_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['torch_error_iterations']))}\n")
+                    f.write(f"   torch_error non-null count: {file_info['torch_errors']}\n")
+                    f.write(f"   Corresponding iteration values: {', '.join(map(str, file_info['torch_error_iterations']))}\n")
                 if file_info["mindspore_errors"] > 0:
-                    f.write(f"   mindspore_error 非null值个数: {file_info['mindspore_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['mindspore_error_iterations']))}\n")
+                    f.write(f"   mindspore_error non-null count: {file_info['mindspore_errors']}\n")
+                    f.write(f"   Corresponding iteration values: {', '.join(map(str, file_info['mindspore_error_iterations']))}\n")
                 if file_info["comparison_errors"] > 0:
-                    f.write(f"   comparison_error 非null值个数: {file_info['comparison_errors']}\n")
-                    f.write(f"   对应用例的iteration值: {', '.join(map(str, file_info['comparison_error_iterations']))}\n")
+                    f.write(f"   comparison_error non-null count: {file_info['comparison_errors']}\n")
+                    f.write(f"   Corresponding iteration values: {', '.join(map(str, file_info['comparison_error_iterations']))}\n")
                 f.write("\n")
         else:
-            f.write("【详细错误文件信息】\n\n")
-            f.write("未发现任何包含错误的文件。\n\n")
+            f.write("[Detailed Error File Information]\n\n")
+            f.write("No files containing errors were found.\n\n")
         f.write("=" * 80 + "\n")
-        f.write("报告生成完成\n")
+        f.write("Report generation completed\n")
         f.write("=" * 80 + "\n")
 
 def main():
     log_dir = r"d:\graduate\DFrameworkTest\pt_ms_test\pt_ms_log"
     output_file = r"d:\graduate\DFrameworkTest\pt_ms_test\error_analysis_report.txt"
-    print("开始分析JSON文件...")
+    print("Starting JSON file analysis...")
     total_torch, total_mindspore, total_comparison, files_with_errors = analyze_json_files(log_dir)
-    print("\n分析完成！")
-    print("总错误统计:")
+    print("\nAnalysis completed!")
+    print("Total error statistics:")
     print(f"  - torch_error: {total_torch}")
     print(f"  - mindspore_error: {total_mindspore}")
     print(f"  - comparison_error: {total_comparison}")
-    print(f"  - 包含错误的文件数: {len(files_with_errors)}")
+    print(f"  - Files with errors: {len(files_with_errors)}")
     generate_report(output_file, total_torch, total_mindspore, total_comparison, files_with_errors)
-    print(f"\n报告已生成: {output_file}")
+    print(f"\nReport generated: {output_file}")
 
 if __name__ == "__main__":
     main()

@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 5: 差分测试结果分析脚本
+Step 5: Differential test result analysis script
 
-功能：
-- 读取 ms_pt_log_1/ 目录中的 JSON 测试结果文件
-- 统计各算子的一致性/不一致性/错误分布
-- 生成可视化统计报告（TXT + CSV + JSON）
+Purpose:
+- Read JSON test result files under ms_pt_log_1/
+- Summarize per-operator consistent/inconsistent/error distribution
+- Generate reports (TXT + CSV + JSON)
 
-用法：
+Usage:
     conda activate tf_env
     python ms_pt_test/analyze_results.py [--result-dir ms_pt_test/ms_pt_log_1]
 """
@@ -17,7 +17,7 @@ import os
 import sys
 import io
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -35,10 +35,10 @@ if ROOT_DIR not in sys.path:
 
 
 def load_all_results(result_dir: str) -> List[Dict[str, Any]]:
-    """加载结果目录下的所有 JSON 结果文件"""
+    """Load all JSON result files under the results directory."""
     results = []
     if not os.path.exists(result_dir):
-        print(f"❌ 结果目录不存在: {result_dir}")
+        print(f"❌ Result directory does not exist: {result_dir}")
         return results
 
     for filename in sorted(os.listdir(result_dir)):
@@ -49,12 +49,12 @@ def load_all_results(result_dir: str) -> List[Dict[str, Any]]:
                     data = json.load(f)
                 results.append(data)
             except Exception as e:
-                print(f"⚠️ 加载 {filename} 失败: {e}")
+                print(f"⚠️ Failed to load {filename}: {e}")
     return results
 
 
 def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
-    """分析单个算子的测试结果"""
+    """Analyze test results for a single operator."""
     ms_api = data.get("ms_api", "unknown")
     pytorch_api = data.get("pytorch_api", "")
     iterations = data.get("results", [])
@@ -94,7 +94,7 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
         elif status == "comparison_error":
             analysis["comparison_error_count"] += 1
 
-    # 判定最终状态
+    # Determine final status
     if analysis["consistent_count"] > 0 and analysis["inconsistent_count"] == 0:
         analysis["final_status"] = "consistent"
     elif analysis["inconsistent_count"] > 0:
@@ -104,18 +104,18 @@ def analyze_single_operator(data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         analysis["final_status"] = "unknown"
 
-    # 去重错误信息
+    # Deduplicate error messages
     analysis["errors"] = list(set(analysis["errors"]))[:5]
 
     return analysis
 
 
 def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
-    """生成统计报告"""
+    """Generate summary reports."""
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    # ---- 总体统计 ----
+    # ---- Overall summary ----
     total_operators = len(all_analyses)
     consistent_ops = [a for a in all_analyses if a["final_status"] == "consistent"]
     inconsistent_ops = [a for a in all_analyses if a["final_status"] == "inconsistent"]
@@ -128,64 +128,64 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
     total_ms_errors = sum(a["ms_error_count"] for a in all_analyses)
     total_pt_errors = sum(a["pytorch_error_count"] for a in all_analyses)
 
-    # ---- 1. TXT 报告 ----
+    # ---- 1. TXT report ----
     txt_file = os.path.join(output_dir, f"analysis_report_{timestamp}.txt")
     with open(txt_file, 'w', encoding='utf-8') as f:
         f.write("=" * 80 + "\n")
-        f.write("MindSpore ↔ PyTorch 差分测试结果分析报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("MindSpore ↔ PyTorch Differential Test Report\n")
+        f.write(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
 
         f.write("=" * 50 + "\n")
-        f.write("📊 总体统计\n")
+        f.write("📊 Overall Summary\n")
         f.write("=" * 50 + "\n")
-        f.write(f"测试算子总数: {total_operators}\n")
-        f.write(f"  ✅ 一致 (consistent): {len(consistent_ops)} "
+        f.write(f"Total operators: {total_operators}\n")
+        f.write(f"  ✅ Consistent: {len(consistent_ops)} "
                 f"({len(consistent_ops)/max(total_operators,1)*100:.1f}%)\n")
-        f.write(f"  ❌ 不一致 (inconsistent): {len(inconsistent_ops)} "
+        f.write(f"  ❌ Inconsistent: {len(inconsistent_ops)} "
                 f"({len(inconsistent_ops)/max(total_operators,1)*100:.1f}%)\n")
-        f.write(f"  ⚠️ 错误 (error): {len(error_ops)} "
+        f.write(f"  ⚠️ Error: {len(error_ops)} "
                 f"({len(error_ops)/max(total_operators,1)*100:.1f}%)\n")
-        f.write(f"  ❓ 未知 (unknown): {len(unknown_ops)}\n\n")
+        f.write(f"  ❓ Unknown: {len(unknown_ops)}\n\n")
 
-        f.write(f"总迭代次数: {total_iterations}\n")
-        f.write(f"  一致次数: {total_consistent}\n")
-        f.write(f"  不一致次数: {total_inconsistent}\n")
-        f.write(f"  MS错误次数: {total_ms_errors}\n")
-        f.write(f"  PT错误次数: {total_pt_errors}\n\n")
+        f.write(f"Total iterations: {total_iterations}\n")
+        f.write(f"  Consistent count: {total_consistent}\n")
+        f.write(f"  Inconsistent count: {total_inconsistent}\n")
+        f.write(f"  MS error count: {total_ms_errors}\n")
+        f.write(f"  PT error count: {total_pt_errors}\n\n")
 
-        # 一致算子列表
+        # Consistent operators
         f.write("=" * 50 + "\n")
-        f.write(f"✅ 一致算子 ({len(consistent_ops)} 个)\n")
+        f.write(f"✅ Consistent operators ({len(consistent_ops)})\n")
         f.write("=" * 50 + "\n")
         for a in sorted(consistent_ops, key=lambda x: x["ms_api"]):
             f.write(f"  {a['ms_api']} → {a['pytorch_api']} "
-                    f"({a['consistent_count']}/{a['total_iterations']} 次一致)\n")
+                    f"({a['consistent_count']}/{a['total_iterations']} consistent)\n")
 
-        # 不一致算子列表
+        # Inconsistent operators
         f.write("\n" + "=" * 50 + "\n")
-        f.write(f"❌ 不一致算子 ({len(inconsistent_ops)} 个)\n")
+        f.write(f"❌ Inconsistent operators ({len(inconsistent_ops)})\n")
         f.write("=" * 50 + "\n")
         for a in sorted(inconsistent_ops, key=lambda x: x["ms_api"]):
             f.write(f"  {a['ms_api']} → {a['pytorch_api']}\n")
-            f.write(f"    一致: {a['consistent_count']}, 不一致: {a['inconsistent_count']}\n")
+            f.write(f"    Consistent: {a['consistent_count']}, Inconsistent: {a['inconsistent_count']}\n")
             for err in a["errors"][:3]:
                 f.write(f"    ! {err}\n")
 
-        # 错误算子列表
+        # Error operators
         f.write("\n" + "=" * 50 + "\n")
-        f.write(f"⚠️ 错误算子 ({len(error_ops)} 个)\n")
+        f.write(f"⚠️ Error operators ({len(error_ops)})\n")
         f.write("=" * 50 + "\n")
         for a in sorted(error_ops, key=lambda x: x["ms_api"]):
             f.write(f"  {a['ms_api']} → {a['pytorch_api']}\n")
-            f.write(f"    MS错误: {a['ms_error_count']}, PT错误: {a['pytorch_error_count']}, "
-                    f"双错误: {a['both_error_count']}\n")
+            f.write(f"    MS errors: {a['ms_error_count']}, PT errors: {a['pytorch_error_count']}, "
+                f"both errors: {a['both_error_count']}\n")
             for err in a["errors"][:3]:
                 f.write(f"    ! {err}\n")
 
-    print(f"📄 TXT报告已保存: {txt_file}")
+    print(f"📄 TXT report saved: {txt_file}")
 
-    # ---- 2. CSV 报告 ----
+    # ---- 2. CSV report ----
     csv_file = os.path.join(output_dir, f"analysis_report_{timestamp}.csv")
     with open(csv_file, 'w', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)
@@ -202,9 +202,9 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
                 a["ms_error_count"], a["pytorch_error_count"], a["both_error_count"],
                 "; ".join(a["errors"][:3]) if a["errors"] else "",
             ])
-    print(f"📄 CSV报告已保存: {csv_file}")
+    print(f"📄 CSV report saved: {csv_file}")
 
-    # ---- 3. JSON 报告 ----
+    # ---- 3. JSON report ----
     json_file = os.path.join(output_dir, f"analysis_report_{timestamp}.json")
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump({
@@ -221,57 +221,57 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
             },
             "operators": all_analyses,
         }, f, indent=2, ensure_ascii=False)
-    print(f"📄 JSON报告已保存: {json_file}")
+    print(f"📄 JSON report saved: {json_file}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MindSpore ↔ PyTorch 差分测试结果分析")
+    parser = argparse.ArgumentParser(description="MindSpore ↔ PyTorch differential test analysis")
     parser.add_argument(
         "--result-dir", "-r",
         default=os.path.join(ROOT_DIR, "ms_pt_test", "ms_pt_log_1"),
-        help="测试结果目录路径",
+        help="Result directory path",
     )
     parser.add_argument(
         "--output-dir", "-o",
         default=os.path.join(ROOT_DIR, "ms_pt_test", "analysis"),
-        help="分析报告输出目录",
+        help="Report output directory",
     )
     args = parser.parse_args()
 
     print("=" * 80)
-    print("MindSpore ↔ PyTorch 差分测试结果分析")
+    print("MindSpore ↔ PyTorch differential test analysis")
     print("=" * 80)
-    print(f"📁 结果目录: {args.result_dir}")
-    print(f"📁 输出目录: {args.output_dir}")
+    print(f"📁 Result directory: {args.result_dir}")
+    print(f"📁 Output directory: {args.output_dir}")
 
-    # 加载结果
+    # Load results
     all_results = load_all_results(args.result_dir)
     if not all_results:
-        print("⚠️ 未找到任何测试结果文件")
+        print("⚠️ No test result files found")
         return
 
-    print(f"\n📋 加载了 {len(all_results)} 个算子的测试结果")
+    print(f"\n📋 Loaded results for {len(all_results)} operators")
 
-    # 分析每个算子
+    # Analyze each operator
     all_analyses = []
     for data in all_results:
         analysis = analyze_single_operator(data)
         all_analyses.append(analysis)
 
-    # 生成报告
+    # Generate reports
     generate_reports(all_analyses, args.output_dir)
 
-    # 打印控制台摘要
+    # Print console summary
     consistent = sum(1 for a in all_analyses if a["final_status"] == "consistent")
     inconsistent = sum(1 for a in all_analyses if a["final_status"] == "inconsistent")
     error = sum(1 for a in all_analyses if a["final_status"] == "error")
 
     print("\n" + "=" * 50)
-    print("📊 快速统计")
+    print("📊 Quick summary")
     print("=" * 50)
-    print(f"✅ 一致: {consistent}/{len(all_analyses)}")
-    print(f"❌ 不一致: {inconsistent}/{len(all_analyses)}")
-    print(f"⚠️ 错误: {error}/{len(all_analyses)}")
+    print(f"✅ Consistent: {consistent}/{len(all_analyses)}")
+    print(f"❌ Inconsistent: {inconsistent}/{len(all_analyses)}")
+    print(f"⚠️ Error: {error}/{len(all_analyses)}")
     print("=" * 50)
 
 

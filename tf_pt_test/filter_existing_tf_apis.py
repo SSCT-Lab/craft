@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-检查 TF API 是否真实存在（基于官方英文文档页面）
+Check whether TF APIs exist (based on official English docs)
 
-功能：
-- 读取 tf_pt_test/data/tf_apis_new.json 中的 API 列表
-- 逐个访问 TensorFlow 官方英文文档页面
-- 结合重定向与页面内容长度、API 关键词匹配判断是否真实存在
-- 输出仅保留真实存在 API 的结果文件
+Features:
+- Read API list from tf_pt_test/data/tf_apis_new.json
+- Visit TensorFlow official English docs per API
+- Use redirect detection, page length, and API keyword matching to validate
+- Output a file that keeps only valid APIs
 
-用法：
+Usage:
     conda activate tf_env
     python tf_pt_test/filter_existing_tf_apis.py \
         --input tf_pt_test/data/tf_apis_new.json \
@@ -55,7 +55,7 @@ def save_json(filepath: str, data: Dict[str, Any]) -> None:
 
 
 def build_expected_path(url: str) -> str:
-    """从完整 URL 中提取期望路径，用于判断是否重定向到首页"""
+    """Extract expected path from URL to detect redirects to homepage."""
     if "tensorflow.org" not in url:
         return ""
     return url.split("tensorflow.org", 1)[-1].rstrip("/")
@@ -68,7 +68,7 @@ def fetch_tf_doc(
     min_page_chars: int,
     min_desc_chars: int,
 ) -> Tuple[bool, Dict[str, Any]]:
-    """访问文档页面并判断 API 是否存在"""
+    """Visit the doc page and determine if the API exists."""
     normalized_api = crawler.normalize_api_name(api_name)
     url = crawler.build_doc_url(normalized_api)
 
@@ -158,47 +158,47 @@ def fetch_tf_doc(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="过滤出真实存在的 TensorFlow API")
+    parser = argparse.ArgumentParser(description="Filter to existing TensorFlow APIs")
     parser.add_argument(
         "--input",
         "-i",
         default=DEFAULT_INPUT,
-        help="输入 API 列表 JSON 文件路径",
+        help="Input API list JSON file path",
     )
     parser.add_argument(
         "--output",
         "-o",
         default=DEFAULT_OUTPUT,
-        help="输出过滤后的 API 列表 JSON 文件路径",
+        help="Output filtered API list JSON file path",
     )
     parser.add_argument(
         "--delay",
         type=float,
         default=DEFAULT_DELAY,
-        help=f"每次请求延迟秒数（默认 {DEFAULT_DELAY}）",
+        help=f"Delay seconds per request (default {DEFAULT_DELAY})",
     )
     parser.add_argument(
         "--min-page-chars",
         type=int,
         default=DEFAULT_MIN_PAGE_CHARS,
-        help=f"页面最小字符数阈值（默认 {DEFAULT_MIN_PAGE_CHARS}）",
+        help=f"Minimum page length threshold (default {DEFAULT_MIN_PAGE_CHARS})",
     )
     parser.add_argument(
         "--min-desc-chars",
         type=int,
         default=DEFAULT_MIN_DESC_CHARS,
-        help=f"描述最小字符数阈值（默认 {DEFAULT_MIN_DESC_CHARS}）",
+        help=f"Minimum description length threshold (default {DEFAULT_MIN_DESC_CHARS})",
     )
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     data = load_json(args.input)
     apis: List[Dict[str, Any]] = data.get("apis", [])
-    print(f"📋 共加载 {len(apis)} 个 TF API")
+    print(f"📋 Loaded {len(apis)} TF APIs")
 
     crawler = TensorFlowDocCrawler()
 
@@ -239,11 +239,11 @@ def main() -> None:
     save_json(args.output, output_data)
 
     print("=" * 80)
-    print("过滤完成")
+    print("Filtering complete")
     print("=" * 80)
-    print(f"保留 API 数量: {len(valid_apis)}")
-    print(f"剔除 API 数量: {len(invalid_apis)}")
-    print(f"输出文件: {args.output}")
+    print(f"Kept API count: {len(valid_apis)}")
+    print(f"Removed API count: {len(invalid_apis)}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":

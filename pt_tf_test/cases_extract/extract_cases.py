@@ -1,12 +1,12 @@
-# 说明：
-# 本代码用于从对比错误报告（comparison_error_samples_report.txt）中解析
-# 具备“数值不匹配”类型、且 PyTorch 与 TensorFlow API 语义等价的样例，
-# 并为每个样例自动生成一个最小可运行的复现脚本（reproduce_case_XX.py）。
+# illustrate：
+# This code is used to compare error reports from（comparison_error_samples_report.txt）Medium parsing
+# Examples with "numeric mismatch" type and semantic equivalence between PyTorch and TensorFlow APIs，
+# And automatically generate a minimum runnable reproduction script for each sample（reproduce_case_XX.py）。
 #
-# 核心流程：
-# 1) parse_report：读取并解析报告文件，筛选出数值不匹配且 API 语义等价的案例；
-# 2) generate_script：按解析出的 torch/tf 输入参数生成复现脚本内容并写入文件；
-# 3) main：执行解析，打印统计信息，并批量生成复现脚本。
+# core process：
+# 1) parse_report：Read and parse the report file to filter out cases with mismatched values ​​and equivalent API semantics；
+# 2) generate_script：According to the parsed torch/tf Input parameters to generate reproduction script content and write it to a file；
+# 3) main：Execute parsing, print statistical information, and generate recurrence scripts in batches。
 
 import json
 import re
@@ -14,11 +14,11 @@ import os
 import numpy as np
 
 def generate_script(case_idx, case_data, output_dir):
-    # 根据单个样例的 torch_case / tf_case 构造一份独立的复现脚本
-    # 复现脚本中包含：
-    # - 输入数据构造：根据 shape/dtype/sample_values 生成 numpy，再转 torch/tf 张量
-    # - API 调用：通过字符串反射方式获取函数并调用
-    # - 结果对比：打印形状，并计算 torch 与 tf 结果的最大差异
+    # based on a single sample torch_case / tf_case Construct a stand-alone reproduction script
+    # The reproduction script contains：
+    # - Input data structure: according to shape/dtype/sample_values Generate numpy and then convert torch/tf Tensor
+    # - API Call: Get the function through string reflection and call it
+    # - Results comparison: print the shape and calculate the maximum difference between torch and tf results
     torch_case = case_data['torch_case']
     tf_case = case_data['tf_case']
     
@@ -190,12 +190,12 @@ if __name__ == "__main__":
     print(f"Generated {file_path}")
 
 def parse_report(file_path):
-    # 解析报告文件，提取“数值不匹配”的案例，并判断 torch/tf API 是否语义等价
-    # 返回结构：[{ 'torch_case': <dict>, 'tf_case': <dict>, 'error_msg': <str> }, ...]
+    # Parse the report file, extract the cases of "numeric mismatch", and judge torch/tf API Is it semantically equivalent?
+    # Return structure：[{ 'torch_case': <dict>, 'tf_case': <dict>, 'error_msg': <str> }, ...]
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # 按分隔线拆分各文件段
+    # Split each file segment by dividing line
     file_sections = content.split('================================================================================')
     
     valid_cases = []
@@ -204,15 +204,15 @@ def parse_report(file_path):
         if not section.strip():
             continue
             
-        # 将当前文件段按“样例 N:”拆分
-        cases = re.split(r'样例 \d+:', section)
+        # Press the "Sample" button on the current file segment N:”Split
+        cases = re.split(r'Sample \d+:', section)
         
         for case in cases:
-            # 仅保留“数值不匹配”的对比错误样例
-            if 'comparison_error: 数值不匹配' not in case:
+            # Only keep comparison error examples of "numeric mismatch"
+            if 'comparison_error: Values ​​do not match' not in case:
                 continue
                 
-            # 提取 torch 与 tensorflow 测试样例的 JSON 段
+            # Extract JSON segments of torch and tensorflow test samples
             try:
                 torch_match = re.search(r'torch_test_case:\s*({.*?})\s*tensorflow_test_case:', case, re.DOTALL)
                 tf_match = re.search(r'tensorflow_test_case:\s*({.*})', case, re.DOTALL)
@@ -226,15 +226,15 @@ def parse_report(file_path):
                 torch_api = torch_json.get('api', '')
                 tf_api = tf_json.get('api', '')
                 
-                # 清洗异常数据：若 TF API 以 torch. 开头，跳过
+                # Clean abnormal data: If TF API is torch. Beginning, skip
                 if tf_api.startswith('torch.'):
                     continue
                     
-                # 判断语义等价：采用启发式-基于函数名的“基名”匹配
+                # Determining semantic equivalence: using heuristics - "base name" matching based on function names
                 pt_base = torch_api.split('.')[-1].lower()
                 tf_base = tf_api.split('.')[-1].lower()
                 
-                # 白名单：处理名称不同但语义相同的常见对，如 sub<->subtract、mul<->multiply 等
+                # Whitelist: Handles common pairs with different names but the same semantics, e.g. sub<->subtract、mul<->multiply wait
                 is_equivalent = False
                 
                 if pt_base == tf_base:
@@ -245,12 +245,12 @@ def parse_report(file_path):
                      (pt_base == 'true_divide' and tf_base == 'truediv'):
                      is_equivalent = True
                      
-                # 特例：用户要求严格语义相同，跳过 addmm 与 matmul
+                # Special case: The user requires strict semantic equality, skip addmm and matmul
                 if pt_base == 'addmm' and tf_base == 'matmul':
                     is_equivalent = False
                     
                 if is_equivalent:
-                    # 记录有效样例，包括两侧的 JSON 及错误消息
+                    # Log valid examples, including JSON on both sides and error messages
                     valid_cases.append({
                         'torch_case': torch_json,
                         'tf_case': tf_json,
@@ -268,7 +268,7 @@ def parse_report(file_path):
     return valid_cases
 
 if __name__ == "__main__":
-    # 主入口：解析报告并批量生成复现脚本
+    # Main entrance: parse reports and generate recurrence scripts in batches
     cases = parse_report(r'd:\graduate\DFrameworkTest\pt_tf_test\analysis\comparison_error_samples_report.txt')
     print(f"Found {len(cases)} cases.")
     output_dir = r'd:\graduate\DFrameworkTest\pt_tf_test\simplest_test'

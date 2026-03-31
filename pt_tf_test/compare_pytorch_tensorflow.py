@@ -1,6 +1,5 @@
 """
-PyTorch与TensorFlow算子比较测试框架
-比较前N个算子在两个框架中的执行结果是否一致
+PyTorchComparing testing frameworks with TensorFlow operators Compare whether the execution results of the first N operators in the two frameworks are consistent
 """
 
 import pymongo
@@ -20,40 +19,40 @@ from collections import defaultdict
 class PyTorchTensorFlowComparator:
     def __init__(self, mongo_uri: str = "mongodb://localhost:27017/", db_name: str = "freefuzz-torch"):
         """
-        初始化PyTorch和TensorFlow比较器
+        Initializing PyTorch and TensorFlow comparators
         
         Args:
-            mongo_uri: MongoDB连接URI
-            db_name: 数据库名称
+            mongo_uri: MongoDBconnectURI
+            db_name: Database name
         """
         self.client = pymongo.MongoClient(mongo_uri)
         self.db = self.client[db_name]
         self.collection = self.db["argVS"]
         
-        # 加载API映射表
+        # Load API mapping table
         self.api_mapping = self.load_api_mapping()
         
-        # 创建结果存储目录
+        # Create results storage directory
         self.result_dir = os.path.abspath("pt_tf_log")
         os.makedirs(self.result_dir, exist_ok=True)
-        print(f"📁 结果存储目录: {self.result_dir}")
+        print(f"📁 Results storage directory: {self.result_dir}")
         
-        # 结果统计
+        # Result statistics
         self.comparison_results = []
         
-        # 已废弃的PyTorch算子列表
+        # List of obsolete PyTorch operators
         self.deprecated_torch_apis = {
-            "torch.symeig": "已在PyTorch 1.9版本中移除，请使用torch.linalg.eigh替代"
+            "torch.symeig": "Already inPyTorch 1.9removed from the version, please usetorch.linalg.eighsubstitute"
         }
         
-        # 固定随机种子以确保可重复性
+        # Fixed random seed to ensure reproducibility
         self.random_seed = 42
         np.random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
         tf.random.set_seed(self.random_seed)
         
     def load_api_mapping(self) -> Dict[str, Dict[str, str]]:
-        """加载PyTorch到TensorFlow的API映射表"""
+        """Load the PyTorch to TensorFlow API mapping table"""
         mapping_file = "api_mapping/pt_tf_mapping.csv"
         try:
             df = pd.read_csv(mapping_file)
@@ -62,17 +61,17 @@ class PyTorchTensorFlowComparator:
             for _, row in df.iterrows():
                 pt_api = str(row["PyTorch APIs"]).strip()
                 tf_api = str(row["TensorFlow APIs"]).strip()
-                note = str(row.get("说明", "")).strip()
+                note = str(row.get("illustrate", "")).strip()
                 mapping[pt_api] = {"tf_api": tf_api, "note": note}
             
-            print(f"✅ 成功加载API映射表，共 {len(mapping)} 条映射")
+            print(f"✅ Successfully loaded API mapping table, total {len(mapping)} bar mapping")
             return mapping
         except Exception as e:
-            print(f"❌ 加载API映射表失败: {e}")
+            print(f"❌ Failed to load API mapping table: {e}")
             return {}
     
     def is_class_based_api(self, api_name: str) -> bool:
-        """判断API是否是基于类的"""
+        """Determine whether the API is class-based"""
         parts = api_name.split(".")
         if len(parts) >= 2:
             name = parts[-1]
@@ -80,7 +79,7 @@ class PyTorchTensorFlowComparator:
         return False
     
     def convert_class_to_functional(self, torch_api: str) -> Tuple[Optional[str], Optional[str]]:
-        """将类形式的API转换为函数形式"""
+        """Convert class form API to function form"""
         if not self.is_class_based_api(torch_api):
             return None, None
         
@@ -96,41 +95,41 @@ class PyTorchTensorFlowComparator:
         return None, None
     
     def convert_api_name(self, torch_api: str) -> Tuple[Optional[str], str]:
-        """将PyTorch API转换为TensorFlow API"""
-        # 检查是否是类形式的API
+        """Convert PyTorch API toTensorFlow API"""
+        # Check if it is in class formAPI
         if self.is_class_based_api(torch_api):
             torch_func, tf_func = self.convert_class_to_functional(torch_api)
             if torch_func and tf_func:
                 torch_func_obj = self.get_operator_function(torch_func, "torch")
                 tf_func_obj = self.get_operator_function(tf_func, "tensorflow")
                 if torch_func_obj and tf_func_obj:
-                    return tf_func, "类转函数"
+                    return tf_func, "class transfer function"
         
-        # 优先查映射表
+        # Check the mapping table first
         if torch_api in self.api_mapping:
             note = self.api_mapping[torch_api]["note"]
             tf_api = self.api_mapping[torch_api]["tf_api"]
             
-            if "无对应实现" in note or "无" in note:
-                return None, "无对应实现"
-            elif "一致" in note:
-                return tf_api, "映射表(功能一致)"
+            if "No corresponding implementation" in note or "none" in note:
+                return None, "No corresponding implementation"
+            elif "consistent" in note:
+                return tf_api, "Mapping table (functionally consistent)"
             else:
-                return tf_api, "映射表(有差异)"
+                return tf_api, "Mapping table (with differences)"
         
-        # 默认转换规则
+        # Default conversion rules
         api = torch_api.replace("torch", "tf", 1)
-        return api, "名称转换"
+        return api, "name conversion"
     
     def convert_dtype(self, torch_dtype_str: str) -> str:
-        """将torch的dtype转换为tensorflow的dtype"""
+        """Convert torch dtype to tensorflowdtype"""
         if isinstance(torch_dtype_str, str):
             if torch_dtype_str.startswith("torch."):
                 return torch_dtype_str.replace("torch.", "tf.")
         return torch_dtype_str
     
     def convert_key(self, key: str, tf_api: str = "") -> str:
-        """转换参数名"""
+        """Conversion parameter name"""
         key_mapping = {
             "input": "x",
             "other": "y",
@@ -138,7 +137,7 @@ class PyTorchTensorFlowComparator:
         return key_mapping.get(key, key)
     
     def should_skip_param(self, key: str, tf_api: str) -> bool:
-        """判断是否应该跳过某个参数"""
+        """Determine whether a parameter should be skipped"""
         common_skip_params = ["layout", "requires_grad", "out", "memory_format", "device"]
         
         skip_params = {
@@ -154,7 +153,7 @@ class PyTorchTensorFlowComparator:
         return False
     
     def generate_numpy_data(self, data: Any) -> np.ndarray:
-        """生成numpy数组作为共享数据源"""
+        """Generate numpy array as shared data source"""
         if isinstance(data, dict):
             dtype_map = {
                 "torch.float64": np.float64,
@@ -191,7 +190,7 @@ class PyTorchTensorFlowComparator:
             return np.array(data)
     
     def convert_to_tensor_torch(self, data: Any, numpy_data: np.ndarray = None) -> torch.Tensor:
-        """转换数据为PyTorch张量"""
+        """Convert data to PyTorch tensors"""
         if numpy_data is not None:
             return torch.from_numpy(numpy_data.copy())
         
@@ -206,7 +205,7 @@ class PyTorchTensorFlowComparator:
             return torch.tensor(data)
     
     def convert_to_tensor_tensorflow(self, data: Any, numpy_data: np.ndarray = None) -> tf.Tensor:
-        """转换数据为TensorFlow张量"""
+        """Convert data to TensorFlow tensors"""
         if numpy_data is not None:
             return tf.convert_to_tensor(numpy_data.copy())
         
@@ -221,11 +220,11 @@ class PyTorchTensorFlowComparator:
             return tf.constant(data)
     
     def prepare_shared_numpy_data(self, document: Dict[str, Any], case_index: int) -> Dict[str, Any]:
-        """准备共享的numpy数据"""
+        """Prepare numpy data for sharing"""
         shared_data = {}
         api_name = document.get("api", "")
         
-        # 对于类形式的API，如果没有input参数，生成默认输入
+        # For class-form APIs, if there is no input parameter, a default input is generated.
         if self.is_class_based_api(api_name) and "input" not in document:
             if "2d" in api_name.lower() or "2D" in api_name:
                 default_shape = {"shape": [2, 3, 4, 4], "dtype": "torch.float32"}
@@ -238,13 +237,13 @@ class PyTorchTensorFlowComparator:
             
             shared_data["input"] = self.generate_numpy_data(default_shape)
         
-        # 处理*size参数
+        # deal with*sizeparameter
         if "*size" in document:
             size_data = document["*size"]
             if isinstance(size_data, list) and len(size_data) > case_index:
                 shared_data["*size"] = size_data[case_index]
         
-        # 处理*tensors参数
+        # deal with*tensorsparameter
         if "*tensors" in document:
             tensors_data = document["*tensors"]
             if isinstance(tensors_data, list) and len(tensors_data) > case_index:
@@ -254,14 +253,14 @@ class PyTorchTensorFlowComparator:
                 else:
                     shared_data["*tensors"] = [self.generate_numpy_data(tensor_list)]
         
-        # 处理其他张量参数
+        # Handle other tensor parameters
         for param_name in ["condition", "x", "y", "input"]:
             if param_name in document:
                 param_data = document[param_name]
                 if isinstance(param_data, list) and len(param_data) > case_index:
                     shared_data[param_name] = self.generate_numpy_data(param_data[case_index])
         
-        # 处理其他参数
+        # Handle other parameters
         exclude_keys = ["_id", "api", "condition", "x", "y", "input", "*size", "*tensors", "tensors", "out", "eigenvectors", "upper"]
         for key, value in document.items():
             if key not in exclude_keys:
@@ -276,7 +275,7 @@ class PyTorchTensorFlowComparator:
         return shared_data
     
     def prepare_arguments_torch(self, document: Dict[str, Any], case_index: int, shared_data: Dict[str, Any] = None) -> Tuple[List[Any], Dict[str, Any]]:
-        """为PyTorch准备参数"""
+        """Prepare parameters for PyTorch"""
         args = []
         kwargs = {}
         
@@ -314,7 +313,7 @@ class PyTorchTensorFlowComparator:
         return args, kwargs
     
     def prepare_arguments_tensorflow(self, document: Dict[str, Any], case_index: int, tf_api: str, shared_data: Dict[str, Any] = None) -> Tuple[List[Any], Dict[str, Any]]:
-        """为TensorFlow准备参数"""
+        """Prepare parameters for TensorFlow"""
         args = []
         kwargs = {}
         
@@ -356,7 +355,7 @@ class PyTorchTensorFlowComparator:
         return args, kwargs
     
     def convert_dtype_device_params_torch(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """转换PyTorch的dtype和device参数"""
+        """Convert PyTorch’s dtype and device parameters"""
         if "dtype" in kwargs:
             dtype_value = kwargs["dtype"]
             if isinstance(dtype_value, str):
@@ -390,7 +389,7 @@ class PyTorchTensorFlowComparator:
         return kwargs
     
     def convert_dtype_device_params_tensorflow(self, kwargs: Dict[str, Any]) -> Dict[str, Any]:
-        """转换TensorFlow的dtype参数"""
+        """Convert TensorFlow’s dtype parameter"""
         if "dtype" in kwargs:
             dtype_value = kwargs["dtype"]
             if isinstance(dtype_value, str):
@@ -418,14 +417,14 @@ class PyTorchTensorFlowComparator:
                 }
                 kwargs["dtype"] = int_dtype_map.get(dtype_value, tf.float32)
         
-        # TensorFlow不使用device参数，移除它
+        # TensorFlowDo not use the device parameter, remove it
         if "device" in kwargs:
             del kwargs["device"]
         
         return kwargs
     
     def get_operator_function(self, api_name: str, framework: str = "torch"):
-        """获取算子函数"""
+        """Get operator function"""
         try:
             parts = api_name.split(".")
             if len(parts) >= 2:
@@ -454,7 +453,7 @@ class PyTorchTensorFlowComparator:
             return None
     
     def compare_tensors(self, torch_result, tf_result, tolerance: float = 1e-5) -> Tuple[bool, str]:
-        """比较两个张量是否相等"""
+        """Compare two tensors for equality"""
         try:
             if hasattr(torch_result, 'detach'):
                 torch_np = torch_result.detach().cpu().numpy()
@@ -467,32 +466,32 @@ class PyTorchTensorFlowComparator:
                 tf_np = np.array(tf_result)
             
             if torch_np.shape != tf_np.shape:
-                return False, f"形状不匹配: PyTorch {torch_np.shape} vs TensorFlow {tf_np.shape}"
+                return False, f"Shape mismatch: PyTorch {torch_np.shape} vs TensorFlow {tf_np.shape}"
             
             if torch_np.dtype == np.bool_ or tf_np.dtype == np.bool_:
                 if np.array_equal(torch_np, tf_np):
-                    return True, "布尔值匹配"
+                    return True, "boolean match"
                 else:
                     diff_count = np.sum(torch_np != tf_np)
-                    return False, f"布尔值不匹配，差异数量: {diff_count}"
+                    return False, f"boolean mismatch, number of differences: {diff_count}"
             
             if not np.issubdtype(torch_np.dtype, np.number) or not np.issubdtype(tf_np.dtype, np.number):
                 if np.array_equal(torch_np, tf_np):
-                    return True, "值匹配"
+                    return True, "value match"
                 else:
-                    return False, f"值不匹配 (dtype: torch={torch_np.dtype}, tf={tf_np.dtype})"
+                    return False, f"Values ​​do not match (dtype: torch={torch_np.dtype}, tf={tf_np.dtype})"
             
             if np.allclose(torch_np, tf_np, atol=tolerance, rtol=tolerance, equal_nan=True):
-                return True, "数值匹配"
+                return True, "numerical matching"
             else:
                 max_diff = np.max(np.abs(torch_np - tf_np))
-                return False, f"数值不匹配，最大差异: {max_diff}"
+                return False, f"Numerical mismatch, maximum difference: {max_diff}"
         
         except Exception as e:
-            return False, f"比较过程出错: {str(e)}"
+            return False, f"An error occurred during comparison: {str(e)}"
     
     def test_single_case(self, document: Dict[str, Any], case_index: int) -> Dict[str, Any]:
-        """测试单个用例"""
+        """Test a single use case"""
         torch_api = document.get("api", "unknown")
         test_id = str(document.get("_id", "unknown"))
         
@@ -503,7 +502,7 @@ class PyTorchTensorFlowComparator:
                 torch_func_obj = self.get_operator_function(torch_func, "torch")
                 if torch_func_obj:
                     torch_api = torch_func
-                    print(f"    🔄 类转函数: {original_torch_api} -> {torch_api}")
+                    print(f"    🔄 class transfer function: {original_torch_api} -> {torch_api}")
         
         result = {
             "test_id": test_id,
@@ -528,7 +527,7 @@ class PyTorchTensorFlowComparator:
         if torch_api in self.deprecated_torch_apis:
             result["status"] = "deprecated"
             result["torch_error"] = self.deprecated_torch_apis[torch_api]
-            result["tensorflow_error"] = "对应PyTorch算子已废弃，跳过测试"
+            result["tensorflow_error"] = "The corresponding PyTorch operator has been abandoned and the test is skipped."
             return result
         
         tf_api, mapping_method = self.convert_api_name(torch_api)
@@ -545,7 +544,7 @@ class PyTorchTensorFlowComparator:
         try:
             torch_func = self.get_operator_function(torch_api, "torch")
             if torch_func is None:
-                result["torch_error"] = f"PyTorch算子 {torch_api} 未找到"
+                result["torch_error"] = f"PyTorchoperator {torch_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_torch(document, case_index, shared_data)
                 with torch.no_grad():
@@ -559,16 +558,16 @@ class PyTorchTensorFlowComparator:
             
             if "deprecated" in error_msg.lower() or "removed" in error_msg.lower():
                 if torch_api not in self.deprecated_torch_apis:
-                    self.deprecated_torch_apis[torch_api] = f"运行时发现已废弃: {error_msg[:100]}..."
+                    self.deprecated_torch_apis[torch_api] = f"Found to be obsolete when running: {error_msg[:100]}..."
                 result["status"] = "deprecated"
-                result["tensorflow_error"] = "对应PyTorch算子已废弃，跳过测试"
+                result["tensorflow_error"] = "The corresponding PyTorch operator has been abandoned and the test is skipped."
                 return result
         
         tf_result = None
         try:
             tf_func = self.get_operator_function(tf_api, "tensorflow")
             if tf_func is None:
-                result["tensorflow_error"] = f"TensorFlow算子 {tf_api} 未找到"
+                result["tensorflow_error"] = f"TensorFlowoperator {tf_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_tensorflow(document, case_index, tf_api, shared_data)
                 tf_result = tf_func(*args, **kwargs)
@@ -597,7 +596,7 @@ class PyTorchTensorFlowComparator:
         return result
     
     def get_num_test_cases(self, document: Dict[str, Any]) -> int:
-        """获取文档中的测试用例数量"""
+        """Get the number of test cases in the document"""
         max_len = 0
         for key, value in document.items():
             if key not in ["_id", "api"] and isinstance(value, list):
@@ -605,21 +604,21 @@ class PyTorchTensorFlowComparator:
         return max_len if max_len > 0 else 1
     
     def compare_first_n_operators(self, n: int = 20) -> List[Dict[str, Any]]:
-        """比较前N个算子"""
-        print(f"🚀 开始PyTorch与TensorFlow算子比较测试 (前{n}个算子)...")
-        print(f"📊 连接MongoDB: {self.client.address}")
+        """Compare the first N operators"""
+        print(f"🚀 Start PyTorch and TensorFlow operator comparison test (previously{n}an operator)...")
+        print(f"📊 connectMongoDB: {self.client.address}")
         
         documents = list(self.collection.find().limit(n))
         
-        print(f"📋 找到 {len(documents)} 个算子:")
+        print(f"📋 turn up {len(documents)} an operator:")
         total_cases = 0
         for i, doc in enumerate(documents):
             api_name = doc.get("api", "unknown")
             num_cases = self.get_num_test_cases(doc)
             total_cases += num_cases
-            print(f"  {i+1}. {api_name} ({num_cases} 个测试用例)")
+            print(f"  {i+1}. {api_name} ({num_cases} test cases)")
         
-        print(f"\n🎯 总计需要执行: {total_cases} 个测试用例")
+        print(f"\n🎯 Total needs to be executed: {total_cases} test cases")
         
         results = []
         current_case = 1
@@ -628,10 +627,10 @@ class PyTorchTensorFlowComparator:
             api_name = doc.get("api", "unknown")
             num_cases = self.get_num_test_cases(doc)
             
-            print(f"\n🔧 测试算子 {doc_idx+1}/{len(documents)}: {api_name} ({num_cases} 个用例)")
+            print(f"\n🔧 Test operator {doc_idx+1}/{len(documents)}: {api_name} ({num_cases} use cases)")
             
             for case_idx in range(num_cases):
-                print(f"  用例 {current_case}/{total_cases} (算子用例: {case_idx+1}/{num_cases}): {api_name}")
+                print(f"  use case {current_case}/{total_cases} (Operator use cases: {case_idx+1}/{num_cases}): {api_name}")
                 
                 result = self.test_single_case(doc, case_idx)
                 result["operator"] = api_name
@@ -640,15 +639,15 @@ class PyTorchTensorFlowComparator:
                 
                 if result["status"] == "compared":
                     if result["results_match"]:
-                        print(f"    ✅ 结果一致")
+                        print(f"    ✅ The results are consistent")
                     else:
-                        print(f"    ❌ 结果不一致: {result['comparison_error']}")
+                        print(f"    ❌ inconsistent results: {result['comparison_error']}")
                 elif result["status"] == "deprecated":
-                    print(f"    ⏭️ 已废弃算子，跳过测试")
+                    print(f"    ⏭️ Deprecated operator, skip testing")
                 elif result["status"] == "no_tensorflow_equivalent":
-                    print(f"    ⚠️ TensorFlow无对应实现")
+                    print(f"    ⚠️ TensorFlowNo corresponding implementation")
                 else:
-                    print(f"    ❌ 测试失败: {result['status']}")
+                    print(f"    ❌ test failed: {result['status']}")
                 
                 current_case += 1
         
@@ -656,7 +655,7 @@ class PyTorchTensorFlowComparator:
         return results
     
     def print_summary(self, results: List[Dict[str, Any]]):
-        """打印测试结果摘要"""
+        """Print a summary of test results"""
         total = len(results)
         compared = len([r for r in results if r["status"] == "compared"])
         matched = len([r for r in results if r["results_match"]])
@@ -665,29 +664,29 @@ class PyTorchTensorFlowComparator:
         torch_failed = len([r for r in results if r["status"] in ["torch_failed", "both_failed"]])
         tf_failed = len([r for r in results if r["status"] in ["tensorflow_failed", "both_failed"]])
         
-        print(f"\n📊 测试结果摘要:")
+        print(f"\n📊 Summary of test results:")
         print(f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-        print(f"📈 总测试用例: {total}")
-        print(f"🔍 成功比较: {compared}")
-        print(f"✅ 结果一致: {matched}")
-        print(f"❌ 结果不一致: {compared - matched}")
-        print(f"⏭️ 已废弃算子: {deprecated}")
-        print(f"⚠️ TensorFlow无对应实现: {no_tf}")
-        print(f"🔴 PyTorch执行失败: {torch_failed}")
-        print(f"🟠 TensorFlow执行失败: {tf_failed}")
+        print(f"📈 Total test cases: {total}")
+        print(f"🔍 successful comparison: {compared}")
+        print(f"✅ The results are consistent: {matched}")
+        print(f"❌ inconsistent results: {compared - matched}")
+        print(f"⏭️ Deprecated operator: {deprecated}")
+        print(f"⚠️ TensorFlowNo corresponding implementation: {no_tf}")
+        print(f"🔴 PyTorchExecution failed: {torch_failed}")
+        print(f"🟠 TensorFlowExecution failed: {tf_failed}")
         
         if compared > 0:
             match_rate = matched / compared * 100
-            print(f"📊 一致性比率: {match_rate:.1f}%")
+            print(f"📊 consistency ratio: {match_rate:.1f}%")
         
         if deprecated > 0:
             deprecated_apis = set([r["torch_api"] for r in results if r["status"] == "deprecated"])
-            print(f"\n⏭️ 已废弃的算子 ({len(deprecated_apis)} 个):")
+            print(f"\n⏭️ Deprecated operator ({len(deprecated_apis)} indivual):")
             for api in sorted(deprecated_apis):
                 print(f"  - {api}")
     
     def save_results(self, results: List[Dict[str, Any]], filename: str = None):
-        """保存测试结果"""
+        """Save test results"""
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"pt_tf_comparison_{timestamp}.json"
@@ -722,7 +721,7 @@ class PyTorchTensorFlowComparator:
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2, ensure_ascii=False)
         
-        print(f"💾 结果已保存到: {filepath}")
+        print(f"💾 Results have been saved to: {filepath}")
         
         mismatched_cases = [r for r in results if r["status"] == "compared" and not r["results_match"]]
         if mismatched_cases:
@@ -732,14 +731,14 @@ class PyTorchTensorFlowComparator:
             with open(mismatch_filepath, 'w', encoding='utf-8') as f:
                 json.dump(mismatched_cases, f, indent=2, ensure_ascii=False)
             
-            print(f"⚠️ 不一致用例已保存到: {mismatch_filepath}")
+            print(f"⚠️ Inconsistent use case saved to: {mismatch_filepath}")
     
     def close(self):
-        """关闭MongoDB连接"""
+        """Close MongoDB connection"""
         self.client.close()
 
 def main():
-    """主函数"""
+    """main function"""
     comparator = PyTorchTensorFlowComparator()
     
     try:

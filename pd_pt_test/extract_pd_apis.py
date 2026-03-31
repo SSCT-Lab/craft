@@ -1,18 +1,18 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 1: 从 PaddlePaddle 官方测试文件中提取被测试的 Paddle API 列表
+Step 1: Extract Paddle API list from PaddlePaddle official test files
 
-功能：
-- 扫描 testcases_pd/ 目录下的 test_*_op.py 测试文件
-- 通过预定义映射 + AST 辅助分析提取 Paddle 公开 API 名称
-- 去重并输出结构化的 API 列表（JSON 格式）
+Function:
+- Scan testcases_pd/ test_*_op.py files
+- Use predefined mappings + AST to extract public Paddle API names
+- Deduplicate and output a structured API list (JSON)
 
-用法：
+Usage:
     conda activate tf_env
     python pd_pt_test/extract_pd_apis.py [--pd-dir testcases_pd] [--output pd_pt_test/data/pd_apis_new.json]
 
-输出：pd_pt_test/data/pd_apis_new.json
+Output: pd_pt_test/data/pd_apis_new.json
 """
 
 import os
@@ -26,10 +26,10 @@ from typing import List, Dict, Set, Any, Optional
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# ==================== 预定义的测试文件 → Paddle API 映射 ====================
-# Paddle 的测试文件通常命名为 test_xxx_op.py，一个文件可测试多个相关 API
+# ==================== Predefined test file -> Paddle API mapping ====================
+# Paddle test files are usually named test_xxx_op.py; one file may cover multiple APIs
 KNOWN_FILE_APIS: Dict[str, List[str]] = {
-    # ==================== 激活函数 ====================
+    # ==================== Activation ====================
     "test_activation_op.py": [
         "paddle.nn.functional.relu", "paddle.nn.functional.relu6",
         "paddle.nn.functional.leaky_relu", "paddle.nn.functional.elu",
@@ -54,7 +54,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     ],
     "test_activation_stride_op.py": [],
 
-    # ==================== 算术运算 ====================
+    # ==================== Arithmetic ====================
     "test_add_op.py": ["paddle.add"],
     "test_add_n_op.py": ["paddle.add_n"],
     "test_addmm_op.py": ["paddle.addmm"],
@@ -72,7 +72,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_floor_divide_op.py": ["paddle.floor_divide"],
     "test_modulo_op.py": ["paddle.remainder"],
 
-    # ==================== 矩阵运算 ====================
+    # ==================== Matrix ====================
     "test_matmul_v2_op.py": ["paddle.matmul"],
     "test_matmul_op.py": ["paddle.matmul"],
     "test_dot_op.py": ["paddle.dot"],
@@ -88,7 +88,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_outer_op.py": ["paddle.outer"],
     "test_kron_op.py": ["paddle.kron"],
 
-    # ==================== 归约运算 ====================
+    # ==================== Reduction ====================
     "test_reduce_op.py": [
         "paddle.sum", "paddle.mean", "paddle.max", "paddle.min",
         "paddle.prod", "paddle.all", "paddle.any",
@@ -103,7 +103,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_logsumexp_op.py": ["paddle.logsumexp"],
     "test_logcumsumexp_op.py": ["paddle.logcumsumexp"],
 
-    # ==================== 比较运算 ====================
+    # ==================== Comparison ====================
     "test_compare_op.py": [
         "paddle.equal", "paddle.not_equal",
         "paddle.greater_than", "paddle.greater_equal",
@@ -113,7 +113,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_isnan_op.py": ["paddle.isnan"],
     "test_isinf_v2_op.py": ["paddle.isinf"],
 
-    # ==================== 数组操作 ====================
+    # ==================== Array ops ====================
     "test_concat_op.py": ["paddle.concat"],
     "test_stack_op.py": ["paddle.stack"],
     "test_unstack_op.py": ["paddle.unstack"],
@@ -175,7 +175,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_chunk_op.py": ["paddle.chunk"],
     "test_unbind_op.py": ["paddle.unbind"],
 
-    # ==================== 卷积 ====================
+    # ==================== Convolution ====================
     "test_conv2d_op.py": ["paddle.nn.functional.conv2d"],
     "test_conv3d_op.py": ["paddle.nn.functional.conv3d"],
     "test_conv1d_op.py": ["paddle.nn.functional.conv1d"],
@@ -185,7 +185,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_depthwise_conv2d_op.py": ["paddle.nn.functional.conv2d"],
     "test_deformable_conv_op.py": ["paddle.vision.ops.deform_conv2d"],
 
-    # ==================== 池化 ====================
+    # ==================== Pooling ====================
     "test_pool2d_op.py": ["paddle.nn.functional.max_pool2d", "paddle.nn.functional.avg_pool2d"],
     "test_pool3d_op.py": ["paddle.nn.functional.max_pool3d", "paddle.nn.functional.avg_pool3d"],
     "test_pool1d_op.py": ["paddle.nn.functional.max_pool1d", "paddle.nn.functional.avg_pool1d"],
@@ -193,14 +193,14 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_adaptive_avg_pool3d_op.py": ["paddle.nn.functional.adaptive_avg_pool3d"],
     "test_adaptive_max_pool2d_op.py": ["paddle.nn.functional.adaptive_max_pool2d"],
 
-    # ==================== 归一化层 ====================
+    # ==================== Normalization ====================
     "test_batch_norm_op.py": ["paddle.nn.functional.batch_norm"],
     "test_layer_norm_op.py": ["paddle.nn.functional.layer_norm"],
     "test_group_norm_op.py": ["paddle.nn.functional.group_norm"],
     "test_instance_norm_op.py": ["paddle.nn.functional.instance_norm"],
     "test_norm_op.py": ["paddle.norm"],
 
-    # ==================== 损失函数 ====================
+    # ==================== Loss functions ====================
     "test_softmax_op.py": ["paddle.nn.functional.softmax"],
     "test_log_softmax_op.py": ["paddle.nn.functional.log_softmax"],
     "test_cross_entropy_op.py": ["paddle.nn.functional.cross_entropy"],
@@ -218,7 +218,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     # ==================== Dropout ====================
     "test_dropout_op.py": ["paddle.nn.functional.dropout"],
 
-    # ==================== 线性代数 ====================
+    # ==================== Linear algebra ====================
     "test_cholesky_op.py": ["paddle.linalg.cholesky"],
     "test_det_op.py": ["paddle.linalg.det"],
     "test_slogdet_op.py": ["paddle.linalg.slogdet"],
@@ -242,14 +242,14 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
         "paddle.fft.fft2", "paddle.fft.ifft2",
     ],
 
-    # ==================== 随机数 ====================
+    # ==================== Random ====================
     "test_uniform_random_op.py": ["paddle.uniform"],
     "test_gaussian_random_op.py": ["paddle.randn"],
     "test_randint_op.py": ["paddle.randint"],
     "test_randperm_op.py": ["paddle.randperm"],
     "test_bernoulli_op.py": ["paddle.bernoulli"],
 
-    # ==================== 逻辑运算 ====================
+    # ==================== Logical ====================
     "test_logical_op.py": [
         "paddle.logical_and", "paddle.logical_or",
         "paddle.logical_not", "paddle.logical_xor",
@@ -259,7 +259,7 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
         "paddle.bitwise_not", "paddle.bitwise_xor",
     ],
 
-    # ==================== 其他常用算子 ====================
+    # ==================== Other common operators ====================
     "test_interpolate_v2_op.py": ["paddle.nn.functional.interpolate"],
     "test_interpolate_op.py": ["paddle.nn.functional.interpolate"],
     "test_grid_sampler_op.py": ["paddle.nn.functional.grid_sample"],
@@ -298,10 +298,10 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "test_imag_op.py": ["paddle.imag"],
 }
 
-# 排除的文件模式（不包含有用的算子测试）
-# 注意：使用子串匹配 (pattern in filename)，因此不要添加会误杀正常
-# test_*_op.py 文件的模式（如 "op.py"）。不以 test_ 开头的文件已被
-# should_skip_file 的前缀检查排除，无需在此重复。
+# Excluded file patterns (do not include useful operator tests)
+# Note: substring match (pattern in filename); avoid overly broad patterns
+# Pattern for test_*_op.py files (e.g., "op.py"). Files not starting with test_
+# are already excluded by the should_skip_file prefix check; no need to repeat.
 EXCLUDE_PATTERNS = [
     "BUILD", "__init__.py", "_base.py",
     "benchmark", "dist_", "fleet_", "parallel_",
@@ -318,11 +318,11 @@ EXCLUDE_PATTERNS = [
 
 
 def should_skip_file(filename: str) -> bool:
-    """判断是否应跳过某个文件"""
+    """Determine whether to skip a file."""
     for pattern in EXCLUDE_PATTERNS:
         if pattern in filename:
             return True
-    # 只保留 test_ 开头的 .py 文件
+    # Only keep .py files starting with test_
     if not filename.startswith("test_"):
         return True
     if not filename.endswith(".py"):
@@ -332,9 +332,9 @@ def should_skip_file(filename: str) -> bool:
 
 def extract_python_api_from_ast(filepath: str) -> List[str]:
     """
-    通过 AST 从测试文件中提取 self.python_api 赋值语句
+    Use AST to extract self.python_api assignments from test files.
 
-    Paddle 测试文件的 setUp 方法中通常有：
+    In Paddle test files, setUp usually includes:
         self.python_api = paddle.nn.functional.relu
         self.public_python_api = paddle.concat
     """
@@ -343,7 +343,7 @@ def extract_python_api_from_ast(filepath: str) -> List[str]:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
 
-        # 正则提取 self.python_api = paddle.xxx.yyy 或 F.xxx
+        # Regex extract self.python_api = paddle.xxx.yyy or F.xxx
         patterns = [
             r'self\.python_api\s*=\s*(paddle\.[a-zA-Z_][a-zA-Z0-9_.]*)',
             r'self\.public_python_api\s*=\s*(paddle\.[a-zA-Z_][a-zA-Z0-9_.]*)',
@@ -356,7 +356,7 @@ def extract_python_api_from_ast(filepath: str) -> List[str]:
                 # F.xxx -> paddle.nn.functional.xxx
                 if api_name.startswith("F."):
                     api_name = f"paddle.nn.functional.{api_name[2:]}"
-                # 排除辅助方法
+                # Exclude helper methods
                 if not api_name.endswith("_wrapper") and "test" not in api_name.lower():
                     apis.add(api_name)
 
@@ -368,9 +368,9 @@ def extract_python_api_from_ast(filepath: str) -> List[str]:
 
 def extract_op_type_from_ast(filepath: str) -> List[str]:
     """
-    通过 AST / 正则从测试文件中提取 self.op_type
+    Use AST/regex to extract self.op_type from test files.
 
-    用于兜底推断 API 名称
+    Used as a fallback to infer API names.
     """
     op_types = set()
     try:
@@ -389,9 +389,9 @@ def extract_op_type_from_ast(filepath: str) -> List[str]:
 
 def infer_api_from_filename(filename: str) -> Optional[str]:
     """
-    从文件名推断可能的 Paddle API 名称
+    Infer a possible Paddle API name from a filename.
 
-    规则：test_xxx_op.py → paddle.xxx
+    Rule: test_xxx_op.py -> paddle.xxx
     """
     name = filename
     for suffix in ["_op.py", "_ops.py", ".py"]:
@@ -410,12 +410,12 @@ def infer_api_from_filename(filename: str) -> Optional[str]:
 
 def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
     """
-    从 testcases_pd 目录中提取所有 Paddle API
+    Extract all Paddle APIs from the testcases_pd directory.
 
-    策略：
-    1. 优先使用预定义映射
-    2. 未命中时通过 AST 提取 self.python_api / self.public_python_api
-    3. 最后通过文件名推断（仅作兜底）
+    Strategy:
+    1. Prefer predefined mapping
+    2. If not found, use AST to extract self.python_api / self.public_python_api
+    3. Finally infer from filename (fallback only)
     """
     all_apis: Dict[str, Dict[str, Any]] = {}
 
@@ -424,13 +424,13 @@ def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
         if f.endswith(".py") and not should_skip_file(f)
     ])
 
-    print(f"\n📂 扫描目录: {pd_dir}")
-    print(f"📋 候选测试文件数: {len(py_files)}")
+    print(f"\n📂 Scan directory: {pd_dir}")
+    print(f"📋 Candidate test files: {len(py_files)}")
 
     for filename in py_files:
         abs_path = os.path.join(pd_dir, filename)
 
-        # 1. 预定义映射
+        # 1. Predefined mapping
         if filename in KNOWN_FILE_APIS:
             apis = KNOWN_FILE_APIS[filename]
             for api_name in apis:
@@ -441,10 +441,10 @@ def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
                         "extraction_method": "predefined",
                     }
             if apis:
-                print(f"  ✅ {filename} → {len(apis)} 个API（预定义映射）")
+                print(f"  ✅ {filename} -> {len(apis)} APIs (predefined mapping)")
             continue
 
-        # 2. AST 提取 python_api
+        # 2. AST extract python_api
         ast_apis = extract_python_api_from_ast(abs_path)
         if ast_apis:
             for api_name in ast_apis:
@@ -454,13 +454,13 @@ def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
                         "source_file": filename,
                         "extraction_method": "ast_python_api",
                     }
-            print(f"  🔍 {filename} → {len(ast_apis)} 个API（AST python_api）")
+            print(f"  🔍 {filename} -> {len(ast_apis)} APIs (AST python_api)")
             continue
 
-        # 3. 文件名推断（兜底）
+        # 3. Infer from filename (fallback)
         inferred = infer_api_from_filename(filename)
         if inferred:
-            # 检查 op_type 来确认
+            # Check op_type to confirm
             op_types = extract_op_type_from_ast(abs_path)
             if op_types:
                 for op_type in op_types:
@@ -471,7 +471,7 @@ def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
                             "source_file": filename,
                             "extraction_method": "inferred_op_type",
                         }
-                print(f"  🔍 {filename} → {len(op_types)} 个API（op_type 推断）")
+                print(f"  🔍 {filename} -> {len(op_types)} APIs (op_type inference)")
             else:
                 if inferred not in all_apis:
                     all_apis[inferred] = {
@@ -479,7 +479,7 @@ def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
                         "source_file": filename,
                         "extraction_method": "inferred_filename",
                     }
-                print(f"  🔍 {filename} → 1 个API（文件名推断）")
+                print(f"  🔍 {filename} -> 1 API (filename inference)")
 
     result = sorted(all_apis.values(), key=lambda x: x["pd_api"])
     return result
@@ -487,46 +487,46 @@ def extract_apis_from_directory(pd_dir: str) -> List[Dict[str, Any]]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 1: 从 PaddlePaddle 官方测试文件中提取被测试的 Paddle API 列表"
+        description="Step 1: Extract Paddle APIs from PaddlePaddle official test files"
     )
     parser.add_argument(
         "--pd-dir", default=os.path.join(ROOT_DIR, "testcases_pd"),
-        help="testcases_pd 目录路径（默认: 项目根目录/testcases_pd）"
+        help="testcases_pd directory path (default: project_root/testcases_pd)"
     )
     parser.add_argument(
         "--output", "-o", default=os.path.join(ROOT_DIR, "pd_pt_test", "data", "pd_apis_new.json"),
-        help="输出的 JSON 文件路径"
+        help="Output JSON filepath"
     )
 
     args = parser.parse_args()
 
     print("=" * 80)
-    print("Step 1: 从 PaddlePaddle 官方测试文件中提取 Paddle API 列表")
+    print("Step 1: Extract Paddle APIs from PaddlePaddle official test files")
     print("=" * 80)
-    print(f"📁 测试文件目录: {args.pd_dir}")
-    print(f"📁 输出文件: {args.output}")
+    print(f"📁 Test file directory: {args.pd_dir}")
+    print(f"📁 Output file: {args.output}")
 
     if not os.path.isdir(args.pd_dir):
-        print(f"❌ 目录不存在: {args.pd_dir}")
+        print(f"❌ Directory does not exist: {args.pd_dir}")
         sys.exit(1)
 
-    # 提取 API 列表
+    # Extract API list
     apis = extract_apis_from_directory(args.pd_dir)
 
-    # 统计
+    # Summary
     method_counts: Dict[str, int] = {}
     for a in apis:
         method = a.get("extraction_method", "unknown")
         method_counts[method] = method_counts.get(method, 0) + 1
 
     print(f"\n{'=' * 80}")
-    print(f"📊 提取结果汇总")
+    print("📊 Extract summary")
     print(f"{'=' * 80}")
-    print(f"  总API数量: {len(apis)}")
+    print(f"  Total APIs: {len(apis)}")
     for method, count in sorted(method_counts.items()):
         print(f"  {method}: {count}")
 
-    # 保存结果
+    # Save results
     output_dir = os.path.dirname(args.output)
     os.makedirs(output_dir, exist_ok=True)
 
@@ -540,9 +540,10 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
-    print(f"\n💾 已保存到: {args.output}")
-    print(f"📋 前10个API: {', '.join(a['pd_api'] for a in apis[:10])}")
+    print(f"\n💾 Saved to: {args.output}")
+    print(f"📋 First 10 APIs: {', '.join(a['pd_api'] for a in apis[:10])}")
 
 
 if __name__ == "__main__":
     main()
+

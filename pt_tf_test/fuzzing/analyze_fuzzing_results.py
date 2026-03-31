@@ -1,10 +1,8 @@
 """  
-PyTorch-TensorFlow Fuzzing 结果分析工具
-
-功能说明:
-    1. 分析 fuzzing 结果目录下所有 JSON 文件
-    2. 统计发现的潜在问题
-    3. 生成详细的分析报告
+PyTorch-TensorFlow Fuzzing Results analysis tools  Function description:
+    1. Analyze all JSON files in the fuzzing result directory
+    2. Potential problems found in statistics
+    3. Generate detailed analysis reports
 """
 
 import json
@@ -15,14 +13,14 @@ from typing import Dict, List, Any
 
 def analyze_fuzzing_results(result_dir: str) -> Dict[str, Any]:
     """
-    分析 fuzzing 结果
+    Analyze fuzzing results
     """
     result_path = Path(result_dir)
     json_files = sorted(result_path.glob("*_fuzzing_result.json"))
     
-    print(f"找到 {len(json_files)} 个结果文件")
+    print(f"turn up {len(json_files)} result files")
     
-    # 统计数据
+    # Statistics
     stats = {
         "total_operators": 0,
         "total_cases": 0,
@@ -54,7 +52,7 @@ def analyze_fuzzing_results(result_dir: str) -> Dict[str, Any]:
                     "bug_count": bug_count
                 })
             
-            # 分析每个用例的 fuzzing 结果
+            # Analyze fuzzing results for each use case
             for result in data.get("results", []):
                 for fr in result.get("fuzzing_results", []):
                     if fr.get("success"):
@@ -81,111 +79,111 @@ def analyze_fuzzing_results(result_dir: str) -> Dict[str, Any]:
                         stats["failed_rounds"] += 1
                         
         except Exception as e:
-            print(f"处理 {json_file.name} 时出错: {e}")
+            print(f"deal with {json_file.name} error: {e}")
     
     return stats
 
 
 def generate_analysis_report(stats: Dict[str, Any], output_file: str) -> None:
     """
-    生成分析报告
+    Generate analysis report
     """
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
-        f.write("PyTorch-TensorFlow Fuzzing 差分测试结果分析报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("PyTorch-TensorFlow Fuzzing Differential test result analysis report\n")
+        f.write(f"Generation time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
         
-        # 总体统计
-        f.write("【总体统计】\n")
+        # Overall statistics
+        f.write("【Overall statistics】\n")
         f.write("-" * 40 + "\n")
-        f.write(f"测试算子数: {stats['total_operators']}\n")
-        f.write(f"测试用例数: {stats['total_cases']}\n")
-        f.write(f"总 Fuzzing 轮次: {stats['total_fuzzing_rounds']}\n")
-        f.write(f"成功执行轮次: {stats['success_rounds']}\n")
-        f.write(f"执行失败轮次: {stats['failed_rounds']}\n")
-        f.write(f"发现潜在问题数: {stats['total_bug_candidates']}\n")
-        f.write(f"有问题的算子数: {len(stats['operators_with_bugs'])}\n")
+        f.write(f"Number of test operators: {stats['total_operators']}\n")
+        f.write(f"Number of test cases: {stats['total_cases']}\n")
+        f.write(f"Total fuzzing rounds: {stats['total_fuzzing_rounds']}\n")
+        f.write(f"successfully executed round: {stats['success_rounds']}\n")
+        f.write(f"Execution failed round: {stats['failed_rounds']}\n")
+        f.write(f"Number of potential problems found: {stats['total_bug_candidates']}\n")
+        f.write(f"Problematic number of operators: {len(stats['operators_with_bugs'])}\n")
         f.write("\n")
         
-        # 有问题的算子列表
+        # List of problematic operators
         if stats['operators_with_bugs']:
             f.write("=" * 80 + "\n")
-            f.write("【存在潜在问题的算子】\n")
+            f.write("【Operators with potential problems】\n")
             f.write("-" * 40 + "\n\n")
             
             for idx, op in enumerate(stats['operators_with_bugs'], 1):
                 f.write(f"{idx}. {op['operator']}\n")
                 f.write(f"   PyTorch API: {op['torch_api']}\n")
                 f.write(f"   TensorFlow API: {op['tensorflow_api']}\n")
-                f.write(f"   发现问题数: {op['bug_count']}\n")
+                f.write(f"   Number of problems found: {op['bug_count']}\n")
                 f.write("\n")
         
-        # 问题详情
+        # Problem details
         if stats['bug_details']:
             f.write("=" * 80 + "\n")
-            f.write("【问题详情】\n")
+            f.write("【Problem details】\n")
             f.write("-" * 40 + "\n\n")
             
             for idx, bug in enumerate(stats['bug_details'], 1):
-                f.write(f"问题 {idx}:\n")
+                f.write(f"question {idx}:\n")
                 f.write("-" * 60 + "\n")
-                f.write(f"算子: {bug['operator']}\n")
+                f.write(f"operator: {bug['operator']}\n")
                 f.write(f"PyTorch API: {bug['torch_api']}\n")
                 f.write(f"TensorFlow API: {bug['tensorflow_api']}\n")
-                f.write(f"变异策略: {bug['mutation_strategy']}\n")
-                f.write(f"PyTorch 执行状态: {'成功' if bug['torch_success'] else '失败'}\n")
-                f.write(f"TensorFlow 执行状态: {'成功' if bug['tensorflow_success'] else '失败'}\n")
+                f.write(f"mutation strategy: {bug['mutation_strategy']}\n")
+                f.write(f"PyTorch Execution status: {'success' if bug['torch_success'] else 'fail'}\n")
+                f.write(f"TensorFlow Execution status: {'success' if bug['tensorflow_success'] else 'fail'}\n")
                 
                 if bug['torch_error']:
-                    f.write(f"PyTorch 错误: {bug['torch_error']}\n")
+                    f.write(f"PyTorch mistake: {bug['torch_error']}\n")
                 if bug['tensorflow_error']:
-                    f.write(f"TensorFlow 错误: {bug['tensorflow_error']}\n")
+                    f.write(f"TensorFlow mistake: {bug['tensorflow_error']}\n")
                 if bug['comparison_error']:
-                    f.write(f"比较错误: {bug['comparison_error']}\n")
+                    f.write(f"comparison error: {bug['comparison_error']}\n")
                 
-                f.write("\nPyTorch 测试用例:\n")
+                f.write("\nPyTorch test case:\n")
                 f.write(json.dumps(bug['torch_test_case'], ensure_ascii=False, indent=2))
-                f.write("\n\nTensorFlow 测试用例:\n")
+                f.write("\n\nTensorFlow test case:\n")
                 f.write(json.dumps(bug['tensorflow_test_case'], ensure_ascii=False, indent=2))
                 f.write("\n\n")
         else:
             f.write("=" * 80 + "\n")
-            f.write("【问题详情】\n")
+            f.write("【Problem details】\n")
             f.write("-" * 40 + "\n")
-            f.write("未发现任何潜在问题。\n\n")
+            f.write("No potential issues found。\n\n")
         
         f.write("=" * 80 + "\n")
-        f.write("报告生成完成\n")
+        f.write("Report generation completed\n")
         f.write("=" * 80 + "\n")
 
 
 def main():
     """
-    主程序入口
+    Main program entrance
     """
     result_dir = Path(__file__).parent / "result"
     report_file = Path(__file__).parent / "fuzzing_analysis_report.txt"
     
     print("=" * 60)
-    print("分析 Fuzzing 结果...")
+    print("Analyze fuzzing results...")
     print("=" * 60)
     
     stats = analyze_fuzzing_results(str(result_dir))
     
-    # 打印统计摘要
-    print(f"\n统计摘要:")
-    print(f"  - 测试算子数: {stats['total_operators']}")
-    print(f"  - 测试用例数: {stats['total_cases']}")
-    print(f"  - 总 Fuzzing 轮次: {stats['total_fuzzing_rounds']}")
-    print(f"  - 发现潜在问题数: {stats['total_bug_candidates']}")
+    # Print statistical summary
+    print(f"\nStatistical summary:")
+    print(f"  - Number of test operators: {stats['total_operators']}")
+    print(f"  - Number of test cases: {stats['total_cases']}")
+    print(f"  - Total fuzzing rounds: {stats['total_fuzzing_rounds']}")
+    print(f"  - Number of potential problems found: {stats['total_bug_candidates']}")
     
-    # 生成报告
+    # Generate report
     generate_analysis_report(stats, str(report_file))
-    print(f"\n分析报告已生成: {report_file}")
+    print(f"\nAnalysis report has been generated: {report_file}")
 
 
 if __name__ == "__main__":

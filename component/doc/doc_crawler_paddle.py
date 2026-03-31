@@ -1,4 +1,4 @@
-"""PaddlePaddle 文档爬取器"""
+"""PaddlePaddle documentation crawler."""
 import re
 from typing import Dict
 from bs4 import BeautifulSoup
@@ -9,16 +9,16 @@ PADDLE_DOC_BASE = "https://www.paddlepaddle.org.cn/documentation/docs/en/api/"
 
 
 class PaddleDocCrawler(DocCrawler):
-    """PaddlePaddle 文档爬取器"""
+    """PaddlePaddle documentation crawler."""
 
     def __init__(self):
         super().__init__("paddle")
 
     def build_doc_url(self, api_name: str) -> str:
         """
-        构建 Paddle API 文档 URL
+                Build Paddle API doc URL.
 
-        示例：
+                Examples:
         - paddle.nn.Conv2D
           -> https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/nn/Conv2D_cn.html
         - paddle.add
@@ -31,7 +31,7 @@ class PaddleDocCrawler(DocCrawler):
     def parse_doc_content(
         self, soup: BeautifulSoup, api_name: str, url: str
     ) -> Dict:
-        """解析 Paddle 文档内容"""
+        """Parse Paddle doc content."""
         doc_content = {
             "api_name": api_name,
             "framework": "paddle",
@@ -58,15 +58,15 @@ class PaddleDocCrawler(DocCrawler):
         if not main_content:
             return doc_content
 
-        # ========== 1. API 描述 ==========
+        # ========== 1. API description ==========
         first_p = main_content.find("p")
         if first_p:
             doc_content["description"] = first_p.get_text(strip=True)
 
-        # ========== 2. 参数解析 ==========
+        # ========== 2. Parameter parsing ==========
         params = []
 
-        # 情况 1：<dl class="field-list">
+        # Case 1: <dl class="field-list">
         dl = main_content.find("dl", class_="field-list")
         if dl:
             for dt in dl.find_all("dt"):
@@ -75,7 +75,7 @@ class PaddleDocCrawler(DocCrawler):
                 desc = dd.get_text(strip=True) if dd else ""
                 params.append({"name": name, "description": desc})
 
-        # 情况 2：表格形式参数
+        # Case 2: parameters in tables
         if not params:
             tables = main_content.find_all("table")
             for table in tables:
@@ -93,7 +93,7 @@ class PaddleDocCrawler(DocCrawler):
 
         doc_content["parameters"] = params
 
-        # ========== 3. 返回值解析 ==========
+        # ========== 3. Return parsing ==========
         return_keywords = re.compile(r"返回值|返回|Returns?", re.I)
         ret_node = main_content.find(string=return_keywords)
         if ret_node:

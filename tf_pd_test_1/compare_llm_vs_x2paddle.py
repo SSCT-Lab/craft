@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-LLM方法 vs X2Paddle方法：TensorFlow → PaddlePaddle 测试用例转换成功率对比
+LLM vs X2Paddle: TensorFlow → PaddlePaddle test case conversion success rate comparison
 ==========================================================================
 """
 
@@ -183,23 +183,23 @@ class X2PaddleConverter:
     def convert_and_run(self, tf_api: str, test_case: Dict[str, Any], is_class_api: bool) -> Dict[str, Any]:
         result = {"onnx_export_success": False, "onnx_run_success": False, "tf_success": False, "error": None}
         if tf2onnx is None:
-            result["error"] = "未安装 tf2onnx"
+            result["error"] = "tf2onnx not installed"
             return result
 
         with self.execution_lock:
             try:
                 input_tensors, init_kwargs, input_names, extra_kwargs = self._prepare_inputs(test_case, is_class_api)
                 if not input_tensors:
-                    result["error"] = "无有效输入张量"
+                    result["error"] = "No valid input tensors"
                     return result
                 module = self._wrap_as_module(tf_api, is_class_api, init_kwargs, extra_kwargs)
                 if module is None:
-                    result["error"] = "无法包装TF算子"
+                    result["error"] = "Unable to wrap TF operator"
                     return result
                 _ = module(*input_tensors)
                 result["tf_success"] = True
             except Exception as error:
-                result["error"] = f"TF执行失败: {error}"
+                result["error"] = f"TF execution failed: {error}"
                 return result
 
             onnx_path = None
@@ -224,7 +224,7 @@ class X2PaddleConverter:
                 _ = session.run(None, feed)
                 result["onnx_run_success"] = True
             except Exception as error:
-                result["error"] = f"ONNX路径失败: {error}"
+                result["error"] = f"ONNX path failed: {error}"
             finally:
                 if onnx_path and os.path.exists(onnx_path):
                     os.remove(onnx_path)
@@ -406,7 +406,7 @@ class LLMvsX2PaddleComparator:
             case_result["llm_detail"] = {
                 "initial_exec": exec_result,
                 "llm_operation": "skip",
-                "llm_reason": f"检测到版本淘汰信息: {tf_error[:120]}",
+                "llm_reason": f"Detected deprecation info: {tf_error[:120]}",
             }
             return case_result
 
@@ -440,7 +440,7 @@ class LLMvsX2PaddleComparator:
             case_result["llm_detail"] = {
                 "initial_exec": exec_result,
                 "llm_operation": "skip",
-                "llm_reason": f"LLM用例转换失败: {error}",
+                "llm_reason": f"LLM case conversion failed: {error}",
             }
             return case_result
 
@@ -482,50 +482,50 @@ class LLMvsX2PaddleComparator:
         gs = comparison_result["global_stats"]
 
         print("\n" + "=" * 80)
-        print("📊 LLM方法 vs X2Paddle方法 — TF→PD 测试用例转换成功率对比")
+        print("📊 LLM vs X2Paddle — TF→PD test case conversion success rate")
         print("=" * 80)
 
-        print(f"\n📌 算子总数: {gs['total_operators']}")
-        print(f"   - 无目标映射跳过: {gs['skipped_operators_no_target']}")
-        print(f"   - LLM选择跳过: {gs['skipped_operators_llm']}")
-        print(f"   - 已被版本淘汰跳过: {gs['skipped_operators_deprecated']}")
-        print(f"   - 实际参与对比: {gs['tested_operators']}")
+        print(f"\n📌 Total operators: {gs['total_operators']}")
+        print(f"   - Skipped (no target mapping): {gs['skipped_operators_no_target']}")
+        print(f"   - Skipped by LLM: {gs['skipped_operators_llm']}")
+        print(f"   - Skipped as deprecated: {gs['skipped_operators_deprecated']}")
+        print(f"   - Compared: {gs['tested_operators']}")
 
         print(f"\n{'─' * 40}")
-        print("🤖 LLM 方法（剔除跳过的算子）:")
-        print(f"   LLM生成的PD测试用例总数: {gs['llm_total_cases']}")
-        print(f"   PD执行成功数: {gs['llm_pd_success']}")
+        print("🤖 LLM method (excluding skipped operators):")
+        print(f"   LLM-generated PD cases: {gs['llm_total_cases']}")
+        print(f"   PD successes: {gs['llm_pd_success']}")
         if gs["llm_total_cases"] > 0:
             llm_rate = gs["llm_pd_success"] / gs["llm_total_cases"] * 100
-            print(f"   ✅ PD执行成功率: {llm_rate:.2f}%")
+            print(f"   ✅ PD success rate: {llm_rate:.2f}%")
         else:
             llm_rate = 0.0
-            print("   ✅ PD执行成功率: N/A（无LLM生成用例）")
+            print("   ✅ PD success rate: N/A (no LLM-generated cases)")
 
         print(f"\n{'─' * 40}")
-        print("🔄 X2Paddle 方法（剔除LLM跳过的算子）:")
-        print(f"   X2Paddle转换尝试总数: {gs['onnx_total_cases']}")
-        print(f"   X2Paddle导出成功数: {gs['onnx_export_success']}")
-        print(f"   X2Paddle推理成功数（=转换成功）: {gs['onnx_run_success']}")
+        print("🔄 X2Paddle method (excluding LLM-skipped operators):")
+        print(f"   X2Paddle conversion attempts: {gs['onnx_total_cases']}")
+        print(f"   X2Paddle export successes: {gs['onnx_export_success']}")
+        print(f"   X2Paddle inference successes (= conversion success): {gs['onnx_run_success']}")
         if gs["onnx_total_cases"] > 0:
             x2paddle_rate = gs["onnx_run_success"] / gs["onnx_total_cases"] * 100
-            print(f"   ✅ X2Paddle转换成功率: {x2paddle_rate:.2f}%")
+            print(f"   ✅ X2Paddle success rate: {x2paddle_rate:.2f}%")
         else:
             x2paddle_rate = 0.0
-            print("   ✅ X2Paddle转换成功率: N/A")
+            print("   ✅ X2Paddle success rate: N/A")
 
         print(f"\n{'─' * 40}")
-        print("📈 对比结论:")
+        print("📈 Conclusion:")
         if gs["llm_total_cases"] > 0 and gs["onnx_total_cases"] > 0:
             diff = llm_rate - x2paddle_rate
             if diff > 0:
-                print(f"   LLM 方法高于 X2Paddle 方法 {diff:.2f} 个百分点")
+                print(f"   LLM method is higher than X2Paddle by {diff:.2f} percentage points")
             elif diff < 0:
-                print(f"   X2Paddle 方法高于 LLM 方法 {abs(diff):.2f} 个百分点")
+                print(f"   X2Paddle method is higher than LLM by {abs(diff):.2f} percentage points")
             else:
-                print("   两者持平")
+                print("   Both methods are tied")
         else:
-            print("   数据不足，无法比较")
+            print("   Not enough data to compare")
         print("=" * 80)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -541,7 +541,7 @@ class LLMvsX2PaddleComparator:
         with open(result_file, "w", encoding="utf-8") as file:
             json.dump(save_data, file, indent=2, ensure_ascii=False)
 
-        print(f"\n💾 详细结果已保存到: {result_file}")
+        print(f"\n💾 Detailed results saved to: {result_file}")
 
     @staticmethod
     def _make_serializable(obj: Any) -> Any:
@@ -574,24 +574,24 @@ class LLMvsX2PaddleComparator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LLM方法 vs X2Paddle方法：TF->PD测试用例转换成功率对比")
-    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"每个算子测试用例数（默认{DEFAULT_NUM_CASES}）")
-    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM迭代次数（固定按1执行）")
-    parser.add_argument("--start", type=int, default=1, help="起始算子索引（从1开始）")
-    parser.add_argument("--end", type=int, default=None, help="结束算子索引（包含）")
-    parser.add_argument("--operators", "-o", nargs="*", help="指定算子名称列表")
-    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"LLM并发线程数（默认{DEFAULT_WORKERS}）")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM模型（默认{DEFAULT_MODEL}）")
-    parser.add_argument("--key-path", "-k", default=DEFAULT_KEY_PATH, help=f"API key路径（默认{DEFAULT_KEY_PATH}）")
+    parser = argparse.ArgumentParser(description="LLM vs X2Paddle: TF->PD test case conversion success rate")
+    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"Test cases per operator (default {DEFAULT_NUM_CASES})")
+    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM iterations (fixed to 1)")
+    parser.add_argument("--start", type=int, default=1, help="Start operator index (1-based)")
+    parser.add_argument("--end", type=int, default=None, help="End operator index (inclusive)")
+    parser.add_argument("--operators", "-o", nargs="*", help="Specify operator name list")
+    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"LLM workers (default {DEFAULT_WORKERS})")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model (default {DEFAULT_MODEL})")
+    parser.add_argument("--key-path", "-k", default=DEFAULT_KEY_PATH, help=f"API key path (default {DEFAULT_KEY_PATH})")
     args = parser.parse_args()
 
     print("=" * 80)
-    print("LLM方法 vs X2Paddle方法 — TensorFlow→PaddlePaddle 测试用例转换成功率对比")
+    print("LLM vs X2Paddle — TensorFlow→PaddlePaddle test case conversion success rate")
     print("=" * 80)
-    print(f"📌 每个算子用例数: {args.num_cases}")
-    print("📌 LLM迭代次数: 1（固定）")
-    print(f"📌 并发线程数: {args.workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Cases per operator: {args.num_cases}")
+    print("📌 LLM iterations: 1 (fixed)")
+    print(f"📌 Workers: {args.workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMvsX2PaddleComparator(key_path=args.key_path, model=args.model, num_workers=args.workers)
@@ -599,7 +599,7 @@ def main():
 
     try:
         all_ops = sorted(list(comparator.llm_method.test_cases_data.keys()))
-        print(f"\n📋 测试集共 {len(all_ops)} 个TF算子")
+        print(f"\n📋 Test set has {len(all_ops)} TF operators")
 
         if args.operators:
             operator_names = args.operators
@@ -608,20 +608,20 @@ def main():
             end_idx = args.end if args.end is not None else len(all_ops)
             end_idx = min(end_idx, len(all_ops))
             operator_names = all_ops[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} ~ {end_idx} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} to {end_idx}")
 
-        print(f"📋 将测试 {len(operator_names)} 个算子")
-        print(f"📋 前10个: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"📋 Operators to test: {len(operator_names)}")
+        print(f"📋 First 10: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
 
         result = comparator.run_comparison(operator_names, num_cases=args.num_cases, max_iterations=1)
         comparator.print_and_save_results(result)
 
         elapsed = time.time() - start_time
         h, m, s = int(elapsed // 3600), int((elapsed % 3600) // 60), int(elapsed % 60)
-        print(f"\n⏱️ 总耗时: {h}h {m}m {s}s")
+        print(f"\n⏱️ Total elapsed: {h}h {m}m {s}s")
     finally:
         comparator.close()
-        print("✅ 程序执行完成")
+        print("✅ Program finished")
 
 
 if __name__ == "__main__":

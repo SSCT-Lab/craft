@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 1: 从 TensorFlow 官方测试文件中提取被测试的 TF API 列表
+Step 1: Extract tested TF API list from TensorFlow official test files
 
-功能：
-- 扫描 tf_testcases/ 目录下的测试文件目录（默认自动发现所有子目录）
-- 通过预定义映射 + AST 辅助分析提取 TF 公开 API 名称
-- 去重并输出结构化的 API 列表（JSON 格式）
+Features:
+- Scan test files under tf_testcases/ (auto-discover subdirectories by default)
+- Use predefined mapping + AST analysis to extract public TF API names
+- Deduplicate and output a structured API list (JSON)
 
-用法：
+Usage:
     conda activate tf_env
     python tf_pt_test/extract_tf_apis.py [--tf-dir tf_testcases] [--output tf_pt_test/data/tf_apis_new.json]
 
-输出：tf_pt_test/data/tf_apis_new.json
+Output: tf_pt_test/data/tf_apis_new.json
 """
 
 import os
@@ -25,9 +25,9 @@ from typing import List, Dict, Set, Any, Optional
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# ==================== 预定义的测试文件 → TF API 映射 ====================
-# 聚焦于核心计算类 API（nn_ops, math_ops, array_ops, linalg, signal, image_ops）
-# 每个条目格式: "relative_path": ["tf.api1", "tf.api2", ...]
+# ==================== Predefined test file → TF API mapping ====================
+# Focus on core compute APIs (nn_ops, math_ops, array_ops, linalg, signal, image_ops)
+# Entry format: "relative_path": ["tf.api1", "tf.api2", ...]
 KNOWN_FILE_APIS: Dict[str, List[str]] = {
     # ==================== nn_ops ====================
     "nn_ops/relu_op_test.py": [
@@ -197,14 +197,14 @@ KNOWN_FILE_APIS: Dict[str, List[str]] = {
     "strings_ops/unicode_transcode_op_test.py": ["tf.strings.unicode_transcode"],
 }
 
-# 聚焦的核心目录（作为默认展示，不限制实际扫描范围）
+# Focused core directories (default view; does not limit actual scan range)
 DEFAULT_CORE_DIRS = [
     "nn_ops", "math_ops", "array_ops", "linalg", "signal", "image_ops",
     "io_ops", "strings_ops", "random", "sparse_ops", "quantization_ops",
     "summary_ops", "variables", "control_flow",
 ]
 
-# 目录 → TF 命名空间的默认映射（用于 AST 推断）
+# Directory → TF namespace default mapping (for AST inference)
 DIR_TO_NAMESPACE = {
     "nn_ops": "tf.nn",
     "math_ops": "tf.math",
@@ -226,7 +226,7 @@ DIR_TO_NAMESPACE = {
     "proto": "tf",
 }
 
-# 排除的文件模式（不包含有用的算子测试）
+# Excluded file patterns (do not contain useful operator tests)
 EXCLUDE_PATTERNS = [
     "BUILD", "__init__.py", "_base.py", "_d9m_test.py",
     "benchmark_test.py", "v1_compat_tests",
@@ -237,7 +237,7 @@ EXCLUDE_DIR_NAMES = ["__pycache__", "v1_compat_tests"]
 
 
 def should_skip_file(filename: str) -> bool:
-    """判断是否应跳过某个文件"""
+    """Return True if a file should be skipped."""
     for pattern in EXCLUDE_PATTERNS:
         if pattern in filename:
             return True
@@ -245,7 +245,7 @@ def should_skip_file(filename: str) -> bool:
 
 
 def get_default_categories(tf_dir: str) -> List[str]:
-    """默认扫描 tf_testcases 下除排除目录外的所有子目录"""
+    """Scan all subdirectories under tf_testcases except excluded ones by default."""
     categories: List[str] = []
     try:
         for entry in os.listdir(tf_dir):
@@ -262,7 +262,7 @@ def get_default_categories(tf_dir: str) -> List[str]:
 
 
 def extract_test_class_names(filepath: str) -> List[str]:
-    """通过 AST 提取测试类名"""
+    """Extract test class names via AST."""
     try:
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             tree = ast.parse(f.read())
@@ -278,15 +278,15 @@ def extract_test_class_names(filepath: str) -> List[str]:
 
 def infer_api_from_filename(filepath: str, directory: str) -> List[str]:
     """
-    从文件名和目录推断可能的 TF API 名称
-    
-    规则：
-    - 去除 _op_test.py, _ops_test.py, _test.py 后缀
-    - 根据目录映射到对应的 tf.* 命名空间
+    Infer possible TF API names from filename and directory.
+
+    Rules:
+    - Remove suffixes _op_test.py, _ops_test.py, _test.py
+    - Map directory to the corresponding tf.* namespace
     """
     filename = os.path.basename(filepath)
     
-    # 去除后缀
+    # Remove suffix.
     api_name = filename
     for suffix in ["_op_test.py", "_ops_test.py", "_test.py", ".py"]:
         if api_name.endswith(suffix):
@@ -296,7 +296,7 @@ def infer_api_from_filename(filepath: str, directory: str) -> List[str]:
     if not api_name:
         return []
     
-    # 获取命名空间
+    # Get namespace.
     namespace = DIR_TO_NAMESPACE.get(directory, "tf")
     
     return [f"{namespace}.{api_name}"]
@@ -304,27 +304,27 @@ def infer_api_from_filename(filepath: str, directory: str) -> List[str]:
 
 def extract_apis_from_directory(tf_dir: str, categories: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
-    从 tf_testcases 目录中提取所有 TF API
-    
+    Extract all TF APIs from the tf_testcases directory.
+
     Args:
-        tf_dir: tf_testcases 目录路径
-        categories: 要扫描的子目录列表，None 表示扫描所有聚焦目录
-    
+        tf_dir: tf_testcases directory path
+        categories: list of subdirectories to scan; None means scan all target directories
+
     Returns:
-        API 列表，每个元素包含 tf_api, source_file, category 等信息
+        API list, each element includes tf_api, source_file, category, etc.
     """
     if categories is None:
         categories = get_default_categories(tf_dir)
     
-    all_apis: Dict[str, Dict[str, Any]] = {}  # tf_api -> info (去重用)
+    all_apis: Dict[str, Dict[str, Any]] = {}  # tf_api -> info (for dedup)
     
     for category in categories:
         category_dir = os.path.join(tf_dir, category)
         if not os.path.isdir(category_dir):
-            print(f"⚠️ 目录不存在，跳过: {category_dir}")
+            print(f"⚠️ Directory not found, skipping: {category_dir}")
             continue
         
-        print(f"\n📂 扫描目录: {category}")
+        print(f"\n📂 Scanning directory: {category}")
         
         for filename in sorted(os.listdir(category_dir)):
             if not filename.endswith(".py"):
@@ -335,7 +335,7 @@ def extract_apis_from_directory(tf_dir: str, categories: Optional[List[str]] = N
             rel_path = f"{category}/{filename}"
             abs_path = os.path.join(category_dir, filename)
             
-            # 优先使用预定义映射
+            # Prefer predefined mapping.
             if rel_path in KNOWN_FILE_APIS:
                 apis = KNOWN_FILE_APIS[rel_path]
                 for api_name in apis:
@@ -346,9 +346,9 @@ def extract_apis_from_directory(tf_dir: str, categories: Optional[List[str]] = N
                             "category": category,
                             "extraction_method": "predefined",
                         }
-                print(f"  ✅ {filename} → {len(apis)} 个API（预定义映射）")
+                print(f"  ✅ {filename} → {len(apis)} APIs (predefined mapping)")
             else:
-                # AST + 文件名推断
+                # AST + filename inference.
                 inferred = infer_api_from_filename(abs_path, category)
                 class_names = extract_test_class_names(abs_path)
                 
@@ -362,69 +362,69 @@ def extract_apis_from_directory(tf_dir: str, categories: Optional[List[str]] = N
                             "test_classes": class_names,
                         }
                 if inferred:
-                    print(f"  🔍 {filename} → {len(inferred)} 个API（启发式推断）")
+                    print(f"  🔍 {filename} → {len(inferred)} APIs (heuristic inference)")
                 else:
-                    print(f"  ⏭️ {filename} → 未识别到API")
+                    print(f"  ⏭️ {filename} → No API recognized")
     
-    # 转为列表并排序
+    # Convert to list and sort.
     result = sorted(all_apis.values(), key=lambda x: x["tf_api"])
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 1: 从 TensorFlow 官方测试文件中提取被测试的 TF API 列表"
+        description="Step 1: Extract tested TF API list from official TensorFlow test files"
     )
     parser.add_argument(
         "--tf-dir", default=os.path.join(ROOT_DIR, "tf_testcases"),
-        help="tf_testcases 目录路径（默认: 项目根目录/tf_testcases）"
+        help="tf_testcases directory path (default: project root/tf_testcases)"
     )
     parser.add_argument(
         "--output", "-o", default=os.path.join(ROOT_DIR, "tf_pt_test", "data", "tf_apis_new.json"),
-        help="输出的 JSON 文件路径"
+        help="Output JSON file path"
     )
     parser.add_argument(
         "--categories", "-c", nargs="*", default=None,
         help=(
-            "要扫描的子目录（默认: 自动发现 tf_testcases 下所有子目录；"
-            f"核心目录参考: {DEFAULT_CORE_DIRS}）"
+            "Subdirectories to scan (default: auto-discover all subdirectories under tf_testcases; "
+            f"core dirs reference: {DEFAULT_CORE_DIRS})"
         )
     )
     
     args = parser.parse_args()
     
     print("=" * 80)
-    print("Step 1: 从 TensorFlow 官方测试文件中提取 TF API 列表")
+    print("Step 1: Extract TF API list from official TensorFlow test files")
     print("=" * 80)
-    print(f"📁 测试文件目录: {args.tf_dir}")
-    print(f"📁 输出文件: {args.output}")
+    print(f"📁 Test files directory: {args.tf_dir}")
+    print(f"📁 Output file: {args.output}")
     
     if not os.path.isdir(args.tf_dir):
-        print(f"❌ 目录不存在: {args.tf_dir}")
+        print(f"❌ Directory not found: {args.tf_dir}")
         sys.exit(1)
     
-    # 提取 API 列表
+    # Extract API list.
     apis = extract_apis_from_directory(args.tf_dir, args.categories)
     
-    # 统计
+    # Stats.
     predefined_count = sum(1 for a in apis if a.get("extraction_method") == "predefined")
     inferred_count = sum(1 for a in apis if a.get("extraction_method") == "inferred")
     categories_found = set(a["category"] for a in apis)
     
     print(f"\n{'=' * 80}")
-    print(f"📊 提取结果汇总")
+    print("📊 Extraction summary")
     print(f"{'=' * 80}")
-    print(f"  总API数量: {len(apis)}")
-    print(f"  预定义映射: {predefined_count}")
-    print(f"  启发式推断: {inferred_count}")
-    print(f"  覆盖目录: {', '.join(sorted(categories_found))}")
+    print(f"  Total APIs: {len(apis)}")
+    print(f"  Predefined mappings: {predefined_count}")
+    print(f"  Heuristic inference: {inferred_count}")
+    print(f"  Covered directories: {', '.join(sorted(categories_found))}")
     
-    # 按目录统计
+    # Count by directory.
     for cat in sorted(categories_found):
         count = sum(1 for a in apis if a["category"] == cat)
-        print(f"    {cat}: {count} 个API")
+        print(f"    {cat}: {count} APIs")
     
-    # 保存结果
+    # Save results.
     output_dir = os.path.dirname(args.output)
     os.makedirs(output_dir, exist_ok=True)
     
@@ -438,8 +438,8 @@ def main():
     with open(args.output, 'w', encoding='utf-8') as f:
         json.dump(output_data, f, indent=2, ensure_ascii=False)
     
-    print(f"\n💾 已保存到: {args.output}")
-    print(f"📋 前10个API: {', '.join(a['tf_api'] for a in apis[:10])}")
+    print(f"\n💾 Saved to: {args.output}")
+    print(f"📋 First 10 APIs: {', '.join(a['tf_api'] for a in apis[:10])}")
 
 
 if __name__ == "__main__":

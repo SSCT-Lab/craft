@@ -1,31 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 2: 基于 LLM 从 MindSpore 官方测试文件中提取/生成标准化测试用例
+Step 2: Extract/generate standardized test cases from MindSpore official tests with an LLM
 
-功能：
-- 读取 Step 1 输出的 MS API 列表
-- 对每个 API，读取对应的测试文件内容
-- 调用 LLM 从测试文件中提取/生成标准化的测试用例
-- 支持并发调用 LLM
-- 输出结构化的测试用例集（JSON 格式）
+Purpose:
+- Read the MS API list from Step 1
+- For each API, read the corresponding test file content
+- Use the LLM to extract/generate standardized test cases
+- Support concurrent LLM calls
+- Output a structured test case set (JSON)
 
-用法：
+Usage:
     conda activate tf_env
     python ms_pt_test/extract_ms_test_cases.py [--input data/ms_apis_existing.json] [--output data/ms_test_cases.json] [--workers 6]
 
-输出：ms_pt_test/data/ms_test_cases.json
+Output: ms_pt_test/data/ms_test_cases.json
 """
 
 import os
 import sys
 import io
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-    # 强制行缓冲与即时刷新，避免控制台无输出
+    # Force line buffering and immediate flush to avoid missing console output
     # sys.stdout = io.TextIOWrapper(
     #     sys.stdout.buffer,
     #     encoding='utf-8',
@@ -54,16 +54,16 @@ from openai import OpenAI
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# ==================== 常量定义 ====================
+# ==================== Constants ====================
 DEFAULT_MODEL = "qwen-plus"
 DEFAULT_KEY_PATH = "aliyun.key"
 DEFAULT_WORKERS = 6
 DEFAULT_NUM_CASES = 5
-MAX_FILE_CHARS = 8000  # 发送给 LLM 的测试文件最大字符数
+MAX_FILE_CHARS = 8000  # Max characters of test file sent to the LLM
 
 
 def load_api_key(key_path: str = DEFAULT_KEY_PATH) -> str:
-    """加载阿里云 API 密钥"""
+    """Load Aliyun API key."""
     if not os.path.isabs(key_path):
         key_file = os.path.join(ROOT_DIR, key_path)
     else:
@@ -79,14 +79,14 @@ def load_api_key(key_path: str = DEFAULT_KEY_PATH) -> str:
     if api_key:
         return api_key
 
-    print("❌ 未找到 API 密钥，请确保 aliyun.key 文件存在或设置 DASHSCOPE_API_KEY 环境变量")
+    print("❌ API key not found. Ensure aliyun.key exists or set DASHSCOPE_API_KEY")
     return ""
 
 
 def read_test_file_content(ms_dir: str, source_file: str, max_chars: int = MAX_FILE_CHARS) -> str:
     """
-    读取测试文件内容（截断到 max_chars 字符以控制 token 消耗）
-    优先保留文件开头（import 和类定义）和测试方法
+    Read test file content (truncate to max_chars to control token usage).
+    Prefer keeping the file header (imports and class definitions) and test methods.
     """
     filepath = os.path.join(ms_dir, source_file)
     if not os.path.exists(filepath):
@@ -101,7 +101,7 @@ def read_test_file_content(ms_dir: str, source_file: str, max_chars: int = MAX_F
     if len(content) <= max_chars:
         return content
 
-    # 文件过长时，保留开头和中间的测试方法
+    # If the file is too long, keep the header and a middle slice of test methods
     head_chars = int(max_chars * 0.6)
     tail_chars = max_chars - head_chars
 
@@ -110,35 +110,36 @@ def read_test_file_content(ms_dir: str, source_file: str, max_chars: int = MAX_F
     tail_start = max(0, len(remaining) // 4)
     tail = remaining[tail_start:tail_start + tail_chars]
 
-    return head + "\n\n# ... (中间部分省略) ...\n\n" + tail
+    return head + "\n\n# ... (middle omitted) ...\n\n" + tail
 
 
 def build_extraction_prompt(ms_api: str, file_content: str, num_cases: int = DEFAULT_NUM_CASES) -> str:
-    """构建 LLM 提取测试用例的提示词"""
-    prompt = f"""你是一个深度学习框架测试专家，精通 MindSpore 框架的各种算子/API。
+    """Build the LLM prompt for extracting test cases."""
+    prompt = f"""You are a deep learning framework testing expert, fluent in MindSpore operators/APIs.
 
-## 任务
-请从以下 MindSpore 官方测试文件中，为 API `{ms_api}` 提取或生成测试用例。（优先提取，不够再生成）
-要求：
-- 如果测试文件中用例数 > {num_cases}，请把可用的用例**全部提取**出来。
-- 如果测试文件中用例数 < {num_cases}，请在提取基础上**补充生成**，直到数量**至少为 {num_cases}**。
+## Task
+From the MindSpore official test file below, extract or generate test cases for API `{ms_api}`.
+Prefer extraction; generate only if needed.
+Requirements:
+- If the test file has > {num_cases} cases, extract **all usable** cases.
+- If the test file has < {num_cases} cases, **supplement by generation** until at least {num_cases} cases.
 
-## MindSpore API 调用模式说明
-MindSpore 算子有以下几种调用方式：
-1. **Primitive算子（类式）**: `P.Abs()`创建实例后调用 `op(input)` 或 `self.op(input)`
-2. **函数式API**: `F.abs(input)` 或 `ops.abs(input)` 直接调用
-3. **NN层（类式）**: `nn.Conv2d(in_channels, out_channels, kernel_size)` 创建实例后 `layer(input)` 调用
-4. **Tensor方法**: `tensor.add(other)` 直接在 Tensor 上调用
+## MindSpore API invocation patterns
+MindSpore operators can be called in these ways:
+1. **Primitive (class-style)**: create `P.Abs()` then call `op(input)` or `self.op(input)`
+2. **Functional API**: call `F.abs(input)` or `ops.abs(input)` directly
+3. **NN layer (class-style)**: create `nn.Conv2d(in_channels, out_channels, kernel_size)` then call `layer(input)`
+4. **Tensor method**: call `tensor.add(other)` on a Tensor
 
-请根据 `{ms_api}` 的命名判断它属于哪种类型，并相应地构造测试用例。
+Infer the type from `{ms_api}` and build test cases accordingly.
 
-## 测试文件内容
+## Test file content
 ```python
 {file_content}
 ```
 
-## 输出要求
-请输出严格的 JSON 格式，格式如下：
+## Output format
+Return strict JSON in the following format:
 
 ```json
 {{
@@ -147,14 +148,14 @@ MindSpore 算子有以下几种调用方式：
     "init_params": {{}},
     "test_cases": [
         {{
-            "description": "基本功能测试",
+            "description": "basic functionality",
             "inputs": {{
                 "x": {{"shape": [2, 3], "dtype": "float32"}},
                 "axis": 1
             }}
         }},
         {{
-            "description": "不同数据类型测试",
+            "description": "different dtypes",
             "inputs": {{
                 "x": {{"shape": [3, 4], "dtype": "float64"}}
             }}
@@ -163,35 +164,35 @@ MindSpore 算子有以下几种调用方式：
 }}
 ```
 
-## 规则
-1. `is_class_api`: 判断该 API 是否为类形式。
-   - Primitive 算子（如 `mindspore.ops.Abs`、`mindspore.ops.Conv2D`）→ `true`
-   - NN 层（如 `mindspore.nn.Conv2d`、`mindspore.nn.BatchNorm2d`）→ `true`
-   - 函数式 API（如 `mindspore.ops.abs`、`mindspore.ops.relu`）→ `false`
-   - Tensor 方法（如 `mindspore.Tensor.add`）→ `false`
+## Rules
+1. `is_class_api`: whether the API is class-based.
+   - Primitive ops (e.g., `mindspore.ops.Abs`, `mindspore.ops.Conv2D`) -> `true`
+   - NN layers (e.g., `mindspore.nn.Conv2d`, `mindspore.nn.BatchNorm2d`) -> `true`
+   - Functional APIs (e.g., `mindspore.ops.abs`, `mindspore.ops.relu`) -> `false`
+   - Tensor methods (e.g., `mindspore.Tensor.add`) -> `false`
 
-2. `init_params` (仅类式 API 需要): 类的初始化参数。
-   - 对于 Primitive 算子，如 `P.Abs()` 不需要参数则为空 `{{}}`
-   - 对于 NN 层，如 `nn.Conv2d(3, 64, 3)` 需要指定 `{{"in_channels": 3, "out_channels": 64, "kernel_size": 3}}`
-   - 对于需要指定参数的 Primitive，如 `P.Conv2D(out_channel=64, kernel_size=3)` 需要对应记录
+2. `init_params` (class APIs only): initialization parameters.
+   - For Primitive ops like `P.Abs()` with no params, use `{}`
+   - For NN layers like `nn.Conv2d(3, 64, 3)`, use `{"in_channels": 3, "out_channels": 64, "kernel_size": 3}`
+   - For Primitive ops that require params like `P.Conv2D(out_channel=64, kernel_size=3)`, record them
 
-3. 每个测试用例的 `inputs` 字典中：
-   - **张量参数**必须用 `{{"shape": [...], "dtype": "..."}}` 格式描述（dtype 不带 mindspore. 前缀，如 "float32"、"int64"、"bool"）
-   - **标量参数**直接用数值，如 `"axis": 1`、`"keepdims": true`
-   - **字符串参数**直接用字符串
-   - **列表参数**直接用列表
+3. In each test case `inputs`:
+   - **Tensor params** must be `{"shape": [...], "dtype": "..."}` (dtype without mindspore. prefix, e.g., "float32", "int64", "bool")
+   - **Scalar params** use values directly, e.g., `"axis": 1`, `"keepdims": true`
+   - **String params** use strings directly
+   - **List params** use lists directly
 
-4. 测试用例需要覆盖：
-   - 基本功能（正常输入）
-   - 不同数据类型（float32, float64, int32 等）
-   - 不同形状（1D, 2D, 高维）
-   - 边界值（空张量、单元素、极大/极小值等，如果文件中有的话）
+4. Test cases should cover:
+   - Basic functionality (valid inputs)
+   - Different dtypes (float32, float64, int32, etc.)
+   - Different shapes (1D, 2D, higher dims)
+   - Edge cases (empty tensors, single element, extreme values, if present in file)
 
-5. 优先从测试文件中提取真实用例，实在提取不到再根据经验生成
+5. Prefer real cases from the test file; only generate when necessary
 
-6. 确保 shape 是合理的（不要太大，每个维度不超过 10），dtype 是标准的
+6. Ensure shapes are reasonable (no dimension > 10) and dtypes are standard
 
-7. **不要**包含 markdown 标记或其他额外文字，只输出纯 JSON
+7. **Do not** include markdown or extra text; output pure JSON only
 """
     return prompt
 
@@ -205,7 +206,7 @@ def extract_test_cases_for_api(
     print_lock: Lock = None,
     max_retries: int = 3,
 ) -> Dict[str, Any]:
-    """调用 LLM 为单个 MS API 提取测试用例"""
+    """Call the LLM to extract test cases for a single MS API."""
     lock = print_lock or Lock()
     prompt = build_extraction_prompt(ms_api, file_content, num_cases)
 
@@ -217,8 +218,8 @@ def extract_test_cases_for_api(
                     {
                         "role": "system",
                         "content": (
-                            "你是深度学习测试专家，擅长分析MindSpore测试代码并提取标准化的测试用例。"
-                            "只输出JSON，不要输出其他内容。"
+                            "You are a deep learning testing expert who analyzes MindSpore tests and "
+                            "extracts standardized test cases. Output JSON only."
                         ),
                     },
                     {"role": "user", "content": prompt},
@@ -235,33 +236,33 @@ def extract_test_cases_for_api(
                 if len(result["test_cases"]) < num_cases:
                     with lock:
                         print(
-                            f"  ⚠️ {ms_api} 用例数不足"
-                            f"（{len(result['test_cases'])}/{num_cases}），已接受LLM结果"
+                            f"  ⚠️ {ms_api} insufficient cases"
+                            f" ({len(result['test_cases'])}/{num_cases}); accepted LLM output"
                         )
                 with lock:
-                    print(f"  ✅ {ms_api} → {len(result['test_cases'])} 个测试用例")
+                    print(f"  ✅ {ms_api} -> {len(result['test_cases'])} test cases")
                 return result
 
             with lock:
                 print(
-                    f"  ⚠️ {ms_api} 返回格式异常，重试 ({attempt + 1}/{max_retries})"
+                    f"  ⚠️ {ms_api} invalid response format, retry ({attempt + 1}/{max_retries})"
                 )
 
         except Exception as e:
             with lock:
                 print(
-                    f"  ❌ {ms_api} LLM调用失败: {str(e)[:80]}，"
-                    f"重试 ({attempt + 1}/{max_retries})"
+                    f"  ❌ {ms_api} LLM call failed: {str(e)[:80]}, "
+                    f"retry ({attempt + 1}/{max_retries})"
                 )
             time.sleep(2 ** attempt)
 
     with lock:
-        print(f"  ❌ {ms_api} 最终失败，使用默认测试用例")
+        print(f"  ❌ {ms_api} failed; using default test cases")
     return _default_test_case(ms_api)
 
 
 def _parse_json_response(raw: str) -> Optional[Dict[str, Any]]:
-    """解析 LLM 返回的 JSON（带容错）"""
+    """Parse LLM JSON response with tolerance."""
     raw = re.sub(r'```json\s*', '', raw)
     raw = re.sub(r'```\s*', '', raw)
     raw = raw.strip()
@@ -282,8 +283,8 @@ def _parse_json_response(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def _default_test_case(ms_api: str) -> Dict[str, Any]:
-    """为无法提取的 API 生成默认测试用例"""
-    # 根据 API 名推断是否为类式
+    """Generate default test case for APIs that cannot be extracted."""
+    # Infer whether the API is class-based from its name
     parts = ms_api.split(".")
     last_part = parts[-1] if parts else ""
     is_class = last_part and last_part[0].isupper()
@@ -294,7 +295,7 @@ def _default_test_case(ms_api: str) -> Dict[str, Any]:
         "init_params": {},
         "test_cases": [
             {
-                "description": "默认测试用例",
+                "description": "default test case",
                 "inputs": {
                     "x": {"shape": [2, 3], "dtype": "float32"},
                 },
@@ -305,83 +306,83 @@ def _default_test_case(ms_api: str) -> Dict[str, Any]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 2: 基于 LLM 从 MindSpore 测试文件中提取测试用例"
+        description="Step 2: Extract test cases from MindSpore tests with an LLM"
     )
     parser.add_argument(
         "--input", "-i",
         default=os.path.join(ROOT_DIR, "ms_pt_test", "data", "ms_apis_existing.json"),
-        help="Step 1 输出的 MS API 列表文件路径",
+        help="Path to MS API list from Step 1",
     )
     parser.add_argument(
         "--output", "-o",
         default=os.path.join(ROOT_DIR, "ms_pt_test", "data", "ms_test_cases.json"),
-        help="输出的测试用例文件路径",
+        help="Output test case file path",
     )
     parser.add_argument(
         "--ms-dir",
         default=os.path.join(ROOT_DIR, "testcases_ms"),
-        help="testcases_ms 目录路径",
+        help="Path to testcases_ms directory",
     )
     parser.add_argument(
         "--workers", "-w", type=int, default=DEFAULT_WORKERS,
-        help=f"LLM 并发线程数（默认 {DEFAULT_WORKERS}）",
+        help=f"LLM worker threads (default {DEFAULT_WORKERS})",
     )
     parser.add_argument(
         "--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES,
-        help=f"每个 API 提取的测试用例数（默认 {DEFAULT_NUM_CASES}）",
+        help=f"Test cases per API (default {DEFAULT_NUM_CASES})",
     )
     parser.add_argument(
         "--model", "-m", default=DEFAULT_MODEL,
-        help=f"LLM 模型名称（默认 {DEFAULT_MODEL}）",
+        help=f"LLM model name (default {DEFAULT_MODEL})",
     )
     parser.add_argument(
         "--key-path", "-k", default=DEFAULT_KEY_PATH,
-        help=f"API key 文件路径（默认 {DEFAULT_KEY_PATH}）",
+        help=f"API key file path (default {DEFAULT_KEY_PATH})",
     )
     parser.add_argument(
         "--start", type=int, default=0,
-        help="从第几个 API 开始处理（0-indexed，用于断点续传）",
+        help="Start from API index (0-indexed, for resume)",
     )
     parser.add_argument(
         "--limit", type=int, default=None,
-        help="最多处理多少个 API",
+        help="Maximum number of APIs to process",
     )
     parser.add_argument(
         "--delay", type=float, default=0.5,
-        help="LLM 调用间隔秒数（默认 0.5）",
+        help="Delay between LLM calls in seconds (default 0.5)",
     )
 
     args = parser.parse_args()
     workers = max(1, args.workers)
 
     print("=" * 80)
-    print("Step 2: 基于 LLM 从 MindSpore 测试文件中提取测试用例")
+    print("Step 2: Extract test cases from MindSpore tests with an LLM")
     print("=" * 80)
 
-    # 加载 API 列表
+    # Load API list
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
-        print("请先运行 Step 1: python ms_pt_test/extract_ms_apis.py")
+        print(f"❌ Input file does not exist: {args.input}")
+        print("Please run Step 1: python ms_pt_test/extract_ms_apis.py")
         sys.exit(1)
 
     with open(args.input, 'r', encoding='utf-8') as f:
         api_data = json.load(f)
 
     all_apis = api_data.get("apis", [])
-    print(f"📋 共加载 {len(all_apis)} 个 MS API")
+    print(f"📋 Loaded {len(all_apis)} MS APIs")
 
-    # 确定处理范围
+    # Determine processing range
     start_idx = args.start
     end_idx = start_idx + args.limit if args.limit else len(all_apis)
     end_idx = min(end_idx, len(all_apis))
     apis_to_process = all_apis[start_idx:end_idx]
 
-    print(f"📌 处理范围: [{start_idx}, {end_idx})，共 {len(apis_to_process)} 个")
-    print(f"📌 并发线程数: {workers}")
-    print(f"📌 每个API提取用例数: {args.num_cases}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Range: [{start_idx}, {end_idx}), total {len(apis_to_process)}")
+    print(f"📌 Worker threads: {workers}")
+    print(f"📌 Test cases per API: {args.num_cases}")
+    print(f"📌 LLM model: {args.model}")
 
-    # 初始化 LLM 客户端
+    # Initialize LLM client
     api_key = load_api_key(args.key_path)
     if not api_key:
         sys.exit(1)
@@ -394,26 +395,28 @@ def main():
     print_lock = Lock()
     results: Dict[str, Any] = {}
 
-    # 加载已有结果（支持断点续传）
+    # Load existing results (resume supported)
     if os.path.exists(args.output):
         try:
             with open(args.output, 'r', encoding='utf-8') as f:
                 existing_data = json.load(f)
             results = existing_data.get("test_cases", {})
-            print(f"📂 加载已有结果: {len(results)} 个API的测试用例")
+            print(f"📂 Loaded existing results: {len(results)} API test cases")
         except Exception:
             pass
 
-    # 过滤掉已处理的 API
+    # Filter already processed APIs
     apis_remaining = [a for a in apis_to_process if a["ms_api"] not in results]
-    print(f"📌 待处理: {len(apis_remaining)} 个"
-          f"（跳过已处理的 {len(apis_to_process) - len(apis_remaining)} 个）")
+    print(
+        f"📌 Remaining: {len(apis_remaining)} "
+        f"(skipped {len(apis_to_process) - len(apis_remaining)} processed)"
+    )
 
     if not apis_remaining:
-        print("✅ 所有API已处理完毕")
+        print("✅ All APIs have been processed")
         return
 
-    # 准备文件内容缓存
+    # Prepare file content cache
     file_content_cache: Dict[str, str] = {}
 
     def get_file_content(source_file: str) -> str:
@@ -423,13 +426,13 @@ def main():
             )
         return file_content_cache[source_file]
 
-    # 预加载文件内容
+    # Preload file content
     source_files = set(a["source_file"] for a in apis_remaining)
-    print(f"\n📖 预加载 {len(source_files)} 个测试文件...")
+    print(f"\n📖 Preloading {len(source_files)} test files...")
     for sf in source_files:
         get_file_content(sf)
 
-    # 并发处理
+    # Concurrent processing
     def process_api(api_info: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         ms_api = api_info["ms_api"]
         file_content = get_file_content(api_info["source_file"])
@@ -442,7 +445,7 @@ def main():
         time.sleep(args.delay)
         return ms_api, result
 
-    print(f"\n🚀 开始提取测试用例 (并发={workers})...\n")
+    print(f"\n🚀 Start extracting test cases (workers={workers})...\n")
     start_time = time.time()
     completed = 0
     total = len(apis_remaining)
@@ -454,7 +457,7 @@ def main():
             completed += 1
             if completed % 10 == 0:
                 _save_results(args.output, results)
-                print(f"  💾 进度: {completed}/{total}，已保存中间结果")
+                print(f"  💾 Progress: {completed}/{total}, intermediate results saved")
     else:
         with ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_api = {
@@ -468,33 +471,33 @@ def main():
                 except Exception as e:
                     api_name = future_to_api[future]
                     with print_lock:
-                        print(f"  ❌ {api_name} 处理异常: {e}")
+                        print(f"  ❌ {api_name} processing error: {e}")
                     results[api_name] = _default_test_case(api_name)
 
                 completed += 1
                 if completed % 20 == 0:
                     _save_results(args.output, results)
                     with print_lock:
-                        print(f"  💾 进度: {completed}/{total}，已保存中间结果")
+                        print(f"  💾 Progress: {completed}/{total}, intermediate results saved")
 
-    # 最终保存
+    # Final save
     _save_results(args.output, results)
 
     elapsed = time.time() - start_time
     total_cases = sum(len(v.get("test_cases", [])) for v in results.values())
 
     print(f"\n{'=' * 80}")
-    print(f"📊 提取完成")
+    print(f"📊 Extraction complete")
     print(f"{'=' * 80}")
-    print(f"  API总数: {len(results)}")
-    print(f"  测试用例总数: {total_cases}")
-    print(f"  平均每个API: {total_cases / max(1, len(results)):.1f} 个用例")
-    print(f"  耗时: {elapsed:.1f} 秒")
-    print(f"  💾 已保存到: {args.output}")
+    print(f"  Total APIs: {len(results)}")
+    print(f"  Total test cases: {total_cases}")
+    print(f"  Avg per API: {total_cases / max(1, len(results)):.1f} cases")
+    print(f"  Elapsed: {elapsed:.1f} seconds")
+    print(f"  💾 Saved to: {args.output}")
 
 
 def _save_results(output_path: str, results: Dict[str, Any]):
-    """保存结果到 JSON 文件"""
+    """Save results to a JSON file."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     output_data = {
         "total_apis": len(results),

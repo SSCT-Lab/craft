@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-规范化映射记录：
-- 保留全部记录
-- 对置信度为 medium/low 的记录，将 pytorch-api 置为"无对应实现"
-- 对置信度为 medium/low 的记录，将 reason 置为"原LLM置信度不高"
+Normalize mapping records:
+- Keep all records
+- For medium/low confidence, set pytorch-api to "no_matching_impl"
+- For medium/low confidence, set reason to "LLM confidence too low"
 
-用法：
+Usage:
     conda activate tf_env
     python ms_pt_test/filter_high_confidence_mapping.py `
         --input ms_pt_test/data/ms_pt_mapping.csv `
@@ -19,7 +19,7 @@ import os
 import sys
 import io
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -50,19 +50,19 @@ def save_csv_rows(path: str, rows: List[Dict[str, str]], fieldnames: List[str]) 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="规范化映射记录（低置信度置为无对应实现）")
-    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="输入映射 CSV 路径")
-    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="输出筛选后 CSV 路径")
+    parser = argparse.ArgumentParser(description="Normalize mapping records (low confidence -> no_matching_impl)")
+    parser.add_argument("--input", "-i", default=DEFAULT_INPUT, help="Input mapping CSV path")
+    parser.add_argument("--output", "-o", default=DEFAULT_OUTPUT, help="Output filtered CSV path")
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: header is empty")
         return
 
     normalized_rows: List[Dict[str, str]] = []
@@ -71,20 +71,20 @@ def main() -> None:
         confidence = row.get("confidence", "").strip().lower()
         new_row = dict(row)
         if confidence in {"medium", "low"}:
-            new_row["pytorch-api"] = "无对应实现"
-            new_row["reason"] = "原LLM置信度不高"
+            new_row["pytorch-api"] = "no_matching_impl"
+            new_row["reason"] = "LLM confidence too low"
             converted_count += 1
         normalized_rows.append(new_row)
 
     save_csv_rows(args.output, normalized_rows, fieldnames)
 
     print("=" * 80)
-    print("筛选完成")
+    print("Filtering complete")
     print("=" * 80)
-    print(f"原始行数: {len(rows)}")
-    print(f"保留行数: {len(normalized_rows)}")
-    print(f"低置信度改写数: {converted_count}")
-    print(f"输出文件: {args.output}")
+    print(f"Original rows: {len(rows)}")
+    print(f"Retained rows: {len(normalized_rows)}")
+    print(f"Low-confidence rewritten: {converted_count}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":

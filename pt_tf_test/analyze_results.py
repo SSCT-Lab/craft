@@ -1,15 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 5: 差分测试结果分析脚本（PyTorch -> TensorFlow）
+Step 5: Differential test result analysis script（PyTorch -> TensorFlow）
 
-功能：
-- 读取 pt_tf_test/pt_tf_log_1 目录中的 JSON 测试结果文件
-- 若同一算子存在多个 JSON 文件，仅保留时间戳最新的文件
-- 统计各算子的一致性/不一致性/错误分布
-- 生成统计报告（TXT + CSV + JSON）
+Function: - read pt_tf_test/pt_tf_log_1 JSON test results file in directory - If there are multiple JSON files for the same operator, only the file with the latest timestamp will be retained. - Statistics on the consistency of each operator/Inconsistency/error distribution - Generate statistical reports（TXT + CSV + JSON）
 
-用法：
+usage：
     conda activate tf_env
     python pt_tf_test/analyze_results.py [--result-dir pt_tf_test/pt_tf_log_1]
 """
@@ -77,7 +73,7 @@ def load_latest_results_by_operator(result_dir: str) -> Tuple[List[Dict[str, Any
     total_json_files = 0
 
     if not os.path.exists(result_dir):
-        print(f"❌ 结果目录不存在: {result_dir}")
+        print(f"❌ The result directory does not exist: {result_dir}")
         return [], total_json_files
 
     for filename in sorted(os.listdir(result_dir)):
@@ -91,7 +87,7 @@ def load_latest_results_by_operator(result_dir: str) -> Tuple[List[Dict[str, Any
             with open(filepath, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
-            print(f"⚠️ 加载 {filename} 失败: {e}")
+            print(f"⚠️ load {filename} fail: {e}")
             continue
 
         operator_name = normalize_operator_name(data, filename)
@@ -221,22 +217,22 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
     txt_file = os.path.join(output_dir, f"analysis_report_{timestamp}.txt")
     with open(txt_file, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\n")
-        f.write("PyTorch ↔ TensorFlow 差分测试结果分析报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("PyTorch ↔ TensorFlow Differential test result analysis report\n")
+        f.write(f"Generation time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
-        f.write(f"测试算子总数: {total_operators}\n")
+        f.write(f"Total number of test operators: {total_operators}\n")
         f.write(f"consistent: {len(consistent_ops)}\n")
         f.write(f"inconsistent: {len(inconsistent_ops)}\n")
         f.write(f"error: {len(error_ops)}\n")
         f.write(f"unknown: {len(unknown_ops)}\n\n")
-        f.write(f"总迭代次数: {total_iterations}\n")
-        f.write(f"一致次数: {total_consistent}\n")
-        f.write(f"不一致次数: {total_inconsistent}\n")
-        f.write(f"PT错误次数: {total_torch_errors}\n")
-        f.write(f"TF错误次数: {total_tf_errors}\n")
-        f.write(f"双边错误次数: {total_both_errors}\n")
+        f.write(f"Total number of iterations: {total_iterations}\n")
+        f.write(f"Number of matches: {total_consistent}\n")
+        f.write(f"Number of inconsistencies: {total_inconsistent}\n")
+        f.write(f"PTnumber of errors: {total_torch_errors}\n")
+        f.write(f"TFnumber of errors: {total_tf_errors}\n")
+        f.write(f"Number of bilateral errors: {total_both_errors}\n")
 
-    print(f"📄 TXT报告已保存: {txt_file}")
+    print(f"📄 TXTReport saved: {txt_file}")
 
     csv_file = os.path.join(output_dir, f"analysis_report_{timestamp}.csv")
     with open(csv_file, "w", encoding="utf-8-sig", newline="") as f:
@@ -268,7 +264,7 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
                 a["comparison_error_count"],
                 "; ".join(a["errors"][:3]) if a["errors"] else "",
             ])
-    print(f"📄 CSV报告已保存: {csv_file}")
+    print(f"📄 CSVReport saved: {csv_file}")
 
     json_file = os.path.join(output_dir, f"analysis_report_{timestamp}.json")
     with open(json_file, "w", encoding="utf-8") as f:
@@ -294,38 +290,38 @@ def generate_reports(all_analyses: List[Dict[str, Any]], output_dir: str):
             indent=2,
             ensure_ascii=False,
         )
-    print(f"📄 JSON报告已保存: {json_file}")
+    print(f"📄 JSONReport saved: {json_file}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="PyTorch ↔ TensorFlow 差分测试结果分析")
+    parser = argparse.ArgumentParser(description="PyTorch ↔ TensorFlow Differential test result analysis")
     parser.add_argument(
         "--result-dir",
         "-r",
         default=os.path.join(ROOT_DIR, "pt_tf_test", "pt_tf_log_1"),
-        help="测试结果目录路径",
+        help="Test result directory path",
     )
     parser.add_argument(
         "--output-dir",
         "-o",
         default=os.path.join(ROOT_DIR, "pt_tf_test", "analysis"),
-        help="分析报告输出目录",
+        help="Analysis report output directory",
     )
     args = parser.parse_args()
 
     print("=" * 80)
-    print("PyTorch ↔ TensorFlow 差分测试结果分析")
+    print("PyTorch ↔ TensorFlow Differential test result analysis")
     print("=" * 80)
-    print(f"📁 结果目录: {args.result_dir}")
-    print(f"📁 输出目录: {args.output_dir}")
+    print(f"📁 Results directory: {args.result_dir}")
+    print(f"📁 Output directory: {args.output_dir}")
 
     all_results, total_json_files = load_latest_results_by_operator(args.result_dir)
     if not all_results:
-        print("⚠️ 未找到任何可用测试结果文件")
+        print("⚠️ No available test results files found")
         return
 
-    print(f"\n📋 扫描到 JSON 文件数: {total_json_files}")
-    print(f"📌 去重后算子数（每个算子仅最新时间戳）: {len(all_results)}")
+    print(f"\n📋 Number of JSON files scanned: {total_json_files}")
+    print(f"📌 Number of operators after deduplication (each operator only has the latest timestamp）: {len(all_results)}")
 
     all_analyses = [analyze_single_operator(data) for data in all_results]
     generate_reports(all_analyses, args.output_dir)
@@ -336,12 +332,12 @@ def main():
     unknown = sum(1 for a in all_analyses if a["final_status"] == "unknown")
 
     print("\n" + "=" * 50)
-    print("📊 快速统计")
+    print("📊 Quick statistics")
     print("=" * 50)
-    print(f"✅ 一致: {consistent}/{len(all_analyses)}")
-    print(f"❌ 不一致: {inconsistent}/{len(all_analyses)}")
-    print(f"⚠️ 错误: {error}/{len(all_analyses)}")
-    print(f"❓ 未知: {unknown}/{len(all_analyses)}")
+    print(f"✅ consistent: {consistent}/{len(all_analyses)}")
+    print(f"❌ inconsistent: {inconsistent}/{len(all_analyses)}")
+    print(f"⚠️ mistake: {error}/{len(all_analyses)}")
+    print(f"❓ unknown: {unknown}/{len(all_analyses)}")
     print("=" * 50)
 
 

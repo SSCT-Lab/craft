@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-从 pt_ms_log_1 目录的 llm_enhanced 日志文件反推有效性统计，
-并输出与 llm_effectiveness_validation.py 一致结构的 summary 文件。
+Infer effectiveness stats from llm_enhanced log files under pt_ms_log_1,
+and output a summary file aligned with llm_effectiveness_validation.py.
 """
 
 import argparse

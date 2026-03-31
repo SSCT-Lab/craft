@@ -30,24 +30,24 @@ def print_summary(name: str, total: int, llm_ok: int, mc_ok: int):
     mc_rate = rate(mc_ok, total)
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"MindConverter 执行成功: {mc_ok} ({mc_rate:.2f}%)")
+    print(f"Completed cases: {total}")
+    print(f"LLM execution success: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"MindConverter execution success: {mc_ok} ({mc_rate:.2f}%)")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Comparison conclusion: no completed cases, unable to compare")
     else:
         diff = llm_rate - mc_rate
         if diff > 0:
-            print(f"对比结论：LLM 优于 MindConverter {diff:.2f} 个百分点")
+            print(f"Comparison conclusion: LLM outperforms MindConverter by {diff:.2f} percentage points")
         elif diff < 0:
-            print(f"对比结论：MindConverter 优于 LLM {-diff:.2f} 个百分点")
+            print(f"Comparison conclusion: MindConverter outperforms LLM by {-diff:.2f} percentage points")
         else:
-            print("对比结论：两者持平")
+            print("Comparison conclusion: tie")
 
 
 def main():
-    # 修改为你的日志路径
+    # Update to your log paths
     files = [
         r"D:\graduate\DFrameworkTest\pt_ms_test\llm_vs_mindconverter_realtime_20260206_211957.jsonl",
         r"D:\graduate\DFrameworkTest\pt_ms_test\llm_vs_mindconverter_realtime_20260206_213203.jsonl",

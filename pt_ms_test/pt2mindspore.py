@@ -3,10 +3,10 @@ import pandas as pd
 import copy
 from collections import defaultdict
 
-# ============ 一、加载映射表 ============
+# ============ 1) Load mapping table ============
 def load_api_mapping(mapping_file: str) -> dict:
     """
-    加载 PyTorch -> MindSpore 算子映射表
+    Load PyTorch -> MindSpore operator mapping table.
     """
     df = pd.read_csv(mapping_file)
     mapping = {}
@@ -21,10 +21,10 @@ def load_api_mapping(mapping_file: str) -> dict:
 
 
 
-# ============ 二、类型与API转换函数 ============
+# ============ 2) Type and API conversion helpers ============
 def convert_dtype(torch_dtype: str) -> str:
     """
-    将 torch 的 dtype 转换为 mindspore 的 dtype
+    Convert torch dtype to mindspore dtype.
     """
     mapping = {
         "torch.float32": "mindspore.float32",
@@ -43,44 +43,44 @@ def convert_dtype(torch_dtype: str) -> str:
 
 def convert_api_name(torch_api: str, mapping: dict) -> tuple[str, str]:
     """
-    将 torch API 转换为 MindSpore API
-    返回 (转换后的名称, 使用的方法)
+    Convert torch API to MindSpore API.
+    Returns (converted_name, method).
     """
-    # 优先查映射表
+    # Prefer mapping table
     if torch_api in mapping:
         note = mapping[torch_api]["note"]
         if "一致" in note:
-            return mapping[torch_api]["ms_api"], "映射表"
-        # 若非一致，则继续使用默认替换逻辑
-    # 特殊情况处理
+            return mapping[torch_api]["ms_api"], "Mapping table"
+        # If not consistent, fall back to default replacement logic
+    # Special cases
     special_mapping = {
         "torch.atleast_3d": "mindspore.ops.atleast_3d",
         "torch.diag_embed": "mindspore.ops.diag_embed",
         "torch.floor_divide": "mindspore.ops.floor_divide",
     }
     if torch_api in special_mapping:
-        return special_mapping[torch_api], "名称转换(特殊规则)"
+        return special_mapping[torch_api], "Name conversion (special rules)"
 
-    # 默认替换逻辑
-    return torch_api.replace("torch", "mindspore.mint", 1), "名称转换"
+    # Default replacement logic
+    return torch_api.replace("torch", "mindspore.mint", 1), "Name conversion"
 
 
-# ============ 三、记录转换 ============
+# ============ 3) Record conversion ============
 def convert_record(record: dict, mapping: dict) -> dict:
     """
-    转换单个测试用例的所有字段
+    Convert all fields for a single test case.
     """
     new_record = {}
     for key, value in record.items():
         if key == "_id":
-            continue  # 跳过旧的 _id
+            continue  # Skip old _id
 
-        # 处理 API 名
+        # Handle API name
         if key == "api":
             new_record[key], _ = convert_api_name(value, mapping)
             continue
 
-        # 处理 dtype
+        # Handle dtype
         if isinstance(value, list):
             new_list = []
             for item in value:
@@ -100,39 +100,39 @@ def convert_record(record: dict, mapping: dict) -> dict:
     return new_record
 
 
-# ============ 四、主流程 ============
+# ============ 4) Main flow ============
 if __name__ == "__main__":
-    # 1. 加载映射表
+    # 1) Load mapping table
     mapping_file = "D:/graduate/testcasegen/api_mapping/pt_ms_mapping.csv"
     api_mapping = load_api_mapping(mapping_file)
-    print(f"--- 映射表加载完成，共 {len(api_mapping)} 条映射")
+    print(f"--- Mapping table loaded: {len(api_mapping)} entries")
 
-    # 2. 连接 MongoDB
+    # 2) Connect MongoDB
     client = MongoClient("mongodb://localhost:27017/")
     db = client["freefuzz-torch"]
-    print("--- 数据库连接成功")
+    print("--- Database connected")
 
     src_collection = db["argVS"]
     dst_db = client["new-mindspore"]
     dst_collection = dst_db["ms-cases"]
 
-    # 清空目标集合
+    # Clear target collection
     dst_collection.delete_many({})
-    print("--- 已清空 new-mindspore.ms-cases 集合")
+    print("--- Cleared new-mindspore.ms-cases collection")
 
-    # 3. 逐算子转换
+    # 3) Convert by operator
     api_groups = defaultdict(list)
     for record in src_collection.find():
         api_name = record.get("api", "")
         api_groups[api_name].append(record)
 
     total_count = 0
-    map_count = 0  # 使用映射表转换的算子数
-    name_count = 0  # 使用名称转换的算子数
+    map_count = 0  # Operators converted using mapping table
+    name_count = 0  # Operators converted using name conversion
 
     for api_name, records in api_groups.items():
         converted_api, method = convert_api_name(api_name, api_mapping)
-        if method == "映射表":
+        if method == "Mapping table":
             map_count += 1
         else:
             name_count += 1
@@ -142,8 +142,8 @@ if __name__ == "__main__":
             dst_collection.insert_one(new_record)
             total_count += 1
 
-        print(f"✔ {api_name} 算子已转换完成，使用的方法：{method}，共 {len(records)} 条记录")
+        print(f"✔ {api_name} converted with method: {method}, total records: {len(records)}")
 
-    print(f"--- 总共处理完成 {total_count} 条记录 ---")
-    print(f"--- 其中通过映射表转换的算子：{map_count} 个 ---")
-    print(f"--- 其中通过名称转换的算子：{name_count} 个 ---")
+    print(f"--- Total records processed: {total_count} ---")
+    print(f"--- Operators converted via mapping table: {map_count} ---")
+    print(f"--- Operators converted via name conversion: {name_count} ---")

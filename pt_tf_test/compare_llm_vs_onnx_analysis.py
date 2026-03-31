@@ -26,23 +26,23 @@ def print_summary(name: str, total: int, llm_ok: int, onnx_ok: int):
     onnx_rate = rate(onnx_ok, total)
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"ONNX 执行成功: {onnx_ok} ({onnx_rate:.2f}%)")
+    print(f"completed Number of use cases: {total}")
+    print(f"LLM Executed successfully: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"ONNX Executed successfully: {onnx_ok} ({onnx_rate:.2f}%)")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Comparison conclusion: no completed use case, cannot be compared")
     else:
         diff = llm_rate - onnx_rate
         if diff > 0:
-            print(f"对比结论：LLM 优于 ONNX {diff:.2f} 个百分点")
+            print(f"Comparison conclusion: LLM is better than ONNX {diff:.2f} percentage points")
         elif diff < 0:
-            print(f"对比结论：ONNX 优于 LLM {-diff:.2f} 个百分点")
+            print(f"Comparison conclusion: ONNX is better than LLM {-diff:.2f} percentage points")
         else:
-            print("对比结论：两者持平")
+            print("Comparison conclusion: Both are equal")
 
 def main():
-    # 修改为你的日志路径
+    # Change to your log path
     files = [
         r"D:\graduate\DFrameworkTest\pt_tf_test\llm_vs_onnx_realtime_20260206_180018.jsonl",
         r"D:\graduate\DFrameworkTest\pt_tf_test\llm_vs_onnx_realtime_20260206_181045.jsonl",

@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 3.5a: MS → TF 映射后筛选
+Step 3.5a: Filter MS -> TF mapping
 
-功能：
-- 读取 Step 3 输出的 ms_tf_mapping.csv
-- 保留所有行（与 ms_pt_test 一致）
-- 对 medium/low confidence 的映射，将 tensorflow-api 改为 "无对应实现"
-- 输出筛选后的 CSV
+Purpose:
+- Read ms_tf_mapping.csv from Step 3
+- Keep all rows (consistent with ms_pt_test)
+- For medium/low confidence mappings, set tensorflow-api to "no_matching_impl"
+- Output the filtered CSV
 
-用法：
+Usage:
     conda activate tf_env
     python ms_tf_test_1/filter_high_confidence_mapping.py [--input] [--output]
 
-输出：ms_tf_test_1/data/ms_tf_mapping_high_confidence.csv
+Output: ms_tf_test_1/data/ms_tf_mapping_high_confidence.csv
 """
 
 import os
@@ -26,13 +26,13 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def filter_high_confidence(input_csv: str, output_csv: str) -> dict:
     """
-    筛选映射表：保留所有行，对 medium/low 置为 '无对应实现'。
+    Filter mappings: keep all rows, set medium/low to 'no_matching_impl'.
 
     Returns:
-        统计信息字典
+        Stats dict
     """
     if not os.path.exists(input_csv):
-        print(f"❌ 输入文件不存在: {input_csv}")
+        print(f"❌ Input file does not exist: {input_csv}")
         return {"error": "file_not_found"}
 
     rows = []
@@ -54,22 +54,22 @@ def filter_high_confidence(input_csv: str, output_csv: str) -> dict:
         confidence = row.get("confidence", "").strip().lower()
         tf_api = row.get("tensorflow-api", "").strip()
 
-        if tf_api == "无对应实现" or tf_api == "":
+        if tf_api == "no_matching_impl" or tf_api == "":
             stats["already_none"] += 1
         elif confidence == "high":
             stats["high"] += 1
         elif confidence == "medium":
-            row["tensorflow-api"] = "无对应实现"
-            row["reason"] = f"[原medium] {row.get('reason', '')}"
+            row["tensorflow-api"] = "no_matching_impl"
+            row["reason"] = f"[orig medium] {row.get('reason', '')}"
             stats["medium_to_none"] += 1
         else:
-            # low / unknown / 其他
+            # low / unknown / other
             if confidence == "low":
                 stats["low_to_none"] += 1
             else:
                 stats["unknown_to_none"] += 1
-            row["tensorflow-api"] = "无对应实现"
-            row["reason"] = f"[原{confidence}] {row.get('reason', '')}"
+            row["tensorflow-api"] = "no_matching_impl"
+            row["reason"] = f"[orig {confidence}] {row.get('reason', '')}"
 
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
     with open(output_csv, 'w', encoding='utf-8', newline='') as f:
@@ -85,22 +85,22 @@ def filter_high_confidence(input_csv: str, output_csv: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 3.5a: 筛选 MS→TF 映射表中的 high confidence"
+        description="Step 3.5a: Filter high-confidence mappings in MS -> TF mapping table"
     )
     parser.add_argument(
         "--input", "-i",
         default=os.path.join(ROOT_DIR, "ms_tf_test_1", "data", "ms_tf_mapping.csv"),
-        help="输入映射 CSV 文件路径",
+        help="Input mapping CSV path",
     )
     parser.add_argument(
         "--output", "-o",
         default=os.path.join(ROOT_DIR, "ms_tf_test_1", "data", "ms_tf_mapping_high_confidence.csv"),
-        help="输出筛选后 CSV 文件路径",
+        help="Output filtered CSV path",
     )
     args = parser.parse_args()
 
     print("=" * 80)
-    print("Step 3.5a: MS → TF 映射后筛选")
+    print("Step 3.5a: Filter MS -> TF mapping")
     print("=" * 80)
 
     stats = filter_high_confidence(args.input, args.output)
@@ -108,14 +108,14 @@ def main():
     if "error" in stats:
         sys.exit(1)
 
-    print(f"\n📊 筛选结果:")
-    print(f"  总行数:            {stats['total']}")
-    print(f"  ▸ high（保留）:    {stats['high']}")
-    print(f"  ▸ medium→无对应:   {stats['medium_to_none']}")
-    print(f"  ▸ low→无对应:      {stats['low_to_none']}")
-    print(f"  ▸ 原无对应实现:    {stats['already_none']}")
-    print(f"  ▸ unknown→无对应:  {stats['unknown_to_none']}")
-    print(f"\n💾 已保存到: {args.output}")
+    print(f"\n📊 Filter summary:")
+    print(f"  Total rows:            {stats['total']}")
+    print(f"  ▸ high (kept):         {stats['high']}")
+    print(f"  ▸ medium -> none:      {stats['medium_to_none']}")
+    print(f"  ▸ low -> none:         {stats['low_to_none']}")
+    print(f"  ▸ already none:        {stats['already_none']}")
+    print(f"  ▸ unknown -> none:     {stats['unknown_to_none']}")
+    print(f"\n💾 Saved to: {args.output}")
 
 
 if __name__ == "__main__":

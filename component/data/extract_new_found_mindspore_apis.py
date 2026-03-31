@@ -1,5 +1,5 @@
 # ./component/data/extract_new_found_mindspore_apis.py
-"""从验证日志中提取新发现的高置信度 PyTorch -> MindSpore API 映射（原来值为"无对应实现"），生成新的 CSV 文件"""
+"""Extract newly found high-confidence PyTorch -> MindSpore mappings (original is "无对应实现") and generate a new CSV."""
 
 import argparse
 import csv
@@ -7,32 +7,32 @@ import re
 from pathlib import Path
 from typing import List, Dict
 
-# 添加项目根目录到路径
+# Add project root to path
 ROOT = Path(__file__).resolve().parents[2]
 
-# 默认日志目录
+# Default log directory
 LOG_DIR = ROOT / "component" / "data" / "llm_logs"
 
-# 默认输入 CSV 文件路径
+# Default input CSV path
 DEFAULT_INPUT_CSV = ROOT / "component" / "data" / "api_mappings.csv"
 
-# 默认输出 CSV 文件路径
+# Default output CSV path
 DEFAULT_OUTPUT_CSV = ROOT / "component" / "data" / "ms_api_mappings_updated.csv"
 
 
 def parse_mindspore_validation_log(log_path: Path) -> List[Dict[str, str]]:
     """
-    解析 MindSpore 验证日志文件，提取每条记录的信息
-    
+    Parse MindSpore validation logs and extract each record.
+
     Returns:
-        包含每条记录信息的字典列表
+        List of dicts containing record info.
     """
     records: List[Dict[str, str]] = []
     
     with log_path.open("r", encoding="utf-8") as f:
         content = f.read()
     
-    # 按分隔线分割记录
+    # Split records by separator line
     blocks = re.split(r'-{50,}', content)
     
     for block in blocks:
@@ -42,17 +42,17 @@ def parse_mindspore_validation_log(log_path: Path) -> List[Dict[str, str]]:
         
         record = {}
         
-        # 提取序号
+        # Extract index
         idx_match = re.search(r'序号:\s*(\d+)', block)
         if idx_match:
             record["index"] = idx_match.group(1)
         
-        # 提取 PyTorch API
+        # Extract PyTorch API
         pt_match = re.search(r'PyTorch API:\s*(.+)', block)
         if pt_match:
             record["pytorch_api"] = pt_match.group(1).strip()
         
-        # 提取原 MindSpore API（兼容多种命名）
+        # Extract original MindSpore API (compatible with multiple labels)
         orig_ms_patterns = [
             r'原 MindSpore API:\s*(.+)',
             r'原MindSpore API:\s*(.+)',
@@ -64,7 +64,7 @@ def parse_mindspore_validation_log(log_path: Path) -> List[Dict[str, str]]:
                 record["original_mindspore_api"] = orig_ms_match.group(1).strip()
                 break
         
-        # 提取验证后 MindSpore API（兼容多种命名）
+        # Extract validated MindSpore API (compatible with multiple labels)
         validated_ms_patterns = [
             r'验证后 MindSpore API:\s*(.+)',
             r'验证后MindSpore API:\s*(.+)',
@@ -76,21 +76,21 @@ def parse_mindspore_validation_log(log_path: Path) -> List[Dict[str, str]]:
                 record["validated_mindspore_api"] = validated_ms_match.group(1).strip()
                 break
         
-        # 提取置信度
+        # Extract confidence
         confidence_match = re.search(r'置信度:\s*(.+)', block)
         if confidence_match:
             record["confidence"] = confidence_match.group(1).strip()
         
-        # 提取是否修改
+        # Extract changed flag
         changed_match = re.search(r'是否修改:\s*(.+)', block)
         if changed_match:
             record["changed"] = changed_match.group(1).strip()
         
-        # 提取理由
+        # Extract reason
         reason_match = re.search(r'理由:\s*(.+)', block, re.DOTALL)
         if reason_match:
             reason_text = reason_match.group(1).strip()
-            # 只取第一行（避免包含 LLM 完整输出）
+            # Only keep the first line (avoid including full LLM output)
             reason_text = reason_text.split('\n')[0].strip()
             record["reason"] = reason_text
         
@@ -102,10 +102,10 @@ def parse_mindspore_validation_log(log_path: Path) -> List[Dict[str, str]]:
 
 def filter_new_found_high_confidence(records: List[Dict[str, str]]) -> List[Dict[str, str]]:
     """
-    筛选出满足条件的记录：
-    1. 原 MindSpore API 是 "无对应实现"
-    2. 验证后 MindSpore API 有具体值（不是"无对应实现"）
-    3. 置信度为 high
+    Filter records that match:
+    1) Original MindSpore API is "无对应实现"
+    2) Validated MindSpore API has a concrete value (not "无对应实现")
+    3) Confidence is high
     """
     filtered = []
     for record in records:
@@ -113,15 +113,15 @@ def filter_new_found_high_confidence(records: List[Dict[str, str]]) -> List[Dict
         validated_ms = record.get("validated_mindspore_api", "")
         confidence = record.get("confidence", "")
         
-        # 条件1: 原 API 是"无对应实现"
+        # Condition 1: original API is "无对应实现"
         if original_ms != "无对应实现":
             continue
         
-        # 条件2: 验证后有具体 API（不是"无对应实现"）
+        # Condition 2: validated API is concrete (not "无对应实现")
         if validated_ms == "无对应实现" or not validated_ms:
             continue
         
-        # 条件3: 置信度为 high
+        # Condition 3: confidence is high
         if confidence.lower() != "high":
             continue
         
@@ -132,15 +132,15 @@ def filter_new_found_high_confidence(records: List[Dict[str, str]]) -> List[Dict
 
 def read_original_mappings(csv_path: Path) -> Dict[str, str]:
     """
-    读取原始 CSV 文件中的 pytorch-api 到 mindspore-api 的映射
-    
+    Read pytorch-api -> mindspore-api mappings from the original CSV.
+
     Returns:
-        字典 {pytorch_api: mindspore_api}
+        Dict {pytorch_api: mindspore_api}
     """
     mappings = {}
     
     if not csv_path.exists():
-        print(f"[WARNING] 输入 CSV 文件不存在: {csv_path}，将创建新文件")
+        print(f"[WARNING] Input CSV not found: {csv_path}. A new file will be created.")
         return mappings
     
     with csv_path.open("r", encoding="utf-8") as f:
@@ -160,17 +160,17 @@ def create_updated_csv(
     output_path: Path,
 ) -> int:
     """
-    创建更新后的 CSV 文件，只包含 pytorch-api 和 mindspore-api 两列
-    
+    Create an updated CSV with only pytorch-api and mindspore-api columns.
+
     Args:
-        original_mappings: 原始映射字典
-        new_mappings: 新发现的映射列表
-        output_path: 输出文件路径
-    
+        original_mappings: Original mapping dict
+        new_mappings: Newly found mappings list
+        output_path: Output file path
+
     Returns:
-        更新的记录数
+        Number of updated records
     """
-    # 合并映射：用新发现的映射更新原映射
+    # Merge mappings: update original with new mappings
     merged = original_mappings.copy()
     updated_count = 0
     
@@ -182,14 +182,14 @@ def create_updated_csv(
             if old_value != validated_ms:
                 merged[pt_api] = validated_ms
                 updated_count += 1
-                print(f"  [更新] {pt_api}: {old_value} -> {validated_ms}")
+                print(f"  [UPDATE] {pt_api}: {old_value} -> {validated_ms}")
     
-    # 写入 CSV（只保留 pytorch-api 和 mindspore-api 两列）
+    # Write CSV (only keep pytorch-api and mindspore-api columns)
     with output_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["pytorch-api", "mindspore-api"])
         
-        # 按 PyTorch API 名称排序
+        # Sort by PyTorch API name
         for pt_api in sorted(merged.keys()):
             ms_api = merged[pt_api]
             writer.writerow([pt_api, ms_api])
@@ -198,54 +198,56 @@ def create_updated_csv(
 
 
 def main():
-    """命令行入口"""
+    """CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="从 MindSpore 验证日志中提取新发现的高置信度 API 映射"
+        description="Extract newly found high-confidence API mappings from MindSpore validation logs"
     )
     parser.add_argument(
         "--log",
         "-l",
         required=True,
-        help="MindSpore 验证日志文件路径",
+        help="Path to the MindSpore validation log file",
     )
     parser.add_argument(
         "--input-csv",
         "-i",
         default=str(DEFAULT_INPUT_CSV),
-        help="输入的原始 CSV 文件路径（默认：component/data/api_mappings.csv）",
+        help="Input original CSV path (default: component/data/api_mappings.csv)",
     )
     parser.add_argument(
         "--output-csv",
         "-o",
         default=str(DEFAULT_OUTPUT_CSV),
-        help="输出的 CSV 文件路径（默认：component/data/ms_api_mappings_updated.csv）",
+        help="Output CSV path (default: component/data/ms_api_mappings_updated.csv)",
     )
     parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
-        help="显示详细信息（包括映射的 MindSpore API 和理由）",
+        help="Show details (including mapped MindSpore APIs and reasons)",
     )
 
     args = parser.parse_args()
 
     log_path = Path(args.log)
     if not log_path.exists():
-        print(f"[ERROR] 日志文件不存在: {log_path}")
+        print(f"[ERROR] Log file not found: {log_path}")
         return
 
-    print(f"[INFO] 正在解析日志文件: {log_path}")
+    print(f"[INFO] Parsing log file: {log_path}")
     records = parse_mindspore_validation_log(log_path)
-    print(f"[INFO] 共解析到 {len(records)} 条记录")
+    print(f"[INFO] Parsed {len(records)} records")
 
-    # 筛选满足条件的记录
+    # Filter records that meet criteria
     filtered = filter_new_found_high_confidence(records)
-    print(f"[INFO] 满足条件的记录数（原值为'无对应实现' + 验证后有具体API + 置信度high）: {len(filtered)}")
+    print(
+        f"[INFO] Records matching criteria (original is '无对应实现' + validated has value + high confidence): {len(filtered)}"
+    )
 
-    # 打印详细信息
+    # Print details
     if filtered:
         print("\n" + "=" * 70)
-        print("新发现的高置信度 MindSpore API 映射")
+        print("Newly found high-confidence MindSpore API mappings")
         print("=" * 70)
         for i, record in enumerate(filtered, start=1):
             pt_api = record.get("pytorch_api", "")
@@ -255,30 +257,30 @@ def main():
             if args.verbose:
                 print(f"\n{i}. {pt_api}")
                 print(f"   -> {validated_ms}")
-                print(f"   理由: {reason}")
+                print(f"   Reason: {reason}")
             else:
                 print(f"{i}. {pt_api} -> {validated_ms}")
         print("=" * 70)
 
-    # 读取原始映射
+    # Read original mappings
     input_csv_path = Path(args.input_csv)
-    print(f"\n[INFO] 正在读取原始 CSV 文件: {input_csv_path}")
+    print(f"\n[INFO] Reading original CSV: {input_csv_path}")
     original_mappings = read_original_mappings(input_csv_path)
-    print(f"[INFO] 原始映射数: {len(original_mappings)}")
+    print(f"[INFO] Original mapping count: {len(original_mappings)}")
 
-    # 创建更新后的 CSV
+    # Create updated CSV
     output_csv_path = Path(args.output_csv)
-    print(f"\n[INFO] 正在生成更新后的 CSV 文件: {output_csv_path}")
+    print(f"\n[INFO] Generating updated CSV: {output_csv_path}")
     updated_count = create_updated_csv(original_mappings, filtered, output_csv_path)
     
-    print(f"\n[SUCCESS] 已生成 CSV 文件: {output_csv_path}")
-    print(f"[SUCCESS] 总映射数: {len(original_mappings)}")
-    print(f"[SUCCESS] 本次更新: {updated_count} 条记录")
-    
-    # 打印纯 API 名称列表（方便复制）
+    print(f"\n[SUCCESS] Generated CSV: {output_csv_path}")
+    print(f"[SUCCESS] Total mappings: {len(original_mappings)}")
+    print(f"[SUCCESS] Updated records this run: {updated_count}")
+
+    # Print plain API list for easy copy
     if filtered:
         print("\n" + "=" * 70)
-        print("【新发现的 PyTorch API 名称列表（纯文本）】")
+        print("[Newly found PyTorch API Name List (Plain Text)]")
         print("=" * 70)
         for record in filtered:
             print(record.get("pytorch_api", ""))

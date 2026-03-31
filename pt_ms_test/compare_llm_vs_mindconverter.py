@@ -1,22 +1,22 @@
 # ./pt_ms_test/compare_llm_vs_mindconverter.py
 """
-LLM方法 vs MindConverter方法：PyTorch → MindSpore 测试用例转换成功率对比
+LLM method vs MindConverter method: PyTorch → MindSpore test case conversion success rate
 =======================================================================
 
-对比两种跨框架测试用例迁移方案：
-1. LLM方法：从MongoDB提取用例 → 构造PT/MS用例 → 执行 → LLM修复/变异 → 执行LLM生成的用例
-2. MindConverter方法：从MongoDB提取用例 → 包装为PyTorch小模型 → torch.onnx.export → onnxruntime推理
-   （模拟MindConverter的核心路径：PyTorch → ONNX → MindSpore）
+Compare two cross-framework test case migration approaches:
+1. LLM method: extract cases from MongoDB → build PT/MS cases → run → LLM repair/mutation → run LLM-generated cases
+2. MindConverter method: extract cases from MongoDB → wrap as a small PyTorch model → torch.onnx.export → onnxruntime inference
+     (simulate MindConverter core path: PyTorch → ONNX → MindSpore)
 
-MindConverter 简介：
-  - MindSpore官方模型迁移工具，可将PyTorch(ONNX)模型迁移到MindSpore框架
-  - 核心转换路径依赖 ONNX 中间格式：PyTorch → ONNX → MindSpore(model.py + ckpt)
-  - 支持命令行(mindconverter --model_file)和API(pytorch2mindspore)两种方式
-  - 本质上为算子驱动，对 ONNX 算子与 MindSpore 算子进行映射
-  - 注意：MindConverter从1.9.0开始不再演进，官方推荐使用1.7.0版本
+MindConverter overview:
+    - Official MindSpore model migration tool that converts PyTorch (ONNX) models to MindSpore
+    - Core conversion path relies on ONNX as intermediate: PyTorch → ONNX → MindSpore (model.py + ckpt)
+    - Supports CLI (mindconverter --model_file) and API (pytorch2mindspore)
+    - Operator-driven mapping between ONNX operators and MindSpore operators
+    - Note: MindConverter stopped evolving after 1.9.0; official recommendation is version 1.7.0
 
-统计指标：LLM生成的MS用例执行成功率 vs MindConverter(ONNX)导出+推理成功率
-（剔除LLM选择跳过的算子）
+Metric: LLM-generated MS case execution success rate vs MindConverter (ONNX) export + inference success rate
+(excluding operators skipped by LLM)
 """
 
 import pymongo
@@ -41,25 +41,25 @@ from openai import OpenAI
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock, RLock
 
-# 添加项目根目录到路径
+# Add project root directory to path
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from component.doc.doc_crawler_factory import get_doc_content
 
-# ==================== 常量定义 ====================
+# ==================== Constants ====================
 DEFAULT_MODEL = "qwen-plus"
 DEFAULT_KEY_PATH = "aliyun.key"
-DEFAULT_MAX_ITERATIONS = 1   # 简化比较：只迭代1次
+DEFAULT_MAX_ITERATIONS = 1   # Simplified comparison: only 1 iteration
 DEFAULT_NUM_CASES = 3
 DEFAULT_WORKERS = 4
 
 
-# ==================== 工具函数 ====================
+# ==================== Utilities ====================
 
 def safe_print(msg: str, print_lock: Lock = None, end: str = "\n"):
-    """线程安全的打印"""
+    """Thread-safe print."""
     if print_lock:
         with print_lock:
             print(msg, end=end, flush=True)
@@ -67,22 +67,22 @@ def safe_print(msg: str, print_lock: Lock = None, end: str = "\n"):
         print(msg, end=end, flush=True)
 
 
-# ==================== MindConverter(ONNX) 转换器 ====================
+# ==================== MindConverter (ONNX) Converter ====================
 
 class MindConverterSimulator:
     """
-    通过 ONNX 中间格式模拟 MindConverter 的 PyTorch → MindSpore 测试用例迁移
-    
-    MindConverter 核心转换路径：
-    1. PyTorch 模型 → torch.onnx.export → ONNX 模型
-    2. ONNX 模型 → MindConverter 内部算子映射 → MindSpore 模型(model.py + ckpt)
-    
-    本转换器的模拟流程（算子级）：
-    1. 将 PyTorch 算子包装为一个最小化的 nn.Module
-    2. 使用 torch.onnx.export 导出为 ONNX 模型
-    3. 使用 onnxruntime 推理获得输出
-    
-    成功标准：ONNX 导出 + OnnxRuntime 推理成功即视为"MindConverter方法转换成功"
+    Simulate MindConverter's PyTorch → MindSpore test case migration via ONNX.
+
+    MindConverter core conversion path:
+    1. PyTorch model → torch.onnx.export → ONNX model
+    2. ONNX model → MindConverter internal operator mapping → MindSpore model (model.py + ckpt)
+
+    Simulation flow (operator-level):
+    1. Wrap PyTorch operator as a minimal nn.Module
+    2. Export to ONNX via torch.onnx.export
+    3. Run onnxruntime inference
+
+    Success criterion: ONNX export + OnnxRuntime inference success == MindConverter conversion success
     """
 
     def __init__(self, print_lock: Lock = None):
@@ -96,16 +96,16 @@ class MindConverterSimulator:
                         init_kwargs: Dict[str, Any],
                         extra_kwargs: Dict[str, Any] = None) -> Optional[torch.nn.Module]:
         """
-        将 PyTorch 算子包装为 nn.Module，以便 torch.onnx.export 使用
-        
+        Wrap a PyTorch operator as nn.Module for torch.onnx.export.
+
         Args:
-            torch_api: PyTorch API 名称
-            is_class_api: 是否为类形式的 API
-            init_kwargs: 类算子的初始化参数
-            extra_kwargs: 函数算子的非张量关键字参数（通过闭包捕获）
-        
+            torch_api: PyTorch API name
+            is_class_api: Whether this is a class-based API
+            init_kwargs: Init kwargs for class operators
+            extra_kwargs: Non-tensor kwargs for function operators (captured via closure)
+
         Returns:
-            包装后的 nn.Module，失败返回 None
+            Wrapped nn.Module or None on failure
         """
         parts = torch_api.split(".")
         extra_kwargs = extra_kwargs or {}
@@ -131,10 +131,10 @@ class MindConverterSimulator:
 
     @staticmethod
     def _resolve_attr(parts: List[str]):
-        """根据 ['torch', 'nn', 'ReLU'] 这样的路径获取属性"""
+        """Resolve attribute by path like ['torch', 'nn', 'ReLU']."""
         try:
             obj = torch
-            for p in parts[1:]:  # 跳过 'torch'
+            for p in parts[1:]:  # Skip 'torch'
                 obj = getattr(obj, p)
             return obj
         except AttributeError:
@@ -143,15 +143,15 @@ class MindConverterSimulator:
     def convert_and_run(self, torch_api: str, test_case: Dict[str, Any],
                         is_class_api: bool) -> Dict[str, Any]:
         """
-        对单个测试用例执行 MindConverter(ONNX) 转换 + 推理
-        
-        流程：
-        1. 准备 PyTorch 输入张量
-        2. 用 PyTorch 前向传播，获得参考结果
-        3. torch.onnx.export 导出（模拟MindConverter的ONNX导出阶段）
-        4. onnxruntime 推理（模拟MindConverter转换后的MindSpore推理）
-        5. 比较两者结果
-        
+        Run MindConverter (ONNX) conversion + inference for one test case.
+
+        Steps:
+        1. Prepare PyTorch input tensors
+        2. Run PyTorch forward pass as reference
+        3. torch.onnx.export (simulate MindConverter ONNX export stage)
+        4. onnxruntime inference (simulate MindConverter MindSpore inference stage)
+        5. Compare results
+
         Returns:
             {
                 "onnx_export_success": bool,
@@ -171,28 +171,28 @@ class MindConverterSimulator:
             "onnx_shape": None,
         }
 
-        # 使用执行锁保证 torch.onnx.export 的线程安全
+        # Use execution lock to keep torch.onnx.export thread-safe
         with self.execution_lock:
-            # ---------- 1. 准备输入 ----------
+            # ---------- 1. Prepare inputs ----------
             try:
                 input_tensors, init_kwargs, input_names, extra_kwargs = self._prepare_inputs(test_case, is_class_api)
             except Exception as e:
-                result["error"] = f"输入准备失败: {e}"
+                result["error"] = f"Input preparation failed: {e}"
                 return result
 
             if not input_tensors:
-                result["error"] = "无有效输入张量"
+                result["error"] = "No valid input tensors"
                 return result
 
-            # ---------- 2. 包装模型 ----------
+            # ---------- 2. Wrap model ----------
             module = self._wrap_as_module(torch_api, is_class_api, init_kwargs, extra_kwargs)
             if module is None:
-                result["error"] = f"无法包装算子 {torch_api} 为 nn.Module"
+                result["error"] = f"Unable to wrap operator {torch_api} as nn.Module"
                 return result
 
             module.eval()
 
-            # ---------- 3. PyTorch 前向传播 ----------
+            # ---------- 3. PyTorch forward pass ----------
             try:
                 with torch.no_grad():
                     if len(input_tensors) == 1:
@@ -203,10 +203,10 @@ class MindConverterSimulator:
                 if hasattr(pt_output, 'shape'):
                     result["pt_shape"] = list(pt_output.shape)
             except Exception as e:
-                result["error"] = f"PyTorch前向传播失败: {e}"
+                result["error"] = f"PyTorch forward failed: {e}"
                 return result
 
-            # ---------- 4. ONNX 导出（模拟MindConverter的ONNX导出阶段） ----------
+            # ---------- 4. ONNX export (simulate MindConverter ONNX export stage) ----------
             onnx_path = None
             try:
                 onnx_fd, onnx_path = tempfile.mkstemp(suffix=".onnx")
@@ -229,12 +229,12 @@ class MindConverterSimulator:
                 )
                 result["onnx_export_success"] = True
             except Exception as e:
-                result["error"] = f"ONNX导出失败(MindConverter核心路径): {e}"
+                result["error"] = f"ONNX export failed (MindConverter core path): {e}"
                 if onnx_path and os.path.exists(onnx_path):
                     os.remove(onnx_path)
                 return result
 
-            # ---------- 5. OnnxRuntime 推理（模拟MindConverter转换后的推理） ----------
+            # ---------- 5. OnnxRuntime inference (simulate MindConverter inference stage) ----------
             try:
                 sess = ort.InferenceSession(onnx_path, providers=["CPUExecutionProvider"])
                 feed = {}
@@ -249,7 +249,7 @@ class MindConverterSimulator:
                 result["onnx_shape"] = list(onnx_result.shape)
 
             except Exception as e:
-                result["error"] = f"OnnxRuntime推理失败: {e}"
+                result["error"] = f"OnnxRuntime inference failed: {e}"
             finally:
                 if onnx_path and os.path.exists(onnx_path):
                     os.remove(onnx_path)
@@ -259,10 +259,10 @@ class MindConverterSimulator:
     def _prepare_inputs(self, test_case: Dict[str, Any],
                         is_class_api: bool) -> Tuple[List[torch.Tensor], Dict[str, Any], List[str], Dict[str, Any]]:
         """
-        从测试用例中提取输入张量和初始化参数
-        
+        Extract input tensors and init kwargs from a test case.
+
         Returns:
-            (input_tensors列表, init_kwargs字典, input_names列表, extra_kwargs字典)
+            (input_tensors list, init_kwargs dict, input_names list, extra_kwargs dict)
         """
         input_tensors: List[torch.Tensor] = []
         init_kwargs: Dict[str, Any] = {}
@@ -271,7 +271,7 @@ class MindConverterSimulator:
 
         positional_tensor_params = ["condition", "input", "x", "y", "other"]
 
-        # 可变参数处理
+        # Handle varargs
         varargs_key = None
         for key in test_case.keys():
             if key.startswith('*'):
@@ -288,7 +288,7 @@ class MindConverterSimulator:
                         input_names.append(f"input_{idx}")
             return input_tensors, init_kwargs, input_names, extra_kwargs
 
-        # 按顺序收集位置参数作为输入张量
+        # Collect positional params as input tensors in order
         for param_name in positional_tensor_params:
             if param_name in test_case:
                 value = test_case[param_name]
@@ -297,7 +297,7 @@ class MindConverterSimulator:
                     input_tensors.append(tensor)
                     input_names.append(param_name)
 
-        # 其他参数
+        # Other params
         skip_params = {"layout", "requires_grad", "out", "api"}
         for key, value in test_case.items():
             if key in positional_tensor_params or key in skip_params or key.startswith('*'):
@@ -319,7 +319,7 @@ class MindConverterSimulator:
 
     @staticmethod
     def _to_torch_tensor(value: Any) -> Optional[torch.Tensor]:
-        """将各种格式的值转换为 PyTorch 张量"""
+        """Convert values of various formats to PyTorch tensors."""
         if isinstance(value, np.ndarray):
             return torch.from_numpy(value.copy())
         elif isinstance(value, dict) and "shape" in value:
@@ -355,7 +355,7 @@ class MindConverterSimulator:
 
 
 class _FuncWrapper(torch.nn.Module):
-    """将普通函数包装为 nn.Module，用于 torch.onnx.export"""
+    """Wrap a regular function as nn.Module for torch.onnx.export."""
 
     def __init__(self, func):
         super().__init__()
@@ -365,14 +365,14 @@ class _FuncWrapper(torch.nn.Module):
         return self._func(*args)
 
 
-# ==================== LLM 方法（简化版） ====================
+# ==================== LLM Method (Simplified) ====================
 
 class LLMMethod:
     """
-    基于 LLM 的测试用例转换方法（简化版，迭代1次）
-    
-    流程：从MongoDB提取用例 → 在PT和MS中执行 → LLM判断修复/跳过 → 执行LLM生成的用例
-    复用了 llm_enhanced_compare.py 的核心逻辑，但精简了输出。
+    LLM-based test case conversion method (simplified, 1 iteration).
+
+    Flow: extract cases from MongoDB → run on PT/MS → LLM decides repair/skip → run LLM-generated cases
+    Reuses core logic from llm_enhanced_compare.py with simplified output.
     """
 
     def __init__(self, mongo_uri: str = "mongodb://localhost:27017/",
@@ -392,28 +392,28 @@ class LLMMethod:
         self.db = self.client[db_name]
         self.collection = self.db["argVS"]
 
-        # LLM 客户端
+        # LLM client
         api_key = self._load_api_key(key_path)
         self.llm_client = OpenAI(
             api_key=api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
         )
 
-        # API 映射
+        # API mapping
         self.api_mapping = self._load_api_mapping()
 
-        # 随机种子
+        # Random seeds
         np.random.seed(42)
         torch.manual_seed(42)
         mindspore.set_seed(42)
 
-        # 设置MindSpore为动态图模式
+        # Set MindSpore to PyNative (eager) mode
         mindspore.set_context(mode=mindspore.PYNATIVE_MODE)
 
-        # 会导致程序卡住或崩溃的算子列表（跳过这些算子的测试）
-        # 注意：torch.as_tensor 不跳过
+        # Operators that may hang or crash (skip testing these)
+        # Note: torch.as_tensor is not skipped
         self.problematic_apis = {
-            "torch.triu": "会导致程序卡住",
+            "torch.triu": "May hang the program",
         }
 
     def _safe_print(self, msg: str, end: str = "\n"):
@@ -448,16 +448,16 @@ class LLMMethod:
                 mapping[pt_api] = {"ms_api": ms_api}
             return mapping
         except Exception as e:
-            self._safe_print(f"❌ 加载映射表失败: {e}")
+            self._safe_print(f"❌ Failed to load mapping table: {e}")
             return {}
 
     def convert_api_name(self, torch_api: str) -> Tuple[Optional[str], Optional[str], str]:
         if torch_api in self.api_mapping:
             ms_api = self.api_mapping[torch_api]["ms_api"]
-            if ms_api in ("无对应实现", "NONE", ""):
-                return torch_api, None, "无对应实现"
-            return torch_api, ms_api, "映射表"
-        return torch_api, None, "映射表中未找到"
+            if ms_api in ("No implementation", "NONE", ""):
+                return torch_api, None, "No implementation"
+            return torch_api, ms_api, "Mapping table"
+        return torch_api, None, "Not found in mapping table"
 
     @staticmethod
     def is_class_based_api(api_name: str) -> bool:
@@ -484,7 +484,7 @@ class LLMMethod:
             pass
         return None
 
-    # -------- 数据生成 --------
+    # -------- Data generation --------
 
     @staticmethod
     def generate_numpy_data(data: Any) -> np.ndarray:
@@ -558,7 +558,7 @@ class LLMMethod:
                 max_len = max(max_len, len(value))
         return max_len if max_len > 0 else 1
 
-    # -------- 参数准备 --------
+    # -------- Argument preparation --------
 
     def prepare_arguments_torch(self, test_case: Dict[str, Any]) -> Tuple[List[Any], Dict[str, Any]]:
         args, kwargs = [], {}
@@ -640,12 +640,12 @@ class LLMMethod:
                     kwargs[key] = value
         return args, kwargs
 
-    # -------- 执行测试用例 --------
+    # -------- Execute test cases --------
 
     def execute_test_case(self, torch_api: str, mindspore_api: str,
                           torch_test_case: Dict[str, Any],
                           mindspore_test_case: Dict[str, Any]) -> Dict[str, Any]:
-        """在PyTorch和MindSpore中分别执行测试用例"""
+        """Execute a test case in PyTorch and MindSpore separately."""
         result = {
             "torch_api": torch_api, "mindspore_api": mindspore_api,
             "torch_success": False, "mindspore_success": False,
@@ -661,7 +661,7 @@ class LLMMethod:
         try:
             torch_func = self.get_operator_function(torch_api, "torch")
             if torch_func is None:
-                result["torch_error"] = f"算子 {torch_api} 未找到"
+                result["torch_error"] = f"Operator {torch_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_torch(torch_test_case)
                 if is_class_api:
@@ -669,7 +669,7 @@ class LLMMethod:
                     instance = torch_func(**init_kwargs)
                     input_data = kwargs.get('input', args[0] if args else None)
                     if input_data is None:
-                        raise ValueError("类算子缺少input参数")
+                        raise ValueError("Class operator missing input argument")
                     with torch.no_grad():
                         torch_result = instance(input_data)
                 else:
@@ -684,7 +684,7 @@ class LLMMethod:
         try:
             ms_func = self.get_operator_function(mindspore_api, "mindspore")
             if ms_func is None:
-                result["mindspore_error"] = f"算子 {mindspore_api} 未找到"
+                result["mindspore_error"] = f"Operator {mindspore_api} not found"
             else:
                 args, kwargs = self.prepare_arguments_mindspore(mindspore_test_case, mindspore_api)
                 if is_class_api:
@@ -692,7 +692,7 @@ class LLMMethod:
                     instance = ms_func(**init_kwargs)
                     input_data = kwargs.get('x', kwargs.get('input', args[0] if args else None))
                     if input_data is None:
-                        raise ValueError("类算子缺少input/x参数")
+                        raise ValueError("Class operator missing input/x argument")
                     ms_result = instance(input_data)
                 else:
                     ms_result = ms_func(*args, **kwargs)
@@ -700,18 +700,18 @@ class LLMMethod:
         except Exception as e:
             result["mindspore_error"] = str(e)
 
-        # -- 比较 --
+        # -- Compare --
         if result["torch_success"] and result["mindspore_success"]:
             try:
                 torch_np = torch_result.detach().cpu().numpy() if hasattr(torch_result, 'detach') else np.array(torch_result)
                 ms_np = ms_result.asnumpy() if hasattr(ms_result, 'asnumpy') else np.array(ms_result)
                 if torch_np.shape != ms_np.shape:
-                    result["comparison_error"] = f"形状不匹配: {torch_np.shape} vs {ms_np.shape}"
+                    result["comparison_error"] = f"Shape mismatch: {torch_np.shape} vs {ms_np.shape}"
                 elif np.allclose(torch_np, ms_np, atol=1e-5, rtol=1e-5, equal_nan=True):
                     result["results_match"] = True
                 else:
                     max_diff = np.max(np.abs(torch_np.astype(float) - ms_np.astype(float)))
-                    result["comparison_error"] = f"最大差异: {max_diff}"
+                    result["comparison_error"] = f"Max difference: {max_diff}"
                 result["status"] = "compared"
             except Exception as e:
                 result["comparison_error"] = str(e)
@@ -729,7 +729,7 @@ class LLMMethod:
         with self.execution_lock:
             return self.execute_test_case(torch_api, mindspore_api, torch_tc, ms_tc)
 
-    # -------- 文档爬取 --------
+    # -------- Documentation fetch --------
 
     def fetch_api_docs(self, torch_api: str, mindspore_api: str) -> Tuple[str, str]:
         MIN_DOC_LENGTH = 300
@@ -752,11 +752,11 @@ class LLMMethod:
             ms_doc = ""
         return torch_doc, ms_doc
 
-    # -------- LLM 调用 --------
+    # -------- LLM call --------
 
     def call_llm(self, execution_result: Dict, torch_tc: Dict, ms_tc: Dict,
                  torch_doc: str = "", ms_doc: str = "") -> Dict[str, Any]:
-        """调用LLM进行修复/变异/跳过判断"""
+        """Call LLM to decide repair/mutation/skip."""
         torch_api = execution_result.get("torch_api", "")
         mindspore_api = execution_result.get("mindspore_api", "")
         status = execution_result.get("status", "")
@@ -767,7 +767,7 @@ class LLMMethod:
         mindspore_error = execution_result.get("mindspore_error", "")
         comparison_error = execution_result.get("comparison_error", "")
 
-        # 简化PyTorch测试用例
+        # Simplify PyTorch test case
         simplified_torch_test_case = {}
         for key, value in torch_tc.items():
             if isinstance(value, np.ndarray):
@@ -775,7 +775,7 @@ class LLMMethod:
             else:
                 simplified_torch_test_case[key] = value
 
-        # 简化MindSpore测试用例
+        # Simplify MindSpore test case
         simplified_mindspore_test_case = {}
         for key, value in ms_tc.items():
             if isinstance(value, np.ndarray):
@@ -783,7 +783,7 @@ class LLMMethod:
             else:
                 simplified_mindspore_test_case[key] = value
 
-        # 构建PyTorch参数示例
+        # Build PyTorch parameter examples
         torch_param_examples = []
         for key, value in simplified_torch_test_case.items():
             if key == "api":
@@ -797,7 +797,7 @@ class LLMMethod:
 
         torch_param_example_str = ",\n".join(torch_param_examples) if torch_param_examples else '    "input": {"shape": [2, 3], "dtype": "torch.float32"}'
 
-        # 构建MindSpore参数示例
+        # Build MindSpore parameter examples
         ms_param_examples = []
         for key, value in simplified_mindspore_test_case.items():
             if key == "api":
@@ -811,83 +811,83 @@ class LLMMethod:
 
         ms_param_example_str = ",\n".join(ms_param_examples) if ms_param_examples else '    "x": {"shape": [2, 3], "dtype": "float32"}'
 
-        # 构建API文档部分
+        # Build API documentation section
         doc_section = ""
         if torch_doc or ms_doc:
-            doc_section = "\n## 官方API文档参考\n\n"
+            doc_section = "\n## Official API Documentation\n\n"
             if torch_doc:
-                doc_section += f"### PyTorch {torch_api} 文档\n```\n{torch_doc}\n```\n\n"
+                doc_section += f"### PyTorch {torch_api} Documentation\n```\n{torch_doc}\n```\n\n"
             if ms_doc:
-                doc_section += f"### MindSpore {mindspore_api} 文档\n```\n{ms_doc}\n```\n\n"
+                doc_section += f"### MindSpore {mindspore_api} Documentation\n```\n{ms_doc}\n```\n\n"
 
-        prompt = f"""请分析以下算子测试用例在PyTorch和MindSpore框架中的执行结果，并根据结果进行测试用例的修复或变异（fuzzing）。
+                prompt = f"""Please analyze the following operator test cases in PyTorch and MindSpore, and repair or mutate (fuzz) them based on the results.
 
-## 测试信息
+## Test Information
 - **PyTorch API**: {torch_api}
 - **MindSpore API**: {mindspore_api}
 {doc_section}
-## 执行结果
-- **执行状态**: {status}
-- **PyTorch执行成功**: {torch_success}
-- **MindSpore执行成功**: {mindspore_success}
-- **结果是否一致**: {results_match}
+## Execution Results
+- **Status**: {status}
+- **PyTorch success**: {torch_success}
+- **MindSpore success**: {mindspore_success}
+- **Results match**: {results_match}
 
-## 错误信息
-- **PyTorch错误**: {torch_error if torch_error else "无"}
-- **MindSpore错误**: {mindspore_error if mindspore_error else "无"}
-- **比较错误**: {comparison_error if comparison_error else "无"}
+## Error Information
+- **PyTorch error**: {torch_error if torch_error else "None"}
+- **MindSpore error**: {mindspore_error if mindspore_error else "None"}
+- **Comparison error**: {comparison_error if comparison_error else "None"}
 
-## 原始测试用例
+## Original Test Cases
 
-### PyTorch测试用例
+### PyTorch Test Case
 ```json
 {json.dumps(simplified_torch_test_case, indent=2, ensure_ascii=False)}
 ```
 
-### MindSpore测试用例
+### MindSpore Test Case
 ```json
 {json.dumps(simplified_mindspore_test_case, indent=2, ensure_ascii=False)}
 ```
 
-## 任务要求
-请根据以上信息（包括官方API文档），自主判断两框架的比较结果是**一致**、**不一致**还是**执行出错**，并执行以下操作：
+## Task Requirements
+Based on the above information (including official API docs), decide whether the cross-framework result is **consistent**, **inconsistent**, or **execution error**, and then perform the following:
 
-1. **如果一致**：对用例进行**变异（fuzzing）**，例如修改输入张量的形状、修改参数值等（可以考虑一些极端值或边界值）
-2. **如果执行出错**：根据报错原因和官方文档对用例进行**修复**（改变参数名称、数量、类型、取值范围等，不同框架可能不完全一样）或者**跳过**（当你认为这两个跨框架算子的功能不完全等价时）
-3. **如果不一致**：判断是否为可容忍的精度误差（1e-3及以下）：（1）如果是可容忍精度误差则**变异**；（2）结合算子文档分析后，认为这两个跨框架算子的功能不完全等价时选择**跳过**；（3）如果既不是可容忍精度误差，两个算子功能也等价，那就是测试用例构造问题，请根据算子文档文档对用例进行**修复**。
+1. **If consistent**: **Mutate (fuzz)** the case, e.g., change input tensor shapes or parameter values (consider extreme/boundary values).
+2. **If execution error**: **Repair** the case according to the error and docs (change parameter names, counts, types, or ranges; frameworks may differ), or **skip** if you believe the two cross-framework operators are not equivalent.
+3. **If inconsistent**: Decide whether the difference is tolerable numerical error (<= 1e-3): (1) if tolerable, **mutate**; (2) if docs suggest the operators are not equivalent, **skip**; (3) otherwise, it is a test case construction issue, so **repair** the case based on the docs.
 
-## 输出格式要求
-请严格按照以下JSON格式输出，不要包含任何其他文字、注释或markdown标记：
+## Output Format
+Please strictly output JSON in the following format without any other text, comments, or markdown:
 
 {{
-  "operation": "mutation",
-  "reason": "进行该操作的详细原因",
-  "pytorch_test_case": {{
-    "api": "{torch_api}",
+    "operation": "mutation",
+    "reason": "Detailed reason for the operation",
+    "pytorch_test_case": {{
+        "api": "{torch_api}",
 {torch_param_example_str}
-  }},
-  "mindspore_test_case": {{
-    "api": "{mindspore_api}",
+    }},
+    "mindspore_test_case": {{
+        "api": "{mindspore_api}",
 {ms_param_example_str}
-  }}
+    }}
 }}
 
-**重要说明**：
-1. operation的值必须是 "mutation"、"repair" 或 "skip" 之一
-2. 张量参数必须使用 {{"shape": [...], "dtype": "..."}} 格式
-3. 标量参数直接使用数值，例如 "y": 0
-4. 构造两个框架的用例时必须保证输入相同（必要时进行张量形状的转换）、参数在语义上严格对应
-5. PyTorch和MindSpore的测试用例可以有参数名差异（如input vs x）、参数值差异或者参数数量的差异，只要保证理论上输出相同就行
-6. 如果这个算子找不到官方文档，请判断是否是因为该算子不存在或者已经从PyTorch或者MindSpore的当前版本移除了，如果是这样，请将 operation 设置为 "skip"，不需要尝试修复
-7. 测试用例变异时可适当探索一些极端情况，例如：空张量（shape包含0）、单元素张量（shape=[1]或[]）、高维张量、超大张量、不同数据类型（int、float、bool）、边界值等
-8. 请仔细阅读官方API文档，确保参数名称、参数类型、参数取值范围等与文档一致
+**Important Notes**:
+1. operation must be one of "mutation", "repair", or "skip"
+2. Tensor params must use {{"shape": [...], "dtype": "..."}} format
+3. Scalar params should be numeric values, e.g., "y": 0
+4. When constructing both frameworks' cases, inputs must match (convert shapes if needed) and parameters must be semantically aligned
+5. PyTorch and MindSpore cases may differ in parameter names (input vs x), values, or counts, as long as outputs should theoretically match
+6. If no official doc exists, decide if the operator is missing or removed in current PyTorch/MindSpore; if so, set operation to "skip" without attempting repair
+7. During mutation, explore extreme cases: empty tensors (shape contains 0), single-element tensors (shape=[1] or []), high-dim tensors, very large tensors, different dtypes (int/float/bool), boundary values, etc.
+8. Read official API docs carefully to ensure parameter names, types, and ranges are correct
 """
 
         try:
             completion = self.llm_client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "你是深度学习框架测试专家，精通PyTorch和MindSpore的API差异。返回严格JSON格式结果。"},
+                    {"role": "system", "content": "You are an expert in deep learning framework testing and understand PyTorch vs MindSpore API differences. Return strict JSON only."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -900,14 +900,14 @@ class LLMMethod:
                 match = re.search(r'\{.*\}', raw, re.DOTALL)
                 if match:
                     return json.loads(match.group())
-                return {"operation": "skip", "reason": "LLM返回格式错误"}
+                return {"operation": "skip", "reason": "LLM returned invalid format"}
         except Exception as e:
-            return {"operation": "skip", "reason": f"LLM调用失败: {e}"}
+            return {"operation": "skip", "reason": f"LLM call failed: {e}"}
 
-    # -------- 转换LLM测试用例 --------
+    # -------- Convert LLM test cases --------
 
     def convert_llm_test_cases(self, pt_tc: Dict, ms_tc: Dict) -> Tuple[Dict, Dict]:
-        """将LLM返回的测试用例转换为可执行格式（共享张量数据）"""
+        """Convert LLM-returned test cases to executable format (shared tensor data)."""
         shared_tensors = {}
         all_keys = set(pt_tc.keys()) | set(ms_tc.keys())
         for key in all_keys:
@@ -935,13 +935,13 @@ class LLMMethod:
         self.client.close()
 
 
-# ==================== 主比较逻辑 ====================
+# ==================== Main Comparison Logic ====================
 
 class LLMvsMindConverterComparator:
     """
-    主比较类：统一管理 LLM 方法和 MindConverter(ONNX) 方法的对比测试
-    
-    对每个算子的每个用例同时跑两种方法，最后汇总统计。
+    Main comparator: orchestrates LLM and MindConverter (ONNX) comparison tests.
+
+    For each operator and each case, run both methods and summarize results.
     """
 
     def __init__(self, key_path: str = DEFAULT_KEY_PATH,
@@ -959,7 +959,7 @@ class LLMvsMindConverterComparator:
         )
         self.mindconverter = MindConverterSimulator(print_lock=self.print_lock)
 
-        # 结果目录
+        # Result directory
         self.result_dir = os.path.join(ROOT_DIR, "pt_ms_test")
         os.makedirs(self.result_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -970,7 +970,7 @@ class LLMvsMindConverterComparator:
         safe_print(msg, self.print_lock, end)
 
     def _append_realtime_record(self, record: Dict[str, Any]):
-        """实时写入单条统计记录（JSONL）"""
+        """Write a single statistics record in real time (JSONL)."""
         with self.realtime_lock:
             self.realtime_file.write(json.dumps(record, ensure_ascii=False) + "\n")
             self.realtime_file.flush()
@@ -979,9 +979,9 @@ class LLMvsMindConverterComparator:
                        num_cases: int = DEFAULT_NUM_CASES,
                        max_iterations: int = DEFAULT_MAX_ITERATIONS) -> Dict[str, Any]:
         """
-        对一批算子运行 LLM vs MindConverter 对比测试
-        
-        返回汇总结果字典
+        Run LLM vs MindConverter comparison on a batch of operators.
+
+        Returns a summary result dict.
         """
         global_stats = {
             "total_operators": len(operator_names),
@@ -991,11 +991,11 @@ class LLMvsMindConverterComparator:
             "skipped_operators_problematic": 0,
             "skipped_operators_deprecated": 0,
 
-            # LLM 方法统计
+            # LLM method stats
             "llm_total_cases": 0,
             "llm_ms_success": 0,
 
-            # MindConverter 方法统计
+            # MindConverter method stats
             "mindconverter_total_cases": 0,
             "mindconverter_export_success": 0,
             "mindconverter_run_success": 0,
@@ -1005,13 +1005,13 @@ class LLMvsMindConverterComparator:
 
         for idx, op_name in enumerate(operator_names, 1):
             self._safe_print(f"\n{'='*70}")
-            self._safe_print(f"[{idx}/{len(operator_names)}] 算子: {op_name}")
+            self._safe_print(f"[{idx}/{len(operator_names)}] Operator: {op_name}")
             self._safe_print(f"{'='*70}")
 
-            # 0. 跳过会卡住的算子
+            # 0. Skip operators that may hang
             if op_name in self.llm_method.problematic_apis:
-                reason = self.llm_method.problematic_apis.get(op_name, "会导致程序卡住")
-                self._safe_print(f"  ⏭️ 跳过（{reason}）")
+                reason = self.llm_method.problematic_apis.get(op_name, "May hang the program")
+                self._safe_print(f"  ⏭️ Skipped ({reason})")
                 global_stats["skipped_operators_problematic"] += 1
                 operator_details.append({
                     "operator": op_name,
@@ -1020,10 +1020,10 @@ class LLMvsMindConverterComparator:
                 })
                 continue
 
-            # 1. 查 API 映射
+            # 1. Check API mapping
             torch_api, ms_api, mapping_method = self.llm_method.convert_api_name(op_name)
             if ms_api is None:
-                self._safe_print(f"  ⏭️ 无MS对应实现（{mapping_method}），跳过")
+                self._safe_print(f"  ⏭️ No MindSpore implementation ({mapping_method}), skipped")
                 global_stats["skipped_operators_no_ms"] += 1
                 operator_details.append({
                     "operator": op_name, "status": "skipped_no_ms",
@@ -1033,17 +1033,17 @@ class LLMvsMindConverterComparator:
 
             self._safe_print(f"  PT: {torch_api} → MS: {ms_api}")
 
-            # 2. 从 MongoDB 获取文档
+            # 2. Fetch document from MongoDB
             document = self.llm_method.collection.find_one({"api": op_name})
             if document is None:
-                self._safe_print(f"  ❌ 数据库中未找到")
+                self._safe_print(f"  ❌ Not found in database")
                 operator_details.append({"operator": op_name, "status": "not_found"})
                 continue
 
             total_cases = self.llm_method.get_num_test_cases(document)
             actual_cases = min(num_cases, total_cases)
 
-            # 3. 为每个用例同时测试 LLM 和 MindConverter
+            # 3. Test LLM and MindConverter for each case
             op_result = self._test_operator(
                 op_name, torch_api, ms_api, document,
                 actual_cases, max_iterations
@@ -1051,7 +1051,7 @@ class LLMvsMindConverterComparator:
 
             operator_details.append(op_result)
 
-            # 4. 汇总统计
+            # 4. Aggregate stats
             if op_result["status"] == "skipped_by_llm":
                 global_stats["skipped_operators_llm"] += 1
             elif op_result["status"] == "skipped_deprecated":
@@ -1069,7 +1069,7 @@ class LLMvsMindConverterComparator:
     def _test_operator(self, op_name: str, torch_api: str, ms_api: str,
                        document: Dict, num_cases: int,
                        max_iterations: int) -> Dict[str, Any]:
-        """对单个算子的多个用例同时测试 LLM 和 MindConverter 方法"""
+        """Test LLM and MindConverter for multiple cases of one operator."""
         op_result = {
             "operator": op_name,
             "torch_api": torch_api,
@@ -1086,18 +1086,18 @@ class LLMvsMindConverterComparator:
 
         is_class_api = self.llm_method.is_class_based_api(torch_api)
 
-        # 准备所有测试用例
+        # Prepare all test cases
         cases = []
         for case_idx in range(num_cases):
             tc = self.llm_method.prepare_shared_numpy_data(document, case_index=case_idx)
             tc["api"] = torch_api
             cases.append((case_idx + 1, tc))
 
-        # 预先爬取文档（只爬一次）
-        self._safe_print(f"  📖 爬取API文档...")
+        # Pre-fetch docs (once)
+        self._safe_print(f"  📖 Fetching API docs...")
         torch_doc, ms_doc = self.llm_method.fetch_api_docs(torch_api, ms_api)
 
-        # 用线程池并发处理各用例
+        # Process cases concurrently with a thread pool
         if self.num_workers <= 1:
             case_results = []
             for case_number, tc in cases:
@@ -1122,23 +1122,23 @@ class LLMvsMindConverterComparator:
 
         case_results.sort(key=lambda x: x["case_number"])
 
-        # 检查是否因为版本淘汰而跳过
+        # Check if skipped due to deprecation
         any_deprecated = any(cr.get("deprecated_skip", False) for cr in case_results)
         if any_deprecated:
             op_result["status"] = "skipped_deprecated"
             op_result["case_details"] = case_results
-            self._safe_print("  ⏭️ 该算子已被版本淘汰，跳过")
+            self._safe_print("  ⏭️ Operator deprecated, skipped")
             return op_result
 
-        # 检查是否所有用例都被 LLM skip
+        # Check if all cases were skipped by LLM
         all_skipped = all(cr.get("llm_skipped", False) for cr in case_results)
         if all_skipped and len(case_results) > 0:
             op_result["status"] = "skipped_by_llm"
             op_result["case_details"] = case_results
-            self._safe_print(f"  ⏭️ LLM选择跳过该算子")
+            self._safe_print(f"  ⏭️ LLM chose to skip this operator")
             return op_result
 
-        # 汇总每个用例的结果
+        # Aggregate results for each case
         for cr in case_results:
             if not cr.get("llm_skipped", False):
                 op_result["llm_total"] += cr.get("llm_total", 0)
@@ -1155,18 +1155,18 @@ class LLMvsMindConverterComparator:
                              is_class_api: bool,
                              torch_doc: str, ms_doc: str,
                              max_iterations: int) -> Dict[str, Any]:
-        """
-        处理单个用例：同时进行 LLM 方法和 MindConverter 方法
-        
-        LLM 方法流程（迭代1次）：
-          1. 用DB用例在PT和MS中执行
-          2. 调用LLM获取修复/变异/跳过
-          3. 如果LLM返回mutation/repair，执行LLM生成的用例
-        
-        MindConverter 方法流程：
-          1. 用同一个DB用例，包装成PyTorch Module
-          2. torch.onnx.export + onnxruntime推理（模拟MindConverter的ONNX核心路径）
-        """
+                """
+                Process one case: run both LLM and MindConverter methods.
+
+                LLM flow (1 iteration):
+                    1. Run DB case in PT and MS
+                    2. Call LLM for repair/mutation/skip
+                    3. If LLM returns mutation/repair, run the generated case
+
+                MindConverter flow:
+                    1. Wrap the same DB case as a PyTorch Module
+                    2. torch.onnx.export + onnxruntime inference (simulate MindConverter ONNX core path)
+                """
         case_result = {
             "case_number": case_number,
             "llm_skipped": False,
@@ -1180,8 +1180,8 @@ class LLMvsMindConverterComparator:
             "mindconverter_detail": None,
         }
 
-        # ========== MindConverter 方法 ==========
-        self._safe_print(f"  [用例{case_number}] MindConverter方法...", end="")
+        # ========== MindConverter method ==========
+        self._safe_print(f"  [Case {case_number}] MindConverter method...", end="")
         with self.execution_lock:
             mc_result = self.mindconverter.convert_and_run(
                 torch_api, test_case, is_class_api
@@ -1197,13 +1197,13 @@ class LLMvsMindConverterComparator:
         self._safe_print(f" MindConverter:{mc_status}{mc_err}")
         case_result["mindconverter_detail"] = mc_result
 
-        # ========== LLM 方法 ==========
-        # 步骤1：用DB原始用例在两个框架中执行
+        # ========== LLM method ==========
+        # Step 1: run the DB case in both frameworks
         torch_test_case = test_case
         ms_test_case = copy.deepcopy(test_case)
         ms_test_case["api"] = ms_api
 
-        self._safe_print(f"  [用例{case_number}] LLM方法: 初始执行...", end="")
+        self._safe_print(f"  [Case {case_number}] LLM method: initial run...", end="")
         try:
             with self.execution_lock:
                 exec_result = self.llm_method._execute_sequential(
@@ -1213,7 +1213,7 @@ class LLMvsMindConverterComparator:
             ms_s = "✓" if exec_result['mindspore_success'] else "✗"
             self._safe_print(f" PT:{pt_s} MS:{ms_s}")
         except Exception as e:
-            self._safe_print(f" ❌ 执行失败: {str(e)[:60]}")
+            self._safe_print(f" ❌ Execution failed: {str(e)[:60]}")
             exec_result = {
                 "torch_api": torch_api, "mindspore_api": ms_api,
                 "torch_success": False, "mindspore_success": False,
@@ -1222,7 +1222,7 @@ class LLMvsMindConverterComparator:
                 "comparison_error": None
             }
 
-        # 如果PyTorch执行报错包含deprecated/removed，直接跳过该算子
+        # If PyTorch error contains deprecated/removed, skip this operator
         torch_error = str(exec_result.get("torch_error", ""))
         if not exec_result.get("torch_success", False) and torch_error:
             if re.search(r"deprecated|removed", torch_error, re.IGNORECASE):
@@ -1231,9 +1231,9 @@ class LLMvsMindConverterComparator:
                 case_result["llm_detail"] = {
                     "initial_exec": exec_result,
                     "llm_operation": "skip",
-                    "llm_reason": "PyTorch算子已被版本淘汰"
+                    "llm_reason": "PyTorch operator has been deprecated"
                 }
-                self._safe_print("  版本淘汰检测到，跳过")
+                self._safe_print("  Deprecation detected, skipping")
                 self._append_realtime_record({
                     "timestamp": datetime.now().isoformat(),
                     "operator": torch_api,
@@ -1246,8 +1246,8 @@ class LLMvsMindConverterComparator:
                 })
                 return case_result
 
-        # 步骤2：调用LLM
-        self._safe_print(f"  [用例{case_number}] 调用LLM...", end="")
+        # Step 2: call LLM
+        self._safe_print(f"  [Case {case_number}] Calling LLM...", end="")
         llm_result = self.llm_method.call_llm(
             exec_result, torch_test_case, ms_test_case, torch_doc, ms_doc
         )
@@ -1274,11 +1274,11 @@ class LLMvsMindConverterComparator:
             })
             return case_result
 
-        # 步骤3：如果LLM返回了mutation/repair，执行LLM生成的用例
+        # Step 3: if LLM returns mutation/repair, run generated case
         llm_pt_tc = llm_result.get("pytorch_test_case", torch_test_case)
         llm_ms_tc = llm_result.get("mindspore_test_case", ms_test_case)
 
-        # 转换为可执行格式
+        # Convert to executable format
         try:
             llm_pt_tc, llm_ms_tc = self.llm_method.convert_llm_test_cases(llm_pt_tc, llm_ms_tc)
         except Exception as e:
@@ -1286,9 +1286,9 @@ class LLMvsMindConverterComparator:
             case_result["llm_detail"] = {
                 "initial_exec": exec_result,
                 "llm_operation": "skip",
-                "llm_reason": f"LLM返回的shape非法或无法生成张量: {e}"
+                "llm_reason": f"LLM returned invalid shape or tensor generation failed: {e}"
             }
-            self._safe_print(f"  [用例{case_number}] LLM用例转换失败，跳过: {str(e)[:60]}")
+            self._safe_print(f"  [Case {case_number}] LLM case conversion failed, skipped: {str(e)[:60]}")
             self._append_realtime_record({
                 "timestamp": datetime.now().isoformat(),
                 "operator": torch_api,
@@ -1303,7 +1303,7 @@ class LLMvsMindConverterComparator:
 
         case_result["llm_total"] = 1
 
-        self._safe_print(f"  [用例{case_number}] 执行LLM用例...", end="")
+        self._safe_print(f"  [Case {case_number}] Running LLM case...", end="")
         try:
             with self.execution_lock:
                 llm_exec = self.llm_method._execute_sequential(
@@ -1346,58 +1346,58 @@ class LLMvsMindConverterComparator:
         return case_result
 
     def print_and_save_results(self, comparison_result: Dict[str, Any]):
-        """打印结果并保存到文件"""
+        """Print results and save to file."""
         gs = comparison_result["global_stats"]
 
         print("\n" + "=" * 80)
-        print("📊 LLM方法 vs MindConverter方法 — 测试用例转换成功率对比")
+        print("📊 LLM vs MindConverter — Test Case Conversion Success Rate")
         print("=" * 80)
 
-        print(f"\n📌 算子总数: {gs['total_operators']}")
-        print(f"   - 无MS映射跳过: {gs['skipped_operators_no_ms']}")
-        print(f"   - 问题算子跳过: {gs['skipped_operators_problematic']}")
-        print(f"   - LLM选择跳过: {gs['skipped_operators_llm']}")
-        print(f"   - 已被版本淘汰跳过: {gs['skipped_operators_deprecated']}")
-        print(f"   - 实际参与对比: {gs['tested_operators']}")
+        print(f"\n📌 Total operators: {gs['total_operators']}")
+        print(f"   - Skipped (no MS mapping): {gs['skipped_operators_no_ms']}")
+        print(f"   - Skipped (problematic): {gs['skipped_operators_problematic']}")
+        print(f"   - Skipped by LLM: {gs['skipped_operators_llm']}")
+        print(f"   - Skipped (deprecated): {gs['skipped_operators_deprecated']}")
+        print(f"   - Participated in comparison: {gs['tested_operators']}")
 
         print(f"\n{'─'*40}")
-        print(f"🤖 LLM 方法（剔除跳过的算子）:")
-        print(f"   LLM生成的MS测试用例总数: {gs['llm_total_cases']}")
-        print(f"   MS执行成功数: {gs['llm_ms_success']}")
+        print(f"🤖 LLM method (excluding skipped operators):")
+        print(f"   Total MS test cases generated by LLM: {gs['llm_total_cases']}")
+        print(f"   MS execution successes: {gs['llm_ms_success']}")
         if gs['llm_total_cases'] > 0:
             llm_rate = gs['llm_ms_success'] / gs['llm_total_cases'] * 100
-            print(f"   ✅ MS执行成功率: {llm_rate:.2f}%")
+            print(f"   ✅ MS execution success rate: {llm_rate:.2f}%")
         else:
             llm_rate = 0
-            print(f"   ✅ MS执行成功率: N/A（无LLM生成的用例）")
+            print(f"   ✅ MS execution success rate: N/A (no LLM-generated cases)")
 
         print(f"\n{'─'*40}")
-        print(f"🔄 MindConverter 方法（剔除LLM跳过的算子）:")
-        print(f"   MindConverter转换尝试总数: {gs['mindconverter_total_cases']}")
-        print(f"   ONNX导出成功数: {gs['mindconverter_export_success']}")
-        print(f"   ONNX推理成功数（=转换成功）: {gs['mindconverter_run_success']}")
+        print(f"🔄 MindConverter method (excluding LLM-skipped operators):")
+        print(f"   Total MindConverter conversion attempts: {gs['mindconverter_total_cases']}")
+        print(f"   ONNX export successes: {gs['mindconverter_export_success']}")
+        print(f"   ONNX inference successes (= conversion success): {gs['mindconverter_run_success']}")
         if gs['mindconverter_total_cases'] > 0:
             mc_rate = gs['mindconverter_run_success'] / gs['mindconverter_total_cases'] * 100
-            print(f"   ✅ MindConverter转换成功率: {mc_rate:.2f}%")
+            print(f"   ✅ MindConverter conversion success rate: {mc_rate:.2f}%")
         else:
             mc_rate = 0
-            print(f"   ✅ MindConverter转换成功率: N/A")
+            print(f"   ✅ MindConverter conversion success rate: N/A")
 
         print(f"\n{'─'*40}")
-        print(f"📈 对比结论:")
+        print(f"📈 Comparison conclusion:")
         if gs['llm_total_cases'] > 0 and gs['mindconverter_total_cases'] > 0:
             diff = llm_rate - mc_rate
             if diff > 0:
-                print(f"   LLM方法 优于 MindConverter方法 {diff:.2f} 个百分点")
+                print(f"   LLM outperforms MindConverter by {diff:.2f} percentage points")
             elif diff < 0:
-                print(f"   MindConverter方法 优于 LLM方法 {-diff:.2f} 个百分点")
+                print(f"   MindConverter outperforms LLM by {-diff:.2f} percentage points")
             else:
-                print(f"   两种方法成功率持平")
+                print(f"   Success rates are tied")
         else:
-            print(f"   数据不足，无法比较")
+            print(f"   Insufficient data to compare")
         print("=" * 80)
 
-        # -------- 保存到文件 --------
+        # -------- Save to file --------
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         result_file = os.path.join(self.result_dir, f"llm_vs_mindconverter_result_{timestamp}.json")
 
@@ -1412,11 +1412,11 @@ class LLMvsMindConverterComparator:
         with open(result_file, 'w', encoding='utf-8') as f:
             json.dump(save_data, f, indent=2, ensure_ascii=False)
 
-        print(f"\n💾 详细结果已保存到: {result_file}")
+        print(f"\n💾 Detailed results saved to: {result_file}")
 
     @staticmethod
     def _make_serializable(obj: Any) -> Any:
-        """递归将对象转为可JSON序列化的格式"""
+        """Recursively convert objects to JSON-serializable formats."""
         if isinstance(obj, dict):
             return {k: LLMvsMindConverterComparator._make_serializable(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -1445,37 +1445,37 @@ class LLMvsMindConverterComparator:
             self.llm_method.close()
 
 
-# ==================== 主函数 ====================
+# ==================== Main Function ====================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="LLM方法 vs MindConverter方法：PyTorch→MindSpore 测试用例转换成功率对比"
+        description="LLM vs MindConverter: PyTorch→MindSpore test case conversion success rate"
     )
     parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES,
-                        help=f"每个算子测试的用例数（默认{DEFAULT_NUM_CASES}）")
+                        help=f"Number of cases per operator (default {DEFAULT_NUM_CASES})")
     parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS,
-                        help=f"LLM方法每个用例的迭代次数（默认{DEFAULT_MAX_ITERATIONS}）")
+                        help=f"LLM iterations per case (default {DEFAULT_MAX_ITERATIONS})")
     parser.add_argument("--start", type=int, default=1,
-                        help="起始算子索引（从1开始）")
+                        help="Start operator index (1-based)")
     parser.add_argument("--end", type=int, default=None,
-                        help="结束算子索引（包含）")
+                        help="End operator index (inclusive)")
     parser.add_argument("--operators", "-o", nargs="*",
-                        help="指定算子名称列表")
+                        help="List of operator names")
     parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS,
-                        help=f"LLM并发线程数（默认{DEFAULT_WORKERS}）")
+                        help=f"LLM concurrent workers (default {DEFAULT_WORKERS})")
     parser.add_argument("--model", default=DEFAULT_MODEL,
-                        help=f"LLM模型（默认{DEFAULT_MODEL}）")
+                        help=f"LLM model (default {DEFAULT_MODEL})")
     parser.add_argument("--key-path", "-k", default=DEFAULT_KEY_PATH,
-                        help=f"API key路径（默认{DEFAULT_KEY_PATH}）")
+                        help=f"API key path (default {DEFAULT_KEY_PATH})")
     args = parser.parse_args()
 
     print("=" * 80)
-    print("LLM方法 vs MindConverter方法 — PyTorch→MindSpore 测试用例转换成功率对比")
+    print("LLM vs MindConverter — PyTorch→MindSpore Test Case Conversion Success Rate")
     print("=" * 80)
-    print(f"📌 每个算子用例数: {args.num_cases}")
-    print(f"📌 LLM迭代次数: {args.max_iterations}")
-    print(f"📌 并发线程数: {args.workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Cases per operator: {args.num_cases}")
+    print(f"📌 LLM iterations: {args.max_iterations}")
+    print(f"📌 Worker threads: {args.workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMvsMindConverterComparator(
@@ -1486,10 +1486,10 @@ def main():
     start_time = time.time()
 
     try:
-        # 获取算子列表
+        # Fetch operator list
         all_docs = list(comparator.llm_method.collection.find({}, {"api": 1}))
         all_ops = [doc["api"] for doc in all_docs if "api" in doc]
-        print(f"\n📋 数据库中共 {len(all_ops)} 个算子")
+        print(f"\n📋 Total operators in database: {len(all_ops)}")
 
         if args.operators:
             operator_names = args.operators
@@ -1498,28 +1498,28 @@ def main():
             end_idx = args.end if args.end is not None else len(all_ops)
             end_idx = min(end_idx, len(all_ops))
             operator_names = all_ops[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} ~ {end_idx} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} to {end_idx}")
 
-        print(f"📋 将测试 {len(operator_names)} 个算子")
-        print(f"📋 前10个: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"📋 Testing {len(operator_names)} operators")
+        print(f"📋 First 10: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
 
-        # 运行对比
+        # Run comparison
         result = comparator.run_comparison(
             operator_names,
             num_cases=args.num_cases,
             max_iterations=args.max_iterations
         )
 
-        # 输出并保存
+        # Output and save
         comparator.print_and_save_results(result)
 
         elapsed = time.time() - start_time
         h, m, s = int(elapsed // 3600), int((elapsed % 3600) // 60), int(elapsed % 60)
-        print(f"\n⏱️ 总耗时: {h}h {m}m {s}s")
+        print(f"\n⏱️ Total time: {h}h {m}m {s}s")
 
     finally:
         comparator.close()
-        print("✅ 程序执行完成")
+        print("✅ Program completed")
 
 
 if __name__ == "__main__":

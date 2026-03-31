@@ -1,11 +1,11 @@
 """
-测试 fuzzing 代码的修复
+Test fixes for fuzzing code
 """
 import numpy as np
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root directory to path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -19,10 +19,10 @@ from pt_tf_test.fuzzing.llm_fuzzing_diff_test_concurrent import (
 
 
 def test_nan_comparison():
-    """测试 NaN 比较逻辑"""
-    print("测试 NaN 比较...")
+    """Test NaN comparison logic"""
+    print("Test for NaN comparison...")
     
-    # 测试1: 两个标量 NaN 应该被认为一致
+    # test1: Two scalars NaN should be considered identical
     torch_result = {
         "success": True,
         "result": np.nan,
@@ -39,17 +39,17 @@ def test_nan_comparison():
     }
     
     comparison = compare_results(torch_result, tf_result)
-    assert comparison["results_match"], "两个 NaN 应该被认为一致"
-    print("  ✓ 标量 NaN 比较正确")
+    assert comparison["results_match"], "Two NaNs should be considered identical"
+    print("  ✓ Scalar NaN is more correct")
     
-    # 测试2: 一个 NaN 一个普通值应该不一致
+    # test2: A NaN and a normal value should be inconsistent
     tf_result["result"] = 1.0
     comparison = compare_results(torch_result, tf_result)
-    assert not comparison["results_match"], "NaN 和普通值应该不一致"
-    assert "NaN 不一致" in comparison["comparison_error"]
-    print("  ✓ NaN 与普通值比较正确")
+    assert not comparison["results_match"], "NaN It should be inconsistent with the normal value"
+    assert "NaN inconsistent" in comparison["comparison_error"]
+    print("  ✓ NaN Correct compared to normal values")
     
-    # 测试3: 数组中的 NaN
+    # test3: in array NaN
     torch_result = {
         "success": True,
         "result": np.array([1.0, np.nan, 3.0]),
@@ -66,15 +66,15 @@ def test_nan_comparison():
     }
     
     comparison = compare_results(torch_result, tf_result)
-    assert comparison["results_match"], "包含 NaN 的数组应该一致"
-    print("  ✓ 数组 NaN 比较正确")
+    assert comparison["results_match"], "Arrays containing NaN should be consistent"
+    print("  ✓ Array NaN comparison is correct")
 
 
 def test_inf_comparison():
-    """测试 Inf 比较逻辑"""
-    print("\n测试 Inf 比较...")
+    """Testing Inf comparison logic"""
+    print("\nTest Inf Comparison...")
     
-    # 测试1: 两个正无穷应该一致
+    # test1: Two positive infinities should be consistent
     torch_result = {
         "success": True,
         "result": np.inf,
@@ -91,57 +91,57 @@ def test_inf_comparison():
     }
     
     comparison = compare_results(torch_result, tf_result)
-    assert comparison["results_match"], "两个正无穷应该一致"
-    print("  ✓ 正无穷比较正确")
+    assert comparison["results_match"], "Two positive infinities should be consistent"
+    print("  ✓ Positive infinity is more correct")
     
-    # 测试2: 正负无穷应该不一致
+    # test2: Positive and negative infinity should be inconsistent
     tf_result["result"] = -np.inf
     comparison = compare_results(torch_result, tf_result)
-    assert not comparison["results_match"], "正负无穷应该不一致"
-    assert "Inf 符号不一致" in comparison["comparison_error"]
-    print("  ✓ 正负无穷比较正确")
+    assert not comparison["results_match"], "Positive and negative infinity should be inconsistent"
+    assert "Inf Symbols are inconsistent" in comparison["comparison_error"]
+    print("  ✓ Plus or minus infinity is more correct")
 
 
 def test_data_format_conversion():
-    """测试数据格式转换"""
-    print("\n测试数据格式转换...")
+    """Test data format conversion"""
+    print("\nTest data format conversion...")
     
-    # 测试1: 检测需要转换的算子
+    # test1: Detect operators that require conversion
     assert needs_data_format_conversion("torch.nn.Conv2d")
     assert needs_data_format_conversion("torch.nn.AvgPool2d")
     assert not needs_data_format_conversion("torch.abs")
-    print("  ✓ 算子检测正确")
+    print("  ✓ Operator detection is correct")
     
-    # 测试2: NCHW -> NHWC (4D)
+    # test2: NCHW -> NHWC (4D)
     nchw = np.random.randn(2, 3, 4, 5)  # (N, C, H, W)
     nhwc = convert_nchw_to_nhwc(nchw)
-    assert nhwc.shape == (2, 4, 5, 3), f"期望 (2, 4, 5, 3)，得到 {nhwc.shape}"
-    print("  ✓ NCHW -> NHWC 转换正确")
+    assert nhwc.shape == (2, 4, 5, 3), f"expect (2, 4, 5, 3)，get {nhwc.shape}"
+    print("  ✓ NCHW -> NHWC Conversion is correct")
     
-    # 测试3: NHWC -> NCHW (4D)
+    # test3: NHWC -> NCHW (4D)
     nchw_back = convert_nhwc_to_nchw(nhwc)
     assert nchw_back.shape == nchw.shape
     assert np.allclose(nchw_back, nchw)
-    print("  ✓ NHWC -> NCHW 转换正确")
+    print("  ✓ NHWC -> NCHW Conversion is correct")
     
-    # 测试4: 3D 转换
+    # test4: 3D Convert
     ncl = np.random.randn(2, 3, 10)  # (N, C, L)
     nlc = convert_nchw_to_nhwc(ncl)
-    assert nlc.shape == (2, 10, 3), f"期望 (2, 10, 3)，得到 {nlc.shape}"
-    print("  ✓ 3D 转换正确")
+    assert nlc.shape == (2, 10, 3), f"expect (2, 10, 3)，get {nlc.shape}"
+    print("  ✓ 3D Conversion is correct")
     
-    # 测试5: 5D 转换
+    # test5: 5D Convert
     ncdhw = np.random.randn(2, 3, 4, 5, 6)  # (N, C, D, H, W)
     ndhwc = convert_nchw_to_nhwc(ncdhw)
-    assert ndhwc.shape == (2, 4, 5, 6, 3), f"期望 (2, 4, 5, 6, 3)，得到 {ndhwc.shape}"
-    print("  ✓ 5D 转换正确")
+    assert ndhwc.shape == (2, 4, 5, 6, 3), f"expect (2, 4, 5, 6, 3)，get {ndhwc.shape}"
+    print("  ✓ 5D Conversion is correct")
 
 
 def test_normal_value_comparison():
-    """测试普通数值比较"""
-    print("\n测试普通数值比较...")
+    """Test common numerical comparisons"""
+    print("\nTest common numerical comparisons...")
     
-    # 测试1: 相同的值
+    # test1: same value
     torch_result = {
         "success": True,
         "result": 1.5,
@@ -158,27 +158,27 @@ def test_normal_value_comparison():
     }
     
     comparison = compare_results(torch_result, tf_result)
-    assert comparison["results_match"], "相同的值应该一致"
-    print("  ✓ 相同值比较正确")
+    assert comparison["results_match"], "Identical values ​​should be consistent"
+    print("  ✓ The same value is more correct")
     
-    # 测试2: 在容差范围内的值
+    # test2: Value within tolerance
     tf_result["result"] = 1.5 + 1e-6
     comparison = compare_results(torch_result, tf_result)
-    assert comparison["results_match"], "容差范围内的值应该一致"
-    print("  ✓ 容差范围内比较正确")
+    assert comparison["results_match"], "Values ​​within tolerance should be consistent"
+    print("  ✓ Correct within tolerance")
     
-    # 测试3: 超出容差的值
+    # test3: Value outside tolerance
     tf_result["result"] = 2.0
     comparison = compare_results(torch_result, tf_result)
-    assert not comparison["results_match"], "超出容差的值应该不一致"
-    assert "数值不一致" in comparison["comparison_error"]
-    print("  ✓ 超出容差比较正确")
+    assert not comparison["results_match"], "Values ​​outside the tolerance should be inconsistent"
+    assert "Values ​​are inconsistent" in comparison["comparison_error"]
+    print("  ✓ More accurate than tolerance")
 
 
 def main():
-    """运行所有测试"""
+    """Run all tests"""
     print("=" * 70)
-    print("运行 Fuzzing 修复测试")
+    print("Run the fuzzing fix test")
     print("=" * 70)
     
     try:
@@ -188,16 +188,16 @@ def main():
         test_normal_value_comparison()
         
         print("\n" + "=" * 70)
-        print("✓ 所有测试通过！")
+        print("✓ All tests passed！")
         print("=" * 70)
         
     except AssertionError as e:
-        print(f"\n✗ 测试失败: {e}")
+        print(f"\n✗ test failed: {e}")
         import traceback
         traceback.print_exc()
         return 1
     except Exception as e:
-        print(f"\n✗ 测试出错: {e}")
+        print(f"\n✗ Test error: {e}")
         import traceback
         traceback.print_exc()
         return 1

@@ -1,15 +1,15 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 5: 分析 PD↔PT 差分测试结果
+Step 5: Analyze PD<->PT differential testing results
 
-功能：
-- 读取 pd_pt_log_1/ 目录下的所有 JSON 结果文件
-- 生成统计报告：一致/不一致/出错的算子分布
-- 分析 LLM 修复/变异的效果
-- 输出详细的分析结果
+Function:
+- Read all JSON result files under pd_pt_log_1/
+- Generate summary report: consistent/inconsistent/error operator distribution
+- Analyze the effect of LLM repair/mutation
+- Output detailed analysis results
 
-用法：
+Usage:
     conda activate tf_env
     python pd_pt_test/analyze_results.py [--result-dir pd_pt_test/pd_pt_log_1] [--output pd_pt_test/analysis]
 """
@@ -28,10 +28,10 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def load_result_files(result_dir: str) -> List[Dict[str, Any]]:
-    """加载所有结果 JSON 文件"""
+    """Load all JSON result files."""
     results = []
     if not os.path.isdir(result_dir):
-        print(f"❌ 结果目录不存在: {result_dir}")
+        print(f"❌ Result directory does not exist: {result_dir}")
         return results
 
     for filename in sorted(os.listdir(result_dir)):
@@ -42,13 +42,13 @@ def load_result_files(result_dir: str) -> List[Dict[str, Any]]:
                     data = json.load(f)
                 results.append(data)
             except Exception as e:
-                print(f"  ⚠️ 读取失败: {filename}: {e}")
+                print(f"  ⚠️ Readfailed: {filename}: {e}")
 
     return results
 
 
 def analyze_operator_results(result_data: Dict[str, Any]) -> Dict[str, Any]:
-    """分析单个算子的测试结果"""
+    """Analyze the test results of a single operator."""
     pd_api = result_data.get("pd_api", "unknown")
     pytorch_api = result_data.get("pytorch_api", "unknown")
     iterations = result_data.get("results", [])
@@ -102,7 +102,7 @@ def analyze_operator_results(result_data: Dict[str, Any]) -> Dict[str, Any]:
             elif op_type == "skip":
                 analysis["llm_skips"] += 1
 
-    # 确定最终状态
+    # Determine final status
     if analysis["consistent_count"] > 0 and analysis["inconsistent_count"] == 0:
         analysis["final_status"] = "all_consistent"
     elif analysis["inconsistent_count"] > 0:
@@ -116,10 +116,10 @@ def analyze_operator_results(result_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def generate_summary_report(all_analyses: List[Dict[str, Any]], output_dir: str):
-    """生成汇总报告"""
+    """Generate summary report."""
     os.makedirs(output_dir, exist_ok=True)
 
-    # ---- 统计汇总 ----
+    # ---- Summary stats ----
     total_ops = len(all_analyses)
     status_counts = Counter(a["final_status"] for a in all_analyses)
     total_iterations = sum(a["total_iterations"] for a in all_analyses)
@@ -131,80 +131,80 @@ def generate_summary_report(all_analyses: List[Dict[str, Any]], output_dir: str)
     total_repairs = sum(a["llm_repairs"] for a in all_analyses)
     total_skips = sum(a["llm_skips"] for a in all_analyses)
 
-    # ---- 控制台输出 ----
+    # ---- Console output ----
     print("\n" + "=" * 80)
-    print("📊 PD↔PT 差分测试结果分析报告")
+    print("📊 PD<->PT differential testing analysis report")
     print("=" * 80)
 
-    print(f"\n1. 算子级别统计")
-    print(f"   总算子数: {total_ops}")
-    print(f"   全部一致: {status_counts.get('all_consistent', 0)}")
-    print(f"   存在不一致: {status_counts.get('has_inconsistency', 0)}")
-    print(f"   全部报错: {status_counts.get('all_error', 0)}")
-    print(f"   混合状态: {status_counts.get('mixed', 0)}")
+    print("\n1. Operator-level stats")
+    print(f"   Total operators: {total_ops}")
+    print(f"   All consistent: {status_counts.get('all_consistent', 0)}")
+    print(f"   Has inconsistency: {status_counts.get('has_inconsistency', 0)}")
+    print(f"   All errors: {status_counts.get('all_error', 0)}")
+    print(f"   Mixed status: {status_counts.get('mixed', 0)}")
 
-    print(f"\n2. 迭代级别统计")
-    print(f"   总迭代次数: {total_iterations}")
-    print(f"   结果一致: {total_consistent}")
-    print(f"   结果不一致: {total_inconsistent}")
+    print("\n2. Iteration-level stats")
+    print(f"   Total iterations: {total_iterations}")
+    print(f"   Consistent results: {total_consistent}")
+    print(f"   Inconsistent results: {total_inconsistent}")
 
-    print(f"\n3. LLM 操作统计")
-    print(f"   LLM 生成用例数: {total_llm_generated}")
-    print(f"   成功执行用例数: {total_successful}")
+    print("\n3. LLM operation stats")
+    print(f"   LLM generated case count: {total_llm_generated}")
+    print(f"   Successful execute case count: {total_successful}")
     if total_llm_generated > 0:
-        print(f"   成功率: {total_successful / total_llm_generated * 100:.2f}%")
-    print(f"   变异次数: {total_mutations}")
-    print(f"   修复次数: {total_repairs}")
-    print(f"   跳过次数: {total_skips}")
+        print(f"   Success rate: {total_successful / total_llm_generated * 100:.2f}%")
+    print(f"   Mutation count: {total_mutations}")
+    print(f"   Repair count: {total_repairs}")
+    print(f"   Skip count: {total_skips}")
 
-    # ---- 不一致的算子列表 ----
+    # ---- Inconsistent operator list ----
     inconsistent_ops = [a for a in all_analyses if a["final_status"] == "has_inconsistency"]
     if inconsistent_ops:
-        print(f"\n4. 发现不一致的算子 ({len(inconsistent_ops)} 个)")
-        print(f"   {'PD API':<40} {'PT API':<40} {'一致/不一致'}")
+        print(f"\n4. Inconsistent operators found ({len(inconsistent_ops)} items)")
+        print(f"   {'PD API':<40} {'PT API':<40} {'consistent/inconsistent'}")
         print(f"   {'-' * 40} {'-' * 40} {'-' * 12}")
         for a in inconsistent_ops:
             print(f"   {a['pd_api']:<40} {a['pytorch_api']:<40} {a['consistent_count']}/{a['inconsistent_count']}")
 
-    # ---- 保存详细报告 ----
+    # ---- Save detailed report ----
     report_file = os.path.join(output_dir, f"analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
     with open(report_file, 'w', encoding='utf-8') as f:
         f.write("=" * 80 + "\n")
-        f.write("PD↔PT 差分测试详细分析报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("PD<->PT differential testing detailed analysis report\n")
+        f.write(f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
 
-        f.write("1. 总体统计\n")
-        f.write(f"   总算子数: {total_ops}\n")
-        f.write(f"   全部一致: {status_counts.get('all_consistent', 0)}\n")
-        f.write(f"   存在不一致: {status_counts.get('has_inconsistency', 0)}\n")
-        f.write(f"   全部报错: {status_counts.get('all_error', 0)}\n")
-        f.write(f"   混合状态: {status_counts.get('mixed', 0)}\n\n")
+        f.write("1. Overall statistics\n")
+        f.write(f"   Total operators: {total_ops}\n")
+        f.write(f"   All consistent: {status_counts.get('all_consistent', 0)}\n")
+        f.write(f"   Has inconsistency: {status_counts.get('has_inconsistency', 0)}\n")
+        f.write(f"   All errors: {status_counts.get('all_error', 0)}\n")
+        f.write(f"   Mixed status: {status_counts.get('mixed', 0)}\n\n")
 
-        f.write("2. LLM 操作统计\n")
-        f.write(f"   生成用例数: {total_llm_generated}\n")
-        f.write(f"   成功执行数: {total_successful}\n")
-        f.write(f"   变异: {total_mutations}, 修复: {total_repairs}, 跳过: {total_skips}\n\n")
+        f.write("2. LLM operation stats\n")
+        f.write(f"   Generated case count: {total_llm_generated}\n")
+        f.write(f"   Successful execute count: {total_successful}\n")
+        f.write(f"   mutation: {total_mutations}, repair: {total_repairs}, skip: {total_skips}\n\n")
 
-        f.write("3. 各算子详细结果\n")
+        f.write("3. Per-operator details\n")
         f.write("-" * 80 + "\n")
         for a in sorted(all_analyses, key=lambda x: x["pd_api"]):
             f.write(f"\n  {a['pd_api']} → {a['pytorch_api']}\n")
-            f.write(f"    状态: {a['final_status']}\n")
-            f.write(f"    迭代: {a['total_iterations']}, 一致: {a['consistent_count']}, 不一致: {a['inconsistent_count']}\n")
-            f.write(f"    LLM: 生成={a['llm_generated_count']}, 成功={a['successful_count']}\n")
+            f.write(f"    status: {a['final_status']}\n")
+            f.write(f"    Iterations: {a['total_iterations']}, consistent: {a['consistent_count']}, inconsistent: {a['inconsistent_count']}\n")
+            f.write(f"    LLM: generated={a['llm_generated_count']}, successful={a['successful_count']}\n")
             if a["inconsistency_details"]:
-                f.write(f"    不一致详情:\n")
+                f.write("    Inconsistency details:\n")
                 for detail in a["inconsistency_details"][:3]:
                     f.write(f"      - {detail}\n")
             if a["error_details"]:
-                f.write(f"    错误详情:\n")
+                f.write("    Error details:\n")
                 for detail in a["error_details"][:3]:
                     f.write(f"      - {detail}\n")
 
-    print(f"\n💾 详细报告已保存到: {report_file}")
+    print(f"\n💾 Detailed report saved to: {report_file}")
 
-    # ---- 保存 CSV 摘要 ----
+    # ---- Save CSV summary ----
     csv_file = os.path.join(output_dir, f"analysis_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
     with open(csv_file, 'w', encoding='utf-8', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=[
@@ -217,9 +217,9 @@ def generate_summary_report(all_analyses: List[Dict[str, Any]], output_dir: str)
         for a in sorted(all_analyses, key=lambda x: x["pd_api"]):
             writer.writerow({k: a[k] for k in writer.fieldnames})
 
-    print(f"💾 CSV摘要已保存到: {csv_file}")
+    print(f"💾 CSV summary saved to: {csv_file}")
 
-    # ---- 保存 JSON 摘要 ----
+    # ---- Save JSON summary ----
     json_file = os.path.join(output_dir, f"analysis_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump({
@@ -238,50 +238,51 @@ def generate_summary_report(all_analyses: List[Dict[str, Any]], output_dir: str)
             "operators": all_analyses,
         }, f, indent=2, ensure_ascii=False)
 
-    print(f"💾 JSON数据已保存到: {json_file}")
+    print(f"💾 JSON data saved to: {json_file}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 5: 分析 PD↔PT 差分测试结果"
+        description="Step 5: Analyze PD↔PT differential testing results"
     )
     parser.add_argument(
         "--result-dir", "-r",
         default=os.path.join(ROOT_DIR, "pd_pt_test", "pd_pt_log_1"),
-        help="结果目录路径"
+        help="Result directory path"
     )
     parser.add_argument(
         "--output", "-o",
         default=os.path.join(ROOT_DIR, "pd_pt_test", "analysis"),
-        help="分析输出目录"
+        help="Analysis output directory"
     )
 
     args = parser.parse_args()
 
     print("=" * 80)
-    print("Step 5: PD↔PT 差分测试结果分析")
+    print("Step 5: PD↔PT differential testing analysis")
     print("=" * 80)
-    print(f"📁 结果目录: {args.result_dir}")
+    print(f"📁 Results directory: {args.result_dir}")
 
-    # 加载结果
+    # Load results
     result_files = load_result_files(args.result_dir)
-    print(f"📋 加载了 {len(result_files)} 个结果文件")
+    print(f"📋 Loaded {len(result_files)} result files")
 
     if not result_files:
-        print("⚠️ 没有找到结果文件，请先运行 Step 4")
+        print("⚠️ No result files found; run Step 4 first")
         return
 
-    # 分析每个算子
+    # Analyze each operator
     all_analyses = []
     for result_data in result_files:
         analysis = analyze_operator_results(result_data)
         all_analyses.append(analysis)
 
-    # 生成报告
+    # Generate reports
     generate_summary_report(all_analyses, args.output)
 
-    print("\n✅ 分析完成")
+    print("\n✅ Analysis completed")
 
 
 if __name__ == "__main__":
     main()
+

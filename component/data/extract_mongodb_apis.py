@@ -1,9 +1,9 @@
 """
-从MongoDB数据库中提取所有PyTorch算子名称并保存到CSV文件
+Extract all PyTorch operator names from MongoDB and save to a CSV file.
 
-数据库: freefuzz-torch
-集合: argVS
-输出: pytorch_apis.csv (列名: pytorch-api)
+Database: freefuzz-torch
+Collection: argVS
+Output: pytorch_apis.csv (column: pytorch-api)
 """
 
 import os
@@ -19,32 +19,31 @@ def extract_pytorch_apis(
     collection_name: str = "argVS"
 ) -> List[str]:
     """
-    从MongoDB中提取所有PyTorch算子名称
-    
+    Extract all PyTorch operator names from MongoDB.
+
     Args:
-        mongo_uri: MongoDB连接URI
-        db_name: 数据库名称
-        collection_name: 集合名称
-    
+        mongo_uri: MongoDB connection URI
+        db_name: database name
+        collection_name: collection name
+
     Returns:
-        去重后的算子名称列表（按字母排序）
+        Deduplicated operator list (alphabetically sorted)
     """
-    # 连接MongoDB
+    # Connect to MongoDB
     client = pymongo.MongoClient(mongo_uri)
     db = client[db_name]
     collection = db[collection_name]
     
-    # 使用distinct方法直接获取去重后的api字段值
-    # 这比遍历所有文档更高效
+    # Use distinct to get unique API values (more efficient than scanning all docs)
     api_names: List[str] = collection.distinct("api")
     
-    # 过滤掉空值和None
+    # Filter empty values
     api_names = [api for api in api_names if api]
     
-    # 按字母顺序排序
+    # Sort alphabetically
     api_names.sort()
     
-    # 关闭连接
+    # Close connection
     client.close()
     
     return api_names
@@ -52,60 +51,60 @@ def extract_pytorch_apis(
 
 def save_to_csv(api_names: List[str], output_path: str) -> None:
     """
-    将算子名称保存到CSV文件
-    
+    Save operator names to a CSV file.
+
     Args:
-        api_names: 算子名称列表
-        output_path: 输出文件路径
+        api_names: operator name list
+        output_path: output file path
     """
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        # 写入列名
+        # Write header
         writer.writerow(['pytorch-api'])
-        # 写入数据
+        # Write data
         for api_name in api_names:
             writer.writerow([api_name])
 
 
 def main():
-    """主函数"""
-    # 获取当前脚本所在目录
+    """Main entry point."""
+    # Get current script directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     output_path = os.path.join(script_dir, 'api_mappings.csv')
     
     print("=" * 50)
-    print("📊 PyTorch算子名称提取工具")
+    print("📊 PyTorch operator name extractor")
     print("=" * 50)
     
     try:
-        # 提取算子名称
-        print("\n🔗 正在连接MongoDB数据库...")
+        # Extract operator names
+        print("\n🔗 Connecting to MongoDB...")
         api_names = extract_pytorch_apis()
         
-        print(f"✅ 成功提取 {len(api_names)} 个唯一算子名称")
+        print(f"✅ Extracted {len(api_names)} unique operator names")
         
-        # 保存到CSV
+        # Save to CSV
         save_to_csv(api_names, output_path)
-        print(f"✅ 已保存到: {output_path}")
+        print(f"✅ Saved to: {output_path}")
         
-        # 打印前10个算子作为预览
-        print(f"\n📋 算子名称预览 (前10个):")
+        # Preview first 10 operators
+        print("\n📋 Operator preview (first 10):")
         print("-" * 30)
         for i, api_name in enumerate(api_names[:10], 1):
             print(f"  {i}. {api_name}")
         
         if len(api_names) > 10:
-            print(f"  ... (共 {len(api_names)} 个)")
+            print(f"  ... ({len(api_names)} total)")
         
         print("\n" + "=" * 50)
-        print("🎉 提取完成！")
+        print("🎉 Done!")
         print("=" * 50)
         
     except pymongo.errors.ConnectionFailure as e:
-        print(f"❌ MongoDB连接失败: {e}")
-        print("   请确保MongoDB服务已启动")
+        print(f"❌ MongoDB connection failed: {e}")
+        print("   Please ensure the MongoDB service is running")
     except Exception as e:
-        print(f"❌ 发生错误: {e}")
+        print(f"❌ Error: {e}")
         raise
 
 

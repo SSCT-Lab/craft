@@ -1,4 +1,4 @@
-"""分析 PyTorch 与 Paddle comparison_error 报告的工具：结合官方文档和 LLM 判断误差原因"""
+"""Analyze PyTorch vs Paddle comparison_error reports using docs and LLM."""
 
 import argparse
 import json
@@ -19,7 +19,7 @@ DEFAULT_KEY_PATH = "aliyun.key"
 
 
 def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
-    """解析 comparison_error_samples_report.txt，提取每个样例的信息"""
+    """Parse comparison_error_samples_report.txt and extract sample info."""
     samples: List[Dict[str, Any]] = []
 
     current_file: Optional[str] = None
@@ -30,12 +30,12 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
     mode: Optional[str] = None
 
     def flush_sample():
-        """在切换样例或文件时，将当前样例落地"""
+        """Flush the current sample when switching file/sample."""
         nonlocal current_file, current_index, current_error, torch_lines, paddle_lines
         if current_index is None:
             return
         try:
-            # 将累积的 JSON 行合并成字符串
+            # Merge accumulated JSON lines into strings
             torch_str = "".join(torch_lines).strip()
             paddle_str = "".join(paddle_lines).strip()
             if not torch_str or not paddle_str:
@@ -44,7 +44,7 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
             paddle_case = json.loads(paddle_str)
         except Exception as e:
             print(
-                f"[WARN] 样例解析失败 (文件: {current_file}, 样例编号: {current_index}): {e}"
+                f"[WARN] Sample parse failed (file: {current_file}, sample: {current_index}): {e}"
             )
             return
 
@@ -63,7 +63,7 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
             line = raw_line.rstrip("\n")
             stripped = line.strip()
 
-            # 处理由 = 或 - 构成的分隔线，避免被拼进 JSON
+            # Handle separator lines made of '=' or '-' to avoid mixing into JSON
             if stripped and (set(stripped) == {"="} or set(stripped) == {"-"}):
                 flush_sample()
                 current_index = None
@@ -73,7 +73,7 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 mode = None
                 continue
 
-            # 每个 JSON 文件块的开头
+            # Start of each JSON file block
             if stripped.startswith("文件:"):
                 flush_sample()
                 current_file = stripped.split("文件:", 1)[1].strip()
@@ -84,7 +84,7 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 mode = None
                 continue
 
-            # 每个样例的开头，如“样例 1:”
+            # Start of each sample, e.g., "样例 1:"
             if stripped.startswith("样例"):
                 flush_sample()
                 try:
@@ -103,7 +103,7 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 current_error = stripped.split("comparison_error:", 1)[1].strip()
                 continue
 
-            # 标记接下来是哪个框架的 JSON 内容
+            # Mark which framework JSON content follows
             if stripped.startswith("torch_test_case:"):
                 mode = "torch"
                 continue
@@ -112,7 +112,7 @@ def parse_comparison_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 mode = "paddle"
                 continue
 
-            # 根据当前模式，收集对应的 JSON 行
+            # Collect JSON lines based on current mode
             if mode == "torch":
                 torch_lines.append(raw_line)
             elif mode == "paddle":
@@ -128,7 +128,7 @@ def build_sample_prompt(
     paddle_docs: List[str],
     pt_docs: List[str],
 ) -> str:
-    """为单个 comparison_error 样例构建提示词"""
+    """Build prompt text for a single comparison_error sample."""
     file_name = sample.get("file") or ""
     index = sample.get("index")
     comparison_error = sample.get("comparison_error", "")
@@ -138,78 +138,80 @@ def build_sample_prompt(
     torch_api = torch_case.get("api", "")
     paddle_api = paddle_case.get("api", "")
 
-    paddle_docs_text = "\n\n".join(paddle_docs) if paddle_docs else "未找到相关 Paddle 文档"
-    pt_docs_text = "\n\n".join(pt_docs) if pt_docs else "未找到相关 PyTorch 文档"
+    paddle_docs_text = "\n\n".join(paddle_docs) if paddle_docs else "No relevant Paddle docs found"
+    pt_docs_text = "\n\n".join(pt_docs) if pt_docs else "No relevant PyTorch docs found"
 
     torch_case_json = json.dumps(torch_case, ensure_ascii=False, indent=2)
     paddle_case_json = json.dumps(paddle_case, ensure_ascii=False, indent=2)
 
-    prompt = f"""你是一个熟悉 PyTorch 和 PaddlePaddle 的资深框架专家，现在要分析一个比较误差样例。
+    prompt = f"""You are a senior framework expert familiar with PyTorch and PaddlePaddle. Analyze a comparison error sample.
 
-【样例基本信息】
-- 来源文件: {file_name}
-- 样例编号: {index}
-- comparison_error 描述: {comparison_error}
+[Sample Info]
+- Source file: {file_name}
+- Sample index: {index}
+- comparison_error description: {comparison_error}
 
-【测试用例信息】
-1. PyTorch 测试用例 (torch_test_case，JSON):
+[Test Case Info]
+1. PyTorch test case (torch_test_case, JSON):
 ```json
 {torch_case_json}
 ```
 
-2. Paddle 测试用例 (paddle_test_case，JSON):
+2. Paddle test case (paddle_test_case, JSON):
 ```json
 {paddle_case_json}
 ```
 
-【候选 API 映射】
+[Candidate API Mapping]
 - PyTorch API: {torch_api}
 - Paddle API: {paddle_api}
 
-【相关官方文档（Paddle）】
+[Official Docs (Paddle)]
 {paddle_docs_text}
 
-【相关官方文档（PyTorch）】
+[Official Docs (PyTorch)]
 {pt_docs_text}
 
 ----------------------------------------
-【分析任务】
-请你结合以上信息，分析本样例中出现 comparison_error 的最可能原因，并重点区分以下几类：
+[Analysis Task]
+Based on the above, analyze the most likely cause of comparison_error and distinguish:
 
-1. 框架行为差异 (类别 A)
-   - 例如: 广播规则不同、数值稳定性/精度策略不同、某些行为在两个框架中的具体实现不同等原因导致的”相同输入理论上输出相同结果但最终输出存在不一致“现象。
+1. Framework behavior differences (Category A)
+    - e.g., different broadcasting rules, numeric stability/precision policies, or implementation
+      differences causing output mismatches for the same inputs.
 
-2. 测试用例 / 输入构造不一致问题 (类别 B)
-   - 例如: 两个框架输入的 shape/dtype 不一致、某些参数默认值没有对齐、一侧绕了一层额外操作等。
+2. Test case / input construction mismatch (Category B)
+    - e.g., shape/dtype mismatches, default parameters not aligned, extra operations on one side.
 
-3. API 匹配错误 (类别 C)
-   - 例如: 实际上应该对应到 paddle.nn.softmax，却错误映射成了 paddle.nn.functional.softmax；
-   - 或者 PyTorch 与 Paddle 的 API 语义明显不同，无法视为“同一个算子”。
+3. API mapping error (Category C)
+    - e.g., should map to paddle.nn.softmax but was mapped to paddle.nn.functional.softmax;
+    - or PyTorch and Paddle API semantics clearly differ and are not equivalent.
 
-4. 其他原因或信息不足 (类别 D)
+4. Other causes or insufficient information (Category D)
 
 ----------------------------------------
-【输出要求】
-请你给出严格的技术分析，并按照下面结构回答：
+[Output Requirements]
+Provide a rigorous technical analysis with the following structure:
 
-1. 结论标签：
-   - 请在一行中给出一个标签，格式形如：
-     - 结论标签：A 框架行为差异
-     - 结论标签：B 测试用例问题
-     - 结论标签：C API 匹配错误
-     - 结论标签：D 其他/信息不足
+1. Conclusion label:
+    - Provide one label line, format examples:
+      - Conclusion: A framework behavior difference
+      - Conclusion: B test case issue
+      - Conclusion: C API mapping error
+      - Conclusion: D other/insufficient info
 
-2. 详细原因分析：
-   - 结合 comparison_error 描述、输入 shape/dtype、官方文档中的限制或行为说明，解释为什么会出现当前误差。
-   - 如果你选择 C（API 匹配错误），请明确指出两侧 API 语义或参数上的关键差异。
+2. Detailed analysis:
+    - Use the comparison_error description, input shape/dtype, and doc constraints/behavior to
+      explain the error.
+    - If you choose C (API mapping error), call out key semantic/parameter differences.
 
-3. 修复建议：
-   - 如果是 A 类问题，判断是否值得提交为一个issue给官方+一句简单的原因，不用写出具体的issue内容。
-   - 如果是 C/D 类问题，无需给出修复建议。
-   - 如果是 B 类问题，请给出如何修改映射或测试用例的建议，例如：
-     - 调整为更合适的 Paddle API 或 PyTorch API；
-     - 补齐/修改某个参数；
-     - 调整输入 shape/dtype 以保持对齐。
+3. Fix suggestions:
+    - For A, decide whether to file an issue and provide a brief reason (no full issue text).
+    - For C/D, no fix suggestion needed.
+    - For B, suggest how to adjust the mapping or test case, e.g.:
+      - map to a more appropriate Paddle or PyTorch API;
+      - add/modify a parameter;
+      - adjust input shape/dtype to align.
 """
 
     return prompt
@@ -223,36 +225,36 @@ def analyze_sample_with_llm(
     torch_case = sample.get("torch_test_case", {})
     paddle_case = sample.get("paddle_test_case", {})
 
-    # 从样例中提取 API 名称
+    # Extract API names from sample
     torch_api = torch_case.get("api", "")
     paddle_api = paddle_case.get("api", "")
 
     paddle_docs: List[str] = []
     pt_docs: List[str] = []
 
-    # 拉取 Paddle 官方文档
+    # Fetch Paddle official docs
     if paddle_api:
         try:
             doc_text = get_doc_content(paddle_api, "paddle")
-            if doc_text and "无法获取" not in doc_text:
+            if doc_text and "Unable to fetch" not in doc_text:
                 paddle_docs.append(doc_text)
         except Exception as e:
-            print(f"[WARN] 获取 Paddle 文档失败 {paddle_api}: {e}")
+            print(f"[WARN] Failed to fetch Paddle docs {paddle_api}: {e}")
 
-    # 拉取 PyTorch 官方文档
+    # Fetch PyTorch official docs
     if torch_api:
         try:
             doc_text = get_doc_content(torch_api, "pytorch")
-            if doc_text and "无法获取" not in doc_text:
+            if doc_text and "Unable to fetch" not in doc_text:
                 pt_docs.append(doc_text)
         except Exception as e:
-            print(f"[WARN] 获取 PyTorch 文档失败 {torch_api}: {e}")
+            print(f"[WARN] Failed to fetch PyTorch docs {torch_api}: {e}")
 
     prompt = build_sample_prompt(sample, paddle_docs=paddle_docs, pt_docs=pt_docs)
 
     try:
         if hasattr(client, "chat"):
-            # 适配新版 SDK 的调用方式
+            # New SDK call style
             resp = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
@@ -261,7 +263,7 @@ def analyze_sample_with_llm(
             )
             return resp.choices[0].message.content.strip()
         else:
-            # 兼容旧版 SDK 接口
+            # Legacy SDK call style
             resp = client.ChatCompletion.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
@@ -270,7 +272,7 @@ def analyze_sample_with_llm(
             )
             return resp.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[ERROR] LLM 调用失败: {e}")
+        print(f"[ERROR] LLM call failed: {e}")
         return None
 
 
@@ -279,7 +281,7 @@ def save_categorized_sample(
     analysis: str,
     category: str,
 ) -> None:
-    """根据 LLM 分类结果，将样例信息保存到对应目录"""
+    """Save categorized sample info to the appropriate directory."""
     base_dir = Path("pt_pd_test") / "analysis"
     if category == "A":
         out_dir = base_dir / "comparison_a"
@@ -303,9 +305,9 @@ def save_categorized_sample(
     out_path = out_dir / f"{safe_file_name}_sample{index}.txt"
 
     content_parts = [
-        f"来源文件: {file_name}",
-        f"样例编号: {index}",
-        f"comparison_error 描述: {comparison_error}",
+        f"Source file: {file_name}",
+        f"Sample index: {index}",
+        f"comparison_error description: {comparison_error}",
         "",
         torch_case_json,
         "",
@@ -315,62 +317,62 @@ def save_categorized_sample(
 
 
 def main():
-    """命令行入口：批量分析 PyTorch 与 Paddle comparison_error 样例"""
+    """CLI entry point: batch analyze PyTorch vs Paddle comparison_error samples."""
     parser = argparse.ArgumentParser(
-        description="分析 PyTorch 与 Paddle comparison_error 样例产生的原因"
+        description="Analyze causes of PyTorch vs Paddle comparison_error samples"
     )
     parser.add_argument(
         "--report",
         "-r",
         required=True,
-        help="pt_pd_test/analysis/comparison_error_samples_report.txt 的路径",
+        help="Path to pt_pd_test/analysis/comparison_error_samples_report.txt",
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=None,
-        help="最多分析多少个样例（默认全部）",
+        help="Max samples to analyze (default all)",
     )
     parser.add_argument(
         "--model",
         "-m",
         default=DEFAULT_MODEL,
-        help="LLM 模型名称（默认 qwen-flash）",
+        help="LLM model name (default qwen-flash)",
     )
     parser.add_argument(
         "--key-path",
         "-k",
         default=DEFAULT_KEY_PATH,
-        help="API key 文件路径（默认 aliyun.key）",
+        help="API key file path (default aliyun.key)",
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="分析结果输出文件路径（不指定则自动在同目录生成）",
+        help="Output file path (auto-generate in same dir if omitted)",
     )
 
     args = parser.parse_args()
 
     report_path = Path(args.report)
     if not report_path.exists():
-        print(f"[ERROR] 报告文件不存在: {report_path}")
+        print(f"[ERROR] Report file not found: {report_path}")
         return
 
-    print(f"[INFO] 正在解析报告文件: {report_path}")
+    print(f"[INFO] Parsing report file: {report_path}")
     samples = parse_comparison_error_report(report_path)
     if not samples:
-        print("[ERROR] 未从报告中解析到任何样例")
+        print("[ERROR] No samples parsed from report")
         return
 
     if args.limit is not None:
         samples = samples[: args.limit]
 
-    print(f"[INFO] 共需分析样例数: {len(samples)}")
+    print(f"[INFO] Samples to analyze: {len(samples)}")
 
     try:
         client = get_qwen_client(args.key_path)
     except Exception as e:
-        print(f"[ERROR] 无法初始化 LLM 客户端: {e}")
+        print(f"[ERROR] Unable to initialize LLM client: {e}")
         return
 
     if args.output:
@@ -389,24 +391,24 @@ def main():
         file_name = sample.get("file") or ""
         index = sample.get("index")
         print(
-            f"[INFO] 分析第 {i}/{len(samples)} 个样例 (文件: {file_name}, 样例编号: {index})"
+            f"[INFO] Analyzing sample {i}/{len(samples)} (file: {file_name}, sample: {index})"
         )
 
         analysis = analyze_sample_with_llm(client, sample, model=args.model)
 
         if analysis:
-            if "标签：A" in analysis:
+            if "Conclusion: A" in analysis:
                 save_categorized_sample(sample, analysis, "A")
-            elif "标签：D" in analysis:
+            elif "Conclusion: D" in analysis:
                 save_categorized_sample(sample, analysis, "D")
 
-        header = f"样例 {index}（文件: {file_name}）分析结果"
+        header = f"Sample {index} (file: {file_name}) analysis"
         sep = "=" * 80
         block = [sep, header, sep]
         if analysis:
             block.append(analysis)
         else:
-            block.append("[ERROR] 本样例分析失败")
+            block.append("[ERROR] Sample analysis failed")
         outputs_batch.append("\n".join(block))
 
         if i % 50 == 0 or i == len(samples):
@@ -418,7 +420,7 @@ def main():
                 f.write(batch_text)
             outputs_batch = []
 
-    print(f"[SUCCESS] 分析结果已保存到: {out_path}")
+    print(f"[SUCCESS] Analysis saved to: {out_path}")
 
 
 if __name__ == "__main__":

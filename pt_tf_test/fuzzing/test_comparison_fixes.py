@@ -1,28 +1,27 @@
 """
-测试比较函数的修复
-验证空结果和 NaN 的特殊情况处理
+Fixes for test comparison functions Validate special case handling of empty results and NaN
 """
 
 import numpy as np
 import sys
 from pathlib import Path
 
-# 添加项目根目录到路径
+# Add project root directory to path
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# 导入比较函数
+# Import comparison function
 from pt_tf_test.fuzzing.llm_fuzzing_diff_test_concurrent import compare_results
 
 
 def test_empty_containers():
-    """测试空容器比较（tuple vs list）"""
-    print("测试 1: 空容器比较")
+    """Test empty container comparison（tuple vs list）"""
+    print("test 1: Empty container comparison")
     
     torch_result = {
         "success": True,
-        "result": (),  # 空 tuple
+        "result": (),  # null tuple
         "shape": None,
         "dtype": "<class 'tuple'>",
         "error": None
@@ -30,7 +29,7 @@ def test_empty_containers():
     
     tf_result = {
         "success": True,
-        "result": [],  # 空 list
+        "result": [],  # null list
         "shape": None,
         "dtype": "<class 'list'>",
         "error": None
@@ -43,13 +42,13 @@ def test_empty_containers():
     print(f"  results_match: {comparison['results_match']}")
     print(f"  comparison_error: {comparison['comparison_error']}")
     
-    assert comparison['results_match'] == True, "空容器应该判定为一致"
-    print("  ✓ 测试通过\n")
+    assert comparison['results_match'] == True, "Empty containers should be considered consistent"
+    print("  ✓ Test passed\n")
 
 
 def test_scalar_nan():
-    """测试标量 NaN 比较"""
-    print("测试 2: 标量 NaN 比较")
+    """Test scalar NaN comparison"""
+    print("test 2: Scalar NaN comparison")
     
     torch_result = {
         "success": True,
@@ -74,15 +73,15 @@ def test_scalar_nan():
     print(f"  results_match: {comparison['results_match']}")
     print(f"  comparison_error: {comparison['comparison_error']}")
     
-    assert comparison['results_match'] == True, "两个 NaN 应该判定为一致"
-    print("  ✓ 测试通过\n")
+    assert comparison['results_match'] == True, "Two NaN should be considered consistent"
+    print("  ✓ Test passed\n")
 
 
 def test_scalar_inf():
-    """测试标量 Inf 比较"""
-    print("测试 3: 标量 Inf 比较")
+    """Test scalar Inf comparison"""
+    print("test 3: Scalar Inf comparison")
     
-    # 测试正无穷
+    # Test positive infinity
     torch_result = {
         "success": True,
         "result": np.inf,
@@ -106,15 +105,15 @@ def test_scalar_inf():
     print(f"  results_match: {comparison['results_match']}")
     print(f"  comparison_error: {comparison['comparison_error']}")
     
-    assert comparison['results_match'] == True, "两个正无穷应该判定为一致"
-    print("  ✓ 测试通过\n")
+    assert comparison['results_match'] == True, "Two positive infinities should be judged to be consistent"
+    print("  ✓ Test passed\n")
 
 
 def test_container_with_tensors():
-    """测试包含张量的容器比较"""
-    print("测试 4: 包含张量的容器比较")
+    """Test comparison of containers containing tensors"""
+    print("test 4: Comparison of containers containing tensors")
     
-    # 创建包含 NaN 的张量
+    # Create a tensor containing NaN
     torch_tensor = np.array([1.0, np.nan, np.inf, -np.inf], dtype=np.float32)
     tf_tensor = np.array([1.0, np.nan, np.inf, -np.inf], dtype=np.float32)
     
@@ -141,13 +140,13 @@ def test_container_with_tensors():
     print(f"  results_match: {comparison['results_match']}")
     print(f"  comparison_error: {comparison['comparison_error']}")
     
-    assert comparison['results_match'] == True, "包含相同张量的容器应该判定为一致"
-    print("  ✓ 测试通过\n")
+    assert comparison['results_match'] == True, "Containers containing the same tensor should be considered consistent"
+    print("  ✓ Test passed\n")
 
 
 def test_array_with_nan():
-    """测试包含 NaN 的数组比较"""
-    print("测试 5: 包含 NaN 的数组比较")
+    """Testing array comparisons containing NaN"""
+    print("test 5: Array comparison containing NaN")
     
     torch_array = np.array([1.0, np.nan, 3.0], dtype=np.float32)
     tf_array = np.array([1.0, np.nan, 3.0], dtype=np.float32)
@@ -175,13 +174,13 @@ def test_array_with_nan():
     print(f"  results_match: {comparison['results_match']}")
     print(f"  comparison_error: {comparison['comparison_error']}")
     
-    assert comparison['results_match'] == True, "包含相同 NaN 位置的数组应该判定为一致"
-    print("  ✓ 测试通过\n")
+    assert comparison['results_match'] == True, "Arrays containing the same NaN positions should be considered consistent"
+    print("  ✓ Test passed\n")
 
 
 def test_different_nan_positions():
-    """测试不同 NaN 位置的数组比较"""
-    print("测试 6: 不同 NaN 位置的数组比较")
+    """Test array comparison for different NaN positions"""
+    print("test 6: Array comparison of different NaN positions")
     
     torch_array = np.array([1.0, np.nan, 3.0], dtype=np.float32)
     tf_array = np.array([1.0, 2.0, np.nan], dtype=np.float32)
@@ -209,15 +208,15 @@ def test_different_nan_positions():
     print(f"  results_match: {comparison['results_match']}")
     print(f"  comparison_error: {comparison['comparison_error']}")
     
-    assert comparison['results_match'] == False, "不同 NaN 位置应该判定为不一致"
-    assert "NaN 位置不一致" in comparison['comparison_error'], "应该报告 NaN 位置不一致"
-    print("  ✓ 测试通过\n")
+    assert comparison['results_match'] == False, "Different NaN positions should be judged as inconsistent"
+    assert "NaN Inconsistent location" in comparison['comparison_error'], "NaN positional inconsistencies should be reported"
+    print("  ✓ Test passed\n")
 
 
 def main():
-    """运行所有测试"""
+    """Run all tests"""
     print("=" * 70)
-    print("测试比较函数的修复")
+    print("Fixes for test comparison functions")
     print("=" * 70 + "\n")
     
     try:
@@ -229,14 +228,14 @@ def main():
         test_different_nan_positions()
         
         print("=" * 70)
-        print("所有测试通过！✓")
+        print("All tests passed！✓")
         print("=" * 70)
         
     except AssertionError as e:
-        print(f"\n✗ 测试失败: {e}")
+        print(f"\n✗ test failed: {e}")
         return 1
     except Exception as e:
-        print(f"\n✗ 测试出错: {e}")
+        print(f"\n✗ Test error: {e}")
         import traceback
         traceback.print_exc()
         return 1

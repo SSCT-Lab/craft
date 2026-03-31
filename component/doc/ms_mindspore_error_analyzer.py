@@ -1,5 +1,5 @@
 # ./component/doc/ms_mindspore_error_analyzer.py
-"""分析 mindspore_error 报告的工具：结合官方文档和 LLM 判断误差原因"""
+"""Analyze mindspore_error reports using docs and an LLM."""
 
 import argparse
 import json
@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import sys
 
-# 添加项目根目录到路径，保证可以导入 component 下的模块
+# Add the project root to sys.path so component modules can be imported.
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -21,20 +21,20 @@ DEFAULT_KEY_PATH = "aliyun.key"
 
 
 def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
-    """解析 mindspore_error_samples_report.txt，提取每个样例的信息
-    
-    报告格式：
-    ================================================================================
+    """Parse mindspore_error_samples_report.txt and extract sample info.
+
+    Report format:
+    ==============================================================================
     文件: xxx.json
     --------------------------------------------------------------------------------
     样例 1:
     mindspore_error: xxx
-    
+
     ----------------------------------------------------
     - C++ Call Stack: (For framework developers)
     ----------------------------------------------------
     ...
-    
+
     torch_test_case:
     {...}
     mindspore_test_case:
@@ -51,7 +51,7 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
     mode: Optional[str] = None  # "error" / "torch" / "ms" / None
 
     def flush_sample():
-        """在切换样例或文件时，将当前样例落地"""
+        """Flush the current sample when switching file/sample."""
         nonlocal current_file, current_index, current_error, error_lines, torch_lines, ms_lines
         if current_index is None:
             return
@@ -64,11 +64,11 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
             ms_case = json.loads(ms_str)
         except Exception as e:
             print(
-                f"[WARN] 样例解析失败 (文件: {current_file}, 样例编号: {current_index}): {e}"
+                f"[WARN] Sample parsing failed (file: {current_file}, index: {current_index}): {e}"
             )
             return
 
-        # 组合错误信息（可能包含多行）
+        # Combine error lines (may span multiple lines)
         full_error = current_error or ""
         if error_lines:
             full_error = full_error + "\n" + "".join(error_lines).strip()
@@ -89,7 +89,7 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
             line = raw_line.rstrip("\n")
             stripped = line.strip()
 
-            # 处理由 = 构成的分隔线（文件级分隔）
+            # Handle separator lines of '=' (file-level)
             if stripped and set(stripped) == {"="}:
                 flush_sample()
                 current_index = None
@@ -100,13 +100,13 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 mode = None
                 continue
 
-            # 处理由 - 构成的分隔线（样例级分隔或 C++ Call Stack 分隔）
+            # Handle separator lines of '-' (sample-level or C++ Call Stack)
             if stripped and set(stripped) == {"-"}:
-                # 如果当前在收集错误信息，继续收集（C++ Call Stack 部分）
+                # If collecting error info, keep collecting (C++ Call Stack section)
                 if mode == "error":
                     error_lines.append(raw_line)
                     continue
-                # 否则是样例级分隔
+                # Otherwise it's a sample-level separator
                 flush_sample()
                 current_index = None
                 current_error = None
@@ -117,7 +117,7 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 continue
 
             if stripped.startswith("文件:"):
-                # 新文件开始，刷新之前尚未落地的样例
+                # New file begins; flush any pending sample
                 flush_sample()
                 current_file = stripped.split("文件:", 1)[1].strip()
                 current_index = None
@@ -129,10 +129,10 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 continue
 
             if stripped.startswith("样例"):
-                # 新样例开始，先落地上一个样例
+                # New sample begins; flush previous sample
                 flush_sample()
                 try:
-                    # 形如 "样例 1:" -> 1
+                    # e.g., "样例 1:" -> 1
                     idx_part = stripped.split("样例", 1)[1]
                     idx_part = idx_part.strip(" :")
                     current_index = int(idx_part)
@@ -158,7 +158,7 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
                 mode = "ms"
                 continue
 
-            # 收集内容
+            # Collect content
             if mode == "error":
                 error_lines.append(raw_line)
             elif mode == "torch":
@@ -166,7 +166,7 @@ def parse_mindspore_error_report(report_path: Path) -> List[Dict[str, Any]]:
             elif mode == "ms":
                 ms_lines.append(raw_line)
 
-    # 文件结束后，尝试落地最后一个样例
+    # Flush the last sample at EOF
     flush_sample()
 
     return samples
@@ -177,7 +177,7 @@ def build_sample_prompt(
     ms_docs: List[str],
     pt_docs: List[str],
 ) -> str:
-    """为单个 mindspore_error 样例构建提示词"""
+    """Build the LLM prompt for a single mindspore_error sample."""
     file_name = sample.get("file") or ""
     index = sample.get("index")
     mindspore_error = sample.get("mindspore_error", "")
@@ -187,83 +187,83 @@ def build_sample_prompt(
     torch_api = torch_case.get("api", "")
     ms_api = ms_case.get("api", "")
 
-    ms_docs_text = "\n\n".join(ms_docs) if ms_docs else "未找到相关 MindSpore 文档"
-    pt_docs_text = "\n\n".join(pt_docs) if pt_docs else "未找到相关 PyTorch 文档"
+    ms_docs_text = "\n\n".join(ms_docs) if ms_docs else "No relevant MindSpore docs found"
+    pt_docs_text = "\n\n".join(pt_docs) if pt_docs else "No relevant PyTorch docs found"
 
     torch_case_json = json.dumps(torch_case, ensure_ascii=False, indent=2)
     ms_case_json = json.dumps(ms_case, ensure_ascii=False, indent=2)
 
-    prompt = f"""你是一个熟悉 PyTorch 和 MindSpore 的资深框架专家，现在要分析一个 MindSpore 执行错误样例。
+    prompt = f"""You are a senior framework expert familiar with PyTorch and MindSpore, analyzing a MindSpore execution error sample.
 
-【样例基本信息】
-- 来源文件: {file_name}
-- 样例编号: {index}
-- mindspore_error 错误信息: {mindspore_error}
+[Sample Info]
+- Source file: {file_name}
+- Sample index: {index}
+- mindspore_error message: {mindspore_error}
 
-【测试用例信息】
-1. PyTorch 测试用例 (torch_test_case，JSON):
+[Test Case Info]
+1. PyTorch test case (torch_test_case, JSON):
 ```json
 {torch_case_json}
 ```
 
-2. MindSpore 测试用例 (mindspore_test_case，JSON):
+2. MindSpore test case (mindspore_test_case, JSON):
 ```json
 {ms_case_json}
 ```
 
-【候选 API 映射】
+[Candidate API Mapping]
 - PyTorch API: {torch_api}
 - MindSpore API: {ms_api}
 
-【相关官方文档（MindSpore）】
+[Relevant Official Docs (MindSpore)]
 {ms_docs_text}
 
-【相关官方文档（PyTorch）】
+[Relevant Official Docs (PyTorch)]
 {pt_docs_text}
 
 ----------------------------------------
-【分析任务】
-请你结合以上信息，分析本样例中出现 mindspore_error 的最可能原因，并重点区分以下几类：
+[Analysis Task]
+Based on the information above, analyze the most likely cause of mindspore_error in this sample. Focus on distinguishing:
 
-1. 框架行为差异 (类别 A)
-   - 例如: 广播规则不同、MindSpore 不支持某些 shape（如空张量 shape 中包含 0）、某些行为在两个框架中的具体实现不同等原因导致的 MindSpore 执行失败。
-   - 常见的错误如: "need to broadcast"（广播规则差异）、shape 不兼容等。
+1. Framework behavior differences (Category A)
+    - Examples: different broadcasting rules, MindSpore not supporting certain shapes (e.g., empty tensors with 0 in shape), or differing implementations causing failures.
+    - Common errors: "need to broadcast" (broadcasting rule differences), incompatible shapes, etc.
 
-2. 测试用例 / 参数映射不一致问题 (类别 B)
-   - 例如: 参数名称映射错误（如 PyTorch 的 `dim` 参数在 MindSpore 中应该映射为 `axis`）、
-   - 参数格式转换错误（如 dtype 字符串格式不正确）、
-   - 嵌套字典未正确转换为实际 Tensor（如 MindSpore 侧传入了一个 dict 而不是实际的 Tensor）等。
+2. Test case / parameter mapping mismatch (Category B)
+    - Examples: parameter name mapping errors (e.g., PyTorch `dim` should map to MindSpore `axis`),
+    - Incorrect parameter format conversions (e.g., invalid dtype string formats),
+    - Nested dicts not converted to actual tensors (e.g., MindSpore receives a dict instead of a tensor), etc.
 
-3. API 匹配错误 (类别 C)
-   - 例如: PyTorch 的某个 API 映射到了语义不同的 MindSpore API；
-   - 或者 MindSpore 没有直接对应的 API（如 "Not found op class" 表示算子未注册）；
-   - 或者 MindSpore 的某些算子在 CPU 设备上不支持（如 "kernel unregistered"）。
+3. API mapping error (Category C)
+    - Examples: a PyTorch API mapped to a semantically different MindSpore API;
+    - Or MindSpore has no direct counterpart (e.g., "Not found op class" indicates an operator is not registered);
+    - Or some MindSpore operators are not supported on CPU (e.g., "kernel unregistered").
 
-4. 其他原因或信息不足 (类别 D)
+4. Other or insufficient information (Category D)
 
 ----------------------------------------
-【输出要求】
-请你给出严格的技术分析，并按照下面结构回答：
+[Output Requirements]
+Provide a rigorous technical analysis and follow this structure:
 
-1. 结论标签：
-   - 请在一行中给出一个标签，格式形如：
-     - 结论标签：A 框架行为差异
-     - 结论标签：B 测试用例/参数映射问题
-     - 结论标签：C API 匹配错误
-     - 结论标签：D 其他/信息不足
+1. Conclusion label:
+    - Provide a single label line in the format:
+      - Conclusion: A Framework behavior difference
+      - Conclusion: B Test case/parameter mapping issue
+      - Conclusion: C API mapping error
+      - Conclusion: D Other/insufficient info
 
-2. 原因分析：（1-2点分析即可，不要太长）
-   - 结合 mindspore_error 错误信息、输入 shape/dtype、官方文档中的限制或行为说明，简单解释为什么会出现当前错误。
-   - 如果你选择 C（API 匹配错误），请明确简洁地指出两侧 API 语义或参数上的关键差异。
+2. Root cause analysis (1-2 concise points):
+    - Use the mindspore_error message, input shape/dtype, and doc constraints/behavior to explain the failure.
+    - If you choose C (API mapping error), clearly and concisely state the key semantic/parameter differences.
 
-3. 修复建议：（1-2句话简单阐述，不要太长）
-   - 如果是 A 类问题，判断是否值得提交为一个issue给官方+一句简单的原因，不用写出具体的issue内容。（一般认为发现一个之前未被发现的框架不一致或者漏洞才更值得提交为一个issue）
-   - 如果是 C/D 类问题，无需给出修复建议。
-   - 如果是 B 类问题，请用一两句话给出如何修改映射或测试用例的建议，不要太长，例如：
-     - 调整参数名称映射（如 dim -> axis）；
-     - 修复 dtype 格式转换逻辑；
-     - 确保嵌套的 API 调用被正确展开执行；
-     - 补齐/修改某个参数以保持对齐。
+3. Fix suggestions (1-2 short sentences):
+    - If Category A, decide whether it's worth filing an issue with a brief reason (only for previously unknown inconsistencies/bugs).
+    - If Category C/D, no fix suggestions are needed.
+    - If Category B, provide concise suggestions to adjust mappings or test cases, for example:
+      - Adjust parameter name mapping (e.g., dim -> axis);
+      - Fix dtype format conversion logic;
+      - Ensure nested API calls are expanded and executed correctly;
+      - Add/adjust parameters to keep alignment.
 """
 
     return prompt
@@ -274,7 +274,7 @@ def analyze_sample_with_llm(
     sample: Dict[str, Any],
     model: str = DEFAULT_MODEL,
 ) -> Optional[str]:
-    """使用 LLM 分析单个 mindspore_error 样例"""
+    """Analyze a single mindspore_error sample with an LLM."""
     torch_case = sample.get("torch_test_case", {})
     ms_case = sample.get("mindspore_test_case", {})
 
@@ -284,23 +284,23 @@ def analyze_sample_with_llm(
     ms_docs: List[str] = []
     pt_docs: List[str] = []
 
-    # 拉取 MindSpore 文档
+    # Fetch MindSpore docs
     if ms_api:
         try:
             doc_text = get_doc_content(ms_api, "mindspore")
-            if doc_text and "无法获取" not in doc_text:
+            if doc_text and "Unable to fetch" not in doc_text:
                 ms_docs.append(doc_text)
         except Exception as e:
-            print(f"[WARN] 获取 MindSpore 文档失败 {ms_api}: {e}")
+            print(f"[WARN] Failed to fetch MindSpore docs {ms_api}: {e}")
 
-    # 拉取 PT 文档
+    # Fetch PT docs
     if torch_api:
         try:
             doc_text = get_doc_content(torch_api, "pytorch")
-            if doc_text and "无法获取" not in doc_text:
+            if doc_text and "Unable to fetch" not in doc_text:
                 pt_docs.append(doc_text)
         except Exception as e:
-            print(f"[WARN] 获取 PyTorch 文档失败 {torch_api}: {e}")
+            print(f"[WARN] Failed to fetch PyTorch docs {torch_api}: {e}")
 
     prompt = build_sample_prompt(sample, ms_docs=ms_docs, pt_docs=pt_docs)
 
@@ -322,7 +322,7 @@ def analyze_sample_with_llm(
             )
             return resp.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[ERROR] LLM 调用失败: {e}")
+        print(f"[ERROR] LLM call failed: {e}")
         return None
 
 
@@ -331,7 +331,7 @@ def save_categorized_sample(
     analysis: str,
     category: str,
 ) -> None:
-    """将分类后的样例保存到对应的文件夹"""
+    """Save a categorized sample to its folder."""
     base_dir = Path("pt_ms_test") / "analysis"
     if category == "A":
         out_dir = base_dir / "ms_a"
@@ -355,80 +355,82 @@ def save_categorized_sample(
     out_path = out_dir / f"{safe_file_name}_sample{index}.txt"
 
     content_parts = [
-        f"来源文件: {file_name}",
-        f"样例编号: {index}",
-        f"mindspore_error 错误信息: {mindspore_error}",
+        f"Source file: {file_name}",
+        f"Sample index: {index}",
+        f"mindspore_error message: {mindspore_error}",
         "",
-        "【PyTorch 测试用例】",
+        "[PyTorch Test Case]",
         torch_case_json,
         "",
-        "【MindSpore 测试用例】",
+        "[MindSpore Test Case]",
         ms_case_json,
         "",
-        "【LLM 分析结果】",
+        "[LLM Analysis Result]",
         analysis,
     ]
     out_path.write_text("\n".join(content_parts), encoding="utf-8")
 
 
 def main():
-    """命令行入口：批量分析 mindspore_error 报告中的样例"""
-    parser = argparse.ArgumentParser(description="分析 mindspore_error 样例产生的原因")
+    """CLI entry: batch analyze mindspore_error report samples."""
+    parser = argparse.ArgumentParser(
+        description="Analyze causes of mindspore_error samples"
+    )
     parser.add_argument(
         "--report",
         "-r",
         required=True,
-        help="mindspore_error_samples_report.txt 的路径",
+        help="Path to mindspore_error_samples_report.txt",
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=None,
-        help="最多分析多少个样例（默认全部）",
+        help="Max samples to analyze (default: all)",
     )
     parser.add_argument(
         "--model",
         "-m",
         default=DEFAULT_MODEL,
-        help="LLM 模型名称（默认 qwen-flash）",
+        help="LLM model name (default: qwen-flash)",
     )
     parser.add_argument(
         "--key-path",
         "-k",
         default=DEFAULT_KEY_PATH,
-        help="API key 文件路径（默认 aliyun.key）",
+        help="Path to API key file (default: aliyun.key)",
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="分析结果输出文件路径（不指定则自动在同目录生成）",
+        help="Output path for analysis results (defaults to same directory)",
     )
 
     args = parser.parse_args()
 
     report_path = Path(args.report)
     if not report_path.exists():
-        print(f"[ERROR] 报告文件不存在: {report_path}")
+        print(f"[ERROR] Report file not found: {report_path}")
         return
 
-    print(f"[INFO] 正在解析报告文件: {report_path}")
+    print(f"[INFO] Parsing report file: {report_path}")
     samples = parse_mindspore_error_report(report_path)
     if not samples:
-        print("[ERROR] 未从报告中解析到任何样例")
+        print("[ERROR] No samples parsed from report")
         return
 
     if args.limit is not None:
         samples = samples[: args.limit]
 
-    print(f"[INFO] 共需分析样例数: {len(samples)}")
+    print(f"[INFO] Total samples to analyze: {len(samples)}")
 
     try:
         client = get_qwen_client(args.key_path)
     except Exception as e:
-        print(f"[ERROR] 无法初始化 LLM 客户端: {e}")
+        print(f"[ERROR] Failed to initialize LLM client: {e}")
         return
 
-    # 确定输出文件路径
+    # Determine output file path
     if args.output:
         out_path = Path(args.output)
     else:
@@ -447,32 +449,34 @@ def main():
         index = sample.get("index")
         mindspore_error = sample.get("mindspore_error", "")
 
-        # 跳过算子未注册的错误（这类问题是 MindSpore 本身不支持，无需 LLM 分析）
+        # Skip unregistered-operator errors (framework limitation, no LLM needed)
         if "Not found op class" in mindspore_error or "unregistered" in mindspore_error:
             skipped_count += 1
-            print(f"[SKIP] 跳过第 {i}/{len(samples)} 个样例 (文件: {file_name}, 样例编号: {index}) - 算子未注册")
+            print(
+                f"[SKIP] Sample {i}/{len(samples)} (file: {file_name}, index: {index}) - operator not registered"
+            )
             continue
 
-        print(f"[INFO] 分析第 {i}/{len(samples)} 个样例 (文件: {file_name}, 样例编号: {index})")
+        print(f"[INFO] Analyzing sample {i}/{len(samples)} (file: {file_name}, index: {index})")
 
         analysis = analyze_sample_with_llm(client, sample, model=args.model)
 
         if analysis:
-            if "标签：A" in analysis:
+            if "Conclusion: A" in analysis:
                 save_categorized_sample(sample, analysis, "A")
-            elif "标签：D" in analysis:
+            elif "Conclusion: D" in analysis:
                 save_categorized_sample(sample, analysis, "D")
 
-        header = f"样例 {index}（文件: {file_name}）分析结果"
+        header = f"Sample {index} (file: {file_name}) analysis results"
         sep = "=" * 80
         block = [sep, header, sep]
         if analysis:
             block.append(analysis)
         else:
-            block.append("[ERROR] 本样例分析失败")
+            block.append("[ERROR] Sample analysis failed")
         outputs_batch.append("\n".join(block))
 
-        # 每 50 个样例写入一次，或者到达最后一个样例时写入
+        # Write every 50 samples, or on the last sample
         if i % 50 == 0 or i == len(samples):
             batch_text = "\n\n".join(outputs_batch)
             mode = "w" if i <= 50 else "a"
@@ -482,8 +486,8 @@ def main():
                 f.write(batch_text)
             outputs_batch = []
 
-    print(f"[SUCCESS] 分析结果已保存到: {out_path}")
-    print(f"[INFO] 共跳过 {skipped_count} 个算子未注册的样例")
+    print(f"[SUCCESS] Analysis results saved to: {out_path}")
+    print(f"[INFO] Skipped {skipped_count} samples with unregistered operators")
 
 
 if __name__ == "__main__":

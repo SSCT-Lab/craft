@@ -1,20 +1,20 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 2: 基于 LLM 从 PaddlePaddle 官方测试文件中提取/生成标准化测试用例
+Step 2: Use LLM to extract/generate standardized test cases from PaddlePaddle official test files
 
-功能：
-- 读取 Step 1 输出的 Paddle API 列表
-- 对每个 API，读取对应的测试文件内容
-- 调用 LLM 从测试文件中提取/生成标准化的测试用例
-- 支持并发调用 LLM、断点续传
-- 输出结构化的测试用例集（JSON 格式）
+Function:
+- Read the Paddle API list output from Step 1
+- For each API, read the corresponding test file content
+- Call the LLM to extract/generate standardized test cases
+- Support concurrent LLM calls and resume from checkpoints
+- Output a structured test case set (JSON)
 
-用法：
+Usage:
     conda activate tf_env
     python pd_pt_test/extract_pd_test_cases.py [--input data/pd_apis_existing.json] [--output data/pd_test_cases.json] [--workers 4]
 
-输出：pd_pt_test/data/pd_test_cases.json
+Output: pd_pt_test/data/pd_test_cases.json
 """
 
 import os
@@ -33,16 +33,16 @@ from openai import OpenAI
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# ==================== 常量定义 ====================
+# ==================== Constants ====================
 DEFAULT_MODEL = "qwen-plus"
 DEFAULT_KEY_PATH = "aliyun.key"
 DEFAULT_WORKERS = 6
 DEFAULT_NUM_CASES = 5
-MAX_FILE_CHARS = 8000  # 发送给 LLM 的测试文件最大字符数
+MAX_FILE_CHARS = 8000  # Max test file chars sent to LLM
 
 
 def load_api_key(key_path: str = DEFAULT_KEY_PATH) -> str:
-    """加载阿里云 API 密钥"""
+    """Load Aliyun API key."""
     if not os.path.isabs(key_path):
         key_file = os.path.join(ROOT_DIR, key_path)
     else:
@@ -58,18 +58,18 @@ def load_api_key(key_path: str = DEFAULT_KEY_PATH) -> str:
     if api_key:
         return api_key
 
-    print("❌ 未找到 API 密钥，请确保 aliyun.key 文件存在或设置 DASHSCOPE_API_KEY 环境变量")
+    print("❌ API key not found. Ensure aliyun.key exists or set DASHSCOPE_API_KEY.")
     return ""
 
 
 def read_test_file_content(pd_dir: str, source_file: str, max_chars: int = MAX_FILE_CHARS) -> str:
     """
-    读取测试文件内容（截断到 max_chars 字符以控制 token 消耗）
+    Read test file content (truncate to max_chars to control token usage).
 
-    Paddle 测试文件通常结构：
-    - import 部分
-    - OpTest 子类定义（setUp 中有 self.inputs, self.outputs, self.attrs）
-    - unittest.TestCase 子类（显式调用 paddle API）
+    Paddle test files typically include:
+    - import section
+    - OpTest subclasses (setUp defines self.inputs, self.outputs, self.attrs)
+    - unittest.TestCase subclasses (explicit paddle API calls)
     """
     filepath = os.path.join(pd_dir, source_file)
     if not os.path.exists(filepath):
@@ -84,7 +84,7 @@ def read_test_file_content(pd_dir: str, source_file: str, max_chars: int = MAX_F
     if len(content) <= max_chars:
         return content
 
-    # 文件过长时，保留开头和中间有用的部分
+    # If the file is too long, keep the head and a useful middle slice.
     head_chars = int(max_chars * 0.6)
     tail_chars = max_chars - head_chars
 
@@ -93,39 +93,39 @@ def read_test_file_content(pd_dir: str, source_file: str, max_chars: int = MAX_F
     tail_start = max(0, len(remaining) // 4)
     tail = remaining[tail_start:tail_start + tail_chars]
 
-    return head + "\n\n# ... (中间部分省略) ...\n\n" + tail
+    return head + "\n\n# ... (middle omitted) ...\n\n" + tail
 
 
 def build_extraction_prompt(pd_api: str, file_content: str, num_cases: int = DEFAULT_NUM_CASES) -> str:
-    """构建 LLM 提取测试用例的提示词"""
-    prompt = f"""你是一个深度学习框架测试专家，精通 PaddlePaddle 框架的各种算子/API。
+    """Build the LLM prompt for extracting test cases."""
+    prompt = f"""You are a deep learning framework testing expert who understands PaddlePaddle operators and APIs.
 
-## 任务
-请从以下 PaddlePaddle 官方测试文件中，为 API `{pd_api}` 提取或生成测试用例。（优先提取，不够再生成）
-要求：
-- 如果测试文件中用例数 > {num_cases}，请把可用的用例**全部提取**出来。
-- 如果测试文件中用例数 < {num_cases}，请在提取基础上**补充生成**，直到数量**至少为 {num_cases}**。
+## Task
+From the PaddlePaddle official test file below, extract or generate test cases for API `{pd_api}` (prefer extraction; generate only if insufficient).
+Requirements:
+- If the file contains more than {num_cases} cases, extract all available cases.
+- If the file contains fewer than {num_cases} cases, extract what exists and generate more until you have at least {num_cases}.
 
-## Paddle 测试文件格式说明
-PaddlePaddle 的算子测试文件通常有以下结构：
-1. **OpTest 模式**：测试类继承 `OpTest`，在 `setUp()` 中定义：
-   - `self.op_type`：算子名
-   - `self.python_api`：对应的 Python API
-   - `self.inputs`：输入字典（如 `{{'X': numpy_array}}`）
-   - `self.outputs`：期望输出
-   - `self.attrs`：算子属性
-2. **unittest 模式**：显式调用 `paddle.xxx()` API
-3. **子类变体**：许多子类只覆写 `init_shape()` / `init_dtype()` 等方法
+## Paddle test file format
+Paddle operator test files typically include:
+1. **OpTest pattern**: test classes inherit `OpTest`, and `setUp()` defines:
+   - `self.op_type`: operator name
+   - `self.python_api`: corresponding Python API
+   - `self.inputs`: input dict (e.g., `{{'X': numpy_array}}`)
+   - `self.outputs`: expected outputs
+   - `self.attrs`: operator attributes
+2. **unittest pattern**: explicit calls to `paddle.xxx()` APIs
+3. **Subclass variants**: many subclasses override `init_shape()` / `init_dtype()` etc.
 
-请从这些定义中提取输入数据的 shape、dtype 和其他参数。
+Extract input shapes, dtypes, and other parameters from these definitions.
 
-## 测试文件内容
+## Test file content
 ```python
 {file_content}
 ```
 
-## 输出要求
-请输出严格的 JSON 格式，格式如下：
+## Output requirements
+Output strict JSON using this format:
 
 ```json
 {{
@@ -133,14 +133,14 @@ PaddlePaddle 的算子测试文件通常有以下结构：
     "is_class_api": false,
     "test_cases": [
         {{
-            "description": "基本功能测试",
+            "description": "basic functionality test",
             "inputs": {{
                 "x": {{"shape": [2, 3], "dtype": "float32"}},
                 "axis": 1
             }}
         }},
         {{
-            "description": "边界值测试 - 空张量",
+            "description": "boundary values test - empty tensor",
             "inputs": {{
                 "x": {{"shape": [0, 3], "dtype": "float32"}}
             }}
@@ -149,22 +149,22 @@ PaddlePaddle 的算子测试文件通常有以下结构：
 }}
 ```
 
-## 规则
-1. `is_class_api`: 判断该 API 是否为类形式（如 `paddle.nn.Conv2D`，首字母大写的类）。如果是函数形式（如 `paddle.nn.functional.relu`），设为 `false`。
-2. 每个测试用例的 `inputs` 字典中：
-   - **张量参数**必须用 `{{"shape": [...], "dtype": "..."}}` 格式描述（dtype 不带 paddle. 前缀，如 "float32"、"int64"、"bool"）
-   - **标量参数**直接用数值，如 `"axis": 1`、`"keepdim": true`
-   - **字符串参数**直接用字符串，如 `"padding": "SAME"`
-   - **列表参数**直接用列表，如 `"strides": [1, 1]`
-   - 对于 Paddle 中 `self.inputs` 中的 `X` 参数，请统一映射为 `"x"`
-3. 测试用例需要覆盖：
-   - 基本功能（正常输入）
-   - 不同数据类型（float32, float64, int32 等）
-   - 不同形状（1D, 2D, 高维）
-   - 边界值（空张量、单元素、极大/极小值等，如果文件中有的话）
-4. 优先分析并从测试文件中提取测试用例，实在提取不到再根据经验生成。提取时需要收集测试文件中真实使用的输入数据和参数，不要凭空捏造不合理的测试用例；生成时尽量根据现有的用例生成类似的变体
-5. 确保 shape 是合理的（不要太大，每个维度不超过 10），dtype 是 PaddlePaddle 支持的
-6. **不要**包含 markdown 标记或其他额外文字，只输出纯 JSON
+## Rules
+1. `is_class_api`: determine whether the API is a class (e.g., `paddle.nn.Conv2D`, capitalized class name). If it is a function (e.g., `paddle.nn.functional.relu`), set `false`.
+2. In each test case `inputs` dict:
+   - **Tensor parameters** must use `{{"shape": [...], "dtype": "..."}}` (dtype without the paddle. prefix, e.g., "float32", "int64", "bool")
+   - **Scalar parameters** should be plain values (e.g., `"axis": 1`, `"keepdim": true`)
+   - **String parameters** should be strings (e.g., `"padding": "SAME"`)
+   - **List parameters** should be lists (e.g., `"strides": [1, 1]`)
+   - For Paddle `self.inputs` parameter `X`, map it to `"x"`
+3. Test cases should cover:
+   - basic functionality (normal inputs)
+   - different dtypes (float32, float64, int32, etc.)
+   - different shapes (1D, 2D, higher dimensions)
+   - boundary values (empty tensor, single element, extreme values, when present in the file)
+4. Prefer extracting from the test file; only generate based on experience when extraction fails. When extracting, use real inputs/parameters from the file; do not fabricate unreasonable cases. When generating, create variations similar to existing cases.
+5. Ensure shapes are reasonable (not too large; each dimension <= 10) and dtypes are supported by PaddlePaddle.
+6. **Do not** include markdown or extra text; output JSON only.
 """
     return prompt
 
@@ -179,7 +179,7 @@ def extract_test_cases_for_api(
     max_retries: int = 3,
 ) -> Dict[str, Any]:
     """
-    调用 LLM 为单个 Paddle API 提取测试用例
+    Call the LLM to extract test cases for a single Paddle API.
     """
     lock = print_lock or Lock()
     prompt = build_extraction_prompt(pd_api, file_content, num_cases)
@@ -191,7 +191,7 @@ def extract_test_cases_for_api(
                 messages=[
                     {
                         "role": "system",
-                        "content": "你是深度学习测试专家，擅长分析PaddlePaddle测试代码并提取标准化的测试用例。只输出JSON，不要输出其他内容。"
+                        "content": "You are a deep learning testing expert. Analyze PaddlePaddle test code and extract standardized test cases. Output JSON only."
                     },
                     {"role": "user", "content": prompt}
                 ],
@@ -207,27 +207,27 @@ def extract_test_cases_for_api(
                 if len(result["test_cases"]) < num_cases:
                     with lock:
                         print(
-                            f"  ⚠️ {pd_api} 用例数不足（{len(result['test_cases'])}/{num_cases}），已接受LLM结果"
+                            f"  ⚠️ {pd_api} case count insufficient ({len(result['test_cases'])}/{num_cases}); accepted LLM result"
                         )
                 with lock:
-                    print(f"  ✅ {pd_api} → {len(result['test_cases'])} 个测试用例")
+                    print(f"  ✅ {pd_api} -> {len(result['test_cases'])} test cases")
                 return result
 
             with lock:
-                print(f"  ⚠️ {pd_api} 返回格式异常，重试 ({attempt + 1}/{max_retries})")
+                print(f"  ⚠️ {pd_api} returned invalid format; retry ({attempt + 1}/{max_retries})")
 
         except Exception as e:
             with lock:
-                print(f"  ❌ {pd_api} LLM调用失败: {str(e)[:80]}，重试 ({attempt + 1}/{max_retries})")
+                print(f"  ❌ {pd_api} LLM call failed: {str(e)[:80]}; retry ({attempt + 1}/{max_retries})")
             time.sleep(2 ** attempt)
 
     with lock:
-        print(f"  ❌ {pd_api} 最终失败，使用默认测试用例")
+        print(f"  ❌ {pd_api} failed after retries; using default test cases")
     return _default_test_case(pd_api)
 
 
 def _parse_json_response(raw: str) -> Optional[Dict[str, Any]]:
-    """解析 LLM 返回的 JSON（带容错）"""
+    """Parse LLM JSON response (fault-tolerant)."""
     raw = re.sub(r'```json\s*', '', raw)
     raw = re.sub(r'```\s*', '', raw)
     raw = raw.strip()
@@ -248,13 +248,13 @@ def _parse_json_response(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def _default_test_case(pd_api: str) -> Dict[str, Any]:
-    """为无法提取的 API 生成默认测试用例"""
+    """Generate default test cases when extraction fails."""
     return {
         "api": pd_api,
         "is_class_api": False,
         "test_cases": [
             {
-                "description": "默认测试用例",
+                "description": "defaultTest cases",
                 "inputs": {
                     "x": {"shape": [2, 3], "dtype": "float32"}
                 }
@@ -265,83 +265,83 @@ def _default_test_case(pd_api: str) -> Dict[str, Any]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 2: 基于 LLM 从 PaddlePaddle 测试文件中提取测试用例"
+        description="Step 2: Use LLM to extract test cases from PaddlePaddle test files"
     )
     parser.add_argument(
         "--input", "-i",
         default=os.path.join(ROOT_DIR, "pd_pt_test", "data", "pd_apis_existing.json"),
-        help="Step 1/1.5 输出的 Paddle API 列表文件路径"
+        help="Paddle API list filepath from Step 1/1.5"
     )
     parser.add_argument(
         "--output", "-o",
         default=os.path.join(ROOT_DIR, "pd_pt_test", "data", "pd_test_cases.json"),
-        help="输出的测试用例文件路径"
+        help="Output test cases filepath"
     )
     parser.add_argument(
         "--pd-dir",
         default=os.path.join(ROOT_DIR, "testcases_pd"),
-        help="testcases_pd 目录路径"
+        help="testcases_pd directory path"
     )
     parser.add_argument(
         "--workers", "-w", type=int, default=DEFAULT_WORKERS,
-        help=f"LLM 并发线程数（默认 {DEFAULT_WORKERS}）"
+        help=f"LLM concurrent worker count (default {DEFAULT_WORKERS})"
     )
     parser.add_argument(
         "--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES,
-        help=f"每个 API 提取的测试用例数（默认 {DEFAULT_NUM_CASES}）"
+        help=f"Test cases per API (default {DEFAULT_NUM_CASES})"
     )
     parser.add_argument(
         "--model", "-m", default=DEFAULT_MODEL,
-        help=f"LLM 模型名称（默认 {DEFAULT_MODEL}）"
+        help=f"LLM model name (default {DEFAULT_MODEL})"
     )
     parser.add_argument(
         "--key-path", "-k", default=DEFAULT_KEY_PATH,
-        help=f"API key 文件路径（默认 {DEFAULT_KEY_PATH}）"
+        help=f"API key filepath (default {DEFAULT_KEY_PATH})"
     )
     parser.add_argument(
         "--start", type=int, default=0,
-        help="从第几个 API 开始处理（0-indexed，用于断点续传）"
+        help="Start processing from API index (0-based, for resume)"
     )
     parser.add_argument(
         "--limit", type=int, default=None,
-        help="最多处理多少个 API"
+        help="Maximum number of APIs to process"
     )
     parser.add_argument(
         "--delay", type=float, default=0.5,
-        help="LLM 调用间隔秒数（默认 0.5）"
+        help="LLM call delay in seconds (default 0.5)"
     )
 
     args = parser.parse_args()
     workers = max(1, args.workers)
 
     print("=" * 80)
-    print("Step 2: 基于 LLM 从 PaddlePaddle 测试文件中提取测试用例")
+    print("Step 2: Use LLM to extract test cases from PaddlePaddle test files")
     print("=" * 80)
 
-    # 加载 API 列表
+    # Load API list
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
-        print("请先运行 Step 1: python pd_pt_test/extract_pd_apis.py")
+        print(f"❌ Input file does not exist: {args.input}")
+        print("Please run Step 1 first: python pd_pt_test/extract_pd_apis.py")
         sys.exit(1)
 
     with open(args.input, 'r', encoding='utf-8') as f:
         api_data = json.load(f)
 
     all_apis = api_data.get("apis", [])
-    print(f"📋 共加载 {len(all_apis)} 个 Paddle API")
+    print(f"📋 Loaded {len(all_apis)} Paddle APIs")
 
-    # 确定处理范围
+    # Determine processing range
     start_idx = args.start
     end_idx = start_idx + args.limit if args.limit else len(all_apis)
     end_idx = min(end_idx, len(all_apis))
     apis_to_process = all_apis[start_idx:end_idx]
 
-    print(f"📌 处理范围: [{start_idx}, {end_idx})，共 {len(apis_to_process)} 个")
-    print(f"📌 并发线程数: {workers}")
-    print(f"📌 每个API提取用例数: {args.num_cases}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Processing range: [{start_idx}, {end_idx}), total {len(apis_to_process)}")
+    print(f"📌 concurrent worker count: {workers}")
+    print(f"📌 Cases per API: {args.num_cases}")
+    print(f"📌 LLM model: {args.model}")
 
-    # 初始化 LLM 客户端
+    # Initialize LLM client
     api_key = load_api_key(args.key_path)
     if not api_key:
         sys.exit(1)
@@ -354,25 +354,25 @@ def main():
     print_lock = Lock()
     results: Dict[str, Any] = {}
 
-    # 加载已有结果（支持断点续传）
+    # Load existing results (resume supported)
     if os.path.exists(args.output):
         try:
             with open(args.output, 'r', encoding='utf-8') as f:
                 existing_data = json.load(f)
             results = existing_data.get("test_cases", {})
-            print(f"📂 加载已有结果: {len(results)} 个API的测试用例")
+            print(f"📂 Loaded existing results: {len(results)} APIs")
         except Exception:
             pass
 
-    # 过滤掉已处理的 API
+    # Filter out already processed APIs
     apis_remaining = [a for a in apis_to_process if a["pd_api"] not in results]
-    print(f"📌 待处理: {len(apis_remaining)} 个（跳过已处理的 {len(apis_to_process) - len(apis_remaining)} 个）")
+    print(f"📌 Remaining: {len(apis_remaining)} (skipped {len(apis_to_process) - len(apis_remaining)})")
 
     if not apis_remaining:
-        print("✅ 所有API已处理完毕")
+        print("✅ All APIs processed")
         return
 
-    # 预加载文件内容
+    # Preload file contents
     file_content_cache: Dict[str, str] = {}
 
     def get_file_content(source_file: str) -> str:
@@ -383,11 +383,11 @@ def main():
         return file_content_cache[source_file]
 
     source_files = set(a["source_file"] for a in apis_remaining)
-    print(f"\n📖 预加载 {len(source_files)} 个测试文件...")
+    print(f"\n📖 Preloading {len(source_files)} test files...")
     for sf in source_files:
         get_file_content(sf)
 
-    # 并发处理
+    # Concurrent processing
     def process_api(api_info: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
         pd_api = api_info["pd_api"]
         file_content = get_file_content(api_info["source_file"])
@@ -399,7 +399,7 @@ def main():
         time.sleep(args.delay)
         return pd_api, result
 
-    print(f"\n🚀 开始提取测试用例 (并发={workers})...\n")
+    print(f"\n🚀 Start extracting test cases (concurrency={workers})...\n")
     start_time = time.time()
     completed = 0
     total = len(apis_remaining)
@@ -411,7 +411,7 @@ def main():
             completed += 1
             if completed % 10 == 0:
                 _save_results(args.output, results)
-                print(f"  💾 进度: {completed}/{total}，已保存中间结果")
+                print(f"  💾 Progress: {completed}/{total}, saved intermediate results")
     else:
         with ThreadPoolExecutor(max_workers=workers) as executor:
             future_to_api = {
@@ -425,16 +425,16 @@ def main():
                 except Exception as e:
                     api_name = future_to_api[future]
                     with print_lock:
-                        print(f"  ❌ {api_name} 处理异常: {e}")
+                        print(f"  ❌ {api_name} processing error: {e}")
                     results[api_name] = _default_test_case(api_name)
 
                 completed += 1
                 if completed % 20 == 0:
                     _save_results(args.output, results)
                     with print_lock:
-                        print(f"  💾 进度: {completed}/{total}，已保存中间结果")
+                        print(f"  💾 Progress: {completed}/{total}, saved intermediate results")
 
-    # 最终保存
+    # Final save
     _save_results(args.output, results)
 
     elapsed = time.time() - start_time
@@ -443,17 +443,17 @@ def main():
     )
 
     print(f"\n{'=' * 80}")
-    print(f"📊 提取完成")
+    print("📊 Extraction completed")
     print(f"{'=' * 80}")
-    print(f"  API总数: {len(results)}")
-    print(f"  测试用例总数: {total_cases}")
-    print(f"  平均每个API: {total_cases / max(1, len(results)):.1f} 个用例")
-    print(f"  耗时: {elapsed:.1f} 秒")
-    print(f"  💾 已保存到: {args.output}")
+    print(f"  API total count: {len(results)}")
+    print(f"  Test cases total count: {total_cases}")
+    print(f"  Avg per API: {total_cases / max(1, len(results)):.1f} cases")
+    print(f"  Elapsed time: {elapsed:.1f} s")
+    print(f"  💾 Saved to: {args.output}")
 
 
 def _save_results(output_path: str, results: Dict[str, Any]):
-    """保存结果到 JSON 文件"""
+    """Save results to a JSON file."""
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     output_data = {
         "total_apis": len(results),
@@ -466,3 +466,4 @@ def _save_results(output_path: str, results: Dict[str, Any]):
 
 if __name__ == "__main__":
     main()
+

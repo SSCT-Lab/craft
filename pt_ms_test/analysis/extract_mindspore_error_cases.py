@@ -8,14 +8,14 @@ def parse_report(report_path):
     has_field = False
     with open(report_path, "r", encoding="utf-8") as f:
         for line in f:
-            m = re.search(r"文件名:\s+([^\s]+\.json)", line)
+            m = re.search(r"File name:\s+([^\s]+\.json)", line)
             if m:
                 if current_file and has_field:
                     files.append(current_file)
                 current_file = m.group(1).strip()
                 has_field = False
                 continue
-            if "mindspore_error 非null值个数" in line:
+            if "mindspore_error non-null count" in line:
                 has_field = True
         if current_file and has_field:
             files.append(current_file)
@@ -46,10 +46,10 @@ def collect_samples(json_path):
 def format_section(filename, samples):
     lines = []
     lines.append("=" * 80)
-    lines.append(f"文件: {filename}")
+    lines.append(f"File: {filename}")
     lines.append("-" * 80)
     for idx, s in enumerate(samples, 1):
-        lines.append(f"样例 {idx}:")
+        lines.append(f"Sample {idx}:")
         lines.append(f"mindspore_error: {s.get('mindspore_error')}")
         if "torch_test_case" in s or "mindspore_test_case" in s:
             if s.get("torch_test_case") is not None:
@@ -83,7 +83,7 @@ def main():
         samples = collect_samples(jpath)
         if samples:
             sections.append(format_section(fname, samples))
-    content = "\n".join(sections) if sections else "无mindspore_error非null的样例"
+    content = "\n".join(sections) if sections else "No samples with non-null mindspore_error"
     with open(output_path, "w", encoding="utf-8") as wf:
         wf.write(content)
     print(str(output_path))

@@ -5,20 +5,20 @@ from collections import Counter, defaultdict
 def categorize(error: str) -> str:
     e = error.lower()
     if 'invalid combination of arguments' in e:
-        return '参数组合无效'
+        return 'Invalid parameter combination'
     if 'unexpected keyword argument' in e:
-        return '意外关键字参数'
+        return 'Unexpected keyword argument'
     if 'multiple values for argument' in e:
-        return '参数重复赋值'
+        return 'Repeated assignment of parameters'
     if 'must match the size of tensor' in e or 'size of tensor' in e or 'sizes of tensors' in e:
-        return '形状不匹配'
+        return 'Shape mismatch'
     if 'non-zero size' in e or 'size 0' in e:
-        return '零维归约错误'
+        return 'Zero-dimensional reduction error'
     if 'expected scalar type' in e or 'cannot convert' in e or 'dtype' in e and 'expected' in e:
-        return 'dtype转换/类型错误'
+        return 'dtypeConvert/type error'
     if 'received an invalid' in e or 'got' in e and 'expected' in e:
-        return '签名不匹配/入参错误'
-    return '其他'
+        return 'Signature does not match/Parameter error'
+    return 'other'
 
 def parse_errors(path: str):
     with open(path, 'r', encoding='utf-8') as f:
@@ -26,7 +26,7 @@ def parse_errors(path: str):
     errors = []
     api_files = []
     for line in text.splitlines():
-        m = re.match(r'^\s*文件:\s*llm_enhanced_(.+?)_(\d{8})_(\d{6})\.json', line)
+        m = re.match(r'^\s*document:\s*llm_enhanced_(.+?)_(\d{8})_(\d{6})\.json', line)
         if m:
             api_files.append(m.group(1))
             continue
@@ -46,12 +46,12 @@ def main():
         cat = categorize(e)
         cat_counter[cat] += 1
         sample_messages[e] += 1
-    print(f'分析文件: {path}')
-    print(f'样例总数: {len(errors)}')
-    print('\n按类别统计（降序）：')
+    print(f'Analyze files: {path}')
+    print(f'Total number of samples: {len(errors)}')
+    print('\nStatistics by category (descending order）：')
     for cat, cnt in cat_counter.most_common():
         print(f'- {cat}: {cnt}')
-    print('\n代表性错误消息（Top 10）：')
+    print('\nRepresentative error message（Top 10）：')
     for msg, cnt in sorted(sample_messages.items(), key=lambda x: x[1], reverse=True)[:10]:
         print(f'- [{cnt}] {msg}')
         

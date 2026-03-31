@@ -1,4 +1,4 @@
-"""MindSpore 文档爬取器（适配 MindSpore 2.6.0）"""
+"""MindSpore documentation crawler (adapted for MindSpore 2.6.0)."""
 import re
 from typing import Dict
 from bs4 import BeautifulSoup
@@ -10,16 +10,16 @@ MS_DOC_BASE = f"https://www.mindspore.cn/docs/en/{MS_VERSION}/api_python/"
 
 
 class MindSporeDocCrawler(DocCrawler):
-    """MindSpore 文档爬取器"""
+    """MindSpore documentation crawler."""
 
     def __init__(self):
         super().__init__("mindspore")
 
     def build_doc_url(self, api_name: str) -> str:
         """
-        构建 MindSpore API 文档 URL（自动识别子模块）
+                Build MindSpore API doc URL (auto-detect submodules).
 
-        示例：
+                Examples:
         - mindspore.Tensor
           -> api_python/mindspore/mindspore.Tensor.html
         - mindspore.nn.Conv1d
@@ -30,16 +30,16 @@ class MindSporeDocCrawler(DocCrawler):
         api_name = api_name.lstrip(".")
         parts = api_name.split(".")
 
-        # 默认兜底
+        # Default fallback
         sub_module = "mindspore"
 
-        # 旧逻辑（保留注释）：只按二级模块定位
+        # Legacy logic (kept as comment): only use second-level module
         # if len(parts) >= 2:
         #     sub_module = parts[1]
         # return f"{MS_DOC_BASE}{sub_module}/{api_name}.html"
 
-        # 新逻辑：兼容 Tensor 方法路径
-        # Tensor 方法示例：mindspore.Tensor.add
+        # New logic: handle Tensor method paths
+        # Tensor method example: mindspore.Tensor.add
         # URL: https://www.mindspore.cn/docs/en/r2.8.0/api_python/mindspore/Tensor/mindspore.Tensor.add.html
         if api_name.startswith("mindspore.Tensor"):
             sub_module = "mindspore/Tensor"
@@ -51,7 +51,7 @@ class MindSporeDocCrawler(DocCrawler):
     def parse_doc_content(
         self, soup: BeautifulSoup, api_name: str, url: str
     ) -> Dict:
-        """解析 MindSpore 文档内容"""
+        """Parse MindSpore doc content."""
         doc_content = {
             "api_name": api_name,
             "framework": "mindspore",
@@ -78,15 +78,15 @@ class MindSporeDocCrawler(DocCrawler):
         if not main_content:
             return doc_content
 
-        # ========== 1. API 描述 ==========
+        # ========== 1. API description ==========
         first_p = main_content.find("p")
         if first_p:
             doc_content["description"] = first_p.get_text(strip=True)
 
-        # ========== 2. 参数解析 ==========
+        # ========== 2. Parameter parsing ==========
         params = []
 
-        # 情况 1：<dl class="field-list">
+        # Case 1: <dl class="field-list">
         dl = main_content.find("dl", class_="field-list")
         if dl:
             for dt in dl.find_all("dt"):
@@ -95,7 +95,7 @@ class MindSporeDocCrawler(DocCrawler):
                 desc = dd.get_text(strip=True) if dd else ""
                 params.append({"name": name, "description": desc})
 
-        # 情况 2：参数 / Inputs 标题下的列表
+        # Case 2: lists under Parameters / Inputs headers
         if not params:
             headers = main_content.find_all(
                 string=re.compile(r"参数|Inputs?", re.I)
@@ -114,7 +114,7 @@ class MindSporeDocCrawler(DocCrawler):
 
         doc_content["parameters"] = params
 
-        # ========== 3. 返回值解析 ==========
+        # ========== 3. Return parsing ==========
         ret_headers = main_content.find_all(
             string=re.compile(r"返回值|Outputs?|Returns?", re.I)
         )

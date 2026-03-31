@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-LLM方法 vs ONNX方法：TensorFlow → PyTorch 测试用例转换成功率对比
-================================================================
+LLM vs ONNX: TensorFlow → PyTorch test-case conversion success rate
+==================================================================
 
-对比两种跨框架测试用例迁移方案：
-1. LLM方法：基于 tf_pt_test/llm_enhanced_compare.py 的执行、修复/变异与并发流程（迭代次数固定为1）
-2. ONNX方法：将 TensorFlow 算子包装为 tf.Module，导出 ONNX，并使用 onnxruntime 推理
+Compare two cross-framework test-case migration approaches:
+1. LLM method: based on tf_pt_test/llm_enhanced_compare.py execution, repair/mutation, and concurrency flow (iterations fixed at 1)
+2. ONNX method: wrap TensorFlow operators as tf.Module, export ONNX, and run inference with onnxruntime
 
-统计指标：LLM生成的PT用例执行成功率 vs ONNX导出+推理成功率
-（剔除LLM选择跳过的算子）
+Metric: LLM-generated PT case success rate vs ONNX export+inference success rate
+(excluding operators skipped by LLM)
 """
 
 import os
@@ -59,7 +59,7 @@ def safe_print(msg: str, print_lock: Optional[Lock] = None, end: str = "\n"):
 
 
 class _FuncWrapper(tf.Module):
-    """将普通函数包装为 tf.Module。"""
+    """Wrap a plain function as a tf.Module."""
 
     def __init__(self, func):
         super().__init__()
@@ -70,7 +70,7 @@ class _FuncWrapper(tf.Module):
 
 
 class OnnxConverter:
-    """通过 ONNX 中间格式模拟 TensorFlow → PyTorch 的传统转换路径。"""
+    """Simulate the traditional TensorFlow → PyTorch conversion path via ONNX."""
 
     def __init__(self, print_lock: Optional[Lock] = None):
         self.print_lock = print_lock or Lock()
@@ -208,23 +208,23 @@ class OnnxConverter:
         }
 
         if tf2onnx is None:
-            result["error"] = "未安装 tf2onnx，无法执行 ONNX 导出"
+            result["error"] = "tf2onnx is not installed; cannot perform ONNX export"
             return result
 
         with self.execution_lock:
             try:
                 input_tensors, init_kwargs, input_names, extra_kwargs = self._prepare_inputs(test_case, is_class_api)
             except Exception as error:
-                result["error"] = f"输入准备失败: {error}"
+                result["error"] = f"Input preparation failed: {error}"
                 return result
 
             if not input_tensors:
-                result["error"] = "无有效输入张量"
+                result["error"] = "No valid input tensors"
                 return result
 
             module = self._wrap_as_module(tf_api, is_class_api, init_kwargs, extra_kwargs)
             if module is None:
-                result["error"] = f"无法包装算子 {tf_api} 为 tf.Module"
+                result["error"] = f"Failed to wrap operator {tf_api} as tf.Module"
                 return result
 
             try:
@@ -233,7 +233,7 @@ class OnnxConverter:
                 if hasattr(tf_output, "shape"):
                     result["tf_shape"] = list(tf_output.shape)
             except Exception as error:
-                result["error"] = f"TensorFlow前向传播失败: {error}"
+                result["error"] = f"TensorFlow forward pass failed: {error}"
                 return result
 
             onnx_path = None
@@ -258,7 +258,7 @@ class OnnxConverter:
                 )
                 result["onnx_export_success"] = True
             except Exception as error:
-                result["error"] = f"ONNX导出失败: {error}"
+                result["error"] = f"ONNX export failed: {error}"
                 if onnx_path and os.path.exists(onnx_path):
                     os.remove(onnx_path)
                 return result
@@ -275,7 +275,7 @@ class OnnxConverter:
                 result["onnx_run_success"] = True
                 result["onnx_shape"] = list(onnx_result.shape)
             except Exception as error:
-                result["error"] = f"OnnxRuntime推理失败: {error}"
+                result["error"] = f"OnnxRuntime inference failed: {error}"
             finally:
                 if onnx_path and os.path.exists(onnx_path):
                     os.remove(onnx_path)
@@ -284,7 +284,7 @@ class OnnxConverter:
 
 
 class LLMvsONNXComparator:
-    """统一管理 LLM 方法与 ONNX 方法的对比测试。"""
+    """Manage comparative testing between LLM and ONNX methods."""
 
     def __init__(self, key_path: str = DEFAULT_KEY_PATH, model: str = DEFAULT_MODEL, num_workers: int = DEFAULT_WORKERS):
         self.print_lock = Lock()
@@ -349,12 +349,12 @@ class LLMvsONNXComparator:
 
         for index, tf_api in enumerate(operator_names, 1):
             self._safe_print(f"\n{'=' * 70}")
-            self._safe_print(f"[{index}/{len(operator_names)}] 算子: {tf_api}")
+            self._safe_print(f"[{index}/{len(operator_names)}] Operator: {tf_api}")
             self._safe_print(f"{'=' * 70}")
 
             tf_name, pt_api, mapping_method = self.llm_method.convert_api_name(tf_api)
             if pt_api is None:
-                self._safe_print(f"  ⏭️ 跳过（无PT映射）: {tf_api} ({mapping_method})")
+                self._safe_print(f"  ⏭️ Skipped (no PT mapping): {tf_api} ({mapping_method})")
                 global_stats["skipped_operators_no_target"] += 1
                 operator_details.append({
                     "operator": tf_api,
@@ -403,7 +403,7 @@ class LLMvsONNXComparator:
 
         is_class_api = self.llm_method.is_class_based_api(tf_api)
 
-        self._safe_print("  📖 爬取API文档...")
+        self._safe_print("  📖 Fetching API docs...")
         tf_doc, pt_doc = self.llm_method._fetch_api_docs(tf_api, pt_api)
 
         cases = []
@@ -439,13 +439,13 @@ class LLMvsONNXComparator:
         if any(item.get("deprecated_skip", False) for item in case_results):
             op_result["status"] = "skipped_deprecated"
             op_result["case_details"] = case_results
-            self._safe_print("  ⏭️ 该算子可能已废弃，按规则跳过")
+            self._safe_print("  ⏭️ This operator may be deprecated; skipped by rule")
             return op_result
 
         if case_results and all(item.get("llm_skipped", False) for item in case_results):
             op_result["status"] = "skipped_by_llm"
             op_result["case_details"] = case_results
-            self._safe_print("  ⏭️ LLM选择跳过该算子")
+            self._safe_print("  ⏭️ LLM chose to skip this operator")
             return op_result
 
         for item in case_results:
@@ -483,7 +483,7 @@ class LLMvsONNXComparator:
             "onnx_detail": None,
         }
 
-        self._safe_print(f"  [用例{case_number}] ONNX方法...", end="")
+        self._safe_print(f"  [Case {case_number}] ONNX method...", end="")
         onnx_result = self.onnx_converter.convert_and_run(tf_api, test_case, is_class_api)
         case_result["onnx_total"] = 1
         if onnx_result["onnx_export_success"]:
@@ -499,7 +499,7 @@ class LLMvsONNXComparator:
         pt_test_case = copy.deepcopy(test_case)
         pt_test_case["api"] = pt_api
 
-        self._safe_print(f"  [用例{case_number}] LLM方法: 初始执行...", end="")
+        self._safe_print(f"  [Case {case_number}] LLM method: initial execution...", end="")
         try:
             with self.execution_lock:
                 exec_result = self.llm_method._execute_test_case_sequential(
@@ -512,7 +512,7 @@ class LLMvsONNXComparator:
             pt_s = "✓" if exec_result.get("pytorch_success") else "✗"
             self._safe_print(f" TF:{tf_s} PT:{pt_s}")
         except Exception as error:
-            self._safe_print(f" ❌ 执行失败: {str(error)[:60]}")
+            self._safe_print(f" ❌ Execution failed: {str(error)[:60]}")
             exec_result = {
                 "tf_api": tf_api,
                 "pytorch_api": pt_api,
@@ -532,11 +532,11 @@ class LLMvsONNXComparator:
             case_result["llm_detail"] = {
                 "initial_exec": exec_result,
                 "llm_operation": "skip",
-                "llm_reason": f"检测到版本淘汰信息: {tf_error[:120]}",
+                "llm_reason": f"Detected deprecation info: {tf_error[:120]}",
             }
             return case_result
 
-        self._safe_print(f"  [用例{case_number}] 调用LLM...", end="")
+        self._safe_print(f"  [Case {case_number}] Calling LLM...", end="")
         llm_result = self.llm_method.call_llm_for_repair_or_mutation(
             exec_result,
             tf_test_case,
@@ -579,14 +579,14 @@ class LLMvsONNXComparator:
             case_result["llm_detail"] = {
                 "initial_exec": exec_result,
                 "llm_operation": "skip",
-                "llm_reason": f"LLM用例转换失败: {error}",
+                "llm_reason": f"LLM case conversion failed: {error}",
             }
-            self._safe_print(f"  [用例{case_number}] LLM用例转换失败，跳过: {str(error)[:60]}")
+            self._safe_print(f"  [Case {case_number}] LLM case conversion failed, skipped: {str(error)[:60]}")
             return case_result
 
         case_result["llm_total"] = 1
 
-        self._safe_print(f"  [用例{case_number}] 执行LLM用例...", end="")
+        self._safe_print(f"  [Case {case_number}] Executing LLM case...", end="")
         try:
             with self.execution_lock:
                 llm_exec = self.llm_method._execute_test_case_sequential(
@@ -636,50 +636,50 @@ class LLMvsONNXComparator:
         gs = comparison_result["global_stats"]
 
         print("\n" + "=" * 80)
-        print("📊 LLM方法 vs ONNX方法 — TF→PT 测试用例转换成功率对比")
+        print("📊 LLM vs ONNX — TF→PT test-case conversion success rate")
         print("=" * 80)
 
-        print(f"\n📌 算子总数: {gs['total_operators']}")
-        print(f"   - 无目标映射跳过: {gs['skipped_operators_no_target']}")
-        print(f"   - LLM选择跳过: {gs['skipped_operators_llm']}")
-        print(f"   - 已被版本淘汰跳过: {gs['skipped_operators_deprecated']}")
-        print(f"   - 实际参与对比: {gs['tested_operators']}")
+        print(f"\n📌 Total operators: {gs['total_operators']}")
+        print(f"   - Skipped (no target mapping): {gs['skipped_operators_no_target']}")
+        print(f"   - Skipped by LLM: {gs['skipped_operators_llm']}")
+        print(f"   - Skipped (deprecated): {gs['skipped_operators_deprecated']}")
+        print(f"   - Tested: {gs['tested_operators']}")
 
         print(f"\n{'─' * 40}")
-        print("🤖 LLM 方法（剔除跳过的算子）:")
-        print(f"   LLM生成的PT测试用例总数: {gs['llm_total_cases']}")
-        print(f"   PT执行成功数: {gs['llm_pt_success']}")
+        print("🤖 LLM method (excluding skipped operators):")
+        print(f"   LLM-generated PT cases: {gs['llm_total_cases']}")
+        print(f"   PT successes: {gs['llm_pt_success']}")
         if gs["llm_total_cases"] > 0:
             llm_rate = gs["llm_pt_success"] / gs["llm_total_cases"] * 100
-            print(f"   ✅ PT执行成功率: {llm_rate:.2f}%")
+            print(f"   ✅ PT success rate: {llm_rate:.2f}%")
         else:
             llm_rate = 0.0
-            print("   ✅ PT执行成功率: N/A（无LLM生成用例）")
+            print("   ✅ PT success rate: N/A (no LLM cases)")
 
         print(f"\n{'─' * 40}")
-        print("🔄 ONNX 方法（剔除LLM跳过的算子）:")
-        print(f"   ONNX转换尝试总数: {gs['onnx_total_cases']}")
-        print(f"   ONNX导出成功数: {gs['onnx_export_success']}")
-        print(f"   ONNX推理成功数（=转换成功）: {gs['onnx_run_success']}")
+        print("🔄 ONNX method (excluding LLM-skipped operators):")
+        print(f"   ONNX conversion attempts: {gs['onnx_total_cases']}")
+        print(f"   ONNX export successes: {gs['onnx_export_success']}")
+        print(f"   ONNX inference successes (= conversions): {gs['onnx_run_success']}")
         if gs["onnx_total_cases"] > 0:
             onnx_rate = gs["onnx_run_success"] / gs["onnx_total_cases"] * 100
-            print(f"   ✅ ONNX转换成功率: {onnx_rate:.2f}%")
+            print(f"   ✅ ONNX conversion success rate: {onnx_rate:.2f}%")
         else:
             onnx_rate = 0.0
-            print("   ✅ ONNX转换成功率: N/A")
+            print("   ✅ ONNX conversion success rate: N/A")
 
         print(f"\n{'─' * 40}")
-        print("📈 对比结论:")
+        print("📈 Conclusion:")
         if gs["llm_total_cases"] > 0 and gs["onnx_total_cases"] > 0:
             diff = llm_rate - onnx_rate
             if diff > 0:
-                print(f"   LLM 方法高于 ONNX 方法 {diff:.2f} 个百分点")
+                print(f"   LLM outperforms ONNX by {diff:.2f} percentage points")
             elif diff < 0:
-                print(f"   ONNX 方法高于 LLM 方法 {abs(diff):.2f} 个百分点")
+                print(f"   ONNX outperforms LLM by {abs(diff):.2f} percentage points")
             else:
-                print("   两者持平")
+                print("   Tie")
         else:
-            print("   数据不足，无法比较")
+            print("   Insufficient data to compare")
         print("=" * 80)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -695,7 +695,7 @@ class LLMvsONNXComparator:
         with open(result_file, "w", encoding="utf-8") as file:
             json.dump(save_data, file, indent=2, ensure_ascii=False)
 
-        print(f"\n💾 详细结果已保存到: {result_file}")
+        print(f"\n💾 Detailed results saved to: {result_file}")
 
     @staticmethod
     def _make_serializable(obj: Any) -> Any:
@@ -728,24 +728,38 @@ class LLMvsONNXComparator:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LLM方法 vs ONNX方法：TF→PT测试用例转换成功率对比")
-    parser.add_argument("--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES, help=f"每个算子测试用例数（默认{DEFAULT_NUM_CASES}）")
-    parser.add_argument("--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS, help="LLM迭代次数（固定按1执行）")
-    parser.add_argument("--start", type=int, default=1, help="起始算子索引（从1开始）")
-    parser.add_argument("--end", type=int, default=None, help="结束算子索引（包含）")
-    parser.add_argument("--operators", "-o", nargs="*", help="指定算子名称列表")
-    parser.add_argument("--workers", "-w", type=int, default=DEFAULT_WORKERS, help=f"LLM并发线程数（默认{DEFAULT_WORKERS}）")
-    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM模型（默认{DEFAULT_MODEL}）")
-    parser.add_argument("--key-path", "-k", default=DEFAULT_KEY_PATH, help=f"API key路径（默认{DEFAULT_KEY_PATH}）")
+    parser = argparse.ArgumentParser(
+        description="LLM vs ONNX: TF→PT test case conversion success rate comparison"
+    )
+    parser.add_argument(
+        "--num-cases", "-n", type=int, default=DEFAULT_NUM_CASES,
+        help=f"Test cases per operator (default {DEFAULT_NUM_CASES})"
+    )
+    parser.add_argument(
+        "--max-iterations", "-m", type=int, default=DEFAULT_MAX_ITERATIONS,
+        help="LLM iterations (fixed at 1)"
+    )
+    parser.add_argument("--start", type=int, default=1, help="Start operator index (1-based)")
+    parser.add_argument("--end", type=int, default=None, help="End operator index (inclusive)")
+    parser.add_argument("--operators", "-o", nargs="*", help="Specify operator name list")
+    parser.add_argument(
+        "--workers", "-w", type=int, default=DEFAULT_WORKERS,
+        help=f"LLM concurrent workers (default {DEFAULT_WORKERS})"
+    )
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"LLM model (default {DEFAULT_MODEL})")
+    parser.add_argument(
+        "--key-path", "-k", default=DEFAULT_KEY_PATH,
+        help=f"API key path (default {DEFAULT_KEY_PATH})"
+    )
     args = parser.parse_args()
 
     print("=" * 80)
-    print("LLM方法 vs ONNX方法 — TensorFlow→PyTorch 测试用例转换成功率对比")
+    print("LLM vs ONNX — TensorFlow→PyTorch test case conversion success rate comparison")
     print("=" * 80)
-    print(f"📌 每个算子用例数: {args.num_cases}")
-    print("📌 LLM迭代次数: 1（固定）")
-    print(f"📌 并发线程数: {args.workers}")
-    print(f"📌 LLM模型: {args.model}")
+    print(f"📌 Cases per operator: {args.num_cases}")
+    print("📌 LLM iterations: 1 (fixed)")
+    print(f"📌 Workers: {args.workers}")
+    print(f"📌 LLM model: {args.model}")
     print("=" * 80)
 
     comparator = LLMvsONNXComparator(key_path=args.key_path, model=args.model, num_workers=args.workers)
@@ -753,7 +767,7 @@ def main():
 
     try:
         all_ops = sorted(list(comparator.llm_method.test_cases_data.keys()))
-        print(f"\n📋 测试集共 {len(all_ops)} 个TF算子")
+        print(f"\n📋 Test set has {len(all_ops)} TF operators")
 
         if args.operators:
             operator_names = args.operators
@@ -762,10 +776,10 @@ def main():
             end_idx = args.end if args.end is not None else len(all_ops)
             end_idx = min(end_idx, len(all_ops))
             operator_names = all_ops[start_idx:end_idx]
-            print(f"📌 测试范围: 第 {start_idx + 1} ~ {end_idx} 个算子")
+            print(f"📌 Test range: operators {start_idx + 1} ~ {end_idx}")
 
-        print(f"📋 将测试 {len(operator_names)} 个算子")
-        print(f"📋 前10个: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
+        print(f"📋 Will test {len(operator_names)} operators")
+        print(f"📋 First 10: {', '.join(operator_names[:10])}{'...' if len(operator_names) > 10 else ''}\n")
 
         result = comparator.run_comparison(
             operator_names=operator_names,
@@ -776,10 +790,10 @@ def main():
 
         elapsed = time.time() - start_time
         h, m, s = int(elapsed // 3600), int((elapsed % 3600) // 60), int(elapsed % 60)
-        print(f"\n⏱️ 总耗时: {h}h {m}m {s}s")
+        print(f"\n⏱️ Total time: {h}h {m}m {s}s")
     finally:
         comparator.close()
-        print("✅ 程序执行完成")
+        print("✅ Run completed")
 
 
 if __name__ == "__main__":

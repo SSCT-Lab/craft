@@ -1,11 +1,9 @@
 """  
-PyTorch-TensorFlow 成功测试用例提取工具
-
-功能说明:
-    1. 扫描指定目录下的所有测试结果 JSON 文件
-    2. 提取所有没有任何错误的测试用例（torch_error、tensorflow_error、comparison_error 均为 null）
-    3. 按文件汇总成功用例数量和对应的迭代次数
-    4. 生成详细的成功用例分析报告
+PyTorch-TensorFlow Successful test case extraction tool  Function description:
+    1. Scan all test result JSON files in the specified directory
+    2. Extract all test cases without any errors (torch_error, tensorflow_error, comparison_error are null）
+    3. Summarize the number of successful use cases and corresponding number of iterations by file
+    4. Generate detailed successful use case analysis reports
 """
 
 import json
@@ -15,71 +13,65 @@ from datetime import datetime
 
 def analyze_success_cases(log_dir: str) -> tuple:
     """
-    分析指定目录下的所有 JSON 测试结果文件，提取成功用例统计信息
-    
-    参数:
-        log_dir (str): 日志文件所在目录的路径
-    
-    返回:
-        tuple: 包含以下元素的元组
-            - total_success_cases (int): 完全成功的测试用例总数
-            - total_cases (int): 所有测试用例的总数
-            - files_all_success (list): 所有用例都成功的文件列表
-            - files_with_success (list): 包含成功用例的文件详细信息列表
-            - all_success_details (list): 所有成功用例的详细信息
-    
-    异常处理:
-        - 遇到文件解析错误时会打印错误信息但不中断整体分析
+    Analyze all JSON test result files in the specified directory and extract successful use case statistics          parameters:
+        log_dir (str): The path to the directory where the log file is located          Return:
+        tuple: A tuple containing the following elements
+            - total_success_cases (int): Total number of fully successful test cases
+            - total_cases (int): The total number of all test cases
+            - files_all_success (list): List of files for which all use cases were successful
+            - files_with_success (list): List of file details containing successful use cases
+            - all_success_details (list): Details of all successful use cases          Exception handling:
+        - When a file parsing error is encountered, an error message will be printed but the overall analysis will not be interrupted.
     """
-    # 初始化全局计数器
-    total_success_cases = 0      # 完全成功的用例总数
-    total_cases = 0              # 所有用例总数
-    files_all_success = []       # 所有用例都成功的文件
-    files_with_success = []      # 包含成功用例的文件详细信息
-    all_success_details = []     # 所有成功用例的详细信息
+    # Initialize global counter
+    total_success_cases = 0      # Total number of fully successful use cases
+    total_cases = 0              # Total number of all use cases
+    files_all_success = []       # Documentation where all use cases were successful
+    files_with_success = []      # Contains file details for successful use cases
+    all_success_details = []     # Details of all successful use cases
     
-    # 获取日志目录路径并查找所有匹配的 JSON 文件
+    # Get the log directory path and find all matching JSON files
     log_path = Path(log_dir)
-    json_files = sorted(log_path.glob("llm_enhanced_torch*.json"))  # 按文件名排序
-    print(f"找到 {len(json_files)} 个 JSON 文件")
+    json_files = sorted(log_path.glob("llm_enhanced_torch*.json"))  # Sort by file name
+    print(f"turn up {len(json_files)} JSON files")
     
-    # 遍历所有 JSON 文件进行分析
+    # Iterate through all JSON files for analysis
     for json_file in json_files:
         try:
-            # 读取 JSON 文件内容
+            # Read JSON file content
             with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
             
-            # 初始化当前文件的计数器
-            file_success_cases = 0       # 当前文件成功用例数
-            file_total_cases = 0         # 当前文件总用例数
-            success_iterations = []      # 成功用例的迭代次数列表
-            success_case_details = []    # 成功用例的详细信息
+            # Initialize the counter for the current file
+            file_success_cases = 0       # Number of successful use cases for the current file
+            file_total_cases = 0         # The total number of use cases in the current file
+            success_iterations = []      # List of iterations for successful use cases
+            success_case_details = []    # Details of successful use cases
             
-            # 获取算子名称
+            # Get operator name
             operator_name = data.get("operator", "unknown")
             
-            # 检查 JSON 数据中是否包含 results 字段
+            # Check if JSON data contains results field
             if "results" in data:
-                # 遍历每个测试结果
+                # Iterate through each test result
                 for result in data["results"]:
                     file_total_cases += 1
                     total_cases += 1
                     
-                    # 检查是否包含执行结果字段
+                    # Check whether the execution result field is included
                     if "execution_result" in result:
                         exec_result = result["execution_result"]
                         iteration = result.get("iteration", "N/A")
                         case_number = result.get("case_number", "N/A")
                         is_llm_generated = result.get("is_llm_generated", False)
                         
-                        # 检查是否完全成功（三种错误都为 null）
+                        # The check is completely successful (all three errors are null）
                         torch_error = exec_result.get("torch_error")
                         tensorflow_error = exec_result.get("tensorflow_error")
                         comparison_error = exec_result.get("comparison_error")
                         results_match = exec_result.get("results_match", False)
                         
-                        # 完全成功的条件：无任何错误且结果匹配
+                        # Conditions for complete success: no errors and matching results
                         if (torch_error is None and 
                             tensorflow_error is None and 
                             comparison_error is None and
@@ -89,7 +81,7 @@ def analyze_success_cases(log_dir: str) -> tuple:
                             total_success_cases += 1
                             success_iterations.append(iteration)
                             
-                            # 记录成功用例的详细信息
+                            # Record details of successful use cases
                             case_detail = {
                                 "filename": json_file.name,
                                 "operator": operator_name,
@@ -105,7 +97,7 @@ def analyze_success_cases(log_dir: str) -> tuple:
                             success_case_details.append(case_detail)
                             all_success_details.append(case_detail)
             
-            # 记录当前文件的统计信息
+            # Record statistics of the current file
             if file_success_cases > 0:
                 file_info = {
                     "filename": json_file.name,
@@ -118,13 +110,13 @@ def analyze_success_cases(log_dir: str) -> tuple:
                 }
                 files_with_success.append(file_info)
                 
-                # 如果所有用例都成功，加入完全成功文件列表
+                # If all use cases are successful, add the full success file list
                 if file_success_cases == file_total_cases:
                     files_all_success.append(file_info)
                     
         except Exception as e:
-            # 异常处理：打印错误但不中断整体分析流程
-            print(f"处理文件 {json_file.name} 时出错: {e}")
+            # Exception handling: print errors without interrupting the overall analysis process
+            print(f"Process files {json_file.name} error: {e}")
     
     return total_success_cases, total_cases, files_all_success, files_with_success, all_success_details
 
@@ -136,100 +128,96 @@ def generate_report(output_file: str,
                     files_with_success: list,
                     all_success_details: list) -> None:
     """
-    生成格式化的成功用例分析报告并写入文本文件
-    
-    参数:
-        output_file (str): 输出报告文件的路径
-        total_success (int): 成功用例总数
-        total_cases (int): 总用例数
-        files_all_success (list): 所有用例都成功的文件列表
-        files_with_success (list): 包含成功用例的文件详细信息列表
-        all_success_details (list): 所有成功用例的详细信息
+    Generate a formatted successful use case analysis report and write it to a text file          parameters:
+        output_file (str): Path to output report file
+        total_success (int): Total number of successful use cases
+        total_cases (int): Total number of use cases
+        files_all_success (list): List of files for which all use cases were successful
+        files_with_success (list): List of file details containing successful use cases
+        all_success_details (list): Details of all successful use cases
     """
-    # 确保输出目录存在
+    # Make sure the output directory exists
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(output_file, "w", encoding="utf-8") as f:
-        # 写入报告头部
+        # Write report header
         f.write("=" * 80 + "\n")
-        f.write("PyTorch-TensorFlow 成功测试用例分析报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("PyTorch-TensorFlow Successful test case analysis report\n")
+        f.write(f"Generation time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("=" * 80 + "\n\n")
         
-        # 写入总体统计信息
-        f.write("【总体统计】\n")
+        # Write overall statistics
+        f.write("【Overall statistics】\n")
         f.write("-" * 40 + "\n")
-        f.write(f"成功用例总数: {total_success}\n")
-        f.write(f"总用例数: {total_cases}\n")
+        f.write(f"Total number of successful use cases: {total_success}\n")
+        f.write(f"Total number of use cases: {total_cases}\n")
         success_rate = total_success / total_cases * 100 if total_cases > 0 else 0
-        f.write(f"总成功率: {success_rate:.2f}%\n")
-        f.write(f"包含成功用例的文件数: {len(files_with_success)}\n")
-        f.write(f"所有用例都成功的文件数: {len(files_all_success)}\n")
+        f.write(f"overall success rate: {success_rate:.2f}%\n")
+        f.write(f"Number of files containing successful use cases: {len(files_with_success)}\n")
+        f.write(f"Number of files for which all use cases were successful: {len(files_all_success)}\n")
         f.write("\n" + "=" * 80 + "\n\n")
         
-        # 写入所有用例都成功的文件列表
-        f.write("【所有用例都成功的文件】\n")
+        # Writing to a list of files where all use cases were successful
+        f.write("【Documentation where all use cases were successful】\n")
         f.write("-" * 40 + "\n")
         if files_all_success:
             for idx, file_info in enumerate(files_all_success, 1):
                 f.write(f"{idx}. {file_info['filename']}\n")
-                f.write(f"   算子: {file_info['operator']}\n")
-                f.write(f"   成功用例数: {file_info['success_cases']}/{file_info['total_cases']}\n")
-                f.write(f"   迭代次数: {', '.join(map(str, file_info['success_iterations']))}\n")
+                f.write(f"   operator: {file_info['operator']}\n")
+                f.write(f"   Number of successful use cases: {file_info['success_cases']}/{file_info['total_cases']}\n")
+                f.write(f"   Number of iterations: {', '.join(map(str, file_info['success_iterations']))}\n")
                 f.write("\n")
         else:
-            f.write("没有找到所有用例都成功的文件。\n\n")
+            f.write("No file found with all use cases successful。\n\n")
         
         f.write("=" * 80 + "\n\n")
         
-        # 写入包含成功用例的文件详细信息
-        f.write("【包含成功用例的文件详细信息】\n")
+        # Write details to file containing success case
+        f.write("【Contains file details for successful use cases】\n")
         f.write("-" * 40 + "\n\n")
         if files_with_success:
             for idx, file_info in enumerate(files_with_success, 1):
-                f.write(f"{idx}. 文件名: {file_info['filename']}\n")
+                f.write(f"{idx}. file name: {file_info['filename']}\n")
                 f.write("-" * 80 + "\n")
-                f.write(f"   算子: {file_info['operator']}\n")
-                f.write(f"   成功用例数: {file_info['success_cases']}/{file_info['total_cases']} ({file_info['success_rate']})\n")
-                f.write(f"   成功用例的 iteration 值: {', '.join(map(str, file_info['success_iterations']))}\n")
+                f.write(f"   operator: {file_info['operator']}\n")
+                f.write(f"   Number of successful use cases: {file_info['success_cases']}/{file_info['total_cases']} ({file_info['success_rate']})\n")
+                f.write(f"   iteration value for successful use cases: {', '.join(map(str, file_info['success_iterations']))}\n")
                 
-                # 输出每个成功用例的简要信息
-                f.write("   成功用例详情:\n")
+                # Output brief information for each successful use case
+                f.write("   Successful use case details:\n")
                 for detail in file_info['success_details']:
                     input_info = detail.get('input_info', {})
-                    # 处理 input_info 可能是列表或字典的情况
+                    # Handle cases where input_info may be a list or dictionary
                     if isinstance(input_info, dict):
                         shape = input_info.get('shape', [])
                         dtype = input_info.get('dtype', 'unknown')
                     elif isinstance(input_info, list) and len(input_info) > 0:
-                        # 如果是列表，取第一个元素
+                        # If it is a list, take the first element
                         first_input = input_info[0] if isinstance(input_info[0], dict) else {}
                         shape = first_input.get('shape', [])
                         dtype = first_input.get('dtype', 'unknown')
                     else:
                         shape = []
                         dtype = 'unknown'
-                    llm_tag = "[LLM生成]" if detail.get('is_llm_generated') else "[原始用例]"
+                    llm_tag = "[LLMgenerate]" if detail.get('is_llm_generated') else "[Original use case]"
                     f.write(f"      - iteration {detail['iteration']}, case {detail['case_number']}: "
                             f"shape={shape}, dtype={dtype} {llm_tag}\n")
                 f.write("\n")
         else:
-            f.write("没有找到包含成功用例的文件。\n\n")
+            f.write("No file containing successful use case found。\n\n")
         
-        # 写入报告尾部
+        # Write to the end of the report
         f.write("=" * 80 + "\n")
-        f.write("报告生成完成\n")
+        f.write("Report generation completed\n")
         f.write("=" * 80 + "\n")
 
 
 def export_success_cases_json(output_file: str, all_success_details: list) -> None:
     """
-    将所有成功用例的详细信息导出为 JSON 文件，便于后续处理
-    
-    参数:
-        output_file (str): 输出 JSON 文件的路径
-        all_success_details (list): 所有成功用例的详细信息
+    Export details of all successful use cases to a JSON file for easy subsequent processing          parameters:
+        output_file (str): Path to output JSON file
+        all_success_details (list): Details of all successful use cases
     """
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -246,45 +234,43 @@ def export_success_cases_json(output_file: str, all_success_details: list) -> No
 
 def main():
     """
-    主程序入口：执行成功用例分析并生成报告
-    
-    执行流程:
-        1. 指定日志目录和输出文件路径
-        2. 调用 analyze_success_cases() 分析所有 JSON 文件
-        3. 在控制台打印统计摘要
-        4. 调用 generate_report() 生成详细报告文件
-        5. 调用 export_success_cases_json() 导出成功用例 JSON
+    Main program entry: perform successful use case analysis and generate reports          Execution process:
+        1. Specify log directory and output file path
+        2. Call analyze_success_cases() to analyze all JSON files
+        3. Print statistics summary to the console
+        4. Call generate_report() to generate a detailed report file
+        5. Call export_success_cases_json() to export success cases JSON
     """
-    # 配置输入输出路径
+    # Configure input and output paths
     log_dir = r"d:\graduate\DFrameworkTest\pt_tf_test\pt_tf_log_1"
     output_report = r"d:\graduate\DFrameworkTest\pt_tf_test\fuzzing\success_cases_report.txt"
     output_json = r"d:\graduate\DFrameworkTest\pt_tf_test\fuzzing\success_cases_data.json"
     
-    # 开始分析
-    print("开始分析 JSON 文件，提取成功用例...")
+    # Start analysis
+    print("Start analyzing the JSON file and extract successful use cases...")
     (total_success, total_cases, files_all_success, 
      files_with_success, all_success_details) = analyze_success_cases(log_dir)
     
-    # 在控制台打印统计摘要
+    # Print statistics summary to the console
     print("\n" + "=" * 50)
-    print("分析完成！")
+    print("Analysis completed！")
     print("=" * 50)
-    print(f"成功用例统计:")
-    print(f"  - 成功用例总数: {total_success}")
-    print(f"  - 总用例数: {total_cases}")
+    print(f"Successful use case statistics:")
+    print(f"  - Total number of successful use cases: {total_success}")
+    print(f"  - Total number of use cases: {total_cases}")
     success_rate = total_success / total_cases * 100 if total_cases > 0 else 0
-    print(f"  - 总成功率: {success_rate:.2f}%")
-    print(f"  - 包含成功用例的文件数: {len(files_with_success)}")
-    print(f"  - 所有用例都成功的文件数: {len(files_all_success)}")
+    print(f"  - overall success rate: {success_rate:.2f}%")
+    print(f"  - Number of files containing successful use cases: {len(files_with_success)}")
+    print(f"  - Number of files for which all use cases were successful: {len(files_all_success)}")
     
-    # 生成详细报告文件
+    # Generate detailed report files
     generate_report(output_report, total_success, total_cases, 
                     files_all_success, files_with_success, all_success_details)
-    print(f"\n文本报告已生成: {output_report}")
+    print(f"\nText report generated: {output_report}")
     
-    # 导出成功用例 JSON
+    # Export successful use case JSON
     export_success_cases_json(output_json, all_success_details)
-    print(f"JSON 数据已导出: {output_json}")
+    print(f"JSON Data has been exported: {output_json}")
 
 
 if __name__ == "__main__":

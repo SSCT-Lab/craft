@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 3.5b: 验证 PaddlePaddle API 是否真实存在（基于官方文档页面）
+Step 3.5b: Validate whether PaddlePaddle APIs really exist (based on official docs pages)
 
-功能：
-- 读取 TF→PD 映射 CSV
-- 对每个 paddle-api 拉取官方文档
-- 若文档不存在或内容异常，则将 paddle-api 改为“无对应实现”
-- 输出新的 CSV
+Purpose:
+- Read the TF→PD mapping CSV
+- Fetch official docs for each paddle-api
+- If docs are missing or abnormal, set paddle-api to "无对应实现"
+- Output a new CSV
 
-用法：
+Usage:
     conda activate tf_env
     python tf_pd_test_1/validate_pd_api_docs.py \
         --input tf_pd_test_1/data/tf_pd_mapping_high.csv \
@@ -40,7 +40,7 @@ DEFAULT_MIN_PAGE_CHARS = 2000
 DEFAULT_MIN_DESC_CHARS = 50
 REQUEST_TIMEOUT = 10
 
-# Paddle 文档不存在时常返回软 404 页面（HTTP 200），需额外检测标题
+# Paddle docs may return a soft 404 page (HTTP 200); check titles explicitly.
 PADDLE_GENERIC_PAGE_TITLES = [
     "Guides-Document-PaddlePaddle Deep Learning Platform",
     "使用指南-文档-PaddlePaddle深度学习平台",
@@ -116,8 +116,8 @@ def is_doc_valid(
     if not normalized:
         return False, "empty_api"
 
-    # 先使用统一的 Paddle 爬取器抓取文档主内容
-    # 注意：Paddle 站点有软404，因此仍需保留后续 URL 级别的软404校验
+    # Use the unified Paddle crawler first to fetch the main doc content.
+    # Note: Paddle has soft 404 pages, so keep URL-level soft 404 checks.
     time.sleep(delay)
     crawler_doc = crawler.crawl(normalized)
     if crawler_doc:
@@ -204,47 +204,47 @@ def save_csv_rows(path: str, rows: List[Dict[str, str]], fieldnames: List[str]) 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="验证 PaddlePaddle API 文档并修正映射")
+    parser = argparse.ArgumentParser(description="Validate PaddlePaddle API docs and fix mappings")
     parser.add_argument(
         "--input",
         "-i",
         default=DEFAULT_INPUT,
-        help="输入 TF→PD 映射 CSV 路径",
+        help="Input TF→PD mapping CSV path",
     )
     parser.add_argument(
         "--output",
         "-o",
         default=DEFAULT_OUTPUT,
-        help="输出修正后的 CSV 路径",
+        help="Output corrected CSV path",
     )
     parser.add_argument(
         "--delay",
         type=float,
         default=DEFAULT_DELAY,
-        help=f"每次请求延迟秒数（默认 {DEFAULT_DELAY}）",
+        help=f"Delay seconds per request (default {DEFAULT_DELAY})",
     )
     parser.add_argument(
         "--min-page-chars",
         type=int,
         default=DEFAULT_MIN_PAGE_CHARS,
-        help=f"页面最小字符数阈值（默认 {DEFAULT_MIN_PAGE_CHARS}）",
+        help=f"Minimum page character threshold (default {DEFAULT_MIN_PAGE_CHARS})",
     )
     parser.add_argument(
         "--min-desc-chars",
         type=int,
         default=DEFAULT_MIN_DESC_CHARS,
-        help=f"描述最小字符数阈值（默认 {DEFAULT_MIN_DESC_CHARS}）",
+        help=f"Minimum description character threshold (default {DEFAULT_MIN_DESC_CHARS})",
     )
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file not found: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: empty header")
         return
 
     total = len(rows)
@@ -278,12 +278,12 @@ def main() -> None:
     save_csv_rows(args.output, rows, fieldnames)
 
     print("=" * 80)
-    print("验证完成")
+    print("Validation complete")
     print("=" * 80)
-    print(f"总行数: {total}")
-    print(f"检查条目数: {checked}")
-    print(f"无效条目数: {invalid}")
-    print(f"输出文件: {args.output}")
+    print(f"Total rows: {total}")
+    print(f"Checked entries: {checked}")
+    print(f"Invalid entries: {invalid}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ def analyze_records(records: List[Dict]) -> Tuple[int, int, int]:
     completed = [record for record in records if record.get("status") == "completed"]
     total_completed = len(completed)
 
-    # TF->PT 实验中实时日志字段通常为 llm_pt_success；兼容旧字段 llm_tf_success
+    # In TF->PT experiments, the realtime log field is usually llm_pt_success; keep compatibility with llm_tf_success.
     llm_success = sum(
         1
         for record in completed
@@ -36,21 +36,21 @@ def print_summary(name: str, total: int, llm_ok: int, onnx_ok: int):
     onnx_rate = rate(onnx_ok, total)
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"ONNX 执行成功: {onnx_ok} ({onnx_rate:.2f}%)")
+    print(f"completed cases: {total}")
+    print(f"LLM success: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"ONNX success: {onnx_ok} ({onnx_rate:.2f}%)")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Conclusion: no completed cases, cannot compare")
         return
 
     diff = llm_rate - onnx_rate
     if diff > 0:
-        print(f"对比结论：LLM 优于 ONNX {diff:.2f} 个百分点")
+        print(f"Conclusion: LLM outperforms ONNX by {diff:.2f} percentage points")
     elif diff < 0:
-        print(f"对比结论：ONNX 优于 LLM {-diff:.2f} 个百分点")
+        print(f"Conclusion: ONNX outperforms LLM by {-diff:.2f} percentage points")
     else:
-        print("对比结论：两者持平")
+        print("Conclusion: both are tied")
 
 
 def main():

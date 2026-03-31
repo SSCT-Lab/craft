@@ -25,8 +25,8 @@ def test_qwen3_max_call() -> int:
     api_key, key_source = load_api_key()
 
     if not api_key:
-        print("[ERROR] 未找到可用 API Key。")
-        print("[HINT] 请在项目根目录创建 aliyun.key，或设置环境变量 DASHSCOPE_API_KEY。")
+        print("[ERROR] No available API key found.")
+        print("[HINT] Create aliyun.key in the project root or set DASHSCOPE_API_KEY.")
         return 1
 
     try:
@@ -39,22 +39,22 @@ def test_qwen3_max_call() -> int:
             model="qwen3-max",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "请告诉我你是qwen3-max模型还是qwen3.5-plus模型？"},
+                {"role": "user", "content": "Please tell me whether you are the qwen3-max model or the qwen3.5-plus model."},
             ],
             timeout=60,
         )
 
         content = completion.choices[0].message.content if completion.choices else ""
-        print("[OK] qwen3-max 调用成功")
-        print(f"[INFO] Key 来源: {key_source}")
+        print("[OK] qwen3-max call succeeded")
+        print(f"[INFO] Key source: {key_source}")
         print("[RESPONSE]", content)
         return 0
 
     except Exception as error:
-        print("[ERROR] qwen3-max 调用失败")
-        print(f"[INFO] Key 来源: {key_source}")
-        print(f"错误信息：{error}")
-        print("请参考文档：https://help.aliyun.com/model-studio/developer-reference/error-code")
+        print("[ERROR] qwen3-max call failed")
+        print(f"[INFO] Key source: {key_source}")
+        print(f"Error: {error}")
+        print("See docs: https://help.aliyun.com/model-studio/developer-reference/error-code")
         return 2
 
 

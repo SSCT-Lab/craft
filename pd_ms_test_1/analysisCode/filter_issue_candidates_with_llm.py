@@ -1,12 +1,12 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-使用千问 qwen3-max 对错误样例进行“是否值得提交 issue”筛选。
+Use Qwen qwen3-max to filter error samples for "issue worth filing".
 
-默认输入:
-    pd_ms_test_1/analysis/pd_error_only_samples_*.json（自动取最新）
-默认输出:
-    issue_candidates_{input_stem}.json（输出到输入文件同目录）
+Default input:
+    pd_ms_test_1/analysis/pd_error_only_samples_*.json (auto-pick latest)
+Default output:
+    issue_candidates_{input_stem}.json (written to the same directory as input)
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ DEFAULT_WORKERS = 6
 
 
 def load_api_key(key_path: str = DEFAULT_KEY_PATH) -> str:
-    """加载阿里云 API 密钥。"""
+    """Load the Alibaba Cloud API key."""
     candidate = Path(key_path)
     if not candidate.is_absolute():
         candidate = ROOT_DIR / key_path
@@ -46,25 +46,25 @@ def load_api_key(key_path: str = DEFAULT_KEY_PATH) -> str:
     if api_key:
         return api_key
 
-    print("未找到 API 密钥，请检查 aliyun.key 或 DASHSCOPE_API_KEY")
+    print("API key not found. Check aliyun.key or DASHSCOPE_API_KEY")
     return ""
 
 
 def build_default_output_path(input_path: Path) -> Path:
-    """构建默认输出路径。"""
+    """Build default output path."""
     return input_path.with_name(f"issue_candidates_{input_path.stem}.json")
 
 
 def find_latest_input_file(analysis_dir: Path) -> Path:
-    """自动选择 analysis 目录下最新的 pd_error_only_samples 文件。"""
+    """Auto-select the latest pd_error_only_samples file in analysis directory."""
     candidates = sorted(analysis_dir.glob("pd_error_only_samples_*.json"))
     if not candidates:
-        raise FileNotFoundError(f"未找到文件: {analysis_dir / 'pd_error_only_samples_*.json'}")
+        raise FileNotFoundError(f"File not found: {analysis_dir / 'pd_error_only_samples_*.json'}")
     return candidates[-1]
 
 
 def detect_api_roles(sample: Dict[str, Any]) -> Tuple[str, str]:
-    """识别执行结果中的主框架 API 键与对比框架 API 键。"""
+    """Identify the primary and counterpart framework API keys in execution results."""
     execution_result = sample.get("execution_result", {}) if isinstance(sample, dict) else {}
     if not isinstance(execution_result, dict):
         return "pd_api", "counterpart_api"
@@ -79,7 +79,7 @@ def detect_api_roles(sample: Dict[str, Any]) -> Tuple[str, str]:
 
 
 def simplify_sample_for_prompt(sample: Dict[str, Any]) -> Dict[str, Any]:
-    """精简样例信息，降低 token 消耗，同时保留判断所需关键字段。"""
+    """Simplify sample info to reduce token usage while keeping key fields."""
     execution_result = sample.get("execution_result", {}) if isinstance(sample, dict) else {}
     if not isinstance(execution_result, dict):
         execution_result = {}
@@ -130,7 +130,7 @@ def simplify_sample_for_prompt(sample: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def build_minimal_discriminative_sample(sample: Dict[str, Any]) -> Dict[str, Any]:
-    """构建最小可区分样例信息，用于非 issue 样例。"""
+    """Build minimal discriminative sample info for non-issue cases."""
     execution_result = sample.get("execution_result", {}) if isinstance(sample, dict) else {}
     if not isinstance(execution_result, dict):
         execution_result = {}
@@ -149,44 +149,44 @@ def build_minimal_discriminative_sample(sample: Dict[str, Any]) -> Dict[str, Any
 
 
 def build_prompt(sample: Dict[str, Any]) -> str:
-    """构建用于问题筛选的提示词。"""
+    """Build the prompt for issue filtering."""
     compact = simplify_sample_for_prompt(sample)
     sample_json = json.dumps(compact, ensure_ascii=False, indent=2)
 
-    return f"""你是深度学习框架差分测试专家。请判断下面这个样例是否“值得提交为框架官方 issue”。
+        return f"""You are an expert in deep learning framework differential testing. Determine whether the sample below is "worth filing as an official framework issue".
 
-【判断目标】
-只在“更可能是框架本身问题”时返回 true。若更可能是测试构造/参数映射/迁移差异导致的问题，返回 false。
+[Goal]
+Return true only when it is more likely a framework bug. If it is more likely due to test construction, parameter mapping, or migration differences, return false.
 
-【高价值 issue 参考特征】
-1. 严重崩溃：段错误、core dump、进程崩溃，而非普通 Python 异常。
-2. 显著数值错误：合法输入下出现远超浮点误差的异常结果。
-3. 违反文档：输入符合官方文档却报不应出现的异常。
-4. 静默错误：返回成功但 shape/dtype/语义明显错误。
-5. 稳定性问题：卡死、死锁、明显资源泄漏。
+[High-value issue signals]
+1. Severe crash: segmentation fault, core dump, process crash (not a normal Python exception).
+2. Significant numerical error: abnormal results far beyond floating-point tolerance for valid inputs.
+3. Documentation violation: inputs comply with official docs but an unexpected error occurs.
+4. Silent error: returns success but shape/dtype/semantics are clearly wrong.
+5. Stability issues: hang, deadlock, or obvious resource leak.
 
-【应排除的情况（通常返回 false）】
-1. 参数名不一致、参数缺失、dtype 字符串与对象不匹配等迁移问题。
-2. 用例输入非法或语义不对齐（如把 dict 当 tensor 传入）。
-3. 两框架非等价 API 的强行比较。
-4. 测试框架组装错误，而非算子实现错误。
+[Exclude cases (usually return false)]
+1. Migration problems such as inconsistent parameter names, missing parameters, dtype string vs object mismatch.
+2. Invalid inputs or mismatched semantics (e.g., passing dict as tensor).
+3. Forced comparison of non-equivalent APIs across frameworks.
+4. Test harness assembly errors rather than operator implementation errors.
 
-【样例】
+[Sample]
 ```json
 {sample_json}
 ```
 
-【输出要求】
-仅输出 JSON，不要任何额外文本：
+[Output]
+Return JSON only, no extra text:
 {{
-  "is_issue": true 或 false,
-  "reason": "中文简短理由（1-2句话，不超过60字）"
+    "is_issue": true or false,
+    "reason": "Brief reason in English (1-2 sentences, <= 60 chars)"
 }}
 """
 
 
 def normalize_llm_result(data: Dict[str, Any]) -> Tuple[bool, str]:
-    """归一化 is_issue/reason 字段。"""
+    """Normalize is_issue/reason fields."""
     issue_val = data.get("is_issue", False)
     if isinstance(issue_val, bool):
         is_issue = issue_val
@@ -197,15 +197,15 @@ def normalize_llm_result(data: Dict[str, Any]) -> Tuple[bool, str]:
 
     reason = data.get("reason", "")
     if not isinstance(reason, str) or not reason.strip():
-        reason = "未提供有效理由"
+        reason = "No valid reason provided"
 
     return is_issue, reason.strip()[:120]
 
 
 def parse_llm_json(text: str) -> Tuple[bool, str]:
-    """解析 LLM 返回，失败时给保守默认值。"""
+    """Parse LLM output; return a conservative default on failure."""
     if not isinstance(text, str) or not text.strip():
-        return False, "LLM返回为空"
+        return False, "LLM returned empty"
 
     raw = text.strip()
     try:
@@ -222,7 +222,7 @@ def parse_llm_json(text: str) -> Tuple[bool, str]:
         except json.JSONDecodeError:
             pass
 
-    return False, "LLM返回解析失败"
+    return False, "Failed to parse LLM output"
 
 
 def evaluate_one_sample(
@@ -233,7 +233,7 @@ def evaluate_one_sample(
     max_retries: int,
     print_lock: Lock,
 ) -> Tuple[bool, str]:
-    """调用 LLM 判断单个样例。"""
+    """Call LLM to determine a single sample."""
     prompt = build_prompt(sample)
 
     for attempt in range(max_retries):
@@ -241,7 +241,7 @@ def evaluate_one_sample(
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": "你是严谨的深度学习框架缺陷分诊专家，只输出合法JSON。"},
+                    {"role": "system", "content": "You are a rigorous deep learning framework triage expert. Output valid JSON only."},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=temperature,
@@ -251,23 +251,23 @@ def evaluate_one_sample(
             return parse_llm_json(content)
         except Exception as exc:
             with print_lock:
-                print(f"  LLM调用失败，重试 {attempt + 1}/{max_retries}: {str(exc)[:120]}")
+                print(f"  LLM call failed, retry {attempt + 1}/{max_retries}: {str(exc)[:120]}")
             time.sleep(2 ** attempt)
 
-    return False, "LLM调用失败（重试耗尽）"
+    return False, "LLM call failed (retries exhausted)"
 
 
 def load_input_samples(input_path: Path) -> Dict[str, Any]:
-    """加载输入 JSON。"""
+    """Load input JSON."""
     with input_path.open("r", encoding="utf-8") as file:
         data = json.load(file)
     if not isinstance(data.get("samples"), list):
-        raise ValueError("输入JSON缺少 samples 列表")
+        raise ValueError("Input JSON missing 'samples' list")
     return data
 
 
 def save_output(output_path: Path, payload: Dict[str, Any]) -> None:
-    """保存输出 JSON。"""
+    """Save output JSON."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as file:
         json.dump(payload, file, ensure_ascii=False, indent=2)
@@ -277,16 +277,16 @@ def parse_args() -> argparse.Namespace:
     analysis_dir = ROOT_DIR / "pd_ms_test_1" / "analysis"
     default_input = find_latest_input_file(analysis_dir)
 
-    parser = argparse.ArgumentParser(description="使用 qwen3-max 筛选更可能提交 issue 的错误样例")
-    parser.add_argument("--input", type=Path, default=default_input, help=f"输入JSON（默认: {default_input}）")
-    parser.add_argument("--output", type=Path, default=None, help="输出JSON（默认自动生成）")
-    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"LLM模型（默认: {DEFAULT_MODEL}）")
-    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help=f"并发线程数（默认: {DEFAULT_WORKERS}）")
-    parser.add_argument("--max-samples", type=int, default=None, help="仅处理前N个样例")
-    parser.add_argument("--temperature", type=float, default=0.0, help="LLM温度（默认0.0）")
-    parser.add_argument("--max-retries", type=int, default=3, help="单样例最大重试次数（默认3）")
-    parser.add_argument("--key-path", type=str, default=DEFAULT_KEY_PATH, help=f"API key 文件（默认: {DEFAULT_KEY_PATH}）")
-    parser.add_argument("--delay", type=float, default=0.2, help="每次成功请求后延迟秒数（默认0.2）")
+    parser = argparse.ArgumentParser(description="Use qwen3-max to filter error samples more likely to be filed as issues")
+    parser.add_argument("--input", type=Path, default=default_input, help=f"Input JSON (default: {default_input})")
+    parser.add_argument("--output", type=Path, default=None, help="Output JSON (auto-generated by default)")
+    parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"LLM model (default: {DEFAULT_MODEL})")
+    parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS, help=f"concurrent worker count (default: {DEFAULT_WORKERS})")
+    parser.add_argument("--max-samples", type=int, default=None, help="Process only the first N samples")
+    parser.add_argument("--temperature", type=float, default=0.0, help="LLM temperature (default 0.0)")
+    parser.add_argument("--max-retries", type=int, default=3, help="Max retries per sample (default 3)")
+    parser.add_argument("--key-path", type=str, default=DEFAULT_KEY_PATH, help=f"API key file (default: {DEFAULT_KEY_PATH})")
+    parser.add_argument("--delay", type=float, default=0.2, help="Delay after each successful request in seconds (default 0.2)")
     return parser.parse_args()
 
 
@@ -298,25 +298,25 @@ def main() -> None:
     workers = max(1, int(args.workers))
 
     if not input_path.exists():
-        raise FileNotFoundError(f"输入文件不存在: {input_path}")
+        raise FileNotFoundError(f"Input file does not exist: {input_path}")
 
     api_key = load_api_key(args.key_path)
     if not api_key:
-        raise RuntimeError("缺少可用的 API key")
+        raise RuntimeError("No available API key")
 
     raw_data = load_input_samples(input_path)
     all_samples: List[Dict[str, Any]] = raw_data.get("samples", [])
     samples = all_samples[: args.max_samples] if args.max_samples and args.max_samples > 0 else all_samples
 
     print("=" * 80)
-    print("Issue 候选筛选（qwen3-max）")
+    print("Issue candidate filter (qwen3-max)")
     print("=" * 80)
-    print(f"输入文件: {input_path}")
-    print(f"输出文件: {output_path}")
-    print(f"样例总数: {len(all_samples)}")
-    print(f"本次处理: {len(samples)}")
-    print(f"并发线程: {workers}")
-    print(f"模型: {args.model}")
+    print(f"Input file: {input_path}")
+    print(f"Output file: {output_path}")
+    print(f"Total samples: {len(all_samples)}")
+    print(f"Samples processed: {len(samples)}")
+    print(f"Concurrent workers: {workers}")
+    print(f"Model: {args.model}")
     print("=" * 80)
 
     client = OpenAI(api_key=api_key, base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
@@ -344,7 +344,7 @@ def main() -> None:
             "sample": sample if is_issue else build_minimal_discriminative_sample(sample),
         }
         with print_lock:
-            print(f"  样例#{idx}: is_issue={is_issue} | {reason[:40]}")
+            print(f"  Sample #{idx}: is_issue={is_issue} | {reason[:40]}")
         if args.delay > 0:
             time.sleep(args.delay)
         return result
@@ -366,7 +366,7 @@ def main() -> None:
                     outcome = future.result()
                 except Exception as exc:
                     with print_lock:
-                        print(f"  样例#{idx} 处理异常: {str(exc)[:120]}")
+                        print(f"  Sample #{idx} processing error: {str(exc)[:120]}")
                     continue
 
                 with all_results_lock:
@@ -382,7 +382,7 @@ def main() -> None:
         "generated_at": datetime.now().isoformat(),
         "source_file": str(input_path),
         "model": args.model,
-        "criteria": "筛选更可能属于框架本身问题、而非迁移/参数映射问题的样例",
+        "criteria": "Filter samples more likely to be framework issues rather than migration/parameter mapping issues",
         "total_samples": len(all_samples),
         "processed_samples": len(samples),
         "non_issue_count": len(samples) - len(selected_samples),
@@ -394,13 +394,14 @@ def main() -> None:
 
     elapsed = time.time() - started_at
     print("=" * 80)
-    print("筛选完成")
+    print("Filtering completed")
     print("=" * 80)
-    print(f"候选数量: {len(selected_samples)} / {len(samples)}")
-    print(f"耗时: {elapsed:.1f} 秒")
-    print(f"结果文件: {output_path}")
+    print(f"Candidates: {len(selected_samples)} / {len(samples)}")
+    print(f"Elapsed time: {elapsed:.1f} s")
+    print(f"Result file: {output_path}")
     print("=" * 80)
 
 
 if __name__ == "__main__":
     main()
+

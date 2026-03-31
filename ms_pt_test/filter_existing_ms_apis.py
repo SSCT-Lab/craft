@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 1.5: 过滤不存在的 MindSpore API
+Step 1.5: Filter out non-existent MindSpore APIs
 
-功能：
-- 读取 Step 1 输出的 API 列表（ms_apis.json）
-- 访问 MindSpore 官方文档页面，验证 API 是否真实存在
-- 输出仅保留验证通过的 API 列表
+Purpose:
+- Read the API list from Step 1 (ms_apis.json)
+- Visit MindSpore official docs to validate API existence
+- Output only APIs that pass validation
 
-用法：
+Usage:
     conda activate tf_env
     python ms_pt_test/filter_existing_ms_apis.py `
         --input ms_pt_test/data/ms_apis.json `
@@ -25,7 +25,7 @@ import requests
 from typing import Dict, List, Any, Tuple
 from bs4 import BeautifulSoup
 
-# Windows 环境下强制使用 UTF-8 输出
+# Force UTF-8 output on Windows
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -48,7 +48,7 @@ BAD_TITLE_PATTERNS = [
 
 
 def normalize_api_name(api_name: str) -> str:
-    """规范化 API 名称"""
+    """Normalize API name."""
     return (api_name or "").strip().lstrip(".")
 
 
@@ -74,9 +74,9 @@ def _check_page_valid(
     raw_html: str, title: str, api_name: str, min_page_chars: int
 ) -> Tuple[bool, str]:
     """
-    判断 MindSpore 文档页面是否为真实 API 页面
+    Determine whether a MindSpore doc page is a real API page.
 
-    返回 (valid, reason)
+    Returns (valid, reason)
     """
     if not title or _title_invalid(title):
         return False, "invalid_title"
@@ -104,9 +104,9 @@ def validate_api_doc(
     delay: float,
 ) -> Tuple[bool, str, str]:
     """
-    检查 MindSpore API 文档是否存在且有效
+    Check whether MindSpore API docs exist and are valid.
 
-    返回 (ok, reason, url)
+    Returns (ok, reason, url)
     """
     normalized = normalize_api_name(api_name)
     if not normalized:
@@ -141,44 +141,44 @@ def _apply_limit(items: List[Dict[str, Any]], limit: int) -> List[Dict[str, Any]
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Step 1.5: 过滤不存在的 MindSpore API"
+        description="Step 1.5: Filter out non-existent MindSpore APIs"
     )
     parser.add_argument(
         "--input", "-i", default=DEFAULT_INPUT,
-        help="Step 1 输出文件路径"
+        help="Step 1 output file path"
     )
     parser.add_argument(
         "--output", "-o", default=DEFAULT_OUTPUT,
-        help="过滤后输出文件路径"
+        help="Filtered output file path"
     )
     parser.add_argument(
         "--delay", type=float, default=DEFAULT_DELAY,
-        help=f"每次请求延迟秒数（默认 {DEFAULT_DELAY}）"
+        help=f"Delay per request in seconds (default {DEFAULT_DELAY})"
     )
     parser.add_argument(
         "--min-page-chars", type=int, default=DEFAULT_MIN_PAGE_CHARS,
-        help=f"页面最小字符数阈值（默认 {DEFAULT_MIN_PAGE_CHARS}）"
+        help=f"Minimum page character threshold (default {DEFAULT_MIN_PAGE_CHARS})"
     )
     parser.add_argument(
         "--limit", type=int, default=0,
-        help="仅验证前 N 个 API（用于快速测试）"
+        help="Validate only the first N APIs (for quick testing)"
     )
     parser.add_argument(
         "--clear-cache", action="store_true",
-        help="清除之前的 MindSpore 文档缓存（建议验证逻辑修改后使用）"
+        help="Clear cached MindSpore docs (recommended after logic changes)"
     )
 
     args = parser.parse_args()
 
     print("=" * 80)
-    print("Step 1.5: 过滤不存在的 MindSpore API")
+    print("Step 1.5: Filter out non-existent MindSpore APIs")
     print("=" * 80)
 
     if not os.path.exists(args.input):
-        print(f"输入文件不存在: {args.input}")
+        print(f"Input file does not exist: {args.input}")
         sys.exit(1)
 
-    # 清除旧缓存
+    # Clear old cache
     if args.clear_cache:
         import glob
         cache_pattern = os.path.join("data", "docs_cache", "mindspore_*.json")
@@ -186,9 +186,9 @@ def main():
         if cached_files:
             for cf in cached_files:
                 os.remove(cf)
-            print(f"已清除 {len(cached_files)} 个 MindSpore 文档缓存文件")
+            print(f"Cleared {len(cached_files)} MindSpore doc cache files")
         else:
-            print("无 MindSpore 文档缓存需要清除")
+            print("No MindSpore doc cache files to clear")
 
     with open(args.input, 'r', encoding='utf-8') as f:
         api_data = json.load(f)
@@ -196,7 +196,7 @@ def main():
     all_apis = api_data.get("apis", [])
     all_apis = _apply_limit(all_apis, args.limit)
 
-    print(f"共加载 {len(all_apis)} 个 MindSpore API")
+    print(f"Loaded {len(all_apis)} MindSpore APIs")
 
     crawler = MindSporeDocCrawler()
     valid_apis = []
@@ -217,7 +217,7 @@ def main():
             invalid_apis.append({"api": api_name, "reason": reason, "url": url})
             print(f"  BAD [{idx}/{len(all_apis)}] {api_name} ({reason})")
 
-    # 保存结果
+    # Save results
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
 
     output_data = {
@@ -232,12 +232,12 @@ def main():
         json.dump(output_data, f, indent=2, ensure_ascii=False)
 
     print("\n" + "=" * 80)
-    print("过滤结果")
+    print("Filter results")
     print("=" * 80)
-    print(f"  原始API数: {len(all_apis)}")
-    print(f"  有效API数: {len(valid_apis)}")
-    print(f"  过滤掉: {len(invalid_apis)}")
-    print(f"  已保存到: {args.output}")
+    print(f"  Original APIs: {len(all_apis)}")
+    print(f"  Valid APIs: {len(valid_apis)}")
+    print(f"  Filtered out: {len(invalid_apis)}")
+    print(f"  Saved to: {args.output}")
 
 
 if __name__ == "__main__":

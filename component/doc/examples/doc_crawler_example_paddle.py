@@ -1,5 +1,5 @@
 # ./component/doc_crawler_example_paddle.py
-"""PaddlePaddle 文档爬取器示例（未来扩展用）"""
+"""PaddlePaddle doc crawler example (for future extension)."""
 from typing import Dict
 from component.doc.doc_crawler_base import DocCrawler
 from bs4 import BeautifulSoup
@@ -9,21 +9,21 @@ PADDLE_DOC_BASE = "https://www.paddlepaddle.org.cn/documentation/docs/zh/api/"
 
 
 class PaddleDocCrawler(DocCrawler):
-    """PaddlePaddle 文档爬取器"""
+    """PaddlePaddle doc crawler."""
     
     def __init__(self):
         super().__init__("paddle")
     
     def normalize_api_name(self, api_name: str) -> str:
-        """规范化 PaddlePaddle API 名称"""
+        """Normalize PaddlePaddle API name."""
         api_name = super().normalize_api_name(api_name)
-        # PaddlePaddle 特定的规范化逻辑
+        # PaddlePaddle-specific normalization
         api_name = api_name.replace('paddle.', '')
         return api_name.strip()
     
     def build_doc_url(self, api_name: str) -> str:
-        """构建 PaddlePaddle 文档 URL"""
-        # PaddlePaddle 文档 URL 格式示例
+        """Build PaddlePaddle doc URL."""
+        # PaddlePaddle doc URL format examples
         # https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/xxx_cn.html
         api_parts = api_name.split('.')
         
@@ -35,7 +35,7 @@ class PaddleDocCrawler(DocCrawler):
             return f"{PADDLE_DOC_BASE}paddle/{module_path}/{func_name}_cn.html"
     
     def parse_doc_content(self, soup: BeautifulSoup, api_name: str, url: str) -> Dict:
-        """解析 PaddlePaddle 文档内容"""
+        """Parse PaddlePaddle doc content."""
         doc_content = {
             "api_name": api_name,
             "framework": "paddle",
@@ -48,21 +48,21 @@ class PaddleDocCrawler(DocCrawler):
             "raw_html": str(soup.find('main') or soup.find('article') or '')
         }
         
-        # PaddlePaddle 特定的解析逻辑
+        # PaddlePaddle-specific parsing logic
         main_content = soup.find('article') or soup.find('main')
         if main_content:
-            # 提取描述
+            # Extract description
             first_p = main_content.find('p')
             if first_p:
                 doc_content["description"] = first_p.get_text(strip=True)
             
-            # 提取参数（根据 PaddlePaddle 文档结构）
-            # ... 实现具体的解析逻辑
+            # Extract parameters (per PaddlePaddle doc structure)
+            # ... implement parsing logic here
         
         return doc_content
 
 
-# 使用示例：
+# Usage example:
 # from component.doc_crawler_factory import register_crawler
 # register_crawler('paddle', PaddleDocCrawler)
 # register_crawler('paddlepaddle', PaddleDocCrawler)

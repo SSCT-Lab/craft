@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple
 
 
 DEFAULT_FILES = [
-    # 样例占位路径：请在跑完 compare_llm_vs_rulebased.py 后替换为真实文件。
+    # Placeholder sample paths: replace with real files after running compare_llm_vs_rulebased.py.
     Path(r"D:\graduate\DFrameworkTest\pd_pt_test\llm_vs_rulebased_realtime_20260320_135114.jsonl"),
     Path(r"D:\graduate\DFrameworkTest\pd_pt_test\llm_vs_rulebased_realtime_20260320_141747.jsonl"),
 ]
@@ -18,7 +18,7 @@ def read_jsonl(path: Path) -> List[Dict]:
     records: List[Dict] = []
 
     if not path.exists():
-        print(f"[WARN] 文件不存在，已跳过: {path}")
+        print(f"[WARN] file not found, skipped: {path}")
         return records
 
     with path.open("r", encoding="utf-8-sig") as file_obj:
@@ -31,7 +31,7 @@ def read_jsonl(path: Path) -> List[Dict]:
                 records.append(json.loads(stripped_line))
             except json.JSONDecodeError as error:
                 print(
-                    f"[WARN] JSON 解析失败，已跳过 {path.name}:{line_number}，原因: {error}"
+                    f"[WARN] JSON parse failed, skipped {path.name}:{line_number}, reason: {error}"
                 )
 
     return records
@@ -91,25 +91,25 @@ def print_summary(
     both_fail = total - both_ok - llm_only_ok - rule_only_ok
 
     print(f"\n=== {name} ===")
-    print(f"completed 用例数: {total}")
-    print(f"LLM 执行成功: {llm_ok} ({llm_rate:.2f}%)")
-    print(f"Rule-based 执行成功: {rule_ok} ({rule_rate:.2f}%)")
-    print(f"双成功: {both_ok}")
-    print(f"仅 LLM 成功: {llm_only_ok}")
-    print(f"仅 Rule-based 成功: {rule_only_ok}")
-    print(f"双失败: {both_fail}")
+    print(f"completed case count: {total}")
+    print(f"LLM Executesuccessful: {llm_ok} ({llm_rate:.2f}%)")
+    print(f"Rule-based Executesuccessful: {rule_ok} ({rule_rate:.2f}%)")
+    print(f"Both successful: {both_ok}")
+    print(f"LLM only successful: {llm_only_ok}")
+    print(f"Rule-based only successful: {rule_only_ok}")
+    print(f"Both failed: {both_fail}")
 
     if total == 0:
-        print("对比结论：无 completed 用例，无法比较")
+        print("Conclusion: no completed cases, cannot compare")
         return
 
     diff = llm_rate - rule_rate
     if diff > 0:
-        print(f"对比结论：LLM 优于 Rule-based {diff:.2f} 个百分点")
+        print(f"Conclusion: LLM outperforms Rule-based by {diff:.2f} percentage points")
     elif diff < 0:
-        print(f"对比结论：Rule-based 优于 LLM {-diff:.2f} 个百分点")
+        print(f"Conclusion: Rule-based outperforms LLM by {-diff:.2f} percentage points")
     else:
-        print("对比结论：两者持平")
+        print("Conclusion: both are tied")
 
 
 def collect_default_files(input_dir: Path, latest: int) -> List[Path]:
@@ -124,40 +124,40 @@ def collect_default_files(input_dir: Path, latest: int) -> List[Path]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="分析 pd_pt_test 下 LLM vs Rule-based 实时JSONL结果"
+        description="Analyze real-time JSONL results for LLM vs Rule-based in pd_pt_test"
     )
     parser.add_argument(
         "--files",
         nargs="*",
         default=None,
-        help="指定要分析的 JSONL 文件路径；不指定则自动读取目录中的最新文件",
+        help="JSONL file paths to analyze; if omitted, auto-read latest files in the directory",
     )
     parser.add_argument(
         "--input-dir",
         default="pd_pt_test",
-        help="实时JSONL所在目录（默认 pd_pt_test）",
+        help="Directory containing real-time JSONL (default pd_pt_test)",
     )
     parser.add_argument(
         "--latest",
         type=int,
         default=3,
-        help="未指定 --files 时，自动读取最近 N 个文件（默认3，<=0 表示全部）",
+        help="When --files is omitted, auto-read latest N files (default 3, <=0 means all)",
     )
     args = parser.parse_args()
 
     if args.files:
         files = [Path(path) for path in args.files]
     else:
-        # 默认先尝试样例占位文件；若不存在则回退到目录扫描。
+        # First try placeholder files; if missing, fall back to directory scan.
         files = [path for path in DEFAULT_FILES if path.exists()]
         if not files:
             files = collect_default_files(Path(args.input_dir), args.latest)
 
     if not files:
-        print("[WARN] 未找到可分析的 JSONL 文件")
+        print("[WARN] No JSONL files found to analyze")
         return
 
-    print("将分析以下文件:")
+    print("Files to analyze:")
     for file_path in files:
         print(f"- {file_path}")
 
@@ -187,3 +187,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

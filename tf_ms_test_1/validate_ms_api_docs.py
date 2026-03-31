@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Step 3.5b: 验证 MindSpore API 是否真实存在（基于官方文档页面）
+Step 3.5b: Validate whether MindSpore APIs really exist (based on official docs).
 
-功能：
-- 读取 TF→MS 映射 CSV
-- 对每个 mindspore-api 拉取官方文档
-- 若文档不存在、软404或内容异常，则将 mindspore-api 改为“无对应实现”
-- 输出新的 CSV
+Purpose:
+- Read the TF->MS mapping CSV.
+- Fetch official docs for each mindspore-api.
+- If docs are missing, soft-404, or abnormal, set mindspore-api to "no_implementation".
+- Output a new CSV.
 
-用法：
+Usage:
     conda activate tf_env
     python tf_ms_test_1/validate_ms_api_docs.py \
         --input tf_ms_test_1/data/tf_ms_mapping_high.csv \
@@ -37,13 +37,13 @@ DEFAULT_DELAY = 0.5
 DEFAULT_MIN_HTML_CHARS = 2000
 DEFAULT_MIN_DESC_CHARS = 50
 
-# MindSpore 文档站点可能返回 HTTP 200 但页面实际不存在（软404）
+# MindSpore docs may return HTTP 200 but the page is missing (soft 404).
 MS_SOFT_404_TITLE_PATTERNS = [
     "404",
     "not found",
     "page not found",
-    "页面不存在",
-    "找不到页面",
+    "page not found",
+    "page not found",
     "error",
 ]
 
@@ -52,9 +52,9 @@ MS_SOFT_404_BODY_PATTERNS = [
     "not found",
     "404",
     "the page you are looking for",
-    "抱歉",
-    "页面不存在",
-    "无法找到",
+    "sorry",
+    "page not found",
+    "unable to find",
 ]
 
 
@@ -86,11 +86,11 @@ def _is_soft_404(title: str, raw_html: str, api_name: str) -> bool:
     api_last = api_name.split(".")[-1].lower() if api_name else ""
     has_api_hint = (api_name.lower() in body_text) or (api_last and api_last in body_text)
 
-    # 标题明确是404，且正文没有 API 内容，判定软404
+    # Title clearly indicates 404 and body has no API content -> soft 404.
     if title_flag and not has_api_hint:
         return True
 
-    # 正文具备典型404语义且标题缺少 API 名，也判定软404
+    # Body has typical 404 semantics and title lacks API name -> soft 404.
     if body_flag and api_name.lower() not in (title_text or "").lower():
         return True
 
@@ -104,7 +104,7 @@ def is_doc_valid(
     min_desc_chars: int,
     delay: float,
 ) -> Tuple[bool, str]:
-    """检查 MindSpore API 文档是否可信（含软404校验）"""
+    """Check whether MindSpore API docs are valid (including soft-404)."""
     normalized = normalize_api_name(api_name)
     if not normalized:
         return False, "empty_api"
@@ -155,47 +155,47 @@ def save_csv_rows(path: str, rows: List[Dict[str, str]], fieldnames: List[str]) 
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="验证 MindSpore API 文档并修正映射")
+    parser = argparse.ArgumentParser(description="Validate MindSpore API docs and fix mapping")
     parser.add_argument(
         "--input",
         "-i",
         default=DEFAULT_INPUT,
-        help="输入 TF→MS 映射 CSV 路径",
+        help="Input TF->MS mapping CSV path",
     )
     parser.add_argument(
         "--output",
         "-o",
         default=DEFAULT_OUTPUT,
-        help="输出修正后的 CSV 路径",
+        help="Output corrected CSV path",
     )
     parser.add_argument(
         "--delay",
         type=float,
         default=DEFAULT_DELAY,
-        help=f"每次请求延迟秒数（默认 {DEFAULT_DELAY}）",
+        help=f"Delay seconds between requests (default {DEFAULT_DELAY})",
     )
     parser.add_argument(
         "--min-html-chars",
         type=int,
         default=DEFAULT_MIN_HTML_CHARS,
-        help=f"文档主区域最小字符数阈值（默认 {DEFAULT_MIN_HTML_CHARS}）",
+        help=f"Minimum main HTML chars threshold (default {DEFAULT_MIN_HTML_CHARS})",
     )
     parser.add_argument(
         "--min-desc-chars",
         type=int,
         default=DEFAULT_MIN_DESC_CHARS,
-        help=f"描述最小字符数阈值（默认 {DEFAULT_MIN_DESC_CHARS}）",
+        help=f"Minimum description chars threshold (default {DEFAULT_MIN_DESC_CHARS})",
     )
 
     args = parser.parse_args()
 
     if not os.path.exists(args.input):
-        print(f"❌ 输入文件不存在: {args.input}")
+        print(f"❌ Input file does not exist: {args.input}")
         return
 
     rows, fieldnames = load_csv_rows(args.input)
     if not fieldnames:
-        print("❌ CSV 解析失败：表头为空")
+        print("❌ CSV parse failed: header is empty")
         return
 
     total = len(rows)
@@ -205,7 +205,7 @@ def main() -> None:
 
     for idx, row in enumerate(rows, start=1):
         ms_api = normalize_api_name(row.get("mindspore-api", ""))
-        if not ms_api or ms_api == "无对应实现":
+        if not ms_api or ms_api == "no_implementation":
             continue
 
         ok, reason = is_doc_valid(
@@ -222,19 +222,19 @@ def main() -> None:
             continue
 
         invalid += 1
-        row["mindspore-api"] = "无对应实现"
+        row["mindspore-api"] = "no_implementation"
         row["reason"] = build_reason(row.get("reason", ""), f"mindspore_doc_invalid:{reason}")
         print(f"  ❌ [{idx}/{total}] {ms_api} ({reason})")
 
     save_csv_rows(args.output, rows, fieldnames)
 
     print("=" * 80)
-    print("验证完成")
+    print("Validation complete")
     print("=" * 80)
-    print(f"总行数: {total}")
-    print(f"检查条目数: {checked}")
-    print(f"无效条目数: {invalid}")
-    print(f"输出文件: {args.output}")
+    print(f"Total rows: {total}")
+    print(f"Checked entries: {checked}")
+    print(f"Invalid entries: {invalid}")
+    print(f"Output file: {args.output}")
 
 
 if __name__ == "__main__":

@@ -1,18 +1,18 @@
-"""批量爬取所有相关 TF/PT API 文档并写入缓存 + 汇总文件.
+"""Batch crawl all related TF/PT API docs and write cache + summary file.
 
-目标：
-- 根据现有映射数据，枚举所有可能用到的 TensorFlow / PyTorch API
-- 调用现有的文档爬取器（带本地缓存）批量拉取文档
-- 生成一个汇总 JSONL，方便后续离线查看或做统计
+Goals:
+- Enumerate all possible TensorFlow / PyTorch APIs from existing mappings
+- Use the existing doc crawler (with local cache) to fetch docs in batch
+- Generate a summary JSONL for offline viewing or statistics
 
-使用方式（示例）::
+Usage (examples)::
 
-    # 推荐：只爬映射中出现过的 API
+    # Recommended: only crawl APIs appearing in mappings
     python3 component/doc/batch_crawl_all_apis.py \
         --pairs data/components/component_pairs.jsonl \
         --out data/analysis/api_docs.jsonl
 
-    # 如果想限制数量（调试用）
+    # Limit count (for debugging)
     python3 component/doc/batch_crawl_all_apis.py \
         --pairs data/components/component_pairs.jsonl \
         --out data/analysis/api_docs.sample.jsonl \
@@ -28,7 +28,7 @@ from typing import Dict, Set, Iterable
 
 from tqdm import tqdm
 
-# 添加项目根目录到 sys.path，保证直接运行时可导入
+# Add project root to sys.path to allow direct execution imports
 import sys
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -39,7 +39,7 @@ from component.doc.doc_crawler_factory import crawl_doc  # noqa: E402
 
 
 def load_jsonl(path: Path) -> Iterable[Dict]:
-    """安全加载 JSONL 文件."""
+    """Safely load a JSONL file."""
     if not path.exists():
         return []
     with path.open("r", encoding="utf-8") as f:
@@ -54,7 +54,7 @@ def load_jsonl(path: Path) -> Iterable[Dict]:
 
 
 def collect_apis_from_pairs(pairs_path: Path) -> Dict[str, Set[str]]:
-    """从 component_pairs.jsonl 中收集 TF / PT API."""
+    """Collect TF / PT APIs from component_pairs.jsonl."""
     tf_apis: Set[str] = set()
     pt_apis: Set[str] = set()
 
@@ -70,22 +70,22 @@ def collect_apis_from_pairs(pairs_path: Path) -> Dict[str, Set[str]]:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="批量爬取 TF/PT 文档（带缓存）")
+    ap = argparse.ArgumentParser(description="Batch crawl TF/PT docs (with cache)")
     ap.add_argument(
         "--pairs",
         default="data/components/component_pairs.jsonl",
-        help="TF/PT API 映射文件（含 tf_api / pt_api 字段）",
+        help="TF/PT API mapping file (with tf_api / pt_api fields)",
     )
     ap.add_argument(
         "--out",
         default="data/analysis/api_docs.jsonl",
-        help="汇总输出 JSONL 路径",
+        help="Summary JSONL output path",
     )
     ap.add_argument(
         "--limit",
         type=int,
         default=-1,
-        help="最多爬取多少个 API（-1 表示全部）",
+        help="Max APIs to crawl (-1 means all)",
     )
     args = ap.parse_args()
 
@@ -94,7 +94,7 @@ def main() -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not pairs_path.exists():
-        print(f"[ERROR] 映射文件不存在: {pairs_path}")
+        print(f"[ERROR] Mapping file not found: {pairs_path}")
         return
 
     api_sets = collect_apis_from_pairs(pairs_path)
@@ -103,20 +103,20 @@ def main() -> None:
 
     total_apis = len(tf_apis) + len(pt_apis)
     if args.limit > 0:
-        # 简单限制：在 TF/PT 合集中截断
+        # Simple limit: truncate combined TF/PT lists
         tf_quota = min(len(tf_apis), args.limit // 2 if args.limit > 1 else args.limit)
         pt_quota = min(len(pt_apis), args.limit - tf_quota)
         tf_apis = tf_apis[:tf_quota]
         pt_apis = pt_apis[:pt_quota]
         print(
-            f"[INFO] 总 API 数 {total_apis}，限制为 {args.limit} "
+            f"[INFO] Total APIs {total_apis}, limited to {args.limit} "
             f"(TF: {len(tf_apis)}, PT: {len(pt_apis)})"
         )
     else:
-        print(f"[INFO] 将爬取全部 API，TF: {len(tf_apis)}, PT: {len(pt_apis)}")
+        print(f"[INFO] Crawling all APIs, TF: {len(tf_apis)}, PT: {len(pt_apis)}")
 
     with out_path.open("w", encoding="utf-8") as fout:
-        # 先爬 TF
+        # Crawl TF first
         for api in tqdm(tf_apis, desc="Crawling TensorFlow docs"):
             try:
                 doc = crawl_doc(api, "tensorflow")
@@ -137,7 +137,7 @@ def main() -> None:
             fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
             fout.flush()
 
-        # 再爬 PT
+        # Crawl PT next
         for api in tqdm(pt_apis, desc="Crawling PyTorch docs"):
             try:
                 doc = crawl_doc(api, "pytorch")
@@ -158,7 +158,7 @@ def main() -> None:
             fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
             fout.flush()
 
-    print(f"[DONE] 文档抓取完成，结果已写入: {out_path}")
+    print(f"[DONE] Doc crawl completed, results written to: {out_path}")
 
 
 if __name__ == "__main__":

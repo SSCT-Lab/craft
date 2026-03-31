@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-分析 pt to ms 框架的测试日志文件，统计 LLM 生成用例数和成功执行用例数
-与 pt to pd 框架的分析口径一致，并支持两类日志源：
-1) 批量文本日志：batch_test_log_*.txt（若存在）
-2) LLM增强的JSON日志：llm_enhanced_torch*.json（自动统计）
+Analyze pt-to-ms test logs and count LLM-generated cases and successful executions.
+Aligned with the pt-to-pd analysis convention, and supports two log sources:
+1) Batch text logs: batch_test_log_*.txt (if present)
+2) LLM-enhanced JSON logs: llm_enhanced_torch*.json (auto statistics)
 """
 import re
 import json
@@ -11,8 +11,8 @@ from pathlib import Path
 
 def analyze_log_file(log_file_path):
     """
-    分析批量文本日志文件，提取统计信息
-    返回与 pt_pd_test/analyze_log.py 相同结构的统计结果
+    Analyze batch text logs and extract statistics.
+    Returns the same structure as pt_pd_test/analyze_log.py.
     """
     total_llm_cases = 0
     total_successful_cases = 0
@@ -22,7 +22,7 @@ def analyze_log_file(log_file_path):
     with open(log_file_path, 'r', encoding='utf-8') as f:
         content = f.read()
     
-    pattern = r'\[(\d+)/(\d+)\]\s+(\S+)\s+状态:\s+✅\s+完成\s+总迭代次数:\s+(\d+)\s+LLM生成用例数:\s+(\d+)\s+成功执行用例数:\s+(\d+)(?:\s+成功率:\s+([\d.]+)%)?'
+    pattern = r'\[(\d+)/(\d+)\]\s+(\S+)\s+Status:\s+✅\s+Completed\s+Total iterations:\s+(\d+)\s+LLM generated cases:\s+(\d+)\s+Successful cases:\s+(\d+)(?:\s+Success rate:\s+([\d.]+)%)?'
     matches = re.findall(pattern, content)
     
     for match in matches:
@@ -50,13 +50,13 @@ def analyze_log_file(log_file_path):
     }
 
 def analyze_json_file(json_file_path):
-    """
-    分析 LLM 增强 JSON 日志文件，提取统计信息
-    期望键：
-      - operator
-      - llm_generated_test_cases
-      - successful_test_cases
-    """
+        """
+        Analyze LLM-enhanced JSON logs and extract statistics.
+        Expected keys:
+            - operator
+            - llm_generated_test_cases
+            - successful_test_cases
+        """
     with open(json_file_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     operator_name = data.get('operator', 'N/A')
@@ -79,12 +79,12 @@ def analyze_json_file(json_file_path):
 
 def print_statistics(stats):
     print("="*80)
-    print("📊 批量测试日志统计分析（PyTorch → MindSpore）")
+    print("📊 Batch Test Log Statistical Analysis (PyTorch → MindSpore)")
     print("="*80)
-    print(f"\n✅ 测试算子总数: {stats['operator_count']}")
-    print(f"📝 LLM生成用例总数: {stats['total_llm_cases']}")
-    print(f"✅ 成功执行用例总数: {stats['total_successful_cases']}")
-    print(f"📈 总体成功率: {stats['overall_success_rate']:.2f}%")
+    print(f"\n✅ Total operators tested: {stats['operator_count']}")
+    print(f"📝 Total LLM-generated cases: {stats['total_llm_cases']}")
+    print(f"✅ Total successful cases: {stats['total_successful_cases']}")
+    print(f"📈 Overall success rate: {stats['overall_success_rate']:.2f}%")
     
     success_rate_distribution = {
         '0%': 0,
@@ -108,23 +108,23 @@ def print_statistics(stats):
             success_rate_distribution['76-99%'] += 1
         else:
             success_rate_distribution['100%'] += 1
-    print(f"\n📊 成功率分布:")
+    print(f"\n📊 Success rate distribution:")
     for range_name, count in success_rate_distribution.items():
         percentage = (count / stats['operator_count'] * 100) if stats['operator_count'] > 0 else 0
-        print(f"  {range_name:10s}: {count:3d} 个算子 ({percentage:5.2f}%)")
+        print(f"  {range_name:10s}: {count:3d} operators ({percentage:5.2f}%)")
     
-    print(f"\n🏆 成功率最高的前10个算子:")
+    print(f"\n🏆 Top 10 operators by success rate:")
     sorted_ops = sorted(stats['operator_details'], key=lambda x: x['success_rate'], reverse=True)
     for i, op in enumerate(sorted_ops[:10], 1):
         print(f"  {i:2d}. {op['name']:40s} - {op['successful_cases']}/{op['llm_cases']} ({op['success_rate']:.2f}%)")
     
     zero_success_ops = [op for op in stats['operator_details'] if op['success_rate'] == 0 and op['llm_cases'] > 0]
     if zero_success_ops:
-        print(f"\n⚠️ 成功率为0的算子（共{len(zero_success_ops)}个）:")
+        print(f"\n⚠️ Operators with 0% success rate (total {len(zero_success_ops)}):")
         for op in zero_success_ops[:20]:
-            print(f"  - {op['name']:40s} (LLM生成了{op['llm_cases']}个用例)")
+            print(f"  - {op['name']:40s} (LLM generated {op['llm_cases']} cases)")
         if len(zero_success_ops) > 20:
-            print(f"  ... 还有 {len(zero_success_ops) - 20} 个算子")
+            print(f"  ... {len(zero_success_ops) - 20} more operators")
 
 def merge_statistics(all_stats_list):
     merged_stats = {
@@ -174,9 +174,9 @@ if __name__ == "__main__":
     ]
     
     print("="*80)
-    print("📊 批量日志文件统计分析（PyTorch → MindSpore）")
+    print("📊 Batch Log File Statistical Analysis (PyTorch → MindSpore)")
     print("="*80)
-    print(f"\n📂 共分析 {len(log_files)} 个日志文件:\n")
+    print(f"\n📂 Analyzing {len(log_files)} log files:\n")
     for i, log_file in enumerate(log_files, 1):
         print(f"  {i}. {Path(log_file).name}")
     
@@ -185,21 +185,21 @@ if __name__ == "__main__":
         try:
             stats = analyze_log_file(log_file)
             all_stats_list.append(stats)
-            print(f"     ✅ 成功 - {stats['operator_count']}个算子, {stats['total_llm_cases']}个LLM用例, {stats['total_successful_cases']}个成功")
+            print(f"     ✅ Success - {stats['operator_count']} operators, {stats['total_llm_cases']} LLM cases, {stats['total_successful_cases']} successes")
         except FileNotFoundError:
-            print(f"     ❌ 文件不存在，跳过")
+            print(f"     ❌ File not found, skipping")
         except Exception as e:
-            print(f"     ❌ 分析失败: {e}")
+            print(f"     ❌ Analysis failed: {e}")
     
     if not all_stats_list:
-        print("\n❌ 没有成功分析任何日志文件")
+        print("\n❌ No log files were successfully analyzed")
         raise SystemExit(1)
     
     print(f"\n{'='*80}")
-    print("📊 合并统计结果")
+    print("📊 Merged Statistics")
     print("="*80)
     merged_stats = merge_statistics(all_stats_list)
     print_statistics(merged_stats)
     print("\n" + "="*80)
-    print("✅ 分析完成")
+    print("✅ Analysis completed")
     print("="*80)
